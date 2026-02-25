@@ -13,6 +13,8 @@ import {
   Clock
 } from 'lucide-react'
 
+export const dynamic = 'force-dynamic'
+
 interface DashboardData {
   user: {
     id: string

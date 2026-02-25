@@ -13,6 +13,8 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 
+export const dynamic = 'force-dynamic'
+
 interface DashboardData {
   user: {
     id: string
@@ -178,7 +180,7 @@ export default function StudentDashboard() {
         <div className="bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl shadow-lg p-6 text-white">
           <h3 className="text-xl font-bold mb-2">Keep Learning! 🎯</h3>
           <p className="text-primary-100 mb-4">
-            You're doing great! Complete your courses to earn certificates.
+            You&apos;re doing great! Complete your courses to earn certificates.
           </p>
           <div className="flex items-center space-x-2">
             <Award className="h-6 w-6" />

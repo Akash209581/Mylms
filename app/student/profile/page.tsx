@@ -2,6 +2,8 @@ import { requireAuth } from '@/lib/auth'
 import { User, Mail, Calendar, Award, BookOpen } from 'lucide-react'
 import { query } from '@/lib/db'
 
+export const dynamic = 'force-dynamic'
+
 export default async function StudentProfilePage() {
   const user = await requireAuth(['STUDENT'])
 

@@ -1,10 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import CourseCard from '@/components/CourseCard'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import { Course } from '@/lib/types'
 import { Search, Filter } from 'lucide-react'
+
+export const dynamic = 'force-dynamic'
 
 export default function StudentCoursesPage() {
   const [courses, setCourses] = useState<Course[]>([])
@@ -13,11 +15,7 @@ export default function StudentCoursesPage() {
   const [selectedLevel, setSelectedLevel] = useState<string>('')
   const [selectedCategory, setSelectedCategory] = useState<string>('')
 
-  useEffect(() => {
-    fetchCourses()
-  }, [selectedLevel, selectedCategory])
-
-  const fetchCourses = async () => {
+  const fetchCourses = useCallback(async () => {
     try {
       let url = '/api/courses?'
       if (selectedLevel) url += `level=${selectedLevel}&`
@@ -34,7 +32,11 @@ export default function StudentCoursesPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [selectedLevel, selectedCategory])
+
+  useEffect(() => {
+    fetchCourses()
+  }, [selectedLevel, selectedCategory, fetchCourses])
 
   const handleEnroll = async (courseId: string) => {
     // Enrollment functionality will be implemented in Phase 2
