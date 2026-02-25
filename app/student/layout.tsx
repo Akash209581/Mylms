@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation'
 import { getServerSession } from '@/lib/auth'
 import Navbar from '@/components/Navbar'
 
+export const dynamic = 'force-dynamic'
+
 export default async function StudentLayout({
   children,
 }: {

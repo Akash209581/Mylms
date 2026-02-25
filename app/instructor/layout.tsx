@@ -2,6 +2,8 @@ import { requireAuth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 
+export const dynamic = 'force-dynamic'
+
 export default async function InstructorLayout({
   children,
 }: {

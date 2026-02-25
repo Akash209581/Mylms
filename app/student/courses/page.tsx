@@ -6,8 +6,6 @@ import LoadingSpinner from '@/components/LoadingSpinner'
 import { Course } from '@/lib/types'
 import { Search, Filter } from 'lucide-react'
 
-export const dynamic = 'force-dynamic'
-
 export default function StudentCoursesPage() {
   const [courses, setCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(true)
