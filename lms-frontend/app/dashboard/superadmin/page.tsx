@@ -34,7 +34,7 @@ export default function SuperAdminDashboard() {
     ]
 
     const handleRoleChange = async (userId: number, newRole: string) => {
-        await fetch(``${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}`/superadmin/users/${userId}/role`, {
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/superadmin/users/${userId}/role`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
@@ -48,7 +48,7 @@ export default function SuperAdminDashboard() {
             <Navbar title="SuperAdmin Panel" />
             <main className="page-content">
                 {/* Hero */}
-                <div className="hero-section mb-8" style={{ background: 'linear-gradient(135deg,#7f1d1d,#991b1b,#b91c1c)' }}>
+                <div className="hero-section hero-dark mb-8" style={{ background: 'linear-gradient(135deg,#7f1d1d,#991b1b,#b91c1c)' }}>
                     <div className="relative z-10">
                         <p className="text-white/60 text-sm mb-1">Super Admin Control Center 🔑</p>
                         <h1 className="text-3xl font-bold text-white mb-2">Welcome, {user?.name}</h1>

@@ -17,7 +17,7 @@ function DailyStreakDisplay() {
 
     useEffect(() => {
         const today = new Date().toISOString().slice(0, 10)
-        fetch(``${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}`/daily-streak/today?date=${today}`, { credentials: 'include' })
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/daily-streak/today?date=${today}`, { credentials: 'include' })
             .then(r => r.json())
             .then(data => {
                 if (data && !data.message) setStreak(data)
@@ -86,20 +86,19 @@ export default function StudentDashboard() {
             <Navbar title="Student Dashboard" />
             <main className="page-content">
                 {/* Hero */}
-                <div className="hero-section mb-8 animate-fade-in">
+                <div className="hero-section mb-8 animate-fade-in bg-white border border-gray-100 shadow-sm">
                     <div className="relative z-10">
-                        <p className="text-white/60 text-sm font-medium mb-1">Welcome back 👋</p>
-                        <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">{user?.name || 'Student'}</h1>
-                        <p className="text-white/70 mb-6 max-w-lg">Continue your learning journey. Keep up the great work!</p>
+                        <p className="text-gray-500 text-sm font-medium mb-1">Welcome back 👋</p>
+                        <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-3">{user?.name || 'Student'}</h1>
+                        <p className="text-gray-600 mb-6 max-w-lg">Continue your learning journey. Keep up the great work!</p>
                         <a href="/dashboard/student/courses">
-                            <button className="px-6 py-3 rounded-xl text-indigo-900 font-bold text-sm bg-white hover:scale-105 transition-transform duration-300"
-                                style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}>
+                            <button className="btn-primary px-8 py-3.5 text-sm">
                                 Browse Courses →
                             </button>
                         </a>
                     </div>
-                    <div className="absolute right-8 top-1/2 -translate-y-1/2 hidden lg:block opacity-30">
-                        <div className="w-40 h-40 rounded-full border-4 border-white/30 flex items-center justify-center text-7xl animate-float">🎓</div>
+                    <div className="absolute right-8 top-1/2 -translate-y-1/2 hidden lg:block opacity-20">
+                        <div className="w-40 h-40 rounded-full border-4 border-indigo-100 flex items-center justify-center text-7xl animate-float">🎓</div>
                     </div>
                 </div>
 

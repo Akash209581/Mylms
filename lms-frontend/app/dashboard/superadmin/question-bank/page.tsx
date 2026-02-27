@@ -39,7 +39,7 @@ export default function QuestionBankPage() {
 
     const handleDelete = async (id: number) => {
         if (!confirm('Delete this question?')) return
-        await fetch(``${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}`/question-bank/${id}`, { method: 'DELETE', credentials: 'include' })
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}`/question-bank/${id}`, { method: 'DELETE', credentials: 'include' })
         setQuestions(prev => prev.filter(q => q.id !== id))
     }
 

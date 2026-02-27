@@ -165,6 +165,14 @@ body {
   border-radius: 16px;
   box-shadow: var(--shadow-sm);
   transition: box-shadow 0.2s ease;
+  color: var(--text-primary);
+}
+
+.glass-card h1,
+.glass-card h2,
+.glass-card h3,
+.glass-card p {
+  color: var(--text-primary);
 }
 
 .glass-card:hover {
@@ -205,9 +213,38 @@ body {
 .hero-section {
   position: relative;
   padding: 32px 36px;
-  border-radius: 20px;
+  border-radius: 24px;
   overflow: hidden;
   box-shadow: var(--shadow-md);
+  background: white;
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+}
+
+.hero-section h1,
+.hero-section h2,
+.hero-section p {
+  color: var(--text-primary) !important;
+}
+
+.hero-section .text-white\/60,
+.hero-section .text-white\/70 {
+  color: var(--text-secondary) !important;
+}
+
+/* Dark Hero variant */
+.hero-dark {
+  background: linear-gradient(135deg, #1e293b, #0f172a);
+  border: none;
+}
+
+.hero-dark h1,
+.hero-dark h2,
+.hero-dark p,
+.hero-dark span,
+.hero-dark .text-white\/60,
+.hero-dark .text-white\/70 {
+  color: #ffffff !important;
 }
 
 /* ============================================================
@@ -431,14 +468,9 @@ tr:hover td {
   color: #6366f1 !important;
 }
 
-/* Keep white text ONLY inside buttons, heroes, and icon containers */
+/* Keep white text ONLY inside buttons and icon containers */
 .btn-primary .text-white,
-.btn-primary,
-.hero-section .text-white,
-.hero-section h1,
-.hero-section h2,
-.hero-section p,
-.hero-section span {
+.btn-primary {
   color: #ffffff !important;
 }
 

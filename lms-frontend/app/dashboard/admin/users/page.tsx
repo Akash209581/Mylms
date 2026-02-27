@@ -25,7 +25,7 @@ export default function AdminUsersPage() {
 
     const handleDelete = async (id: number) => {
         if (!confirm('Delete this user?')) return
-        await fetch(``${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}`/admin/users/${id}`, { method: 'DELETE', credentials: 'include' })
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}`/admin/users/${id}`, { method: 'DELETE', credentials: 'include' })
         setUsers(prev => prev.filter(u => u.id !== id))
     }
 

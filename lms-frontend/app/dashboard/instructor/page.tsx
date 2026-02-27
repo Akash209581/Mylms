@@ -35,7 +35,7 @@ export default function InstructorDashboard() {
             <Navbar title="Instructor Dashboard" />
             <main className="page-content">
                 {/* Hero */}
-                <div className="hero-section mb-8" style={{ background: 'linear-gradient(135deg,#4338ca,#6d28d9)' }}>
+                <div className="hero-section hero-dark mb-8" style={{ background: 'linear-gradient(135deg,#4338ca,#6d28d9)' }}>
                     <div className="relative z-10">
                         <p className="text-white/60 text-sm mb-1">Instructor Portal 🎓</p>
                         <h1 className="text-3xl font-bold text-white mb-2">Welcome, {user?.name}</h1>

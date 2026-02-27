@@ -14,7 +14,7 @@ export default function DailyChallengePage() {
 
     useEffect(() => {
         const today = new Date().toISOString().slice(0, 10)
-        fetch(``${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}`/daily-streak/today?date=${today}`, { credentials: 'include' })
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}`/daily-streak/today?date=${today}`, { credentials: 'include' })
             .then(r => r.json())
             .then(data => {
                 if (data && !data.message) setStreak(data)
