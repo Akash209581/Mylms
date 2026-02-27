@@ -34,7 +34,7 @@ export default function SuperAdminCoursesPage() {
 
     const handleDelete = async (courseId: number) => {
         if (!confirm('Delete this course permanently?')) return
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}`/superadmin/courses/${courseId}`, {
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/superadmin/courses/${courseId}`, {
             method: 'DELETE', credentials: 'include'
         })
         setCourses(prev => prev.filter(c => c.id !== courseId))

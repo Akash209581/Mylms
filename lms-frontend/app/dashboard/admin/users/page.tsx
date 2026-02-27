@@ -25,7 +25,7 @@ export default function AdminUsersPage() {
 
     const handleDelete = async (id: number) => {
         if (!confirm('Delete this user?')) return
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}`/admin/users/${id}`, { method: 'DELETE', credentials: 'include' })
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/admin/users/${id}`, { method: 'DELETE', credentials: 'include' })
         setUsers(prev => prev.filter(u => u.id !== id))
     }
 
@@ -83,8 +83,8 @@ export default function AdminUsersPage() {
                                             <td className="py-4 pr-4 text-gray-400 text-sm">{u.email}</td>
                                             <td className="py-4 pr-4">
                                                 <span className={`badge ${u.role === 'STUDENT' ? 'badge-student' :
-                                                        u.role === 'INSTRUCTOR' ? 'badge-instructor' :
-                                                            u.role === 'ADMIN' ? 'badge-admin' : 'badge-superadmin'
+                                                    u.role === 'INSTRUCTOR' ? 'badge-instructor' :
+                                                        u.role === 'ADMIN' ? 'badge-admin' : 'badge-superadmin'
                                                     }`}>{u.role}</span>
                                             </td>
                                             <td className="py-4 pr-4 text-gray-400 text-sm">
