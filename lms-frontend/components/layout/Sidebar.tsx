@@ -23,6 +23,11 @@ const superadminNav: NavItem[] = [
     { label: 'Dashboard', href: '/dashboard/superadmin', icon: <GridIcon /> },
     { label: 'All Users', href: '/dashboard/superadmin/users', icon: <UsersIcon /> },
     { label: 'All Courses', href: '/dashboard/superadmin/courses', icon: <BookIcon /> },
+    { label: 'Create Course', href: '/dashboard/superadmin/courses/create', icon: <PlusIcon /> },
+    { label: 'Question Bank', href: '/dashboard/superadmin/question-bank', icon: <QuizIcon /> },
+    { label: 'Add Question', href: '/dashboard/superadmin/question-bank/create', icon: <PlusIcon /> },
+    { label: 'Contests', href: '/dashboard/superadmin/contests', icon: <TrophyIcon /> },
+    { label: 'Daily Streak', href: '/dashboard/superadmin/daily-streak', icon: <FireIcon /> },
 ]
 
 export default function Sidebar({ role }: { role?: string }) {
@@ -131,6 +136,39 @@ function LogoutIcon() {
         <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-5 h-5">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                 d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+        </svg>
+    )
+}
+function PlusIcon() {
+    return (
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-5 h-5">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+        </svg>
+    )
+}
+function QuizIcon() {
+    return (
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-5 h-5">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+    )
+}
+function TrophyIcon() {
+    return (
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-5 h-5">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+        </svg>
+    )
+}
+function FireIcon() {
+    return (
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-5 h-5">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z" />
         </svg>
     )
 }

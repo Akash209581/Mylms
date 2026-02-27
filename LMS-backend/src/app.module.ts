@@ -8,12 +8,18 @@ import { EnrollmentsModule } from './enrollments/enrollments.module';
 import { InstructorModule } from './instructor/instructor.module';
 import { AdminModule } from './admin/admin.module';
 import { SuperadminModule } from './superadmin/superadmin.module';
+import { QuestionBankModule } from './question-bank/question-bank.module';
+import { ContestModule } from './contest/contest.module';
+import { DailyStreakModule } from './daily-streak/daily-streak.module';
 import { User } from './entities/user.entity';
 import { Course } from './entities/course.entity';
 import { CourseModule } from './entities/module.entity';
 import { Lesson } from './entities/lesson.entity';
 import { Enrollment } from './entities/enrollment.entity';
 import { Progress } from './entities/progress.entity';
+import { Question } from './entities/question.entity';
+import { Contest } from './entities/contest.entity';
+import { DailyStreak } from './entities/daily-streak.entity';
 
 @Module({
   imports: [
@@ -22,7 +28,7 @@ import { Progress } from './entities/progress.entity';
       type: 'postgres',
       url: process.env.DATABASE_URL,
       ssl: { rejectUnauthorized: false },
-      entities: [User, Course, CourseModule, Lesson, Enrollment, Progress],
+      entities: [User, Course, CourseModule, Lesson, Enrollment, Progress, Question, Contest, DailyStreak],
       synchronize: true,
       logging: false,
     }),
@@ -33,6 +39,9 @@ import { Progress } from './entities/progress.entity';
     InstructorModule,
     AdminModule,
     SuperadminModule,
+    QuestionBankModule,
+    ContestModule,
+    DailyStreakModule,
   ],
 })
 export class AppModule { }
