@@ -25,7 +25,7 @@ export default function AdminCoursesPage() {
         const u = JSON.parse(stored)
         if (u.role !== 'ADMIN' && u.role !== 'SUPERADMIN') { router.push('/login'); return }
 
-        fetch('http://localhost:3001/admin/courses', { credentials: 'include' })
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/admin/courses`, { credentials: 'include' })
             .then(r => r.json())
             .then(data => { if (Array.isArray(data)) setCourses(data) })
             .catch(() => { })

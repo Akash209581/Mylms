@@ -17,7 +17,10 @@ export class DailyStreakController {
     @Get('today')
     async getToday() {
         const today = new Date().toISOString().slice(0, 10);
-        return this.streakRepo.findOneBy({ date: today, isActive: true });
+        return this.streakRepo.findOne({
+            where: { date: today, isActive: true },
+            relations: ['question']
+        });
     }
 
     @Get()

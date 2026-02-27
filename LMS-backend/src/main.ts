@@ -9,10 +9,16 @@ async function bootstrap() {
 
   app.use(cookieParser());
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+  const allowedOrigins = [
+    process.env.FRONTEND_URL,
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:3002',
+  ].filter(Boolean);
+
   app.enableCors({
     origin: (origin, callback) => {
-      // Allow any localhost origin (3000, 3001, 3002, etc.) and no-origin requests (Postman/curl)
-      if (!origin || /^http:\/\/localhost:\d+$/.test(origin)) {
+      if (!origin || allowedOrigins.some(ao => origin.startsWith(ao as string)) || /^http:\/\/localhost:\d+$/.test(origin)) {
         callback(null, true);
       } else {
         callback(new Error('Not allowed by CORS'));
@@ -21,7 +27,8 @@ async function bootstrap() {
     credentials: true,
   });
 
-  await app.listen(3001);
-  console.log('🚀 LMS Backend running on http://localhost:3001');
+  const port = process.env.PORT || 3001;
+  await app.listen(port);
+  console.log(`🚀 LMS Backend running on port ${port}`);
 }
 bootstrap();

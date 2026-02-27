@@ -11,6 +11,7 @@ import { SuperadminModule } from './superadmin/superadmin.module';
 import { QuestionBankModule } from './question-bank/question-bank.module';
 import { ContestModule } from './contest/contest.module';
 import { DailyStreakModule } from './daily-streak/daily-streak.module';
+import { KeepAliveService } from './common/keepalive.service';
 import { User } from './entities/user.entity';
 import { Course } from './entities/course.entity';
 import { CourseModule } from './entities/module.entity';
@@ -42,6 +43,9 @@ import { DailyStreak } from './entities/daily-streak.entity';
     QuestionBankModule,
     ContestModule,
     DailyStreakModule,
+  ],
+  providers: [KeepAliveService],
+  exports: [
   ],
 })
 export class AppModule { }

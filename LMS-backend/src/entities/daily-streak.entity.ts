@@ -1,4 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Question } from './question.entity';
 
 @Entity('daily_streaks')
 export class DailyStreak {
@@ -9,7 +10,11 @@ export class DailyStreak {
     date: string; // YYYY-MM-DD
 
     @Column()
-    questionId: number; // FK to questions table
+    questionId: number;
+
+    @ManyToOne(() => Question)
+    @JoinColumn({ name: 'questionId' })
+    question: Question;
 
     @Column()
     questionType: string; // MCQ, FIB, etc.

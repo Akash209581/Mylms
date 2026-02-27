@@ -1,250 +1,492 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   CSS VARIABLES — LIGHT THEME
+   ============================================================ */
 :root {
-  --bg-primary: #0f0e17;
-  --bg-secondary: #1a1a2e;
-  --bg-tertiary: #16213e;
-  --glass-bg: rgba(255, 255, 255, 0.07);
-  --glass-border: rgba(255, 255, 255, 0.12);
-  --text-primary: #fffffe;
-  --text-secondary: #a7a9be;
+  --bg-base: #f1f5f9;
+  --bg-surface: #ffffff;
+  --bg-raised: #f8fafc;
+  --bg-hover: #f1f5f9;
+
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
+
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+
   --accent: #6366f1;
-  --accent-hover: #4f46e5;
+  --accent-soft: rgba(99, 102, 241, 0.10);
+  --accent-text: #4f46e5;
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.10), 0 4px 12px rgba(0, 0, 0, 0.06);
+  --shadow-glow: 0 0 0 3px rgba(99, 102, 241, 0.15);
 }
 
-* {
+/* ============================================================
+   RESET
+   ============================================================ */
+*,
+*::before,
+*::after {
   box-sizing: border-box;
-  margin: 0;
-  padding: 0;
 }
 
 html {
-  scroll-behavior: smooth;
+  font-family: 'Inter', system-ui, sans-serif;
+  color: var(--text-primary);
+  background: var(--bg-base);
 }
 
 body {
-  font-family: 'Inter', system-ui, sans-serif;
-  background: var(--bg-primary);
+  margin: 0;
+  min-height: 100vh;
+  background-color: var(--bg-base);
   color: var(--text-primary);
-  -webkit-font-smoothing: antialiased;
 }
 
-/* Custom Scrollbar */
+/* ============================================================
+   SCROLLBAR
+   ============================================================ */
 ::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
+
 ::-webkit-scrollbar-track {
-  background: rgba(255,255,255,0.05);
+  background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
-  background: rgba(99,102,241,0.5);
-  border-radius: 3px;
+  background: var(--border-strong);
+  border-radius: 99px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(99,102,241,0.8);
+  background: #94a3b8;
 }
 
-@layer components {
-  /* Glass Card */
-  .glass-card {
-    @apply backdrop-blur-xl border rounded-2xl;
-    background: var(--glass-bg);
-    border-color: var(--glass-border);
-    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+/* ============================================================
+   LAYOUT SHELLS
+   ============================================================ */
+.bg-mesh {
+  background: var(--bg-base);
+  min-height: 100vh;
+}
+
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: 256px;
+  background: var(--bg-surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  z-index: 40;
+  box-shadow: var(--shadow-sm);
+}
+
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 256px;
+  right: 0;
+  height: 64px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  z-index: 30;
+  box-shadow: var(--shadow-sm);
+}
+
+.page-content {
+  margin-left: 256px;
+  padding-top: 80px;
+  padding-left: 32px;
+  padding-right: 32px;
+  padding-bottom: 40px;
+  min-height: 100vh;
+}
+
+/* ============================================================
+   SIDEBAR LINKS
+   ============================================================ */
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 16px;
+  margin: 1px 8px;
+  border-radius: 10px;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.15s ease;
+  text-decoration: none;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  width: calc(100% - 16px);
+}
+
+.sidebar-link:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.sidebar-link.active {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+.sidebar-link.active svg {
+  color: var(--accent);
+}
+
+/* ============================================================
+   CARDS
+   ============================================================ */
+.glass-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s ease;
+}
+
+.glass-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.stat-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease;
+}
+
+.stat-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.course-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.25s ease;
+}
+
+.course-card:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-3px);
+}
+
+/* ============================================================
+   HERO SECTION
+   ============================================================ */
+.hero-section {
+  position: relative;
+  padding: 32px 36px;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+}
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+.btn-primary {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
+  filter: brightness(1.05);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.btn-secondary {
+  background: var(--bg-raised);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-secondary:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ============================================================
+   INPUTS
+   ============================================================ */
+.input-field {
+  width: 100%;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-family: inherit;
+  transition: all 0.15s ease;
+  outline: none;
+}
+
+.input-field::placeholder {
+  color: var(--text-muted);
+}
+
+.input-field:focus {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-glow);
+  background: var(--bg-surface);
+}
+
+select.input-field {
+  cursor: pointer;
+}
+
+/* ============================================================
+   BADGES
+   ============================================================ */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 99px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.badge-student {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.badge-instructor {
+  background: #e0e7ff;
+  color: #4338ca;
+}
+
+.badge-admin {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.badge-superadmin {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+/* ============================================================
+   TABLE
+   ============================================================ */
+table {
+  border-collapse: collapse;
+}
+
+th {
+  font-weight: 600;
+}
+
+tr:hover td {
+  background: var(--bg-hover);
+}
+
+/* ============================================================
+   ANIMATIONS
+   ============================================================ */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
   }
 
-  .glass-card-dark {
-    @apply backdrop-blur-xl border rounded-2xl;
-    background: rgba(0,0,0,0.3);
-    border-color: rgba(255,255,255,0.08);
-    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-  }
-
-  /* Gradient Button */
-  .btn-primary {
-    @apply relative px-6 py-3 rounded-xl font-semibold text-white overflow-hidden transition-all duration-300;
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
-    box-shadow: 0 4px 20px rgba(99,102,241,0.4);
-  }
-  .btn-primary:hover {
-    @apply scale-105;
-    box-shadow: 0 8px 30px rgba(99,102,241,0.6);
-  }
-  .btn-primary:active {
-    @apply scale-95;
-  }
-  .btn-primary::after {
-    content: '';
-    @apply absolute inset-0 opacity-0 transition-opacity duration-300;
-    background: linear-gradient(135deg, rgba(255,255,255,0.2), transparent);
-  }
-  .btn-primary:hover::after {
-    @apply opacity-100;
-  }
-
-  .btn-secondary {
-    @apply px-6 py-3 rounded-xl font-semibold transition-all duration-300 border;
-    background: rgba(255,255,255,0.05);
-    border-color: rgba(255,255,255,0.15);
-    color: white;
-  }
-  .btn-secondary:hover {
-    @apply scale-105;
-    background: rgba(255,255,255,0.1);
-    border-color: rgba(99,102,241,0.5);
-  }
-
-  /* Gradient Text */
-  .gradient-text {
-    @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, #6366f1, #a855f7, #ec4899);
-  }
-
-  .gradient-text-warm {
-    @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, #f97316, #eab308);
-  }
-
-  /* Stat Card */
-  .stat-card {
-    @apply glass-card p-6 relative overflow-hidden transition-all duration-300 cursor-pointer;
-  }
-  .stat-card:hover {
-    @apply -translate-y-1;
-    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-    border-color: rgba(99,102,241,0.3);
-  }
-  .stat-card::before {
-    content: '';
-    @apply absolute inset-0 opacity-0 transition-opacity duration-300;
-    background: linear-gradient(135deg, rgba(99,102,241,0.05), rgba(168,85,247,0.05));
-  }
-  .stat-card:hover::before {
-    @apply opacity-100;
-  }
-
-  /* Course Card */
-  .course-card {
-    @apply glass-card overflow-hidden transition-all duration-500 cursor-pointer;
-  }
-  .course-card:hover {
-    @apply -translate-y-2;
-    box-shadow: 0 25px 50px rgba(0,0,0,0.4);
-    border-color: rgba(99,102,241,0.4);
-  }
-
-  /* Sidebar */
-  .sidebar {
-    @apply fixed left-0 top-0 h-full w-64 flex flex-col z-50;
-    background: rgba(15, 14, 23, 0.95);
-    border-right: 1px solid rgba(255,255,255,0.08);
-    backdrop-filter: blur(20px);
-  }
-
-  .sidebar-link {
-    @apply flex items-center gap-3 px-4 py-3 rounded-xl mx-2 text-sm font-medium transition-all duration-200;
-    color: rgba(255,255,255,0.6);
-  }
-  .sidebar-link:hover {
-    @apply text-white;
-    background: rgba(99,102,241,0.15);
-    color: white;
-  }
-  .sidebar-link.active {
-    @apply text-white;
-    background: linear-gradient(135deg, rgba(99,102,241,0.3), rgba(168,85,247,0.2));
-    border: 1px solid rgba(99,102,241,0.3);
-  }
-
-  /* Input */
-  .input-field {
-    @apply w-full px-4 py-3 rounded-xl outline-none transition-all duration-300 text-white placeholder-gray-500;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.1);
-  }
-  .input-field:focus {
-    border-color: rgba(99,102,241,0.6);
-    box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
-    background: rgba(255,255,255,0.08);
-  }
-
-  /* Auth Container */
-  .auth-container {
-    @apply min-h-screen flex items-center justify-center relative overflow-hidden;
-    background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
-  }
-
-  /* Navbar */
-  .navbar {
-    @apply fixed top-0 right-0 z-40 flex items-center justify-between px-6 py-4;
-    background: rgba(15,14,23,0.9);
-    border-bottom: 1px solid rgba(255,255,255,0.08);
-    backdrop-filter: blur(20px);
-  }
-
-  /* Badge */
-  .badge {
-    @apply px-3 py-1 rounded-full text-xs font-semibold;
-  }
-  .badge-student {
-    background: rgba(99,214,99,0.15);
-    color: rgb(99,214,99);
-    border: 1px solid rgba(99,214,99,0.3);
-  }
-  .badge-instructor {
-    background: rgba(99,102,241,0.15);
-    color: rgb(165,180,252);
-    border: 1px solid rgba(99,102,241,0.3);
-  }
-  .badge-admin {
-    background: rgba(249,115,22,0.15);
-    color: rgb(253,186,116);
-    border: 1px solid rgba(249,115,22,0.3);
-  }
-  .badge-superadmin {
-    background: rgba(239,68,68,0.15);
-    color: rgb(252,165,165);
-    border: 1px solid rgba(239,68,68,0.3);
-  }
-
-  /* Page wrapper (with sidebar) */
-  .page-content {
-    @apply ml-64 min-h-screen p-6 pt-24;
-    background: linear-gradient(135deg, #0f0e17 0%, #1a1a2e 100%);
-  }
-
-  /* Hero Section */
-  .hero-section {
-    @apply relative rounded-2xl p-8 mb-8 overflow-hidden;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  }
-  .hero-section::before {
-    content: '';
-    @apply absolute inset-0;
-    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='10'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-@layer utilities {
-  .bg-mesh {
-    background-color: #0f0e17;
-    background-image:
-      radial-gradient(at 40% 20%, rgba(99,102,241,0.15) 0px, transparent 50%),
-      radial-gradient(at 80% 0%, rgba(168,85,247,0.1) 0px, transparent 50%),
-      radial-gradient(at 0% 50%, rgba(99,102,241,0.08) 0px, transparent 50%),
-      radial-gradient(at 80% 50%, rgba(236,72,153,0.06) 0px, transparent 50%),
-      radial-gradient(at 0% 100%, rgba(99,102,241,0.1) 0px, transparent 50%);
-  }
-  
-  .text-shadow {
-    text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
   }
 
-  .animate-count {
-    animation: countUp 1s ease-out;
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
+}
+
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.4s ease forwards;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.5s ease forwards;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* ============================================================
+   FORCE DARK TEXT — override ALL Tailwind white/light classes
+   Exceptions: .btn-primary, .hero-section keep white text
+   ============================================================ */
+
+/* Catch-all: any element with text-white class becomes dark */
+.text-white {
+  color: #0f172a !important;
+}
+
+.text-gray-50,
+.text-gray-100,
+.text-gray-200,
+.text-gray-300 {
+  color: #374151 !important;
+}
+
+.text-gray-400 {
+  color: #6b7280 !important;
+}
+
+.text-gray-500 {
+  color: #9ca3af !important;
+}
+
+/* Primary color text */
+.text-primary-400 {
+  color: #4f46e5 !important;
+}
+
+.text-primary-300 {
+  color: #6366f1 !important;
+}
+
+/* Keep white text ONLY inside buttons, heroes, and icon containers */
+.btn-primary .text-white,
+.btn-primary,
+.hero-section .text-white,
+.hero-section h1,
+.hero-section h2,
+.hero-section p,
+.hero-section span {
+  color: #ffffff !important;
+}
+
+/* Badge text keeps its own colored text — don't override */
+.badge {
+  color: inherit !important;
+}
+
+/* Keep sidebar logo/role label */
+.sidebar a p,
+/* Keep sidebar logo */
+.sidebar a p {
+  color: #0f172a !important;
+}
+
+/* Navbar title stays dark */
+.navbar * {
+  color: #0f172a;
+}
+
+/* Stat cards — values should be dark */
+.stat-card .text-white {
+  color: #0f172a !important;
+}
+
+.stat-card .text-gray-400 {
+  color: #6b7280 !important;
+}
+
+/* Table cells */
+table .text-white {
+  color: #0f172a !important;
+}
+
+table .text-gray-300 {
+  color: #374151 !important;
+}
+
+table .text-gray-400,
+table .text-gray-500 {
+  color: #6b7280 !important;
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #6366f1, #a855f7);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent !important;
 }

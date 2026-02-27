@@ -11,7 +11,49 @@ const STAT_CONFIG = [
     { label: 'Certificates', icon: '🏆', gradient: 'linear-gradient(135deg, #ef4444, #dc2626)', key: 'certs' },
 ]
 
+function DailyStreakDisplay() {
+    const [streak, setStreak] = useState<any>(null)
+    const [loading, setLoading] = useState(true)
+
+    useEffect(() => {
+        const today = new Date().toISOString().slice(0, 10)
+        fetch(``${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}`/daily-streak/today?date=${today}`, { credentials: 'include' })
+            .then(r => r.json())
+            .then(data => {
+                if (data && !data.message) setStreak(data)
+            })
+            .catch(() => { })
+            .finally(() => setLoading(false))
+    }, [])
+
+    if (loading) return <div className="h-24 bg-gray-50 animate-pulse rounded-xl" />
+    if (!streak) return (
+        <div className="bg-amber-50 p-4 rounded-xl border border-amber-100">
+            <p className="text-amber-800 text-sm italic">No coding streak question set for today. Check back later!</p>
+        </div>
+    )
+
+    return (
+        <div className="bg-white p-5 rounded-2xl border border-amber-100 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+                <span className="px-2 py-1 bg-amber-100 text-amber-700 text-[10px] font-bold rounded uppercase">Daily Challenge</span>
+                <span className="text-gray-400 text-xs font-mono">Q#{streak.question?.questionNumber}</span>
+            </div>
+            <p className="text-gray-900 font-bold text-base mb-2 line-clamp-2">{streak.question?.questionText}</p>
+            <div className="flex items-center gap-3 mt-4">
+                <button
+                    className="btn-primary py-2 px-6 text-sm flex-1"
+                    onClick={() => window.location.href = '/dashboard/student/streak'}
+                >
+                    Solve Now
+                </button>
+            </div>
+        </div>
+    )
+}
+
 export default function StudentDashboard() {
+
     const router = useRouter()
     const [user, setUser] = useState<any>(null)
     const [enrollments, setEnrollments] = useState<any[]>([])
@@ -24,7 +66,7 @@ export default function StudentDashboard() {
         if (u.role !== 'STUDENT') { router.push(`/dashboard/${u.role.toLowerCase()}`); return }
         setUser(u)
 
-        fetch('http://localhost:3001/enrollments/my', { credentials: 'include' })
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/enrollments/my`, { credentials: 'include' })
             .then(r => r.json())
             .then(data => { if (Array.isArray(data)) setEnrollments(data) })
             .catch(() => { })
@@ -77,8 +119,19 @@ export default function StudentDashboard() {
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Daily Streak */}
+                    <div className="glass-card p-6 border border-amber-500/20 shadow-amber-500/5 relative overflow-hidden">
+                        <div className="absolute top-0 right-0 p-2 opacity-10 text-5xl">🔥</div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-5 flex items-center gap-2">
+                            <span className="w-2 h-5 rounded-full bg-amber-500" />
+                            Today's Coding Streak
+                        </h3>
+                        <DailyStreakDisplay />
+                    </div>
+
                     {/* Enrolled Courses */}
                     <div className="glass-card p-6">
+
                         <h3 className="text-lg font-semibold text-white mb-5 flex items-center gap-2">
                             <span className="w-2 h-5 rounded-full" style={{ background: 'linear-gradient(#6366f1,#a855f7)' }} />
                             My Enrolled Courses

@@ -1,0 +1,32 @@
+services:
+  # Backend API
+  - type: web
+    name: lms-backend
+    env: node
+    plan: free
+    rootDir: LMS-backend
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:prod
+    envVars:
+      - key: NODE_VERSION
+        value: 18.x
+      - key: DATABASE_URL
+        sync: false # Set this in Render Dashboard
+      - key: JWT_SECRET
+        sync: false # Set this in Render Dashboard
+      - key: FRONTEND_URL
+        sync: false # Set this in Render Dashboard after frontend is deployed
+
+  # Frontend Web App
+  - type: web
+    name: lms-frontend
+    env: node
+    plan: free
+    rootDir: lms-frontend
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_VERSION
+        value: 18.x
+      - key: NEXT_PUBLIC_API_URL
+        sync: false # Set this to your backend URL (e.g. https://lms-backend.onrender.com)

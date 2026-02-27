@@ -29,8 +29,8 @@ export default function QuestionBankPage() {
         if (u.role !== 'SUPERADMIN' && u.role !== 'ADMIN') { router.push('/login'); return }
 
         Promise.all([
-            fetch('http://localhost:3001/question-bank', { credentials: 'include' }).then(r => r.json()),
-            fetch('http://localhost:3001/question-bank/stats', { credentials: 'include' }).then(r => r.json()),
+            fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/question-bank`, { credentials: 'include' }).then(r => r.json()),
+            fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/question-bank/stats`, { credentials: 'include' }).then(r => r.json()),
         ]).then(([qs, s]) => {
             if (Array.isArray(qs)) setQuestions(qs)
             setStats(s)
@@ -39,7 +39,7 @@ export default function QuestionBankPage() {
 
     const handleDelete = async (id: number) => {
         if (!confirm('Delete this question?')) return
-        await fetch(`http://localhost:3001/question-bank/${id}`, { method: 'DELETE', credentials: 'include' })
+        await fetch(``${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}`/question-bank/${id}`, { method: 'DELETE', credentials: 'include' })
         setQuestions(prev => prev.filter(q => q.id !== id))
     }
 

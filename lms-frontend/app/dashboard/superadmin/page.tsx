@@ -17,7 +17,7 @@ export default function SuperAdminDashboard() {
         if (u.role !== 'SUPERADMIN') { router.push(`/dashboard/${u.role.toLowerCase()}`); return }
         setUser(u)
 
-        fetch('http://localhost:3001/superadmin/dashboard', { credentials: 'include' })
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/superadmin/dashboard`, { credentials: 'include' })
             .then(r => r.json())
             .then(data => setStats(data))
             .catch(() => { })
@@ -34,7 +34,7 @@ export default function SuperAdminDashboard() {
     ]
 
     const handleRoleChange = async (userId: number, newRole: string) => {
-        await fetch(`http://localhost:3001/superadmin/users/${userId}/role`, {
+        await fetch(``${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}`/superadmin/users/${userId}/role`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',

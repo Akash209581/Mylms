@@ -27,8 +27,8 @@ export default function StudentCoursesPage() {
         if (!stored) { router.push('/login'); return }
 
         Promise.all([
-            fetch('http://localhost:3001/courses', { credentials: 'include' }).then(r => r.json()),
-            fetch('http://localhost:3001/enrollments/my', { credentials: 'include' }).then(r => r.json()),
+            fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/courses`, { credentials: 'include' }).then(r => r.json()),
+            fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/enrollments/my`, { credentials: 'include' }).then(r => r.json()),
         ]).then(([coursesData, enrollData]) => {
             if (Array.isArray(coursesData)) setCourses(coursesData)
             if (Array.isArray(enrollData)) setEnrollments(enrollData.map((e: any) => e.courseId))
@@ -38,7 +38,7 @@ export default function StudentCoursesPage() {
     const handleEnroll = async (courseId: number) => {
         setEnrolling(courseId)
         try {
-            const res = await fetch('http://localhost:3001/enrollments', {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/enrollments`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',

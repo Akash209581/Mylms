@@ -21,7 +21,7 @@ export default function StudentProfilePage() {
 
     const handleSave = async () => {
         try {
-            await fetch('http://localhost:3001/users/profile', {
+            await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/users/profile`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',

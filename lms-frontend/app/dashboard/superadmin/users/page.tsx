@@ -17,7 +17,7 @@ export default function SuperAdminUsersPage() {
         const u = JSON.parse(stored)
         if (u.role !== 'SUPERADMIN') { router.push('/login'); return }
 
-        fetch('http://localhost:3001/superadmin/users', { credentials: 'include' })
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/superadmin/users`, { credentials: 'include' })
             .then(r => r.json())
             .then(data => { if (Array.isArray(data)) setUsers(data) })
             .catch(() => { })
@@ -25,7 +25,7 @@ export default function SuperAdminUsersPage() {
     }, [])
 
     const handleRoleChange = async (userId: number, newRole: string) => {
-        await fetch(`http://localhost:3001/superadmin/users/${userId}/role`, {
+        await fetch(``${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}`/superadmin/users/${userId}/role`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
@@ -36,7 +36,7 @@ export default function SuperAdminUsersPage() {
 
     const handleDelete = async (userId: number) => {
         if (!confirm('Are you sure you want to delete this user?')) return
-        await fetch(`http://localhost:3001/superadmin/users/${userId}`, {
+        await fetch(``${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}`/superadmin/users/${userId}`, {
             method: 'DELETE', credentials: 'include'
         })
         setUsers(prev => prev.filter(u => u.id !== userId))

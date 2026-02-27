@@ -25,7 +25,7 @@ export default function SuperAdminCoursesPage() {
         const u = JSON.parse(stored)
         if (u.role !== 'SUPERADMIN') { router.push('/login'); return }
 
-        fetch('http://localhost:3001/superadmin/courses', { credentials: 'include' })
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/superadmin/courses`, { credentials: 'include' })
             .then(r => r.json())
             .then(data => { if (Array.isArray(data)) setCourses(data) })
             .catch(() => { })
@@ -34,7 +34,7 @@ export default function SuperAdminCoursesPage() {
 
     const handleDelete = async (courseId: number) => {
         if (!confirm('Delete this course permanently?')) return
-        await fetch(`http://localhost:3001/superadmin/courses/${courseId}`, {
+        await fetch(``${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}`/superadmin/courses/${courseId}`, {
             method: 'DELETE', credentials: 'include'
         })
         setCourses(prev => prev.filter(c => c.id !== courseId))

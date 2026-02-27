@@ -28,6 +28,7 @@ const superadminNav: NavItem[] = [
     { label: 'Add Question', href: '/dashboard/superadmin/question-bank/create', icon: <PlusIcon /> },
     { label: 'Contests', href: '/dashboard/superadmin/contests', icon: <TrophyIcon /> },
     { label: 'Daily Streak', href: '/dashboard/superadmin/daily-streak', icon: <FireIcon /> },
+    { label: 'Reports', href: '/dashboard/superadmin/reports', icon: <ChartIcon /> },
 ]
 
 export default function Sidebar({ role }: { role?: string }) {
@@ -46,7 +47,7 @@ export default function Sidebar({ role }: { role?: string }) {
                     role === 'SUPERADMIN' ? '#ef4444' : '#6366f1'
 
     const handleLogout = async () => {
-        await fetch('http://localhost:3001/auth/logout', { method: 'POST', credentials: 'include' })
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/auth/logout`, { method: 'POST', credentials: 'include' })
         localStorage.removeItem('user')
         router.push('/login')
     }
@@ -172,3 +173,12 @@ function FireIcon() {
         </svg>
     )
 }
+function ChartIcon() {
+    return (
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-5 h-5">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+    )
+}
+

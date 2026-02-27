@@ -16,7 +16,7 @@ export default function AdminUsersPage() {
         const u = JSON.parse(stored)
         if (u.role !== 'ADMIN' && u.role !== 'SUPERADMIN') { router.push('/login'); return }
 
-        fetch('http://localhost:3001/admin/users', { credentials: 'include' })
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/admin/users`, { credentials: 'include' })
             .then(r => r.json())
             .then(data => { if (Array.isArray(data)) setUsers(data) })
             .catch(() => { })
@@ -25,7 +25,7 @@ export default function AdminUsersPage() {
 
     const handleDelete = async (id: number) => {
         if (!confirm('Delete this user?')) return
-        await fetch(`http://localhost:3001/admin/users/${id}`, { method: 'DELETE', credentials: 'include' })
+        await fetch(``${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}`/admin/users/${id}`, { method: 'DELETE', credentials: 'include' })
         setUsers(prev => prev.filter(u => u.id !== id))
     }
 

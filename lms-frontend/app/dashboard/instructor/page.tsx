@@ -17,7 +17,7 @@ export default function InstructorDashboard() {
         if (u.role !== 'INSTRUCTOR') { router.push(`/dashboard/${u.role.toLowerCase()}`); return }
         setUser(u)
 
-        fetch('http://localhost:3001/instructor/dashboard', { credentials: 'include' })
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/instructor/dashboard`, { credentials: 'include' })
             .then(r => r.json())
             .then(data => setStats(data))
             .catch(() => { })

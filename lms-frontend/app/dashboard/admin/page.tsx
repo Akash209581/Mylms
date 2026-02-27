@@ -17,7 +17,7 @@ export default function AdminDashboard() {
         if (u.role !== 'ADMIN') { router.push(`/dashboard/${u.role.toLowerCase()}`); return }
         setUser(u)
 
-        fetch('http://localhost:3001/admin/dashboard', { credentials: 'include' })
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/admin/dashboard`, { credentials: 'include' })
             .then(r => r.json())
             .then(data => setStats(data))
             .catch(() => { })

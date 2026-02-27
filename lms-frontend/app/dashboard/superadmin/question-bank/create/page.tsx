@@ -48,7 +48,7 @@ export default function CreateQuestionPage() {
     const handleSubmit = async () => {
         setSaving(true); setError('')
         try {
-            const res = await fetch('http://localhost:3001/question-bank', {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/question-bank`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',

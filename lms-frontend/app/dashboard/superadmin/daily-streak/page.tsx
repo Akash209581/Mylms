@@ -19,8 +19,8 @@ export default function DailyStreakPage() {
         if (u.role !== 'SUPERADMIN') { router.push('/login'); return }
 
         Promise.all([
-            fetch('http://localhost:3001/question-bank', { credentials: 'include' }).then(r => r.json()),
-            fetch('http://localhost:3001/daily-streak', { credentials: 'include' }).then(r => r.json()),
+            fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/question-bank`, { credentials: 'include' }).then(r => r.json()),
+            fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/daily-streak`, { credentials: 'include' }).then(r => r.json()),
         ]).then(([qs, ss]) => {
             if (Array.isArray(qs)) setQuestions(qs)
             if (Array.isArray(ss)) setStreaks(ss)
@@ -30,14 +30,14 @@ export default function DailyStreakPage() {
     const handleSet = async () => {
         if (!form.questionId) return
         setSaving(true)
-        const res = await fetch('http://localhost:3001/daily-streak', {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/daily-streak`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
             body: JSON.stringify({ date: form.date, questionId: +form.questionId, questionType: form.questionType }),
         })
         if (res.ok) {
-            const updated = await fetch('http://localhost:3001/daily-streak', { credentials: 'include' }).then(r => r.json())
+            const updated = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/daily-streak`, { credentials: 'include' }).then(r => r.json())
             if (Array.isArray(updated)) setStreaks(updated)
         }
         setSaving(false)

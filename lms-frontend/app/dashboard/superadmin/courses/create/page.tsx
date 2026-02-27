@@ -22,7 +22,7 @@ export default function SuperAdminCreateCoursePage() {
         if (!form.title) { setError('Title is required'); return }
         setSaving(true); setError('')
         try {
-            const res = await fetch('http://localhost:3001/courses', {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/courses`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',

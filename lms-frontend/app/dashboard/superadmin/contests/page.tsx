@@ -35,14 +35,14 @@ export default function ContestManagementPage() {
 
     const loadContests = () => {
         setLoading(true)
-        fetch('http://localhost:3001/contests', { credentials: 'include' })
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/contests`, { credentials: 'include' })
             .then(r => r.json()).then(data => { if (Array.isArray(data)) setContests(data) })
             .catch(() => { }).finally(() => setLoading(false))
     }
 
     const handleCreate = async () => {
         setSaving(true)
-        const res = await fetch('http://localhost:3001/contests', {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/contests`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
@@ -53,13 +53,13 @@ export default function ContestManagementPage() {
     }
 
     const handlePublish = async (id: number) => {
-        await fetch(`http://localhost:3001/contests/${id}/publish`, { method: 'PUT', credentials: 'include' })
+        await fetch(``${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}`/contests/${id}/publish`, { method: 'PUT', credentials: 'include' })
         loadContests()
     }
 
     const handleDelete = async (id: number) => {
         if (!confirm('Delete this contest?')) return
-        await fetch(`http://localhost:3001/contests/${id}`, { method: 'DELETE', credentials: 'include' })
+        await fetch(``${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}`/contests/${id}`, { method: 'DELETE', credentials: 'include' })
         setContests(prev => prev.filter(c => c.id !== id))
     }
 
