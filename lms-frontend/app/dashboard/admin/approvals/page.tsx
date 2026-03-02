@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
+import { getAuthHeaders } from '@/lib/authHeaders'
 
 interface Course {
     id: number
@@ -80,9 +81,7 @@ export default function AdminApprovalsPage() {
 
             const res = await fetch(apiUrl, {
                 credentials: 'include',
-                headers: {
-                    'Content-Type': 'application/json',
-                }
+                headers: getAuthHeaders(),
             })
 
             console.log('Response status:', res.status)
@@ -113,7 +112,7 @@ export default function AdminApprovalsPage() {
                 {
                     method: 'PUT',
                     credentials: 'include',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders(),
                     body: JSON.stringify({})
                 }
             )
@@ -147,7 +146,7 @@ export default function AdminApprovalsPage() {
                 {
                     method: 'PUT',
                     credentials: 'include',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders(),
                     body: JSON.stringify({ reason: rejectionReason })
                 }
             )

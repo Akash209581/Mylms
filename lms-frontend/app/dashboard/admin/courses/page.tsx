@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
+import { getAuthHeaders } from '@/lib/authHeaders'
 
 const gradients = [
     'linear-gradient(135deg,#667eea,#764ba2)',
@@ -25,7 +26,10 @@ export default function AdminCoursesPage() {
         const u = JSON.parse(stored)
         if (u.role !== 'ADMIN' && u.role !== 'SUPERADMIN') { router.push('/login'); return }
 
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/admin/courses`, { credentials: 'include' })
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/admin/courses`, {
+            credentials: 'include',
+            headers: getAuthHeaders(),
+        })
             .then(r => r.json())
             .then(data => { if (Array.isArray(data)) setCourses(data) })
             .catch(() => { })
