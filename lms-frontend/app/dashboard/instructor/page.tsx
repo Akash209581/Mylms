@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
+import { getAuthHeaders } from '@/lib/authHeaders'
 
 export default function InstructorDashboard() {
     const router = useRouter()
@@ -17,7 +18,10 @@ export default function InstructorDashboard() {
         if (u.role !== 'INSTRUCTOR') { router.push(`/dashboard/${u.role.toLowerCase()}`); return }
         setUser(u)
 
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/instructor/dashboard`, { credentials: 'include' })
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/instructor/dashboard`, {
+            credentials: 'include',
+            headers: getAuthHeaders(),
+        })
             .then(r => r.json())
             .then(data => setStats(data))
             .catch(() => { })
