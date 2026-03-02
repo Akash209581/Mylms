@@ -49,6 +49,7 @@ export default function Sidebar({ role }: { role?: string }) {
     const handleLogout = async () => {
         await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/auth/logout`, { method: 'POST', credentials: 'include' })
         localStorage.removeItem('user')
+        localStorage.removeItem('access_token')
         router.push('/login')
     }
 
