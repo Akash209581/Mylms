@@ -11,9 +11,14 @@ export const api = axios.create({
     },
 });
 
-// Add request interceptor for debugging (optional)
+// Add request interceptor for authentication and debugging
 api.interceptors.request.use(
     (config) => {
+        // Add JWT token from localStorage if available
+        const token = localStorage.getItem('access_token');
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+        }
         console.log(`🌐 API Request: ${config.method?.toUpperCase()} ${config.url}`);
         return config;
     },
