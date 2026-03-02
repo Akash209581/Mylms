@@ -25,8 +25,10 @@ export default function InstructorDashboard() {
     }, [])
 
     const statItems = [
-        { label: 'My Courses', value: stats?.totalCourses ?? 0, icon: '📚', gradient: 'linear-gradient(135deg,#6366f1,#8b5cf6)' },
-        { label: 'Total Students', value: stats?.totalStudents ?? 0, icon: '👥', gradient: 'linear-gradient(135deg,#10b981,#059669)' },
+        { label: 'Total Courses', value: stats?.totalCourses ?? 0, icon: '📚', gradient: 'linear-gradient(135deg,#6366f1,#8b5cf6)', color: 'text-indigo-600' },
+        { label: 'Pending Approval', value: stats?.pendingCourses ?? 0, icon: '⏳', gradient: 'linear-gradient(135deg,#f59e0b,#d97706)', color: 'text-yellow-600' },
+        { label: 'Approved Courses', value: stats?.approvedCourses ?? 0, icon: '✅', gradient: 'linear-gradient(135deg,#10b981,#059669)', color: 'text-green-600' },
+        { label: 'Total Students', value: stats?.totalStudents ?? 0, icon: '👥', gradient: 'linear-gradient(135deg,#3b82f6,#2563eb)', color: 'text-blue-600' },
     ]
 
     return (
@@ -43,8 +45,24 @@ export default function InstructorDashboard() {
                     </div>
                 </div>
 
+                {/* Quick Actions */}
+                <div className="flex flex-wrap gap-3 mb-6">
+                    <button
+                        onClick={() => router.push('/dashboard/instructor/courses')}
+                        className="btn-primary"
+                    >
+                        📚 View All Courses
+                    </button>
+                    <button
+                        onClick={() => router.push('/dashboard/instructor/create-course')}
+                        className="btn-secondary"
+                    >
+                        ➕ Create New Course
+                    </button>
+                </div>
+
                 {/* Stats */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                     {statItems.map((s, i) => (
                         <div key={i} className="stat-card">
                             <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl mb-4"
@@ -85,8 +103,16 @@ export default function InstructorDashboard() {
                                             style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
                                             <td className="py-4 pr-4 text-white font-medium text-sm">{c.title}</td>
                                             <td className="py-4 pr-4">
-                                                <span className={`badge ${c.published ? 'badge-student' : 'badge-instructor'}`}>
-                                                    {c.published ? 'Published' : 'Draft'}
+                                                <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${
+                                                    c.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
+                                                    c.status === 'PENDING_APPROVAL' ? 'bg-yellow-100 text-yellow-800' :
+                                                    c.status === 'REJECTED' ? 'bg-red-100 text-red-800' :
+                                                    'bg-gray-100 text-gray-800'
+                                                }`}>
+                                                    {c.status === 'APPROVED' ? '✅ Approved' :
+                                                     c.status === 'PENDING_APPROVAL' ? '⏳ Pending' :
+                                                     c.status === 'REJECTED' ? '❌ Rejected' :
+                                                     c.published ? '✓ Published' : '○ Draft'}
                                                 </span>
                                             </td>
                                             <td className="py-4 text-gray-400 text-sm">

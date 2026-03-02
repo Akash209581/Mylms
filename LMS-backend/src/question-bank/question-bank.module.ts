@@ -4,7 +4,7 @@ import { Question } from '../entities/question.entity';
 import { QuestionBankController } from './question-bank.controller';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([Question])],
-    controllers: [QuestionBankController],
+  imports: [TypeOrmModule.forFeature([Question])],
+  controllers: [QuestionBankController],
 })
-export class QuestionBankModule { }
+export class QuestionBankModule {}

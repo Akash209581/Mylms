@@ -5,7 +5,7 @@ import { Enrollment } from '../entities/enrollment.entity';
 import { InstructorController } from './instructor.controller';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([Course, Enrollment])],
-    controllers: [InstructorController],
+  imports: [TypeOrmModule.forFeature([Course, Enrollment])],
+  controllers: [InstructorController],
 })
-export class InstructorModule { }
+export class InstructorModule {}

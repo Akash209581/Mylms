@@ -4,7 +4,7 @@ import { Enrollment } from '../entities/enrollment.entity';
 import { EnrollmentsController } from './enrollments.controller';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([Enrollment])],
-    controllers: [EnrollmentsController],
+  imports: [TypeOrmModule.forFeature([Enrollment])],
+  controllers: [EnrollmentsController],
 })
-export class EnrollmentsModule { }
+export class EnrollmentsModule {}

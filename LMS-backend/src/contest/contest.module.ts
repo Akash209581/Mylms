@@ -4,7 +4,7 @@ import { Contest } from '../entities/contest.entity';
 import { ContestController } from './contest.controller';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([Contest])],
-    controllers: [ContestController],
+  imports: [TypeOrmModule.forFeature([Contest])],
+  controllers: [ContestController],
 })
-export class ContestModule { }
+export class ContestModule {}

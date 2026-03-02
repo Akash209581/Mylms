@@ -8,7 +8,7 @@ import { SuperadminController } from './superadmin.controller';
 import { ReportsController } from './reports.controller';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([User, Course, Enrollment, Question])],
-    controllers: [SuperadminController, ReportsController],
+  imports: [TypeOrmModule.forFeature([User, Course, Enrollment, Question])],
+  controllers: [SuperadminController, ReportsController],
 })
-export class SuperadminModule { }
+export class SuperadminModule {}

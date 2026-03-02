@@ -11,11 +11,14 @@ import { SuperadminModule } from './superadmin/superadmin.module';
 import { QuestionBankModule } from './question-bank/question-bank.module';
 import { ContestModule } from './contest/contest.module';
 import { DailyStreakModule } from './daily-streak/daily-streak.module';
+import { ModulesModule } from './modules/modules.module';
+import { LessonsModule } from './lessons/lessons.module';
 import { KeepAliveService } from './common/keepalive.service';
 import { User } from './entities/user.entity';
 import { Course } from './entities/course.entity';
 import { CourseModule } from './entities/module.entity';
 import { Lesson } from './entities/lesson.entity';
+import { Resource } from './entities/resource.entity';
 import { Enrollment } from './entities/enrollment.entity';
 import { Progress } from './entities/progress.entity';
 import { Question } from './entities/question.entity';
@@ -28,8 +31,21 @@ import { DailyStreak } from './entities/daily-streak.entity';
     TypeOrmModule.forRoot({
       type: 'postgres',
       url: process.env.DATABASE_URL,
-      ssl: { rejectUnauthorized: false },
-      entities: [User, Course, CourseModule, Lesson, Enrollment, Progress, Question, Contest, DailyStreak],
+      ssl: process.env.DATABASE_URL?.includes('localhost')
+        ? false
+        : { rejectUnauthorized: false },
+      entities: [
+        User,
+        Course,
+        CourseModule,
+        Lesson,
+        Resource,
+        Enrollment,
+        Progress,
+        Question,
+        Contest,
+        DailyStreak,
+      ],
       synchronize: true,
       logging: false,
     }),
@@ -43,9 +59,10 @@ import { DailyStreak } from './entities/daily-streak.entity';
     QuestionBankModule,
     ContestModule,
     DailyStreakModule,
+    ModulesModule,
+    LessonsModule,
   ],
   providers: [KeepAliveService],
-  exports: [
-  ],
+  exports: [],
 })
-export class AppModule { }
+export class AppModule {}

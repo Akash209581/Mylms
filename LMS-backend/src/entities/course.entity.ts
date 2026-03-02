@@ -1,37 +1,90 @@
 import {
-    Entity,
-    PrimaryGeneratedColumn,
-    Column,
-    CreateDateColumn,
-    ManyToOne,
-    JoinColumn,
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
 import { User } from './user.entity';
 
+export enum CourseStatus {
+  PENDING_APPROVAL = 'PENDING_APPROVAL',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+}
+
 @Entity('courses')
 export class Course {
-    @PrimaryGeneratedColumn()
-    id: number;
+  @PrimaryGeneratedColumn()
+  id: number;
 
-    @Column({ length: 255 })
-    title: string;
+  @Column({ length: 255 })
+  title: string;
 
-    @Column({ type: 'text', nullable: true })
-    description: string;
+  @Column({ type: 'text', nullable: true })
+  description: string;
 
-    @Column({ nullable: true })
-    thumbnail: string;
+  @Column({ nullable: true })
+  thumbnail: string;
 
-    @Column({ name: 'instructor_id', nullable: true })
-    instructorId: number;
+  @Column({ length: 100, nullable: true })
+  category: string;
 
-    @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
-    @JoinColumn({ name: 'instructor_id' })
-    instructor: User;
+  @Column({ length: 50, nullable: true })
+  level: string;
 
-    @Column({ default: true })
-    published: boolean;
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    default: 0,
+  })
+  price: number;
 
-    @CreateDateColumn({ name: 'created_at' })
-    createdAt: Date;
+  @Column({ type: 'text', nullable: true })
+  objectives: string;
+
+  @Column({ type: 'text', nullable: true })
+  prerequisites: string;
+
+  @Column({ name: 'target_audience', type: 'text', nullable: true })
+  targetAudience: string;
+
+  @Column({ type: 'int', nullable: true, comment: 'Duration in hours' })
+  duration: number;
+
+  @Column({ name: 'instructor_id', nullable: true })
+  instructorId: number;
+
+  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'instructor_id' })
+  instructor: User;
+
+  @Column({ default: true })
+  published: boolean;
+
+  @Column({
+    type: 'varchar',
+    default: CourseStatus.PENDING_APPROVAL,
+  })
+  status: CourseStatus;
+
+  @Column({ name: 'approved_by', nullable: true })
+  approvedBy: number;
+
+  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'approved_by' })
+  approver: User;
+
+  @Column({ name: 'rejection_reason', type: 'text', nullable: true })
+  rejectionReason: string;
+
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt: Date;
+
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt: Date;
 }

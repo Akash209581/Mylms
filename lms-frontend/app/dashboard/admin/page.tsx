@@ -28,6 +28,7 @@ export default function AdminDashboard() {
         { label: 'Total Users', value: stats?.totalUsers ?? 0, icon: '👥', gradient: 'linear-gradient(135deg,#6366f1,#8b5cf6)' },
         { label: 'Total Courses', value: stats?.totalCourses ?? 0, icon: '📚', gradient: 'linear-gradient(135deg,#10b981,#059669)' },
         { label: 'Enrollments', value: stats?.totalEnrollments ?? 0, icon: '📋', gradient: 'linear-gradient(135deg,#f59e0b,#d97706)' },
+        { label: 'Pending Approvals', value: stats?.pendingApprovals ?? 0, icon: '⏳', gradient: 'linear-gradient(135deg,#f59e0b,#d97706)' },
     ]
 
     return (
@@ -44,8 +45,35 @@ export default function AdminDashboard() {
                     </div>
                 </div>
 
+                {/* Quick Actions */}
+                <div className="flex flex-wrap gap-3 mb-6">
+                    <button
+                        onClick={() => router.push('/dashboard/admin/users')}
+                        className="btn-primary"
+                    >
+                        👥 Manage Users
+                    </button>
+                    <button
+                        onClick={() => router.push('/dashboard/admin/courses')}
+                        className="btn-secondary"
+                    >
+                        📚 View Courses
+                    </button>
+                    <button
+                        onClick={() => router.push('/dashboard/admin/approvals')}
+                        className="btn-secondary relative"
+                    >
+                        ⏳ Course Approvals
+                        {stats?.pendingApprovals > 0 && (
+                            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                                {stats.pendingApprovals}
+                            </span>
+                        )}
+                    </button>
+                </div>
+
                 {/* Stats */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                     {statItems.map((s, i) => (
                         <div key={i} className="stat-card">
                             <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl mb-4"

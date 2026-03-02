@@ -17,6 +17,7 @@ const adminNav: NavItem[] = [
     { label: 'Dashboard', href: '/dashboard/admin', icon: <GridIcon /> },
     { label: 'Users', href: '/dashboard/admin/users', icon: <UsersIcon /> },
     { label: 'Courses', href: '/dashboard/admin/courses', icon: <BookIcon /> },
+    { label: 'Approvals', href: '/dashboard/admin/approvals', icon: <CheckIcon /> },
 ]
 const superadminNav: NavItem[] = [
     { label: 'Dashboard', href: '/dashboard/superadmin', icon: <GridIcon /> },
@@ -96,6 +97,15 @@ export default function Sidebar({ role }: { role?: string }) {
                 </button>
             </div>
         </aside>
+    )
+}
+
+function CheckIcon() {
+    return (
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-5 h-5">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
     )
 }
 
