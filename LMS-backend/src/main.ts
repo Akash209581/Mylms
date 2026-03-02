@@ -21,7 +21,8 @@ async function bootstrap() {
       if (
         !origin ||
         allowedOrigins.some((ao) => origin.startsWith(ao as string)) ||
-        /^http:\/\/localhost:\d+$/.test(origin)
+        /^http:\/\/localhost:\d+$/.test(origin) ||
+        origin.includes('.onrender.com')
       ) {
         callback(null, true);
       } else {
