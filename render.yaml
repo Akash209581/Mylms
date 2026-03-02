@@ -17,14 +17,16 @@ services:
       - key: FRONTEND_URL
         sync: false # Set this in Render Dashboard after frontend is deployed
 
-  # Frontend Static Site
-  - type: static_site
+  # Frontend Web Service
+  - type: web
     name: lms-frontend
     env: node
     plan: free
     rootDir: lms-frontend
     buildCommand: npm install && npm run build
-    publishDir: out
+    startCommand: npm run start
     envVars:
+      - key: NODE_VERSION
+        value: 18.x
       - key: NEXT_PUBLIC_API_URL
         value: https://lms-em7c.onrender.com
