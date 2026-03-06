@@ -25,7 +25,7 @@ export default function SuperAdminCoursesPage() {
         const u = JSON.parse(stored)
         if (u.role !== 'SUPERADMIN') { router.push('/login'); return }
 
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/superadmin/courses`, { credentials: 'include' })
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/courses`, { credentials: 'include' })
             .then(r => r.json())
             .then(data => { if (Array.isArray(data)) setCourses(data) })
             .catch(() => { })
@@ -51,17 +51,25 @@ export default function SuperAdminCoursesPage() {
             <Navbar title="All Courses" />
             <main className="page-content">
                 {/* Header */}
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-white mb-1">Course Management</h1>
-                    <p className="text-gray-400">View and manage all courses on the platform</p>
+                <div className="mb-8 flex items-center justify-between">
+                    <div>
+                        <h1 className="text-3xl font-bold text-white mb-1">Course Management</h1>
+                        <p className="text-gray-400">View and manage all courses on the platform</p>
+                    </div>
+                    <button
+                        onClick={() => router.push('/dashboard/superadmin/courses/create')}
+                        className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl font-semibold hover:shadow-lg hover:scale-105 transition-all"
+                    >
+                        ➕ Create New Course
+                    </button>
                 </div>
 
                 {/* Stats row */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
                     {[
                         { label: 'Total Courses', value: courses.length, icon: '📚', gradient: 'linear-gradient(135deg,#6366f1,#8b5cf6)' },
-                        { label: 'Published', value: courses.filter(c => c.published).length, icon: '✅', gradient: 'linear-gradient(135deg,#10b981,#059669)' },
-                        { label: 'Drafts', value: courses.filter(c => !c.published).length, icon: '📝', gradient: 'linear-gradient(135deg,#f59e0b,#d97706)' },
+                        { label: 'Approved', value: courses.filter(c => c.status === 'APPROVED').length, icon: '✅', gradient: 'linear-gradient(135deg,#10b981,#059669)' },
+                        { label: 'Pending Approval', value: courses.filter(c => c.status === 'PENDING_APPROVAL').length, icon: '⏳', gradient: 'linear-gradient(135deg,#f59e0b,#d97706)' },
                         { label: 'Instructors', value: new Set(courses.map(c => c.instructorId)).size, icon: '👨‍🏫', gradient: 'linear-gradient(135deg,#a855f7,#ec4899)' },
                     ].map((s, i) => (
                         <div key={i} className="stat-card">
@@ -102,10 +110,23 @@ export default function SuperAdminCoursesPage() {
                                     <div className="absolute inset-0 flex items-center justify-center text-5xl opacity-40 group-hover:scale-110 transition-transform duration-300">
                                         📚
                                     </div>
-                                    <div className="absolute top-3 right-3">
-                                        <span className={`badge ${course.published ? 'badge-student' : 'badge-instructor'}`}>
-                                            {course.published ? 'Published' : 'Draft'}
+                                    <div className="absolute top-3 right-3 flex flex-col gap-2">
+                                        {/* Status Badge */}
+                                        <span className={`badge ${
+                                            course.status === 'APPROVED' ? 'badge-student' : 
+                                            course.status === 'PENDING_APPROVAL' ? 'badge-instructor' : 
+                                            'badge-admin'
+                                        }`}>
+                                            {course.status === 'APPROVED' ? '✅ Approved' : 
+                                             course.status === 'PENDING_APPROVAL' ? '⏳ Pending' : 
+                                             '❌ Rejected'}
                                         </span>
+                                        {/* Published Badge */}
+                                        {course.status === 'APPROVED' && (
+                                            <span className={`badge ${course.published ? 'bg-green-500/20 text-green-300' : 'bg-gray-500/20 text-gray-300'}`}>
+                                                {course.published ? '🌐 Published' : '📝 Draft'}
+                                            </span>
+                                        )}
                                     </div>
                                     <div className="absolute bottom-3 left-3 text-white/60 text-xs font-medium">
                                         ID: #{course.id}

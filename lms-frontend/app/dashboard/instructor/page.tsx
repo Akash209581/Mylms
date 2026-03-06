@@ -59,6 +59,12 @@ export default function InstructorDashboard() {
                     >
                         ➕ Create New Course
                     </button>
+                    <button
+                        onClick={() => router.push('/dashboard/instructor/students/create')}
+                        className="btn-secondary"
+                    >
+                        👤 Create New Student
+                    </button>
                 </div>
 
                 {/* Stats */}

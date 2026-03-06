@@ -80,7 +80,34 @@ export class SuperadminController {
   @Get('users')
   async getAllUsers() {
     return this.userRepo.find({
-      select: ['id', 'name', 'email', 'role', 'createdAt'],
+      select: [
+        'id',
+        'name',
+        'email',
+        'role',
+        'createdAt',
+        'organizationId',
+        'collegeName',
+      ],
+      relations: ['organization'],
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  @Get('users/organization/:organizationId')
+  async getUsersByOrganization(@Param('organizationId') organizationId: number) {
+    return this.userRepo.find({
+      where: { organizationId },
+      select: [
+        'id',
+        'name',
+        'email',
+        'role',
+        'createdAt',
+        'organizationId',
+        'collegeName',
+      ],
+      relations: ['organization'],
       order: { createdAt: 'DESC' },
     });
   }

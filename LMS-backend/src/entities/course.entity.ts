@@ -8,6 +8,7 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { User } from './user.entity';
+import { Organization } from './organization.entity';
 
 export enum CourseStatus {
   PENDING_APPROVAL = 'PENDING_APPROVAL',
@@ -62,6 +63,14 @@ export class Course {
   @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'instructor_id' })
   instructor: User;
+
+  // Organization - Multi-tenant support
+  @Column({ name: 'organization_id' })
+  organizationId: number;
+
+  @ManyToOne(() => Organization, (organization) => organization.courses)
+  @JoinColumn({ name: 'organization_id' })
+  organization: Organization;
 
   @Column({ default: true })
   published: boolean;

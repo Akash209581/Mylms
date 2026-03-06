@@ -2,6 +2,7 @@ import {
   IsString,
   IsOptional,
   IsNumber,
+  IsBoolean,
   Min,
   MaxLength,
   MinLength,
@@ -55,6 +56,16 @@ export class CreateCourseDto {
   @Type(() => Number)
   @Min(0, { message: 'Duration must be a positive number' })
   duration?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  published?: boolean;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(1, { message: 'Organization ID must be a positive number' })
+  organizationId?: number; // SUPERADMIN can specify organization when creating course
 }
 
 export class UpdateCourseDto {
@@ -106,6 +117,10 @@ export class UpdateCourseDto {
   @Type(() => Number)
   @Min(0, { message: 'Duration must be a positive number' })
   duration?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  published?: boolean;
 }
 
 export class ApproveCourseDto {

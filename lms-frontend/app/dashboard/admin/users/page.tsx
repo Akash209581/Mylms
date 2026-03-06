@@ -41,7 +41,7 @@ export default function AdminUsersPage() {
             <main className="page-content">
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold text-white mb-1">User Management</h1>
-                    <p className="text-gray-400">View and manage registered users</p>
+                    <p className="text-gray-400">Manage instructors and students in your organization</p>
                 </div>
 
                 <div className="relative mb-6">
@@ -53,6 +53,17 @@ export default function AdminUsersPage() {
                 </div>
 
                 <div className="glass-card p-6">
+                    <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-lg font-semibold text-white">
+                            {filtered.length} user{filtered.length !== 1 ? 's' : ''}
+                        </h3>
+                        <button 
+                            onClick={() => router.push('/dashboard/admin/users/create')}
+                            className="btn-primary px-4 py-2 text-sm"
+                        >
+                            + Add User
+                        </button>
+                    </div>
                     {loading ? (
                         <div className="flex items-center justify-center py-20">
                             <div className="w-10 h-10 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />

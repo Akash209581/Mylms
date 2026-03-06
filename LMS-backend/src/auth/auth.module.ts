@@ -5,11 +5,12 @@ import { PassportModule } from '@nestjs/passport';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { User } from '../entities/user.entity';
+import { Organization } from '../entities/organization.entity';
 import { JwtStrategy } from '../common/jwt.strategy';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([User, Organization]),
     PassportModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'lms_jwt_secret_key_2024',

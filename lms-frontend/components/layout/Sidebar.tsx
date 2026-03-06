@@ -12,6 +12,7 @@ const studentNav: NavItem[] = [
 const instructorNav: NavItem[] = [
     { label: 'Dashboard', href: '/dashboard/instructor', icon: <GridIcon /> },
     { label: 'My Courses', href: '/dashboard/instructor/courses', icon: <BookIcon /> },
+    { label: 'Create Student', href: '/dashboard/instructor/students/create', icon: <UserIcon /> },
 ]
 const adminNav: NavItem[] = [
     { label: 'Dashboard', href: '/dashboard/admin', icon: <GridIcon /> },
