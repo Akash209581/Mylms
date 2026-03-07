@@ -3,7 +3,10 @@ import {
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
+import { Organization } from './organization.entity';
 
 export enum QuestionType {
   MCQ = 'MCQ',
@@ -98,6 +101,14 @@ export class Question {
 
   @Column({ default: true })
   isActive: boolean;
+
+  // Organization - Multi-tenant support
+  @Column({ name: 'organization_id' })
+  organizationId: number;
+
+  @ManyToOne(() => Organization, (organization) => organization.questions)
+  @JoinColumn({ name: 'organization_id' })
+  organization: Organization;
 
   @CreateDateColumn()
   createdAt: Date;

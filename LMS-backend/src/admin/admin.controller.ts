@@ -13,7 +13,7 @@ import { JwtAuthGuard } from '../common/jwt.guard';
 import { RolesGuard } from '../common/roles.guard';
 import { Roles } from '../common/roles.decorator';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { User, UserRole } from '../entities/user.entity';
 import { Course, CourseStatus } from '../entities/course.entity';
 import { Enrollment } from '../entities/enrollment.entity';
@@ -34,17 +34,34 @@ export class AdminController {
   @Get('dashboard')
   async getDashboard(@Request() req: any) {
     const userRole = req.user?.role;
+    const organizationId = req.user?.organizationId;
+
+    // ADMIN sees only their organization's data
+    if (userRole === UserRole.ADMIN) {
+      const totalUsers = await this.userRepo.count({
+        where: { organizationId },
+      });
+      const totalCourses = await this.courseRepo.count({
+        where: { organizationId },
+      });
+      const totalEnrollments = await this.enrollRepo.count();
+      const pendingApprovals = await this.courseRepo.count({
+        where: { status: CourseStatus.PENDING_APPROVAL, organizationId },
+      });
+
+      return {
+        totalUsers,
+        totalCourses,
+        totalEnrollments,
+        pendingApprovals,
+      };
+    }
+
+    // SUPERADMIN sees all data (legacy support)
     const totalUsers = await this.userRepo.count();
     const totalCourses = await this.courseRepo.count();
     const totalEnrollments = await this.enrollRepo.count();
-
-    // Get pending approvals count - ONLY for ADMIN, not SUPERADMIN
-    let pendingApprovals = 0;
-    if (userRole === UserRole.ADMIN) {
-      pendingApprovals = await this.courseRepo.count({
-        where: { status: CourseStatus.PENDING_APPROVAL },
-      });
-    }
+    const pendingApprovals = 0;
 
     const recentUsers = await this.userRepo.find({
       order: { createdAt: 'DESC' },
@@ -63,7 +80,23 @@ export class AdminController {
 
   @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
   @Get('users')
-  async getUsers() {
+  async getUsers(@Request() req: any) {
+    const userRole = req.user?.role;
+    const organizationId = req.user?.organizationId;
+
+    // ADMIN can only see INSTRUCTORS and STUDENTS from their organization
+    if (userRole === UserRole.ADMIN) {
+      return this.userRepo.find({
+        where: {
+          organizationId,
+          role: In([UserRole.INSTRUCTOR, UserRole.STUDENT]),
+        },
+        select: ['id', 'name', 'email', 'role', 'createdAt', 'organizationId'],
+        order: { createdAt: 'DESC' },
+      });
+    }
+
+    // SUPERADMIN sees all users (legacy support)
     return this.userRepo.find({
       select: ['id', 'name', 'email', 'role', 'createdAt'],
     });

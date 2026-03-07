@@ -88,57 +88,18 @@ export default function AdminDashboard() {
                     ))}
                 </div>
 
-                {/* Recent Users */}
+                {/* Activity Notice */}
                 <div className="glass-card p-6">
-                    <h3 className="text-lg font-semibold text-white mb-6">Recent Users</h3>
-                    {loading ? (
-                        <div className="flex justify-center py-10">
-                            <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl"
+                            style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }}>
+                            ℹ️
                         </div>
-                    ) : !stats?.recentUsers || stats.recentUsers.length === 0 ? (
-                        <div className="text-center py-16">
-                            <div className="text-5xl mb-3">👥</div>
-                            <p className="text-gray-400">No users registered yet.</p>
-                        </div>
-                    ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full">
-                                <thead>
-                                    <tr className="border-b" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
-                                        {['Name', 'Email', 'Role', 'Joined'].map(h => (
-                                            <th key={h} className="text-left text-xs font-semibold text-gray-400 pb-3 pr-4">{h}</th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {stats.recentUsers.map((u: any) => (
-                                        <tr key={u.id} className="border-b hover:bg-white/5 transition-colors"
-                                            style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
-                                            <td className="py-4 pr-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold"
-                                                        style={{ background: 'linear-gradient(135deg,#6366f1,#a855f7)' }}>
-                                                        {u.name?.charAt(0).toUpperCase()}
-                                                    </div>
-                                                    <span className="text-white text-sm font-medium">{u.name}</span>
-                                                </div>
-                                            </td>
-                                            <td className="py-4 pr-4 text-gray-400 text-sm">{u.email}</td>
-                                            <td className="py-4 pr-4">
-                                                <span className={`badge ${u.role === 'STUDENT' ? 'badge-student' :
-                                                        u.role === 'INSTRUCTOR' ? 'badge-instructor' :
-                                                            u.role === 'ADMIN' ? 'badge-admin' : 'badge-superadmin'
-                                                    }`}>{u.role}</span>
-                                            </td>
-                                            <td className="py-4 text-gray-400 text-sm">
-                                                {new Date(u.createdAt).toISOString().slice(0, 10)}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
+                        <h3 className="text-lg font-semibold text-white">Organization Overview</h3>
+                    </div>
+                    <p className="text-gray-400 leading-relaxed">
+                        You are managing users and content within your organization. Use the navigation above to access user management, courses, and approval workflows.
+                    </p>
                 </div>
             </main>
         </div>

@@ -1,16 +1,157 @@
-import { IsEmail, IsNotEmpty, IsString, MinLength } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsString,
+  MinLength,
+  IsOptional,
+  Matches,
+  IsInt,
+  Min,
+  Max,
+  MaxLength,
+  ValidateIf,
+} from 'class-validator';
 
 export class SignupDto {
   @IsString()
-  @IsNotEmpty()
+  @IsNotEmpty({ message: 'Name is required' })
+  @MaxLength(100, { message: 'Name must not exceed 100 characters' })
   name: string;
 
-  @IsEmail()
+  @IsEmail({}, { message: 'Invalid email format' })
   email: string;
 
   @IsString()
-  @MinLength(6)
+  @MinLength(6, { message: 'Password must be at least 6 characters' })
   password: string;
+
+  @IsString()
+  @IsNotEmpty({ message: 'Mobile number is required' })
+  @Matches(/^[+]?[(]?[0-9]{1,4}[)]?[-\s\.]?[(]?[0-9]{1,4}[)]?[-\s\.]?[0-9]{1,9}$/, {
+    message: 'Invalid mobile number format',
+  })
+  mobileNumber: string;
+
+  @IsString()
+  @IsNotEmpty({ message: 'Country is required' })
+  @MaxLength(100, { message: 'Country must not exceed 100 characters' })
+  country: string;
+
+  @IsOptional()
+  @IsString()
+  @ValidateIf((o) => o.country?.toLowerCase() === 'india')
+  @IsNotEmpty({ message: 'State is required for Indian learners' })
+  @MaxLength(100, { message: 'State must not exceed 100 characters' })
+  state?: string;
+
+  @IsString()
+  @IsNotEmpty({ message: 'Course is required' })
+  @MaxLength(100, { message: 'Course must not exceed 100 characters' })
+  course: string;
+
+  @IsString()
+  @IsNotEmpty({ message: 'Branch is required' })
+  @MaxLength(100, { message: 'Branch must not exceed 100 characters' })
+  branch: string;
+
+  @IsInt({ message: 'Pursuing year must be a number' })
+  @Min(1, { message: 'Pursuing year must be at least 1' })
+  @Max(6, { message: 'Pursuing year must not exceed 6' })
+  pursuingYear: number;
+
+  @IsInt({ message: 'Semester must be a number' })
+  @Min(1, { message: 'Semester must be at least 1' })
+  @Max(12, { message: 'Semester must not exceed 12' })
+  semester: number;
+
+  @IsString()
+  @IsNotEmpty({ message: 'Registration number is required' })
+  @MaxLength(100, { message: 'Registration number must not exceed 100 characters' })
+  registrationNumber: string;
+
+  @IsString()
+  @IsNotEmpty({ message: 'College name is required' })
+  @MaxLength(200, { message: 'College name must not exceed 200 characters' })
+  collegeName: string;
+
+  @IsOptional()
+  @IsInt({ message: 'Organization ID must be a number' })
+  organizationId?: number;
+}
+
+export class CreateUserDto {
+  @IsString()
+  @IsNotEmpty({ message: 'Name is required' })
+  @MaxLength(100, { message: 'Name must not exceed 100 characters' })
+  name: string;
+
+  @IsEmail({}, { message: 'Invalid email format' })
+  email: string;
+
+  @IsString()
+  @MinLength(6, { message: 'Password must be at least 6 characters' })
+  password: string;
+
+  @IsString()
+  @IsNotEmpty({ message: 'Role is required' })
+  role: string; // ADMIN, INSTRUCTOR, STUDENT
+
+  // organizationId is NOT in the DTO - it will be automatically inherited from the creator
+  // This prevents admins and instructors from changing the organization when creating users
+
+  // collegeName is NOT in the DTO - it will be automatically inherited from the creator
+  // This prevents admins and instructors from changing the college when creating users
+
+  // Optional Student fields
+  @IsOptional()
+  @IsString()
+  @MaxLength(15)
+  mobileNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  country?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  state?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  course?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  branch?: string;
+
+  @IsOptional()
+  @IsInt()
+  pursuingYear?: number;
+
+  @IsOptional()
+  @IsInt()
+  semester?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  registrationNumber?: string;
+}
+
+// DTO for SUPERADMIN to create users with explicit organization and college selection
+export class SuperAdminCreateUserDto extends CreateUserDto {
+  @IsInt({ message: 'Organization ID must be a number' })
+  @IsNotEmpty({ message: 'Organization ID is required' })
+  organizationId: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200, { message: 'College name must not exceed 200 characters' })
+  collegeName?: string;
 }
 
 export class LoginDto {

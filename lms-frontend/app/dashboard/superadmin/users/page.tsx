@@ -65,7 +65,9 @@ export default function SuperAdminUsersPage() {
                 {/* Header */}
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold text-white mb-1">User Management</h1>
-                    <p className="text-gray-400">Manage all platform users and their roles</p>
+                    <p className="text-gray-400">
+                        Manage all platform users and their roles • Click on <span className="text-orange-400 font-medium">ADMIN</span> users to view their organization details
+                    </p>
                 </div>
 
                 {/* Role Filter Tabs */}
@@ -106,7 +108,12 @@ export default function SuperAdminUsersPage() {
                         <h3 className="text-lg font-semibold text-white">
                             {filtered.length} user{filtered.length !== 1 ? 's' : ''}
                         </h3>
-                        <button className="btn-primary px-4 py-2 text-sm">+ Add User</button>
+                        <button 
+                            onClick={() => router.push('/dashboard/superadmin/users/create')}
+                            className="btn-primary px-4 py-2 text-sm"
+                        >
+                            + Add User
+                        </button>
                     </div>
 
                     {loading ? (
@@ -118,15 +125,19 @@ export default function SuperAdminUsersPage() {
                             <table className="w-full">
                                 <thead>
                                     <tr className="border-b" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
-                                        {['#', 'User', 'Email', 'Role', 'Joined', 'Actions'].map(h => (
+                                        {['#', 'User', 'Email', 'Role', 'Organization', 'College', 'Joined', 'Actions'].map(h => (
                                             <th key={h} className="text-left text-xs font-semibold text-gray-400 pb-3 pr-4">{h}</th>
                                         ))}
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {filtered.map((u: any, i: number) => (
-                                        <tr key={u.id} className="border-b transition-colors hover:bg-white/5"
-                                            style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
+                                        <tr 
+                                            key={u.id} 
+                                            className="border-b transition-colors hover:bg-white/5 cursor-pointer"
+                                            style={{ borderColor: 'rgba(255,255,255,0.04)' }}
+                                            onClick={() => u.role === 'ADMIN' && router.push(`/dashboard/superadmin/users/admin/${u.id}`)}
+                                        >
                                             <td className="py-4 pr-4 text-gray-500 text-sm">{i + 1}</td>
                                             <td className="py-4 pr-4">
                                                 <div className="flex items-center gap-3">
@@ -138,7 +149,7 @@ export default function SuperAdminUsersPage() {
                                                 </div>
                                             </td>
                                             <td className="py-4 pr-4 text-gray-400 text-sm">{u.email}</td>
-                                            <td className="py-4 pr-4">
+                                            <td className="py-4 pr-4" onClick={(e) => e.stopPropagation()}>
                                                 <select
                                                     value={u.role}
                                                     onChange={e => handleRoleChange(u.id, e.target.value)}
@@ -150,9 +161,15 @@ export default function SuperAdminUsersPage() {
                                                 </select>
                                             </td>
                                             <td className="py-4 pr-4 text-gray-400 text-sm">
+                                                {u.organization?.name || (u.role === 'SUPERADMIN' ? '—' : 'N/A')}
+                                            </td>
+                                            <td className="py-4 pr-4 text-gray-400 text-sm">
+                                                {u.collegeName || '—'}
+                                            </td>
+                                            <td className="py-4 pr-4 text-gray-400 text-sm">
                                                 {new Date(u.createdAt).toISOString().slice(0, 10)}
                                             </td>
-                                            <td className="py-4">
+                                            <td className="py-4" onClick={(e) => e.stopPropagation()}>
                                                 <button
                                                     onClick={() => handleDelete(u.id)}
                                                     className="px-3 py-1 rounded-lg text-xs font-medium transition-colors hover:opacity-80"

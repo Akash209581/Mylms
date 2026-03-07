@@ -67,10 +67,16 @@ export default function QuestionBankPage() {
                         <h1 className="text-3xl font-bold text-white mb-1">Question Bank</h1>
                         <p className="text-gray-400">Create and manage all question types for assessments</p>
                     </div>
-                    <button onClick={() => router.push('/dashboard/superadmin/question-bank/create')}
-                        className="btn-primary px-5 py-2.5 text-sm flex items-center gap-2">
-                        <span>+</span> Add Question
-                    </button>
+                    <div className="flex gap-3">
+                        <button onClick={() => router.push('/dashboard/superadmin/question-bank/bulk-import')}
+                            className="px-5 py-2.5 text-sm flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors">
+                            <span>📊</span> Bulk Import
+                        </button>
+                        <button onClick={() => router.push('/dashboard/superadmin/question-bank/create')}
+                            className="btn-primary px-5 py-2.5 text-sm flex items-center gap-2">
+                            <span>+</span> Add Question
+                        </button>
+                    </div>
                 </div>
 
                 {/* Type Cards */}
