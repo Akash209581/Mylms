@@ -1,0 +1,498 @@
+'use client'
+import { useEffect, useState } from 'react'
+import { useRouter, useParams } from 'next/navigation'
+import Sidebar from '@/components/layout/Sidebar'
+import Navbar from '@/components/layout/Navbar'
+import { api } from '@/lib/api'
+
+interface Resource {
+    id: number
+    title: string
+    fileUrl: string
+    type: string
+    fileSize?: number
+}
+
+interface Lesson {
+    id: number
+    title: string
+    description?: string
+    videoUrl?: string
+    contentUrl?: string
+    duration?: number
+    type: string
+    published: boolean
+    order: number
+    resources?: Resource[]
+}
+
+interface Module {
+    id: number
+    title: string
+    description?: string
+    order: number
+    lessons: Lesson[]
+}
+
+interface Course {
+    id: number
+    title: string
+    description?: string
+    thumbnail?: string
+    category?: string
+    level?: string
+    price?: number
+    duration?: number
+    objectives?: string
+    prerequisites?: string
+    targetAudience?: string
+    status: string
+    published: boolean
+    instructor?: {
+        id: number
+        name: string
+        email: string
+    }
+    modules?: Module[]
+}
+
+const levelColors: Record<string, string> = {
+    'Beginner': 'bg-green-500/20 text-green-400 border-green-500/30',
+    'Intermediate': 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+    'Advanced': 'bg-red-500/20 text-red-400 border-red-500/30',
+    'Expert': 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+}
+
+const typeIcons: Record<string, string> = {
+    'video': '🎥',
+    'article': '📄',
+    'quiz': '📝',
+    'assignment': '📋',
+}
+
+export default function InstructorCoursePreviewPage() {
+    const router = useRouter()
+    const params = useParams()
+    const courseId = params?.id
+
+    const [course, setCourse] = useState<Course | null>(null)
+    const [loading, setLoading] = useState(true)
+    const [expandedModules, setExpandedModules] = useState<Set<number>>(new Set())
+    const [error, setError] = useState<string>('')
+
+    useEffect(() => {
+        const stored = localStorage.getItem('user')
+        if (!stored) {
+            router.push('/login')
+            return
+        }
+
+        const u = JSON.parse(stored)
+        if (u.role !== 'INSTRUCTOR' && u.role !== 'ADMIN') {
+            router.push(`/dashboard/${u.role.toLowerCase()}`)
+            return
+        }
+
+        if (courseId) {
+            fetchCourseDetails()
+        }
+    }, [courseId])
+
+    const fetchCourseDetails = async () => {
+        setLoading(true)
+        setError('')
+        try {
+            const response = await api.get(`/courses/${courseId}`)
+            if (response.data) {
+                setCourse(response.data)
+
+                // Expand all modules by default
+                if (response.data.modules) {
+                    setExpandedModules(new Set(response.data.modules.map((m: Module) => m.id)))
+                }
+            } else {
+                setError('Course not found or not accessible')
+            }
+        } catch (err: any) {
+            console.error('Error fetching course:', err)
+            if (err.response?.status === 403 || err.response?.status === 404) {
+                setError('This course is not available or you do not have permission to view it.')
+            } else {
+                setError('Failed to load course details')
+            }
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const toggleModule = (moduleId: number) => {
+        setExpandedModules(prev => {
+            const newSet = new Set(prev)
+            if (newSet.has(moduleId)) {
+                newSet.delete(moduleId)
+            } else {
+                newSet.add(moduleId)
+            }
+            return newSet
+        })
+    }
+
+    const formatDuration = (minutes?: number) => {
+        if (!minutes) return ''
+        const hours = Math.floor(minutes / 60)
+        const mins = minutes % 60
+        if (hours > 0) {
+            return `${hours}h ${mins}m`
+        }
+        return `${mins}m`
+    }
+
+    const formatFileSize = (bytes?: number) => {
+        if (!bytes) return ''
+        const mb = bytes / (1024 * 1024)
+        return `${mb.toFixed(2)} MB`
+    }
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-mesh">
+                <Sidebar role="INSTRUCTOR" />
+                <Navbar title="Instructor Preview" />
+                <main className="page-content">
+                    <div className="flex items-center justify-center py-20">
+                        <div className="w-10 h-10 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                    </div>
+                </main>
+            </div>
+        )
+    }
+
+    if (error || !course) {
+        return (
+            <div className="min-h-screen bg-mesh">
+                <Sidebar role="INSTRUCTOR" />
+                <Navbar title="Instructor Preview" />
+                <main className="page-content">
+                    <div className="text-center py-20">
+                        <div className="text-6xl mb-4">🚫</div>
+                        <p className="text-white font-semibold text-lg mb-2">{error || 'Course Not Found'}</p>
+                        <button onClick={() => router.push('/dashboard/instructor/courses')} className="btn-primary mt-4">
+                            ← Back to Courses
+                        </button>
+                    </div>
+                </main>
+            </div>
+        )
+    }
+
+    const totalLectures = course.modules?.reduce((acc, m) => acc + m.lessons.length, 0) || 0
+
+    return (
+        <div className="min-h-screen bg-mesh">
+            <Sidebar role="INSTRUCTOR" />
+            <Navbar title="Course Preview" />
+            <main className="page-content max-w-7xl">
+
+                {/* Notice Banner */}
+                <div className="bg-indigo-600/20 border border-indigo-500/30 rounded-xl p-4 mb-6 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <span className="text-2xl">👀</span>
+                        <div>
+                            <h3 className="text-indigo-100 font-semibold">Instructor Preview Mode</h3>
+                            <p className="text-indigo-200/70 text-sm">This is exactly how students will view your course upon enrollment.</p>
+                        </div>
+                    </div>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => router.push(`/dashboard/instructor/edit-lesson/${course.id}`)}
+                            className="btn-primary px-4 py-2 text-sm"
+                        >
+                            ✏️ Edit Content
+                        </button>
+                        <button
+                            onClick={() => router.push('/dashboard/instructor/courses')}
+                            className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                        >
+                            Back to My Courses
+                        </button>
+                    </div>
+                </div>
+
+                {/* Course Header */}
+                <div className="glass-card p-8 mb-8">
+                    <div className="flex flex-col lg:flex-row gap-8">
+                        {/* Course Image */}
+                        <div className="lg:w-1/3">
+                            <div
+                                className="h-64 rounded-xl overflow-hidden"
+                                style={{
+                                    background: course.thumbnail
+                                        ? `url(${course.thumbnail}) center/cover`
+                                        : 'linear-gradient(135deg, #667eea, #764ba2)'
+                                }}
+                            >
+                                {!course.thumbnail && (
+                                    <div className="h-full flex items-center justify-center text-6xl opacity-50">
+                                        📚
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Course Info */}
+                        <div className="lg:w-2/3">
+                            {/* Category & Level */}
+                            <div className="flex flex-wrap gap-2 mb-3">
+                                {course.category && (
+                                    <span className="badge bg-purple-500/20 text-purple-400 border-purple-500/30">
+                                        {course.category}
+                                    </span>
+                                )}
+                                {course.level && (
+                                    <span className={`badge border ${levelColors[course.level]}`}>
+                                        {course.level}
+                                    </span>
+                                )}
+                                <span className="badge bg-slate-500/20 text-slate-300 border-slate-500/30 capitalize">
+                                    {course.status.replace('_', ' ')}
+                                </span>
+                            </div>
+
+                            {/* Title */}
+                            <h1 className="text-4xl font-bold text-white mb-4">{course.title}</h1>
+
+                            {/* Description */}
+                            <p className="text-gray-300 text-lg mb-4 leading-relaxed">
+                                {course.description || 'No description available'}
+                            </p>
+
+                            {/* Instructor */}
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-xl">
+                                    {course.instructor?.name?.charAt(0).toUpperCase()}
+                                </div>
+                                <div>
+                                    <p className="text-gray-400 text-sm">Instructor</p>
+                                    <p className="text-white font-semibold">{course.instructor?.name}</p>
+                                </div>
+                            </div>
+
+                            {/* Stats */}
+                            <div className="flex flex-wrap gap-6 mb-6">
+                                <div className="flex items-center gap-2 text-gray-300">
+                                    <span className="text-2xl">📑</span>
+                                    <div>
+                                        <p className="text-sm text-gray-400">Sections</p>
+                                        <p className="font-semibold">{course.modules?.length || 0}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2 text-gray-300">
+                                    <span className="text-2xl">🎥</span>
+                                    <div>
+                                        <p className="text-sm text-gray-400">Lectures</p>
+                                        <p className="font-semibold">{totalLectures}</p>
+                                    </div>
+                                </div>
+                                {course.duration && (
+                                    <div className="flex items-center gap-2 text-gray-300">
+                                        <span className="text-2xl">⏱️</span>
+                                        <div>
+                                            <p className="text-sm text-gray-400">Duration</p>
+                                            <p className="font-semibold">{course.duration}h</p>
+                                        </div>
+                                    </div>
+                                )}
+                                <div className="flex items-center gap-2 text-gray-300">
+                                    <span className="text-2xl">💰</span>
+                                    <div>
+                                        <p className="text-sm text-gray-400">Price</p>
+                                        <p className="font-semibold">
+                                            {course.price && course.price > 0 ? `$${course.price}` : 'FREE'}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Course Content Sections */}
+                <div className="grid lg:grid-cols-3 gap-8">
+                    {/* Left Column - Course Details */}
+                    <div className="lg:col-span-1 space-y-6">
+                        {/* Learning Objectives */}
+                        {course.objectives && (
+                            <div className="glass-card p-6">
+                                <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                                    <span>🎯</span> Learning Objectives
+                                </h3>
+                                <p className="text-gray-300 whitespace-pre-line">{course.objectives}</p>
+                            </div>
+                        )}
+
+                        {/* Prerequisites */}
+                        {course.prerequisites && (
+                            <div className="glass-card p-6">
+                                <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                                    <span>📋</span> Prerequisites
+                                </h3>
+                                <p className="text-gray-300 whitespace-pre-line">{course.prerequisites}</p>
+                            </div>
+                        )}
+
+                        {/* Target Audience */}
+                        {course.targetAudience && (
+                            <div className="glass-card p-6">
+                                <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                                    <span>👥</span> Target Audience
+                                </h3>
+                                <p className="text-gray-300 whitespace-pre-line">{course.targetAudience}</p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Right Column - Course Curriculum */}
+                    <div className="lg:col-span-2">
+                        <div className="glass-card p-6">
+                            <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
+                                <span>📚</span> Course Curriculum
+                            </h2>
+
+                            {course.modules && course.modules.length > 0 ? (
+                                <div className="space-y-4">
+                                    {course.modules.map((module, moduleIndex) => (
+                                        <div key={module.id} className="border border-white/10 rounded-xl overflow-hidden">
+                                            {/* Module Header */}
+                                            <button
+                                                onClick={() => toggleModule(module.id)}
+                                                className="w-full p-4 bg-white/5 hover:bg-white/10 transition-colors flex items-center justify-between"
+                                            >
+                                                <div className="flex items-center gap-3 text-left">
+                                                    <span className="text-2xl">
+                                                        {expandedModules.has(module.id) ? '📂' : '📁'}
+                                                    </span>
+                                                    <div>
+                                                        <p className="text-white font-semibold text-lg">
+                                                            Section {moduleIndex + 1}: {module.title}
+                                                        </p>
+                                                        {module.description && (
+                                                            <p className="text-gray-400 text-sm mt-1">
+                                                                {module.description}
+                                                            </p>
+                                                        )}
+                                                        <p className="text-gray-500 text-xs mt-1">
+                                                            {module.lessons.length} lecture{module.lessons.length !== 1 ? 's' : ''}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <span className="text-gray-400">
+                                                    {expandedModules.has(module.id) ? '▼' : '▶'}
+                                                </span>
+                                            </button>
+
+                                            {/* Lessons */}
+                                            {expandedModules.has(module.id) && (
+                                                <div className="p-4 space-y-3 bg-black/20">
+                                                    {module.lessons.map((lesson, lessonIndex) => (
+                                                        <div key={lesson.id} className="p-4 bg-white/5 rounded-lg hover:bg-white/10 transition-colors">
+                                                            {/* Lesson Header */}
+                                                            <div className="flex items-start justify-between gap-4">
+                                                                <div className="flex items-start gap-3 flex-1">
+                                                                    <span className="text-xl mt-1">
+                                                                        {typeIcons[lesson.type] || '📄'}
+                                                                    </span>
+                                                                    <div className="flex-1">
+                                                                        <p className="text-white font-medium">
+                                                                            {moduleIndex + 1}.{lessonIndex + 1} {lesson.title}
+                                                                        </p>
+                                                                        {lesson.description && (
+                                                                            <p className="text-gray-400 text-sm mt-1">
+                                                                                {lesson.description}
+                                                                            </p>
+                                                                        )}
+
+                                                                        {/* Video URL */}
+                                                                        {lesson.videoUrl && (
+                                                                            <div className="mt-2">
+                                                                                <a
+                                                                                    href={lesson.videoUrl}
+                                                                                    target="_blank"
+                                                                                    rel="noopener noreferrer"
+                                                                                    className="text-blue-400 hover:text-blue-300 text-sm flex items-center gap-1"
+                                                                                >
+                                                                                    <span>🎬</span> Watch Video
+                                                                                </a>
+                                                                            </div>
+                                                                        )}
+
+                                                                        {/* Resources */}
+                                                                        {lesson.resources && lesson.resources.length > 0 && (
+                                                                            <div className="mt-3 space-y-1">
+                                                                                <p className="text-gray-400 text-xs font-semibold">
+                                                                                    📎 Resources:
+                                                                                </p>
+                                                                                {lesson.resources.map((resource) => (
+                                                                                    <a
+                                                                                        key={resource.id}
+                                                                                        href={resource.fileUrl}
+                                                                                        target="_blank"
+                                                                                        rel="noopener noreferrer"
+                                                                                        className="flex items-center gap-2 text-purple-400 hover:text-purple-300 text-sm"
+                                                                                    >
+                                                                                        <span>📥</span>
+                                                                                        <span>{resource.title}</span>
+                                                                                        {resource.fileSize && (
+                                                                                            <span className="text-gray-500 text-xs">
+                                                                                                ({formatFileSize(resource.fileSize)})
+                                                                                            </span>
+                                                                                        )}
+                                                                                    </a>
+                                                                                ))}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Lesson Duration */}
+                                                                {lesson.duration && (
+                                                                    <div className="text-gray-400 text-sm whitespace-nowrap">
+                                                                        {formatDuration(lesson.duration)}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+
+                                                            {/* Lesson Type Badge */}
+                                                            <div className="mt-2 flex gap-2">
+                                                                <span className="badge bg-blue-500/20 text-blue-400 border-blue-500/30 text-xs">
+                                                                    {lesson.type}
+                                                                </span>
+                                                                {lesson.published ? (
+                                                                    <span className="badge bg-green-500/20 text-green-400 border-green-500/30 text-xs">
+                                                                        Published
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="badge bg-gray-500/20 text-gray-400 border-gray-500/30 text-xs">
+                                                                        Draft
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-12 text-gray-400">
+                                    <p className="text-4xl mb-2">📭</p>
+                                    <p>No curriculum has been added to this course yet.</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    )
+}
