@@ -1,5 +1,6 @@
 import { DataSource } from 'typeorm';
 import * as bcrypt from 'bcrypt';
+import { User, UserRole } from './entities/user.entity';
 
 require('dotenv').config();
 
@@ -18,32 +19,32 @@ async function seed() {
   await AppDataSource.initialize();
   console.log('✅ Connected to Neon DB');
 
-  const userRepo = AppDataSource.getRepository('users');
+  const userRepo = AppDataSource.getRepository(User);
 
   const accounts = [
     {
       name: 'Super Admin',
       email: 'superadmin@eduverse.com',
       password: 'SuperAdmin@123',
-      role: 'SUPERADMIN',
+      role: UserRole.SUPERADMIN,
     },
     {
       name: 'Admin',
       email: 'admin@eduverse.com',
       password: 'Admin@123',
-      role: 'ADMIN',
+      role: UserRole.ADMIN,
     },
     {
       name: 'Instructor',
       email: 'instructor@eduverse.com',
       password: 'Instructor@123',
-      role: 'INSTRUCTOR',
+      role: UserRole.INSTRUCTOR,
     },
     {
       name: 'Student',
       email: 'student@eduverse.com',
       password: 'Student@123',
-      role: 'STUDENT',
+      role: UserRole.STUDENT,
     },
   ];
 

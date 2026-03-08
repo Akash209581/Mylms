@@ -41,15 +41,15 @@ export default function ReportsPage() {
                 {/* Stats Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                     {[
-                        { label: 'Total Users', value: data?.stats?.totalUsers || 0, icon: '👥', color: 'indigo' },
-                        { label: 'Total Courses', value: data?.stats?.totalCourses || 0, icon: '📚', color: 'emerald' },
-                        { label: 'Total Enrollments', value: data?.stats?.totalEnrollments || 0, icon: '📝', color: 'orange' },
-                        { label: 'Questions in Bank', value: data?.stats?.totalQuestions || 0, icon: '❓', color: 'pink' },
+                        { label: 'Total Users', value: data?.stats?.totalUsers || 0, icon: '👥', badgeClass: 'bg-indigo-100 text-indigo-700' },
+                        { label: 'Total Courses', value: data?.stats?.totalCourses || 0, icon: '📚', badgeClass: 'bg-emerald-100 text-emerald-700' },
+                        { label: 'Total Enrollments', value: data?.stats?.totalEnrollments || 0, icon: '📝', badgeClass: 'bg-orange-100 text-orange-700' },
+                        { label: 'Questions in Bank', value: data?.stats?.totalQuestions || 0, icon: '❓', badgeClass: 'bg-pink-100 text-pink-700' },
                     ].map((s, i) => (
                         <div key={i} className="stat-card">
                             <div className="flex items-center justify-between mb-4">
                                 <span className="text-2xl">{s.icon}</span>
-                                <span className={`px-2 py-1 rounded-lg text-xs font-bold bg-${s.color}-100 text-${s.color}-700`}>
+                                <span className={`px-2 py-1 rounded-lg text-xs font-bold ${s.badgeClass}`}>
                                     Live
                                 </span>
                             </div>
@@ -70,7 +70,7 @@ export default function ReportsPage() {
                                     <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
                                         <div
                                             className="h-full bg-indigo-500"
-                                            style={{ width: `${(r.count / data.stats.totalUsers) * 100}%` }}
+                                            style={{ width: `${data?.stats?.totalUsers ? (r.count / data.stats.totalUsers) * 100 : 0}%` }}
                                         ></div>
                                     </div>
                                     <div className="w-12 text-right text-sm font-bold text-gray-900">{r.count}</div>

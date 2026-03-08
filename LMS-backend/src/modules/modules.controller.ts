@@ -10,9 +10,10 @@ import {
   Req,
   HttpException,
   HttpStatus,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { CourseModule } from '../entities/module.entity';
 import { Course } from '../entities/course.entity';
 import { JwtAuthGuard } from '../common/jwt.guard';
@@ -33,7 +34,7 @@ export class ModulesController {
     private moduleRepository: Repository<CourseModule>,
     @InjectRepository(Course)
     private courseRepository: Repository<Course>,
-  ) {}
+  ) { }
 
   @Post()
   @Roles(UserRole.INSTRUCTOR)
@@ -79,7 +80,7 @@ export class ModulesController {
   }
 
   @Get('course/:courseId')
-  async findByCourse(@Param('courseId') courseId: number) {
+  async findByCourse(@Param('courseId', ParseIntPipe) courseId: number) {
     const modules = await this.moduleRepository.find({
       where: { courseId },
       order: { order: 'ASC' },
@@ -88,7 +89,7 @@ export class ModulesController {
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: number) {
+  async findOne(@Param('id', ParseIntPipe) id: number) {
     const module = await this.moduleRepository.findOne({
       where: { id },
       relations: ['course'],
@@ -104,7 +105,7 @@ export class ModulesController {
   @Put(':id')
   @Roles(UserRole.INSTRUCTOR)
   async update(
-    @Param('id') id: number,
+    @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateModuleDto,
     @Req() req: any,
   ) {
@@ -130,7 +131,7 @@ export class ModulesController {
 
   @Delete(':id')
   @Roles(UserRole.INSTRUCTOR)
-  async delete(@Param('id') id: number, @Req() req: any) {
+  async delete(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
     const module = await this.moduleRepository.findOne({
       where: { id },
       relations: ['course'],
@@ -154,12 +155,12 @@ export class ModulesController {
   @Post('reorder')
   @Roles(UserRole.INSTRUCTOR)
   async reorder(@Body() dto: ReorderModulesDto, @Req() req: any) {
-    const modules = await this.moduleRepository.findByIds(dto.moduleIds);
+    const modules = await this.moduleRepository.findBy({ id: In(dto.moduleIds) });
 
     // Verify all modules belong to courses owned by the user
-    const courses = await this.courseRepository.findByIds(
-      modules.map((m) => m.courseId),
-    );
+    const courses = await this.courseRepository.findBy({
+      id: In(modules.map((m) => m.courseId)),
+    });
 
     const allOwned = courses.every((c) => c.instructorId === req.user.sub);
     if (!allOwned) {
