@@ -6,6 +6,7 @@ import {
   Param,
   Body,
   UseGuards,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/jwt.guard';
 import { RolesGuard } from '../common/roles.guard';
@@ -29,7 +30,7 @@ export class SuperadminController {
     @InjectRepository(User) private userRepo: Repository<User>,
     @InjectRepository(Course) private courseRepo: Repository<Course>,
     @InjectRepository(Enrollment) private enrollRepo: Repository<Enrollment>,
-  ) {}
+  ) { }
 
   @Get('dashboard')
   async getDashboard() {
@@ -86,13 +87,13 @@ export class SuperadminController {
   }
 
   @Put('users/:id/role')
-  async changeRole(@Param('id') id: number, @Body() dto: UpdateRoleDto) {
+  async changeRole(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateRoleDto) {
     await this.userRepo.update(id, { role: dto.role });
     return { message: 'Role updated' };
   }
 
   @Delete('users/:id')
-  async deleteUser(@Param('id') id: number) {
+  async deleteUser(@Param('id', ParseIntPipe) id: number) {
     await this.userRepo.delete(id);
     return { message: 'User deleted' };
   }
@@ -106,7 +107,7 @@ export class SuperadminController {
   }
 
   @Delete('courses/:id')
-  async deleteCourse(@Param('id') id: number) {
+  async deleteCourse(@Param('id', ParseIntPipe) id: number) {
     await this.courseRepo.delete(id);
     return { message: 'Course deleted' };
   }

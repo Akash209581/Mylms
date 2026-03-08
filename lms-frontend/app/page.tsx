@@ -10,11 +10,16 @@ export default function Home() {
     if (!stored) {
       router.push('/login')
     } else {
-      const user = JSON.parse(stored)
-      if (user.role === 'STUDENT') router.push('/dashboard/student')
-      else if (user.role === 'INSTRUCTOR') router.push('/dashboard/instructor')
-      else if (user.role === 'ADMIN' || user.role === 'SUPERADMIN') router.push('/dashboard/superadmin')
-      else router.push('/login')
+      try {
+        const user = JSON.parse(stored)
+        if (user.role === 'STUDENT') router.push('/dashboard/student')
+        else if (user.role === 'INSTRUCTOR') router.push('/dashboard/instructor')
+        else if (user.role === 'ADMIN' || user.role === 'SUPERADMIN') router.push('/dashboard/superadmin')
+        else router.push('/login')
+      } catch {
+        localStorage.removeItem('user')
+        router.push('/login')
+      }
     }
   }, [router])
 
