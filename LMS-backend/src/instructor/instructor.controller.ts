@@ -17,7 +17,7 @@ export class InstructorController {
     private courseRepo: Repository<Course>,
     @InjectRepository(Enrollment)
     private enrollRepo: Repository<Enrollment>,
-  ) {}
+  ) { }
 
   @Get('dashboard')
   async getDashboard(@Request() req: any) {
@@ -29,8 +29,8 @@ export class InstructorController {
     const courseIds = courses.map((c) => c.id);
     const totalStudents = courseIds.length
       ? await this.enrollRepo.count({
-          where: courseIds.map((id) => ({ courseId: id })) as any,
-        })
+        where: courseIds.map((id) => ({ courseId: id })) as any,
+      })
       : 0;
 
     // Count by status
@@ -50,6 +50,7 @@ export class InstructorController {
       pendingCourses,
       approvedCourses,
       rejectedCourses,
+      draftCourses: courses.filter((c) => c.status === CourseStatus.DRAFT).length,
       courses,
     };
   }
@@ -69,6 +70,17 @@ export class InstructorController {
       where: {
         instructorId: req.user.sub,
         status: CourseStatus.PENDING_APPROVAL,
+      },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  @Get('courses/draft')
+  async getDraftCourses(@Request() req: any) {
+    return this.courseRepo.find({
+      where: {
+        instructorId: req.user.sub,
+        status: CourseStatus.DRAFT,
       },
       order: { createdAt: 'DESC' },
     });

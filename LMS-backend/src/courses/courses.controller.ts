@@ -11,6 +11,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/jwt.guard';
+import { OptionalJwtAuthGuard } from '../common/optional-jwt.guard';
 import { RolesGuard } from '../common/roles.guard';
 import { Roles } from '../common/roles.decorator';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -37,7 +38,7 @@ export class CoursesController {
     @InjectRepository(Resource)
     private resourceRepo: Repository<Resource>,
     private notificationService: NotificationService,
-  ) {}
+  ) { }
 
   @UseGuards(JwtAuthGuard)
   @Get()
@@ -172,6 +173,7 @@ export class CoursesController {
     };
   }
 
+  @UseGuards(OptionalJwtAuthGuard)
   @Get(':id')
   async findOne(@Param('id') id: number, @Request() req: any) {
     console.log(`📖 Fetching course ${id} for user:`, req.user);
@@ -194,7 +196,7 @@ export class CoursesController {
       return await this.getCourseWithStructure(course);
     }
 
-    // INSTRUCTOR can see their own courses or approved courses
+    // INSTRUCTOR can see their own courses (any status) or approved courses from others
     if (userRole === UserRole.INSTRUCTOR) {
       if (
         course.instructorId === userId ||
@@ -279,7 +281,7 @@ export class CoursesController {
       const course = this.courseRepo.create({
         ...dto,
         instructorId: req.user.sub,
-        status: CourseStatus.PENDING_APPROVAL,
+        status: CourseStatus.DRAFT,
         published: false,
       });
 
@@ -292,26 +294,40 @@ export class CoursesController {
       const savedCourse = await this.courseRepo.save(course);
       console.log('✅ Course saved to database with ID:', savedCourse.id);
 
-      // Notify all admins about the new course pending approval
-      try {
-        await this.notificationService.notifyAdminsOfPendingCourse(
-          savedCourse.title,
-          instructor.name,
-          savedCourse.id,
-        );
-        console.log('📧 Admin notification sent');
-      } catch (notifError) {
-        console.error('⚠️ Failed to send notification:', notifError.message);
-      }
-
       return {
         ...savedCourse,
-        message: 'Course created successfully. Awaiting admin approval.',
+        message: 'Course draft created successfully.',
       };
     } catch (error) {
       console.error('❌ Error creating course:', error);
       throw error;
     }
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.INSTRUCTOR)
+  @Post(':id/submit')
+  async submitCourse(@Param('id') id: number, @Request() req: any) {
+    const course = await this.courseRepo.findOne({ where: { id, instructorId: req.user.sub } });
+    if (!course) {
+      return { message: 'Course not found or unauthorized' };
+    }
+
+    course.status = CourseStatus.PENDING_APPROVAL;
+    await this.courseRepo.save(course);
+
+    try {
+      const instructor = await this.userRepo.findOne({ where: { id: req.user.sub } });
+      await this.notificationService.notifyAdminsOfPendingCourse(
+        course.title,
+        instructor?.name || 'Instructor',
+        course.id,
+      );
+    } catch (notifError) {
+      console.error('⚠️ Failed to send notification:', notifError);
+    }
+
+    return { message: 'Course submitted for approval successfully.' };
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -341,9 +357,15 @@ export class CoursesController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.INSTRUCTOR)
   @Delete(':id')
-  async remove(@Param('id') id: number) {
+  async remove(@Param('id') id: number, @Request() req: any) {
+    if (req.user.role === UserRole.INSTRUCTOR) {
+      const course = await this.courseRepo.findOne({ where: { id } });
+      if (!course || course.instructorId !== req.user.sub) {
+        return { message: 'Unauthorized or course not found' };
+      }
+    }
     await this.courseRepo.delete(id);
     return { message: 'Course deleted' };
   }

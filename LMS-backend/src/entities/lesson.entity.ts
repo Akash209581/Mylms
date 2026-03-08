@@ -4,6 +4,7 @@ import {
   Column,
   ManyToOne,
   JoinColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 import { CourseModule } from './module.entity';
 
@@ -42,4 +43,19 @@ export class Lesson {
 
   @Column({ default: 0 })
   order: number;
+
+  /** Block-based TipTap JSON content */
+  @Column({ type: 'jsonb', nullable: true, name: 'rich_content' })
+  content: Record<string, any>;
+
+  /** Increments on every content save */
+  @Column({ default: 1 })
+  version: number;
+
+  /** Name/email of last editor */
+  @Column({ name: 'last_edited_by', nullable: true })
+  lastEditedBy: string;
+
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt: Date;
 }

@@ -6,6 +6,8 @@ import {
   MaxLength,
   Min,
   IsBoolean,
+  IsObject,
+  IsNotEmpty,
 } from 'class-validator';
 
 export class CreateLessonDto {
@@ -89,4 +91,11 @@ export class UpdateLessonDto {
 export class ReorderLessonsDto {
   @IsInt({ each: true })
   lessonIds: number[];
+}
+
+export class UpdateContentDto {
+  /** TipTap JSON document */
+  @IsObject()
+  @IsNotEmpty()
+  content: Record<string, any>;
 }

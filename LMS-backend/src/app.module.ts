@@ -65,4 +65,4 @@ import { DailyStreak } from './entities/daily-streak.entity';
   providers: [KeepAliveService],
   exports: [],
 })
-export class AppModule {}
+export class AppModule { }

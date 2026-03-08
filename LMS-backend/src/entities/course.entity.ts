@@ -10,6 +10,7 @@ import {
 import { User } from './user.entity';
 
 export enum CourseStatus {
+  DRAFT = 'DRAFT',
   PENDING_APPROVAL = 'PENDING_APPROVAL',
   APPROVED = 'APPROVED',
   REJECTED = 'REJECTED',
@@ -68,7 +69,7 @@ export class Course {
 
   @Column({
     type: 'varchar',
-    default: CourseStatus.PENDING_APPROVAL,
+    default: CourseStatus.DRAFT,
   })
   status: CourseStatus;
 

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
+import CoursePreviewModal from '@/components/course/CoursePreviewModal'
 
 interface Course {
     id: number
@@ -10,7 +11,7 @@ interface Course {
     description: string
     category?: string
     level?: string
-    status: 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED'
+    status: 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED'
     rejectionReason?: string
     createdAt: string
     updatedAt: string
@@ -25,7 +26,8 @@ export default function InstructorCoursesPage() {
     const [user, setUser] = useState<any>(null)
     const [courses, setCourses] = useState<Course[]>([])
     const [loading, setLoading] = useState(true)
-    const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all')
+    const [filter, setFilter] = useState<'all' | 'draft' | 'pending' | 'approved' | 'rejected'>('all')
+    const [previewCourseId, setPreviewCourseId] = useState<number | null>(null)
 
     useEffect(() => {
         const stored = localStorage.getItem('user')
@@ -40,10 +42,10 @@ export default function InstructorCoursesPage() {
     const fetchCourses = async () => {
         setLoading(true)
         try {
-            const endpoint = filter === 'all' 
+            const endpoint = filter === 'all'
                 ? '/instructor/courses'
                 : `/instructor/courses/${filter}`
-            
+
             const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}${endpoint}`, {
                 credentials: 'include'
             })
@@ -58,11 +60,12 @@ export default function InstructorCoursesPage() {
 
     const getStatusBadge = (status: string) => {
         const badges = {
+            DRAFT: { label: 'Draft', color: 'bg-slate-100 text-slate-800', icon: '📝' },
             PENDING_APPROVAL: { label: 'Pending Approval', color: 'bg-yellow-100 text-yellow-800', icon: '⏳' },
             APPROVED: { label: 'Approved', color: 'bg-green-100 text-green-800', icon: '✅' },
             REJECTED: { label: 'Rejected', color: 'bg-red-100 text-red-800', icon: '❌' }
         }
-        const badge = badges[status as keyof typeof badges]
+        const badge = badges[status as keyof typeof badges] || badges.DRAFT
         return (
             <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${badge.color}`}>
                 <span>{badge.icon}</span>
@@ -73,10 +76,51 @@ export default function InstructorCoursesPage() {
 
     const filterButtons = [
         { value: 'all', label: 'All Courses', icon: '📚' },
+        { value: 'draft', label: 'Drafts', icon: '📝' },
         { value: 'pending', label: 'Pending', icon: '⏳' },
         { value: 'approved', label: 'Approved', icon: '✅' },
         { value: 'rejected', label: 'Rejected', icon: '❌' }
     ]
+
+    const handleSubmitForApproval = async (id: number) => {
+        if (!confirm('Are you sure you want to submit this course for admin approval?')) return
+        try {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/courses/${id}/submit`, {
+                method: 'POST',
+                credentials: 'include'
+            })
+            if (res.ok) {
+                alert('Course submitted for approval successfully.')
+                fetchCourses()
+            } else {
+                const data = await res.json()
+                alert(data.message || 'Failed to submit.')
+            }
+        } catch (e) {
+            console.error(e)
+            alert('Failed to submit course.')
+        }
+    }
+
+    const handleDeleteCourse = async (id: number) => {
+        if (!confirm('Are you absolutely sure you want to delete this course? This action cannot be undone.')) return
+        try {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/courses/${id}`, {
+                method: 'DELETE',
+                credentials: 'include'
+            })
+            if (res.ok) {
+                alert('Course deleted successfully.')
+                fetchCourses()
+            } else {
+                const data = await res.json()
+                alert(data.message || 'Failed to delete.')
+            }
+        } catch (e) {
+            console.error(e)
+            alert('Failed to delete course.')
+        }
+    }
 
     return (
         <div className="min-h-screen bg-mesh">
@@ -98,11 +142,10 @@ export default function InstructorCoursesPage() {
                         <button
                             key={btn.value}
                             onClick={() => setFilter(btn.value as any)}
-                            className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                                filter === btn.value
-                                    ? 'bg-indigo-600 text-white shadow-lg'
-                                    : 'bg-white text-gray-700 hover:bg-gray-50'
-                            }`}
+                            className={`px-4 py-2 rounded-lg font-medium transition-all ${filter === btn.value
+                                ? 'bg-indigo-600 text-white shadow-lg'
+                                : 'bg-white text-gray-700 hover:bg-gray-50'
+                                }`}
                         >
                             <span className="mr-2">{btn.icon}</span>
                             {btn.label}
@@ -164,14 +207,13 @@ export default function InstructorCoursesPage() {
                                             </span>
                                         )}
                                         {course.level && (
-                                            <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs ${
-                                                course.level === 'Beginner' ? 'bg-green-50 text-green-700' :
+                                            <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs ${course.level === 'Beginner' ? 'bg-green-50 text-green-700' :
                                                 course.level === 'Intermediate' ? 'bg-yellow-50 text-yellow-700' :
-                                                'bg-red-50 text-red-700'
-                                            }`}>
+                                                    'bg-red-50 text-red-700'
+                                                }`}>
                                                 <span>
-                                                    {course.level === 'Beginner' ? '🟢' : 
-                                                     course.level === 'Intermediate' ? '🟡' : '🔴'}
+                                                    {course.level === 'Beginner' ? '🟢' :
+                                                        course.level === 'Intermediate' ? '🟡' : '🔴'}
                                                 </span>
                                                 {course.level}
                                             </span>
@@ -203,35 +245,50 @@ export default function InstructorCoursesPage() {
                                     </div>
 
                                     {/* Actions */}
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={() => router.push(`/courses/${course.id}`)}
-                                            className="flex-1 btn-secondary text-sm"
-                                        >
-                                            View Details
-                                        </button>
-                                        {course.status === 'APPROVED' && (
+                                    <div className="flex flex-col gap-2">
+                                        <div className="flex gap-2">
                                             <button
-                                                onClick={() => router.push(`/dashboard/instructor/courses/${course.id}/builder`)}
-                                                className="flex-1 btn-primary text-sm"
+                                                onClick={() => router.push(`/dashboard/instructor/edit-lesson/${course.id}`)}
+                                                className="flex-1 btn-secondary text-sm"
                                             >
-                                                🏗️ Build Course
+                                                Edit Content
                                             </button>
-                                        )}
-                                        {course.status === 'REJECTED' && (
                                             <button
-                                                className="flex-1 btn-primary text-sm"
-                                                onClick={() => alert('Edit functionality coming soon!')}
+                                                onClick={() => setPreviewCourseId(course.id)}
+                                                className="flex-1 btn-secondary text-sm"
                                             >
-                                                Edit & Resubmit
+                                                View Preview
                                             </button>
-                                        )}
+                                        </div>
+                                        <div className="flex gap-2">
+                                            {(course.status === 'REJECTED' || course.status === 'DRAFT') && (
+                                                <button
+                                                    className="flex-1 btn-primary text-sm shadow-sm opacity-90 hover:opacity-100"
+                                                    onClick={() => handleSubmitForApproval(course.id)}
+                                                >
+                                                    {course.status === 'REJECTED' ? 'Resubmit for Approval' : 'Submit for Approval'}
+                                                </button>
+                                            )}
+                                            <button
+                                                className="flex-1 px-4 py-2 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white rounded-lg font-medium transition-colors text-sm"
+                                                onClick={() => handleDeleteCourse(course.id)}
+                                            >
+                                                Delete Course
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         ))}
                     </div>
                 )}
+
+                {/* Full-Screen Course Preview Modal */}
+                <CoursePreviewModal
+                    isOpen={previewCourseId !== null}
+                    courseId={previewCourseId}
+                    onClose={() => setPreviewCourseId(null)}
+                />
             </main>
         </div>
     )

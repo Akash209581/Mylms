@@ -437,6 +437,13 @@ export default function CourseBuilderPage() {
                                                     </div>
                                                     <div className="flex gap-2 ml-4">
                                                         <button
+                                                            onClick={() => router.push(`/dashboard/instructor/edit-lesson/${lesson.id}`)}
+                                                            className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-sm font-medium"
+                                                            title="Open markdown content editor"
+                                                        >
+                                                            ✍️ Content
+                                                        </button>
+                                                        <button
                                                             onClick={() => openEditLessonModal(lesson)}
                                                             className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-sm"
                                                         >
