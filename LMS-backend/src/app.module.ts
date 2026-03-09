@@ -71,4 +71,4 @@ import { Organization } from './entities/organization.entity';
   providers: [KeepAliveService],
   exports: [],
 })
-export class AppModule {}
+export class AppModule { }

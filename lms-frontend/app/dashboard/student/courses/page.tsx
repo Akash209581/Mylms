@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
 import { api } from '@/lib/api'
+import CoursePreviewModal from '@/components/course/CoursePreviewModal'
 
 const gradients = [
     'linear-gradient(135deg, #667eea, #764ba2)',
@@ -49,6 +50,7 @@ export default function StudentCoursesPage() {
     const [search, setSearch] = useState('')
     const [loading, setLoading] = useState(true)
     const [enrolling, setEnrolling] = useState<number | null>(null)
+    const [previewCourseId, setPreviewCourseId] = useState<number | null>(null)
     const [pagination, setPagination] = useState({
         page: 1,
         limit: 12,
@@ -62,7 +64,7 @@ export default function StudentCoursesPage() {
     useEffect(() => {
         const stored = localStorage.getItem('user')
         if (!stored) { router.push('/login'); return }
-        
+
         fetchCourses()
         fetchEnrollments()
     }, [pagination.page, category, level, search])
@@ -74,7 +76,7 @@ export default function StudentCoursesPage() {
                 page: pagination.page.toString(),
                 limit: pagination.limit.toString(),
             })
-            
+
             if (category) params.append('category', category)
             if (level) params.append('level', level)
             if (search) params.append('search', search)
@@ -128,11 +130,11 @@ export default function StudentCoursesPage() {
         setPagination(prev => ({ ...prev, page: 1 }))
     }
 
-    const filtered = filter === 'all' 
-        ? courses 
+    const filtered = filter === 'all'
+        ? courses
         : filter === 'enrolled'
-        ? courses.filter(c => enrollments.includes(c.id))
-        : courses.filter(c => !enrollments.includes(c.id))
+            ? courses.filter(c => enrollments.includes(c.id))
+            : courses.filter(c => !enrollments.includes(c.id))
 
     return (
         <div className="min-h-screen bg-mesh">
@@ -162,19 +164,19 @@ export default function StudentCoursesPage() {
                             <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                             </svg>
-                            <input 
-                                type="text" 
-                                placeholder="Search courses by title or description..." 
+                            <input
+                                type="text"
+                                placeholder="Search courses by title or description..."
                                 value={search}
-                                onChange={e => setSearch(e.target.value)} 
-                                className="input-field pl-10 w-full" 
+                                onChange={e => setSearch(e.target.value)}
+                                className="input-field pl-10 w-full"
                             />
                         </div>
 
                         {/* Category Filter */}
                         <div>
-                            <select 
-                                value={category} 
+                            <select
+                                value={category}
                                 onChange={e => setCategory(e.target.value)}
                                 className="input-field w-full"
                             >
@@ -187,8 +189,8 @@ export default function StudentCoursesPage() {
 
                         {/* Level Filter */}
                         <div>
-                            <select 
-                                value={level} 
+                            <select
+                                value={level}
                                 onChange={e => setLevel(e.target.value)}
                                 className="input-field w-full"
                             >
@@ -220,7 +222,7 @@ export default function StudentCoursesPage() {
                                         &quot;{search}&quot;
                                     </span>
                                 )}
-                                <button 
+                                <button
                                     onClick={clearFilters}
                                     className="px-3 py-1 bg-red-500/20 text-red-400 text-xs rounded-full border border-red-500/30 hover:bg-red-500/30 transition-colors"
                                 >
@@ -257,13 +259,13 @@ export default function StudentCoursesPage() {
                                 return (
                                     <div key={course.id} className="course-card group animate-fade-in cursor-pointer"
                                         style={{ animationDelay: `${i * 0.08}s` }}
-                                        onClick={() => router.push(`/dashboard/student/courses/${course.id}`)}>
+                                        onClick={() => setPreviewCourseId(course.id)}>
                                         {/* Course Image/Gradient */}
                                         <div className="h-44 relative overflow-hidden"
-                                            style={{ 
-                                                background: course.thumbnail 
-                                                    ? `url(${course.thumbnail}) center/cover` 
-                                                    : gradients[i % gradients.length] 
+                                            style={{
+                                                background: course.thumbnail
+                                                    ? `url(${course.thumbnail}) center/cover`
+                                                    : gradients[i % gradients.length]
                                             }}>
                                             {!course.thumbnail && (
                                                 <div className="absolute inset-0 flex items-center justify-center text-5xl opacity-50 group-hover:scale-110 transition-transform duration-300">
@@ -371,14 +373,14 @@ export default function StudentCoursesPage() {
                                 >
                                     ← Previous
                                 </button>
-                                
+
                                 <div className="flex gap-2">
                                     {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
                                         .filter(page => {
                                             // Show first page, last page, current page, and pages around current
-                                            return page === 1 || 
-                                                   page === pagination.totalPages || 
-                                                   Math.abs(page - pagination.page) <= 1
+                                            return page === 1 ||
+                                                page === pagination.totalPages ||
+                                                Math.abs(page - pagination.page) <= 1
                                         })
                                         .map((page, index, array) => {
                                             // Add ellipsis if there's a gap
@@ -390,11 +392,10 @@ export default function StudentCoursesPage() {
                                                     )}
                                                     <button
                                                         onClick={() => handlePageChange(page)}
-                                                        className={`w-10 h-10 rounded-xl text-sm font-medium transition-all ${
-                                                            page === pagination.page 
-                                                                ? 'btn-primary' 
+                                                        className={`w-10 h-10 rounded-xl text-sm font-medium transition-all ${page === pagination.page
+                                                                ? 'btn-primary'
                                                                 : 'btn-secondary'
-                                                        }`}
+                                                            }`}
                                                     >
                                                         {page}
                                                     </button>
@@ -413,12 +414,18 @@ export default function StudentCoursesPage() {
                             </div>
                         )}
 
-                        {/* Results Summary */}
                         <div className="text-center mt-6 text-gray-400 text-sm">
                             Showing {((pagination.page - 1) * pagination.limit) + 1} - {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} courses
                         </div>
                     </>
                 )}
+
+                {/* Full-Screen Course Preview Modal */}
+                <CoursePreviewModal
+                    isOpen={previewCourseId !== null}
+                    courseId={previewCourseId}
+                    onClose={() => setPreviewCourseId(null)}
+                />
             </main>
         </div>
     )

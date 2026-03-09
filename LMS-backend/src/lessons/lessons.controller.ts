@@ -24,6 +24,7 @@ import {
   CreateLessonDto,
   UpdateLessonDto,
   ReorderLessonsDto,
+  UpdateContentDto,
 } from './lesson.dto';
 
 @Controller('lessons')
@@ -192,5 +193,63 @@ export class LessonsController {
     }
 
     return { message: 'Lessons reordered successfully' };
+  }
+
+  /**
+   * PUT /lessons/:id/content
+   * Save block-based TipTap JSON content for a lesson.
+   * Accessible by: INSTRUCTOR (owner), ADMIN, SUPERADMIN
+   */
+  @Put(':id/content')
+  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN)
+  async updateContent(
+    @Param('id') id: number,
+    @Body() dto: UpdateContentDto,
+    @Req() req: any,
+  ) {
+    const lesson = await this.lessonRepository.findOne({ where: { id } });
+
+    if (!lesson) {
+      throw new HttpException('Lesson not found', HttpStatus.NOT_FOUND);
+    }
+
+    // Validate that content is a proper TipTap doc object
+    if (!dto.content || typeof dto.content !== 'object') {
+      throw new HttpException(
+        'Invalid content: must be a TipTap JSON document object',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // INSTRUCTOR must own the parent course
+    if (req.user.role === UserRole.INSTRUCTOR) {
+      const module = await this.moduleRepository.findOne({
+        where: { id: lesson.moduleId },
+        relations: ['course'],
+      });
+      if (!module || module.course.instructorId !== req.user.sub) {
+        throw new HttpException(
+          'You can only edit content in your own courses',
+          HttpStatus.FORBIDDEN,
+        );
+      }
+    }
+
+    // Increment version, record who saved it
+    lesson.content = dto.content;
+    lesson.version = (lesson.version || 1) + 1;
+    lesson.lastEditedBy = req.user.name || req.user.email || String(req.user.sub);
+
+    const saved = await this.lessonRepository.save(lesson);
+
+    return {
+      id: saved.id,
+      title: saved.title,
+      content: saved.content,
+      version: saved.version,
+      lastEditedBy: saved.lastEditedBy,
+      updatedAt: saved.updatedAt,
+      message: 'Content saved successfully',
+    };
   }
 }

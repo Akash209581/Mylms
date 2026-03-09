@@ -19,7 +19,7 @@ export class ReportsController {
     @InjectRepository(Course) private courseRepo: Repository<Course>,
     @InjectRepository(Enrollment) private enrollRepo: Repository<Enrollment>,
     @InjectRepository(Question) private questionRepo: Repository<Question>,
-  ) {}
+  ) { }
 
   @Get('overview')
   async getOverview() {
@@ -41,7 +41,7 @@ export class ReportsController {
 
     // Recent Enrollments (last 30 days or just last 10)
     const recentEnrollments = await this.enrollRepo.find({
-      relations: ['user', 'course'],
+      relations: ['student', 'course'],
       order: { enrolledAt: 'DESC' },
       take: 10,
     });

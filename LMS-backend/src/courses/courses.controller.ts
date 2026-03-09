@@ -11,6 +11,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/jwt.guard';
+import { OptionalJwtAuthGuard } from '../common/optional-jwt.guard';
 import { RolesGuard } from '../common/roles.guard';
 import { Roles } from '../common/roles.decorator';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -197,6 +198,7 @@ export class CoursesController {
     };
   }
 
+  @UseGuards(OptionalJwtAuthGuard)
   @Get(':id')
   async findOne(@Param('id') id: number, @Request() req: any) {
     console.log(`📖 Fetching course ${id} for user:`, req.user);
@@ -383,6 +385,32 @@ export class CoursesController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.INSTRUCTOR)
+  @Post(':id/submit')
+  async submitCourse(@Param('id') id: number, @Request() req: any) {
+    const course = await this.courseRepo.findOne({ where: { id, instructorId: req.user.sub } });
+    if (!course) {
+      return { message: 'Course not found or unauthorized' };
+    }
+
+    course.status = CourseStatus.PENDING_APPROVAL;
+    await this.courseRepo.save(course);
+
+    try {
+      const instructor = await this.userRepo.findOne({ where: { id: req.user.sub } });
+      await this.notificationService.notifyAdminsOfPendingCourse(
+        course.title,
+        instructor?.name || 'Instructor',
+        course.id,
+      );
+    } catch (notifError) {
+      console.error('⚠️ Failed to send notification:', notifError);
+    }
+
+    return { message: 'Course submitted for approval successfully.' };
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN)
   @Put(':id')
   async update(
@@ -422,7 +450,7 @@ export class CoursesController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.INSTRUCTOR)
   @Delete(':id')
   async remove(@Param('id') id: number, @Request() req: any) {
     const course = await this.courseRepo.findOne({ where: { id } });
