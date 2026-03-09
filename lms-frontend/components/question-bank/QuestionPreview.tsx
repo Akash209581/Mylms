@@ -14,7 +14,7 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                     <div className="space-y-4">
                         <p className="text-white text-lg font-medium mb-6">{form.questionText}</p>
                         <div className="grid gap-3">
-                            {form.options.map((opt: string, i: number) => opt && (
+                            {(form.options || []).map((opt: string, i: number) => opt && (
                                 <div key={i} className={`p-4 rounded-xl border transition-all ${form.correctAnswer === opt
                                     ? 'bg-primary-500/10 border-primary-500 text-white'
                                     : 'bg-white/5 border-white/10 text-gray-400'
@@ -38,12 +38,12 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                     <div className="space-y-6">
                         <div className="p-6 bg-white/5 rounded-2xl border border-white/10">
                             <p className="text-white text-lg leading-relaxed">
-                                {form.questionText.split('[BLANK]').map((part: string, i: number, arr: any[]) => (
+                                {(form.questionText || '').split('[BLANK]').map((part: string, i: number, arr: any[]) => (
                                     <React.Fragment key={i}>
                                         {part}
                                         {i < arr.length - 1 && (
                                             <span className="inline-block min-w-[120px] border-b-2 border-primary-500 mx-2 text-primary-400 text-center font-bold">
-                                                {form.blanks[i] || '_______'}
+                                                {form.blanks?.[i] || '_______'}
                                             </span>
                                         )}
                                     </React.Fragment>
@@ -53,7 +53,7 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                         <div className="bg-primary-500/5 p-4 rounded-xl border border-primary-500/20">
                             <p className="text-xs text-primary-400 font-bold uppercase tracking-wider mb-2">Internal Validation Answer Key</p>
                             <div className="flex flex-wrap gap-2">
-                                {form.blanks.map((b: string, i: number) => (
+                                {(form.blanks || []).map((b: string, i: number) => (
                                     <span key={i} className="px-3 py-1 bg-primary-500/20 text-primary-300 rounded-lg text-sm border border-primary-500/30">
                                         {i + 1}: {b}
                                     </span>
@@ -66,7 +66,7 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
             case 'MQ':
                 // Combine all right side items (correct matches + distractors)
                 const allRights = [
-                    ...form.matchingPairs.map((p: any) => p.right),
+                    ...(form.matchingPairs || []).map((p: any) => p.right),
                     ...(form.extraRightMatches || [])
                 ].filter(Boolean);
 
@@ -83,7 +83,7 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                             <div className="space-y-3">
                                 <h4 className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-4">Column A</h4>
-                                {form.matchingPairs.map((p: any, i: number) => (
+                                {(form.matchingPairs || []).map((p: any, i: number) => (
                                     <div key={i} className="p-4 bg-white/5 border border-white/10 rounded-xl text-white flex items-center gap-3">
                                         <span className="w-6 h-6 bg-white/10 rounded flex items-center justify-center text-xs text-gray-400">{i + 1}</span>
                                         {p.left}
@@ -110,7 +110,7 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                         <div className="bg-gray-900/50 p-6 rounded-2xl border border-white/10 font-mono">
                             <h4 className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-6">Correct Arrangement</h4>
                             <div className="space-y-2">
-                                {form.jumbledStatements.map((s: string, i: number) => (
+                                {(form.jumbledStatements || []).map((s: string, i: number) => (
                                     <div key={i} className="flex gap-4 items-start group">
                                         <div className="mt-1.5 w-2 h-2 rounded-full bg-primary-500/50 group-hover:bg-primary-500 transition-colors" />
                                         <span className="text-blue-300 text-sm whitespace-pre-wrap">{s}</span>
@@ -156,7 +156,7 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                                 </div>
                                 <div>
                                     <h4 className="text-primary-400 text-xs font-bold uppercase mb-2">Sample Test Cases</h4>
-                                    {form.testCases.map((tc: any, i: number) => i === 0 && (
+                                    {(form.testCases || []).map((tc: any, i: number) => i === 0 && (
                                         <div key={i} className="p-3 bg-white/5 rounded-lg border border-white/10 space-y-2">
                                             <p className="text-[10px] text-gray-500 font-bold uppercase">Sample Input</p>
                                             <pre className="text-xs text-blue-300 bg-black/30 p-2 rounded">{tc.input}</pre>

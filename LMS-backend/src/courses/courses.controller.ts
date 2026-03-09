@@ -9,6 +9,8 @@ import {
   UseGuards,
   Request,
   Query,
+  HttpException,
+  HttpStatus,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/jwt.guard';
 import { OptionalJwtAuthGuard } from '../common/optional-jwt.guard';
@@ -210,12 +212,21 @@ export class CoursesController {
 
     if (!course) {
       console.log(`❌ Course ${id} not found`);
-      return null;
+      throw new HttpException('Course not found', HttpStatus.NOT_FOUND);
     }
 
     const userRole = req.user?.role;
     const userId = req.user?.sub;
     const userOrganizationId = req.user?.organizationId;
+
+    console.log('🔍 Access check:', {
+      userRole,
+      userId,
+      userOrganizationId,
+      courseOrganizationId: course.organizationId,
+      courseInstructorId: course.instructorId,
+      courseStatus: course.status
+    });
 
     // SUPERADMIN can see any course from any organization
     if (userRole === UserRole.SUPERADMIN) {
@@ -229,7 +240,7 @@ export class CoursesController {
       course.organizationId
     )) {
       console.log(`❌ User cannot access course from different organization`);
-      return null;
+      throw new HttpException('You do not have access to this course', HttpStatus.FORBIDDEN);
     }
 
     // ADMIN can see any course within their organization
@@ -246,7 +257,7 @@ export class CoursesController {
         return await this.getCourseWithStructure(course);
       }
       console.log(`❌ Instructor cannot access course ${id}`);
-      return null;
+      throw new HttpException('You do not have access to this course', HttpStatus.FORBIDDEN);
     }
 
     // STUDENT can only see approved and published courses within their organization
@@ -258,7 +269,7 @@ export class CoursesController {
     console.log(
       `❌ Course ${id} not accessible: status=${course.status}, published=${course.published}`,
     );
-    return null;
+    throw new HttpException('Course not available', HttpStatus.FORBIDDEN);
   }
 
   private async getCourseWithStructure(course: Course) {
@@ -321,7 +332,10 @@ export class CoursesController {
 
       // Validate organization access for ADMIN/INSTRUCTOR
       if (user.role !== UserRole.SUPERADMIN && !user.organizationId) {
-        throw new Error('User must belong to an organization to create courses');
+        throw new HttpException(
+          'Your account is not associated with an organization. Please contact the administrator to assign you to an organization before creating courses.',
+          HttpStatus.BAD_REQUEST
+        );
       }
 
       // SUPERADMIN courses are auto-approved, INSTRUCTOR courses need approval

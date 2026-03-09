@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
+import QuestionPreview from '@/components/question-bank/QuestionPreview'
 
 const QUESTION_TYPES = [
     { key: 'MCQ', label: 'MCQ', icon: '🔘', desc: 'Multiple Choice', color: '#6366f1' },
@@ -21,6 +22,8 @@ export default function QuestionBankPage() {
     const [filterType, setFilterType] = useState('ALL')
     const [filterDiff, setFilterDiff] = useState('ALL')
     const [search, setSearch] = useState('')
+    const [selectedQuestion, setSelectedQuestion] = useState<any>(null)
+    const [showPreview, setShowPreview] = useState(false)
 
     useEffect(() => {
         const stored = localStorage.getItem('user')
@@ -53,7 +56,8 @@ export default function QuestionBankPage() {
         const matchDiff = filterDiff === 'ALL' || q.difficulty === filterDiff
         const matchSearch = !search || q.questionText?.toLowerCase().includes(search.toLowerCase()) ||
             q.topicNames?.toLowerCase().includes(search.toLowerCase())
-        return matchType && matchDiff && matchSearch
+        // Ensure the question has at least a type and text to be considered "valid" for the list
+        return matchType && matchDiff && matchSearch && q.questionText && q.type
     })
 
     return (
@@ -171,6 +175,10 @@ export default function QuestionBankPage() {
                                                 <td className="py-4 pr-4 text-gray-300 text-sm max-w-xs truncate">{q.questionText}</td>
                                                 <td className="py-4">
                                                     <div className="flex gap-2">
+                                                        <button onClick={() => { setSelectedQuestion(q); setShowPreview(true) }}
+                                                            className="px-2.5 py-1 rounded-lg text-xs font-medium bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500 hover:text-white transition-all">
+                                                            Preview
+                                                        </button>
                                                         <button onClick={() => router.push(`/dashboard/superadmin/question-bank/${q.id}/edit`)}
                                                             className="px-2.5 py-1 rounded-lg text-xs font-medium"
                                                             style={{ background: 'rgba(99,102,241,0.15)', color: '#a5b4fc', border: '1px solid rgba(99,102,241,0.3)' }}>
@@ -192,6 +200,10 @@ export default function QuestionBankPage() {
                     )}
                 </div>
             </main>
+
+            {showPreview && selectedQuestion && (
+                <QuestionPreview form={selectedQuestion} onClose={() => setShowPreview(false)} />
+            )}
         </div>
     )
 }

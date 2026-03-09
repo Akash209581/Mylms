@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
+import CoursePreviewModal from '@/components/course/CoursePreviewModal'
 
 const gradients = [
     'linear-gradient(135deg, #667eea, #764ba2)',
@@ -18,6 +19,7 @@ export default function SuperAdminCoursesPage() {
     const [courses, setCourses] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState('')
+    const [previewCourseId, setPreviewCourseId] = useState<number | null>(null)
 
     useEffect(() => {
         const stored = localStorage.getItem('user')
@@ -112,14 +114,13 @@ export default function SuperAdminCoursesPage() {
                                     </div>
                                     <div className="absolute top-3 right-3 flex flex-col gap-2">
                                         {/* Status Badge */}
-                                        <span className={`badge ${
-                                            course.status === 'APPROVED' ? 'badge-student' : 
-                                            course.status === 'PENDING_APPROVAL' ? 'badge-instructor' : 
-                                            'badge-admin'
-                                        }`}>
-                                            {course.status === 'APPROVED' ? '✅ Approved' : 
-                                             course.status === 'PENDING_APPROVAL' ? '⏳ Pending' : 
-                                             '❌ Rejected'}
+                                        <span className={`badge ${course.status === 'APPROVED' ? 'badge-student' :
+                                                course.status === 'PENDING_APPROVAL' ? 'badge-instructor' :
+                                                    'badge-admin'
+                                            }`}>
+                                            {course.status === 'APPROVED' ? '✅ Approved' :
+                                                course.status === 'PENDING_APPROVAL' ? '⏳ Pending' :
+                                                    '❌ Rejected'}
                                         </span>
                                         {/* Published Badge */}
                                         {course.status === 'APPROVED' && (
@@ -141,9 +142,10 @@ export default function SuperAdminCoursesPage() {
                                         by <span className="text-primary-400">{course.instructor?.name || 'Unknown Instructor'}</span>
                                     </p>
                                     <div className="flex gap-2">
-                                        <button className="flex-1 py-2 rounded-xl text-xs font-semibold transition-all hover:scale-105"
+                                        <button onClick={() => setPreviewCourseId(course.id)}
+                                            className="flex-1 py-2 rounded-xl text-xs font-semibold transition-all hover:scale-105"
                                             style={{ background: 'rgba(99,102,241,0.15)', color: '#a5b4fc', border: '1px solid rgba(99,102,241,0.3)' }}>
-                                            View Details
+                                            View Preview
                                         </button>
                                         <button
                                             onClick={() => handleDelete(course.id)}
@@ -164,6 +166,12 @@ export default function SuperAdminCoursesPage() {
                     </div>
                 )}
             </main>
+
+            <CoursePreviewModal
+                isOpen={previewCourseId !== null}
+                courseId={previewCourseId}
+                onClose={() => setPreviewCourseId(null)}
+            />
         </div>
     )
 }
