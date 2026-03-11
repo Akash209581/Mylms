@@ -10,8 +10,8 @@ import { User } from './user.entity';
 import { Course } from './course.entity';
 import { Question } from './question.entity';
 
-@Entity('organizations')
-export class Organization {
+@Entity('colleges')
+export class College {
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -43,7 +43,7 @@ export class Organization {
   contactPhone?: string;
 
   @Column({ name: 'created_by', nullable: true })
-  createdBy?: number; // SUPERADMIN who created this organization
+  createdBy?: number; // SUPERADMIN who created this college
 
   @Column({ default: true })
   active: boolean;
@@ -55,12 +55,12 @@ export class Organization {
   updatedAt: Date;
 
   // Relations
-  @OneToMany(() => User, (user) => user.organization)
+  @OneToMany(() => User, (user) => user.college)
   users: User[];
 
-  @OneToMany(() => Course, (course) => course.organization)
+  @OneToMany(() => Course, (course) => course.college)
   courses: Course[];
 
-  @OneToMany(() => Question, (question) => question.organization)
+  @OneToMany(() => Question, (question) => question.college)
   questions: Question[];
 }

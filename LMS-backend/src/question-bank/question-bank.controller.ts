@@ -25,7 +25,7 @@ import { JwtAuthGuard } from '../common/jwt.guard';
 import { RolesGuard } from '../common/roles.guard';
 import { Roles } from '../common/roles.decorator';
 import { UserRole } from '../entities/user.entity';
-import { OrganizationFilterService } from '../common/organization-filter.service';
+import { CollegeFilterService } from '../common/college-filter.service';
 import {
   IsString,
   IsEnum,
@@ -63,7 +63,7 @@ class CreateQuestionDto {
   }[];
   @IsString() @IsOptional() codeSnippet?: string;
   @IsString() @IsOptional() expectedOutput?: string;
-  @IsNumber() @IsOptional() organizationId?: number; // SUPERADMIN can specify organization
+  @IsNumber() @IsOptional() collegeId?: number; // SUPERADMIN can specify organization
 }
 
 @Controller('question-bank')
@@ -74,16 +74,16 @@ export class QuestionBankController {
     @InjectRepository(Question)
     private questionRepo: Repository<Question>,
     private bulkImportService: BulkImportService,
-    private organizationFilterService: OrganizationFilterService,
+    private CollegeFilterService: CollegeFilterService,
   ) {}
 
   private async generateQuestionNumber(
     type: QuestionType,
-    organizationId: number,
+    collegeId: number,
   ): Promise<string> {
     const prefix = type; // MCQ, FIB, MQ, JC, PQ, OP
     const count = await this.questionRepo.count({ 
-      where: { type, organizationId } 
+      where: { type, collegeId } 
     });
     const num = String(count + 1).padStart(4, '0');
     return `${prefix}${num}`;
@@ -97,20 +97,20 @@ export class QuestionBankController {
     @Request() req?: any,
   ) {
     const userRole = req?.user?.role;
-    const userOrganizationId = req?.user?.organizationId;
+    const userCollegeId = req?.user?.collegeId;
 
     // Get organization filter based on user role
-    const orgFilter = this.organizationFilterService.getOrganizationFilter(
+    const collegeFilter = this.CollegeFilterService.getCollegeFilter(
       userRole,
-      userOrganizationId,
+      userCollegeId,
     );
 
     const qb = this.questionRepo.createQueryBuilder('q');
     
     // Apply organization filter (SUPERADMIN bypasses, others filtered by org)
-    if (orgFilter.organizationId) {
-      qb.andWhere('q.organizationId = :organizationId', { 
-        organizationId: orgFilter.organizationId 
+    if (collegeFilter.collegeId) {
+      qb.andWhere('q.collegeId = :collegeId', { 
+        collegeId: collegeFilter.collegeId 
       });
     }
     
@@ -124,19 +124,19 @@ export class QuestionBankController {
   @Get('stats')
   async getStats(@Request() req?: any) {
     const userRole = req?.user?.role;
-    const userOrganizationId = req?.user?.organizationId;
+    const userCollegeId = req?.user?.collegeId;
 
     // Get organization filter based on user role
-    const orgFilter = this.organizationFilterService.getOrganizationFilter(
+    const collegeFilter = this.CollegeFilterService.getCollegeFilter(
       userRole,
-      userOrganizationId,
+      userCollegeId,
     );
 
     // Build base query with organization filter
     const baseQuery = this.questionRepo.createQueryBuilder('q');
-    if (orgFilter.organizationId) {
-      baseQuery.andWhere('q.organizationId = :organizationId', { 
-        organizationId: orgFilter.organizationId 
+    if (collegeFilter.collegeId) {
+      baseQuery.andWhere('q.collegeId = :collegeId', { 
+        collegeId: collegeFilter.collegeId 
       });
     }
 
@@ -146,8 +146,8 @@ export class QuestionBankController {
       .createQueryBuilder('q')
       .select('q.type', 'type')
       .addSelect('COUNT(*)', 'count')
-      .where(orgFilter.organizationId ? 'q.organizationId = :organizationId' : '1=1', 
-        orgFilter.organizationId ? { organizationId: orgFilter.organizationId } : {})
+      .where(collegeFilter.collegeId ? 'q.collegeId = :collegeId' : '1=1', 
+        collegeFilter.collegeId ? { collegeId: collegeFilter.collegeId } : {})
       .groupBy('q.type')
       .getRawMany();
     
@@ -155,8 +155,8 @@ export class QuestionBankController {
       .createQueryBuilder('q')
       .select('q.difficulty', 'difficulty')
       .addSelect('COUNT(*)', 'count')
-      .where(orgFilter.organizationId ? 'q.organizationId = :organizationId' : '1=1', 
-        orgFilter.organizationId ? { organizationId: orgFilter.organizationId } : {})
+      .where(collegeFilter.collegeId ? 'q.collegeId = :collegeId' : '1=1', 
+        collegeFilter.collegeId ? { collegeId: collegeFilter.collegeId } : {})
       .groupBy('q.difficulty')
       .getRawMany();
     
@@ -168,20 +168,20 @@ export class QuestionBankController {
   @UseInterceptors(FileInterceptor('file'))
   async bulkImport(@UploadedFile() file: any, @Request() req: any) {
     const userRole = req.user?.role;
-    const userOrganizationId = req.user?.organizationId;
+    const userCollegeId = req.user?.collegeId;
 
-    // Validate user has organizationId (except SUPERADMIN can import for any org)
-    if (userRole !== UserRole.SUPERADMIN && !userOrganizationId) {
+    // Validate user has collegeId (except SUPERADMIN can import for any org)
+    if (userRole !== UserRole.SUPERADMIN && !userCollegeId) {
       throw new Error('User must belong to an organization to import questions');
     }
 
-    // For now, use user's organizationId. Later, SUPERADMIN can specify target org
-    const organizationId = userOrganizationId || 1; // Fallback to org 1 for SUPERADMIN if needed
+    // For now, use user's collegeId. Later, SUPERADMIN can specify target org
+    const collegeId = userCollegeId || 1; // Fallback to org 1 for SUPERADMIN if needed
 
     const result = await this.bulkImportService.importQuestionsFromFile(
       file,
       req.user.email || 'Unknown',
-      organizationId,
+      collegeId,
     );
     return result;
   }
@@ -226,20 +226,20 @@ export class QuestionBankController {
     }
 
     const userRole = req?.user?.role;
-    const userOrganizationId = req?.user?.organizationId;
+    const userCollegeId = req?.user?.collegeId;
 
     // SUPERADMIN can access any question
     if (userRole === UserRole.SUPERADMIN) {
       return question;
     }
 
-    // Check if user can access this question's organization
-    if (!this.organizationFilterService.canAccessOrganization(
+    // Check if user can access this question's college
+    if (!this.CollegeFilterService.canAccessCollege(
       userRole,
-      userOrganizationId,
-      question.organizationId
+      userCollegeId,
+      question.collegeId
     )) {
-      return null; // User cannot access question from different organization
+      return null; // User cannot access question from different college
     }
 
     return question;
@@ -249,23 +249,23 @@ export class QuestionBankController {
   @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.INSTRUCTOR)
   async create(@Body() dto: CreateQuestionDto, @Request() req?: any) {
     const userRole = req?.user?.role;
-    const userOrganizationId = req?.user?.organizationId;
+    const userCollegeId = req?.user?.collegeId;
 
-    // Validate user has organizationId
-    if (userRole !== UserRole.SUPERADMIN && !userOrganizationId) {
+    // Validate user has collegeId
+    if (userRole !== UserRole.SUPERADMIN && !userCollegeId) {
       throw new Error('User must belong to an organization to create questions');
     }
 
-    // Set organizationId: SUPERADMIN can specify, others use their own org
-    const organizationId = userRole === UserRole.SUPERADMIN && dto.organizationId
-      ? dto.organizationId
-      : userOrganizationId;
+    // Set collegeId: SUPERADMIN can specify, others use their own org
+    const collegeId = userRole === UserRole.SUPERADMIN && dto.collegeId
+      ? dto.collegeId
+      : userCollegeId;
 
-    const questionNumber = await this.generateQuestionNumber(dto.type, organizationId);
+    const questionNumber = await this.generateQuestionNumber(dto.type, collegeId);
     const q = this.questionRepo.create({ 
       ...dto, 
       questionNumber,
-      organizationId,
+      collegeId,
     });
     return this.questionRepo.save(q);
   }
@@ -284,17 +284,17 @@ export class QuestionBankController {
     }
 
     const userRole = req?.user?.role;
-    const userOrganizationId = req?.user?.organizationId;
+    const userCollegeId = req?.user?.collegeId;
 
     // SUPERADMIN can update any question
     if (userRole !== UserRole.SUPERADMIN) {
-      // Check if user can access this question's organization
-      if (!this.organizationFilterService.canAccessOrganization(
+      // Check if user can access this question's college
+      if (!this.CollegeFilterService.canAccessCollege(
         userRole,
-        userOrganizationId,
-        question.organizationId
+        userCollegeId,
+        question.collegeId
       )) {
-        return { message: 'Cannot update question from different organization' };
+        return { message: 'Cannot update question from different college' };
       }
     }
 
@@ -312,17 +312,17 @@ export class QuestionBankController {
     }
 
     const userRole = req?.user?.role;
-    const userOrganizationId = req?.user?.organizationId;
+    const userCollegeId = req?.user?.collegeId;
 
     // SUPERADMIN can delete any question
     if (userRole !== UserRole.SUPERADMIN) {
-      // ADMIN can only delete questions within their organization
-      if (!this.organizationFilterService.canAccessOrganization(
+      // ADMIN can only delete questions within their college
+      if (!this.CollegeFilterService.canAccessCollege(
         userRole,
-        userOrganizationId,
-        question.organizationId
+        userCollegeId,
+        question.collegeId
       )) {
-        return { message: 'Cannot delete question from different organization' };
+        return { message: 'Cannot delete question from different college' };
       }
     }
 
@@ -330,3 +330,4 @@ export class QuestionBankController {
     return { message: 'Question deleted' };
   }
 }
+

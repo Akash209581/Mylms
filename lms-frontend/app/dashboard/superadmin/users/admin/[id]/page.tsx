@@ -11,12 +11,7 @@ interface User {
     email: string
     role: string
     createdAt: string
-    organizationId?: number
-    organization?: {
-        id: number
-        name: string
-        type?: string
-    }
+    collegeId?: number
     collegeName?: string
 }
 
@@ -71,12 +66,12 @@ export default function AdminDetailPage() {
             
             setAdmin(adminUser)
             
-            // Filter users by admin's organization
-            if (adminUser.organizationId) {
-                const orgUsersData = allUsers.filter(
-                    (u: User) => u.organizationId === adminUser.organizationId && u.id !== adminUser.id
+            // Filter users by admin's college
+            if (adminUser.collegeId) {
+                const collegeUsersData = allUsers.filter(
+                    (u: User) => u.collegeId === adminUser.collegeId && u.id !== adminUser.id
                 )
-                setOrgUsers(orgUsersData)
+                setOrgUsers(collegeUsersData)
             }
         } catch (err) {
             console.error('Failed to fetch admin details:', err)
@@ -137,17 +132,12 @@ export default function AdminDetailPage() {
                             
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-white/10">
                                 <div>
-                                    <p className="text-xs text-gray-500 mb-1">Organization</p>
-                                    <p className="text-white font-medium">
-                                        {admin?.organization?.name || 'N/A'}
-                                        {admin?.organization?.type && (
-                                            <span className="text-gray-400 text-sm ml-2">({admin.organization.type})</span>
-                                        )}
-                                    </p>
-                                </div>
-                                <div>
                                     <p className="text-xs text-gray-500 mb-1">College</p>
                                     <p className="text-white font-medium">{admin?.collegeName || 'N/A'}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1">College ID</p>
+                                    <p className="text-white font-medium">{admin?.collegeId || 'N/A'}</p>
                                 </div>
                                 <div>
                                     <p className="text-xs text-gray-500 mb-1">Joined</p>
@@ -159,21 +149,17 @@ export default function AdminDetailPage() {
                                         }) : 'N/A'}
                                     </p>
                                 </div>
-                                <div>
-                                    <p className="text-xs text-gray-500 mb-1">Organization ID</p>
-                                    <p className="text-white font-medium">{admin?.organizationId || 'N/A'}</p>
-                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Organization Users */}
+                {/* College Users */}
                 <div className="glass-card p-6">
                     <div className="flex items-center justify-between mb-6">
                         <div>
                             <h2 className="text-xl font-bold text-white mb-1">
-                                Users in {admin?.organization?.name}
+                                Users in {admin?.collegeName}
                             </h2>
                             <p className="text-gray-400 text-sm">
                                 {filteredUsers.length} user{filteredUsers.length !== 1 ? 's' : ''} found

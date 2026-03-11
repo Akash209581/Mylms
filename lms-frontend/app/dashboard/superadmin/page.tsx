@@ -25,6 +25,7 @@ export default function SuperAdminDashboard() {
     }, [])
 
     const statItems = [
+        { label: 'Colleges', value: stats?.totalColleges ?? 0, icon: '🏛️', gradient: 'linear-gradient(135deg,#f59e0b,#d97706)', link: '/dashboard/superadmin/colleges' },
         { label: 'Total Users', value: stats?.totalUsers ?? 0, icon: '👥', gradient: 'linear-gradient(135deg,#6366f1,#8b5cf6)' },
         { label: 'Total Courses', value: stats?.totalCourses ?? 0, icon: '📚', gradient: 'linear-gradient(135deg,#10b981,#059669)' },
         { label: 'Enrollments', value: stats?.totalEnrollments ?? 0, icon: '📋', gradient: 'linear-gradient(135deg,#f59e0b,#d97706)' },
@@ -63,14 +64,24 @@ export default function SuperAdminDashboard() {
                 </div>
 
                 {/* Stats */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-4 mb-8">
                     {statItems.map((s, i) => (
-                        <div key={i} className="stat-card">
-                            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl mb-3"
-                                style={{ background: s.gradient }}>{s.icon}</div>
-                            <p className="text-2xl font-bold text-white mb-0.5">{loading ? '—' : s.value}</p>
-                            <p className="text-gray-400 text-xs">{s.label}</p>
-                        </div>
+                        s.link ? (
+                            <div key={i} className="stat-card cursor-pointer hover:scale-105 transition-transform"
+                                onClick={() => router.push(s.link)}>
+                                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl mb-3"
+                                    style={{ background: s.gradient }}>{s.icon}</div>
+                                <p className="text-2xl font-bold text-white mb-0.5">{loading ? '—' : s.value}</p>
+                                <p className="text-gray-400 text-xs">{s.label}</p>
+                            </div>
+                        ) : (
+                            <div key={i} className="stat-card">
+                                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl mb-3"
+                                    style={{ background: s.gradient }}>{s.icon}</div>
+                                <p className="text-2xl font-bold text-white mb-0.5">{loading ? '—' : s.value}</p>
+                                <p className="text-gray-400 text-xs">{s.label}</p>
+                            </div>
+                        )
                     ))}
                 </div>
 

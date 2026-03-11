@@ -7,14 +7,14 @@ import { Lesson } from '../entities/lesson.entity';
 import { Resource } from '../entities/resource.entity';
 import { CoursesController } from './courses.controller';
 import { NotificationService } from '../common/notification.service';
-import { OrganizationFilterService } from '../common/organization-filter.service';
+import { CollegeFilterService } from '../common/college-filter.service';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Course, User, CourseModule, Lesson, Resource]),
   ],
   controllers: [CoursesController],
-  providers: [NotificationService, OrganizationFilterService],
+  providers: [NotificationService, CollegeFilterService],
   exports: [TypeOrmModule],
 })
 export class CoursesModule {}

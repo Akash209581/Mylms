@@ -16,13 +16,6 @@ const INDIAN_STATES = [
 
 const COUNTRIES = ['India', 'United States', 'United Kingdom', 'Canada', 'Australia', 'Other']
 
-interface Organization {
-    id: number
-    name: string
-    type?: string
-    active: boolean
-}
-
 export default function SignupPage() {
     const router = useRouter()
     const [currentStep, setCurrentStep] = useState(1)
@@ -39,26 +32,50 @@ export default function SignupPage() {
         pursuingYear: '',
         semester: '',
         registrationNumber: '',
-        collegeName: '',
-        organizationId: ''
+        collegeName: ''
     })
-    const [organizations, setOrganizations] = useState<Organization[]>([])
     const [error, setError] = useState('')
     const [loading, setLoading] = useState(false)
     const [success, setSuccess] = useState(false)
+    const [colleges, setColleges] = useState<Array<{ id: number; name: string }>>([])
+    const [loadingColleges, setLoadingColleges] = useState(true)
+    const [collegesFetchError, setCollegesFetchError] = useState(false)
 
+    // Fetch colleges when component mounts
     useEffect(() => {
-        // Fetch available organizations
-        const fetchOrganizations = async () => {
-            try {
-                const response = await api.get('/organizations')
-                setOrganizations(response.data.filter((org: Organization) => org.active))
-            } catch (err) {
-                console.error('Failed to fetch organizations:', err)
-            }
-        }
-        fetchOrganizations()
+        fetchColleges()
     }, [])
+
+    const fetchColleges = async () => {
+        setLoadingColleges(true)
+        setCollegesFetchError(false)
+        try {
+            const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/auth/colleges`
+            console.log('Fetching colleges from:', apiUrl)
+            const response = await fetch(apiUrl, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            console.log('Response status:', response.status)
+            if (response.ok) {
+                const data = await response.json()
+                console.log('✅ Colleges fetched successfully:', data)
+                setColleges(data)
+                setCollegesFetchError(false)
+            } else {
+                const errorText = await response.text()
+                console.error('❌ Failed to fetch colleges. Status:', response.status, 'Error:', errorText)
+                setCollegesFetchError(true)
+            }
+        } catch (err) {
+            console.error('❌ Error fetching colleges:', err)
+            setCollegesFetchError(true)
+        } finally {
+            setLoadingColleges(false)
+        }
+    }
 
     const validateStep1 = () => {
         if (!form.name || form.name.length < 2) {
@@ -85,8 +102,8 @@ export default function SignupPage() {
     }
 
     const validateStep2 = () => {
-        if (!form.organizationId) {
-            setError('Please select your organization')
+        if (!form.collegeName || form.collegeName.length < 3) {
+            setError('Please enter your college/university name (min 3 characters)')
             return false
         }
         if (!form.country) {
@@ -95,10 +112,6 @@ export default function SignupPage() {
         }
         if (form.country === 'India' && !form.state) {
             setError('State is required for Indian learners')
-            return false
-        }
-        if (!form.collegeName || form.collegeName.length < 3) {
-            setError('Please enter your college name')
             return false
         }
         return true
@@ -162,7 +175,6 @@ export default function SignupPage() {
                     state: form.state || undefined,
                     course: form.course,
                     branch: form.branch,
-                    organizationId: parseInt(form.organizationId),
                     pursuingYear: parseInt(form.pursuingYear),
                     semester: parseInt(form.semester),
                     registrationNumber: form.registrationNumber,
@@ -218,18 +230,47 @@ export default function SignupPage() {
     const renderStep2 = () => (
         <div className="space-y-4">
             <div>
-                <label className="block text-sm font-semibold mb-1.5" style={{ color: '#374151' }}>Organization *</label>
-                <select className="input-field" value={form.organizationId}
-                    onChange={e => setForm({ ...form, organizationId: e.target.value })} required
-                    aria-label="Select your organization">
-                    <option value="">Select your organization</option>
-                    {organizations.map(org => (
-                        <option key={org.id} value={org.id}>
-                            {org.name} {org.type ? `(${org.type})` : ''}
-                        </option>
-                    ))}
-                </select>
-                <p className="text-xs text-gray-500 mt-1">Select the organization you are affiliated with</p>
+                <label className="block text-sm font-semibold mb-1.5" style={{ color: '#374151' }}>College/University Name *</label>
+                
+                {collegesFetchError ? (
+                    <div className="border-2 border-red-200 rounded-lg p-4 bg-red-50">
+                        <p className="text-sm text-red-700 mb-2">
+                            ⚠️ Unable to load colleges from server. Please check your connection.
+                        </p>
+                        <button
+                            type="button"
+                            onClick={fetchColleges}
+                            className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
+                        >
+                            🔄 Retry Loading Colleges
+                        </button>
+                    </div>
+                ) : (
+                    <>
+                        <select 
+                            className="input-field" 
+                            value={form.collegeName}
+                            onChange={e => setForm({ ...form, collegeName: e.target.value })} 
+                            required
+                            disabled={loadingColleges || colleges.length === 0}
+                            aria-label="Select your college or university">
+                            <option value="">
+                                {loadingColleges ? 'Loading colleges...' : colleges.length === 0 ? 'No colleges available' : 'Select your College/University'}
+                            </option>
+                            {colleges.map(college => (
+                                <option key={college.id} value={college.name}>{college.name}</option>
+                            ))}
+                        </select>
+                        <p className="text-xs text-gray-500 mt-1">
+                            {loadingColleges 
+                                ? '🔄 Loading available colleges from database...' 
+                                : colleges.length > 0 
+                                    ? `✅ ${colleges.length} ${colleges.length === 1 ? 'college' : 'colleges'} available. Select yours from the list.`
+                                    : '⚠️ No colleges found. Please contact administration or try refreshing.'
+                            }
+                        </p>
+                    </>
+                )}
             </div>
             <div>
                 <label className="block text-sm font-semibold mb-1.5" style={{ color: '#374151' }}>Country *</label>
@@ -251,12 +292,6 @@ export default function SignupPage() {
                     </select>
                 </div>
             )}
-            <div>
-                <label className="block text-sm font-semibold mb-1.5" style={{ color: '#374151' }}>Name of the College *</label>
-                <input type="text" className="input-field" placeholder="e.g. St. Stephen's College"
-                    value={form.collegeName}
-                    onChange={e => setForm({ ...form, collegeName: e.target.value })} required />
-            </div>
         </div>
     )
 
@@ -426,3 +461,4 @@ export default function SignupPage() {
         </div>
     )
 }
+

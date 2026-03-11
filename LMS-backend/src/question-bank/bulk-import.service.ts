@@ -23,7 +23,7 @@ export class BulkImportService {
   async importQuestionsFromFile(
     file: any,
     uploadedBy: string,
-    organizationId: number,
+    collegeId: number,
   ): Promise<BulkImportResponseDto> {
     this.parser.validateFile(file);
 
@@ -34,7 +34,7 @@ export class BulkImportService {
 
     for (let i = 0; i < rows.length; i += batchSize) {
       const batch = rows.slice(i, i + batchSize);
-      const { successful, errors } = await this.processBatch(batch, organizationId);
+      const { successful, errors } = await this.processBatch(batch, collegeId);
       successCount += successful;
       errorDetails.push(...errors);
     }
@@ -51,7 +51,7 @@ export class BulkImportService {
 
   private async processBatch(
     batch: ParsedQuestionRow[],
-    organizationId: number,
+    collegeId: number,
   ): Promise<{ successful: number; errors: ErrorDetail[] }> {
     const errors: ErrorDetail[] = [];
     const validQuestions: Question[] = [];
@@ -69,8 +69,8 @@ export class BulkImportService {
 
       const question = this.questionRepository.create({
         ...result.question,
-        questionNumber: await this.generateQuestionNumber(result.question.type, organizationId),
-        organizationId,
+        questionNumber: await this.generateQuestionNumber(result.question.type, collegeId),
+        collegeId,
         isActive: true,
       });
 
@@ -102,9 +102,9 @@ export class BulkImportService {
     }
   }
 
-  private async generateQuestionNumber(type: string, organizationId: number): Promise<string> {
+  private async generateQuestionNumber(type: string, collegeId: number): Promise<string> {
     const lastQuestion = await this.questionRepository.findOne({
-      where: { type: type as any, organizationId },
+      where: { type: type as any, collegeId },
       order: { questionNumber: 'DESC' },
     });
 
@@ -131,3 +131,4 @@ export class BulkImportService {
     return sanitized;
   }
 }
+

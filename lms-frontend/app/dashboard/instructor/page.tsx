@@ -45,6 +45,11 @@ export default function InstructorDashboard() {
                     <div className="relative z-10">
                         <p className="text-white/60 text-sm mb-1">Instructor Portal 🎓</p>
                         <h1 className="text-3xl font-bold text-white mb-2">Welcome, {user?.name}</h1>
+                        {user?.collegeName && (
+                            <div className="flex items-center gap-2 mb-2">
+                                <span className="text-white/90 font-semibold">🎓 {user.collegeName}</span>
+                            </div>
+                        )}
                         <p className="text-white/70 mb-4">Manage your courses and track student progress</p>
                     </div>
                 </div>

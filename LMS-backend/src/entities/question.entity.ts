@@ -6,7 +6,7 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
-import { Organization } from './organization.entity';
+import { College } from './college.entity';
 
 export enum QuestionType {
   MCQ = 'MCQ',
@@ -102,13 +102,13 @@ export class Question {
   @Column({ default: true })
   isActive: boolean;
 
-  // Organization - Multi-tenant support
-  @Column({ name: 'organization_id' })
-  organizationId: number;
+  // College/University - Multi-tenant support
+  @Column({ name: 'college_id' })
+  collegeId: number;
 
-  @ManyToOne(() => Organization, (organization) => organization.questions)
-  @JoinColumn({ name: 'organization_id' })
-  organization: Organization;
+  @ManyToOne(() => College, (college) => college.questions)
+  @JoinColumn({ name: 'college_id' })
+  college: College;
 
   @CreateDateColumn()
   createdAt: Date;

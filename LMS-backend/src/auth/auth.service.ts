@@ -2,22 +2,23 @@ import {
   Injectable,
   UnauthorizedException,
   ConflictException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { User, UserRole } from '../entities/user.entity';
-import { SignupDto, LoginDto, CreateUserDto } from './auth.dto';
-import { Organization } from '../entities/organization.entity';
+import { SignupDto, LoginDto, CreateUserDto, SuperAdminCreateUserDto } from './auth.dto';
+import { College } from '../entities/college.entity';
 
 @Injectable()
 export class AuthService {
   constructor(
     @InjectRepository(User)
     private userRepository: Repository<User>,
-    @InjectRepository(Organization)
-    private organizationRepository: Repository<Organization>,
+    @InjectRepository(College)
+    private collegeRepository: Repository<College>,
     private jwtService: JwtService,
   ) {}
 
@@ -32,13 +33,28 @@ export class AuthService {
       throw new ConflictException('State is required for Indian learners');
     }
 
+    // Find or create college by name
+    let college = await this.collegeRepository.findOne({
+      where: { name: dto.collegeName },
+    });
+    
+    if (!college) {
+      // Auto-create college if it doesn't exist
+      college = this.collegeRepository.create({
+        name: dto.collegeName,
+        active: true,
+      });
+      await this.collegeRepository.save(college);
+    }
+
     const passwordHash = await bcrypt.hash(dto.password, 10);
     const user = this.userRepository.create({
       name: dto.name,
       email: dto.email,
       passwordHash,
       role: UserRole.STUDENT,
-      organizationId: dto.organizationId,
+      collegeId: college.id,
+      collegeName: college.name,
       mobileNumber: dto.mobileNumber,
       country: dto.country,
       state: dto.state,
@@ -47,7 +63,6 @@ export class AuthService {
       pursuingYear: dto.pursuingYear,
       semester: dto.semester,
       registrationNumber: dto.registrationNumber,
-      collegeName: dto.collegeName,
     });
     await this.userRepository.save(user);
 
@@ -68,7 +83,7 @@ export class AuthService {
       email: user.email,
       role: user.role,
       name: user.name,
-      organizationId: user.organizationId,
+      collegeId: user.collegeId,
       collegeName: user.collegeName, // Include collegeName in JWT for inheritance
     };
     const token = this.jwtService.sign(payload);
@@ -80,7 +95,7 @@ export class AuthService {
         name: user.name,
         email: user.email,
         role: user.role,
-        organizationId: user.organizationId,
+        collegeId: user.collegeId,
         collegeName: user.collegeName, // Include collegeName in response
       },
     };
@@ -93,37 +108,47 @@ export class AuthService {
     return result;
   }
 
-  async createUser(dto: CreateUserDto, createdBy: number, creatorOrgId?: number, creatorRole?: string, creatorCollegeName?: string) {
+  async createUser(dto: CreateUserDto, createdBy: number, creatorCollegeId?: number, creatorRole?: string, creatorCollegeName?: string) {
     // Check if email already exists
     const existing = await this.userRepository.findOne({
       where: { email: dto.email },
     });
     if (existing) throw new ConflictException('Email already registered');
 
-    // Validate role
-    if (dto.role !== 'ADMIN' && dto.role !== 'INSTRUCTOR' && dto.role !== 'STUDENT') {
-      throw new ConflictException('Invalid role. Must be ADMIN, INSTRUCTOR, or STUDENT');
+    // Validate role based on creator's role
+    const validRoles = this.getAllowedRolesToCreate(creatorRole);
+    if (!validRoles.includes(dto.role)) {
+      throw new BadRequestException(`${creatorRole} can only create: ${validRoles.join(', ')}`);
     }
 
-    // Determine organization ID based on creator role
-    let organizationId: number | undefined;
+    // Determine college ID based on creator role
+    let collegeId: number | undefined;
+    let collegeName: string | undefined;
     
-    if (creatorRole === 'ADMIN' || creatorRole === 'INSTRUCTOR') {
-      // ADMIN and INSTRUCTOR: automatically inherit organization from creator
-      if (!creatorOrgId) {
-        throw new ConflictException('Creator must belong to an organization');
+    if (creatorRole === UserRole.ADMIN || creatorRole === UserRole.INSTRUCTOR) {
+      // ADMIN and INSTRUCTOR: automatically inherit college from creator
+      if (!creatorCollegeId) {
+        throw new BadRequestException(
+          `${creatorRole} account is not associated with any college. Please contact SUPERADMIN to assign you to a college first.`
+        );
       }
-      organizationId = creatorOrgId;
+      collegeId = creatorCollegeId;
+      collegeName = creatorCollegeName;
+      
+      // Validate college exists
+      const college = await this.collegeRepository.findOne({
+        where: { id: collegeId },
+      });
+      if (!college) {
+        throw new ConflictException(
+          `Your assigned college (ID: ${collegeId}) no longer exists in the system. Please contact SUPERADMIN.`
+        );
+      }
+    } else if (creatorRole === UserRole.SUPERADMIN) {
+      // SUPERADMIN should use SuperAdminCreateUserDto endpoint
+      throw new BadRequestException('SUPERADMIN should use dedicated endpoint with college assignment');
     } else {
-      throw new ConflictException('Invalid creator role');
-    }
-
-    // Validate organization exists
-    const organization = await this.organizationRepository.findOne({
-      where: { id: organizationId },
-    });
-    if (!organization) {
-      throw new ConflictException('Organization not found');
+      throw new BadRequestException('Invalid creator role');
     }
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
@@ -132,8 +157,8 @@ export class AuthService {
       email: dto.email,
       passwordHash,
       role: dto.role as UserRole,
-      organizationId: organizationId,
-      collegeName: creatorCollegeName, // Automatically inherit college name from creator
+      collegeId: collegeId,
+      collegeName: collegeName, // Automatically inherit college name from creator
       // Student fields (optional)
       mobileNumber: dto.mobileNumber,
       country: dto.country,
@@ -153,25 +178,47 @@ export class AuthService {
     };
   }
 
-  // Dedicated method for SUPERADMIN to create users with explicit organization selection
-  async createUserWithOrganization(dto: any, createdBy: number) {
+  // Helper method to determine allowed roles based on creator's role
+  private getAllowedRolesToCreate(creatorRole: string): string[] {
+    switch (creatorRole) {
+      case UserRole.SUPERADMIN:
+        return ['ADMIN', 'INSTRUCTOR', 'STUDENT'];
+      case UserRole.ADMIN:
+        return ['INSTRUCTOR', 'STUDENT'];
+      case UserRole.INSTRUCTOR:
+        return ['STUDENT'];
+      default:
+        return [];
+    }
+  }
+
+  // Dedicated method for SUPERADMIN to create users with college name (auto-creates college if needed)
+  async createUserWithCollege(dto: SuperAdminCreateUserDto, createdBy: number) {
     // Check if email already exists
     const existing = await this.userRepository.findOne({
       where: { email: dto.email },
     });
     if (existing) throw new ConflictException('Email already registered');
 
-    // Validate role
-    if (dto.role !== 'ADMIN' && dto.role !== 'INSTRUCTOR' && dto.role !== 'STUDENT') {
-      throw new ConflictException('Invalid role. Must be ADMIN, INSTRUCTOR, or STUDENT');
+    // Validate role - SUPERADMIN can create ADMIN, INSTRUCTOR, or STUDENT
+    const allowedRoles = ['ADMIN', 'INSTRUCTOR', 'STUDENT'];
+    if (!allowedRoles.includes(dto.role)) {
+      throw new BadRequestException('Invalid role. Must be ADMIN, INSTRUCTOR, or STUDENT');
     }
 
-    // Validate organization exists
-    const organization = await this.organizationRepository.findOne({
-      where: { id: dto.organizationId },
+    // Find or create college by name
+    let college = await this.collegeRepository.findOne({
+      where: { name: dto.collegeName },
     });
-    if (!organization) {
-      throw new ConflictException('Organization not found');
+    
+    if (!college) {
+      // Auto-create college if it doesn't exist
+      college = this.collegeRepository.create({
+        name: dto.collegeName,
+        createdBy: createdBy,
+        active: true,
+      });
+      await this.collegeRepository.save(college);
     }
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
@@ -180,8 +227,8 @@ export class AuthService {
       email: dto.email,
       passwordHash,
       role: dto.role as UserRole,
-      organizationId: dto.organizationId,
-      collegeName: dto.collegeName,
+      collegeId: college.id,
+      collegeName: college.name,
       // Student fields (optional)
       mobileNumber: dto.mobileNumber,
       country: dto.country,
@@ -196,7 +243,7 @@ export class AuthService {
 
     const { passwordHash: _, ...result } = user;
     return {
-      message: `${dto.role} account created successfully`,
+      message: `${dto.role} account created successfully in ${college.name}`,
       user: result,
     };
   }

@@ -8,7 +8,7 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { User } from './user.entity';
-import { Organization } from './organization.entity';
+import { College } from './college.entity';
 
 export enum CourseStatus {
   DRAFT = 'DRAFT',
@@ -65,13 +65,13 @@ export class Course {
   @JoinColumn({ name: 'instructor_id' })
   instructor: User;
 
-  // Organization - Multi-tenant support
-  @Column({ name: 'organization_id' })
-  organizationId: number;
+  // College/University - Multi-tenant support
+  @Column({ name: 'college_id' })
+  collegeId: number;
 
-  @ManyToOne(() => Organization, (organization) => organization.courses)
-  @JoinColumn({ name: 'organization_id' })
-  organization: Organization;
+  @ManyToOne(() => College, (college) => college.courses)
+  @JoinColumn({ name: 'college_id' })
+  college: College;
 
   @Column({ default: true })
   published: boolean;

@@ -33,7 +33,7 @@ export class AuditLog {
 
     // What entity was affected
     @Column({ name: 'target_type', length: 50, nullable: true })
-    targetType?: string; // e.g. "User", "Course", "Organization"
+    targetType?: string; // e.g. "User", "Course", "College"
 
     @Column({ name: 'target_id', nullable: true })
     targetId?: number;

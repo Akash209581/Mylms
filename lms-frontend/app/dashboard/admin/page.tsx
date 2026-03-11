@@ -45,6 +45,11 @@ export default function AdminDashboard() {
                     <div className="relative z-10">
                         <p className="text-white/60 text-sm mb-1">Admin Control Panel 🛡️</p>
                         <h1 className="text-3xl font-bold text-white mb-2">Hello, {user?.name}</h1>
+                        {user?.collegeName && (
+                            <div className="flex items-center gap-2 mb-2">
+                                <span className="text-white/90 font-semibold">🎓 {user.collegeName}</span>
+                            </div>
+                        )}
                         <p className="text-white/70">Manage users, courses, and platform activity</p>
                     </div>
                 </div>
@@ -95,10 +100,10 @@ export default function AdminDashboard() {
                             style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }}>
                             ℹ️
                         </div>
-                        <h3 className="text-lg font-semibold text-white">Organization Overview</h3>
+                        <h3 className="text-lg font-semibold text-white">College Overview</h3>
                     </div>
                     <p className="text-gray-400 leading-relaxed">
-                        You are managing users and content within your organization. Use the navigation above to access user management, courses, and approval workflows.
+                        You are managing users and content within your college. Use the navigation above to access user management, courses, and approval workflows.
                     </p>
                 </div>
             </main>

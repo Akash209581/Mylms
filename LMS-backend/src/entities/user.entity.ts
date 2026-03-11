@@ -7,7 +7,7 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
-import { Organization } from './organization.entity';
+import { College } from './college.entity';
 
 export enum UserRole {
   SUPERADMIN = 'SUPERADMIN',
@@ -33,15 +33,15 @@ export class User {
   @Column({ type: 'enum', enum: UserRole, default: UserRole.STUDENT })
   role: UserRole;
 
-  // Organization - Multi-tenant support (nullable for SUPERADMIN)
-  @Column({ name: 'organization_id', nullable: true })
-  organizationId?: number;
+  // College/University - Multi-tenant support (nullable for SUPERADMIN)
+  @Column({ name: 'college_id', nullable: true })
+  collegeId?: number;
 
-  @ManyToOne(() => Organization, (organization) => organization.users, {
+  @ManyToOne(() => College, (college) => college.users, {
     nullable: true,
   })
-  @JoinColumn({ name: 'organization_id' })
-  organization?: Organization;
+  @JoinColumn({ name: 'college_id' })
+  college?: College;
 
   // Student Profile Fields
   @Column({ name: 'mobile_number', length: 15, nullable: true })
@@ -70,6 +70,12 @@ export class User {
 
   @Column({ name: 'college_name', length: 200, nullable: true })
   collegeName?: string;
+
+  @Column({ name: 'is_active', default: true })
+  isActive: boolean;
+
+  @Column({ name: 'last_login_at', nullable: true })
+  lastLoginAt?: Date;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

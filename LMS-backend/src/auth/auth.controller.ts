@@ -14,10 +14,27 @@ import { JwtAuthGuard } from '../common/jwt.guard';
 import { RolesGuard } from '../common/roles.guard';
 import { Roles } from '../common/roles.decorator';
 import { UserRole } from '../entities/user.entity';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { College } from '../entities/college.entity';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(
+    private authService: AuthService,
+    @InjectRepository(College) private collegeRepo: Repository<College>,
+  ) {}
+
+  // Public endpoint to get all colleges for signup dropdown
+  @Get('colleges')
+  async getColleges() {
+    const colleges = await this.collegeRepo.find({
+      where: { active: true },
+      select: ['id', 'name'],
+      order: { name: 'ASC' },
+    });
+    return colleges;
+  }
 
   @Post('signup')
   async signup(@Body() dto: SignupDto) {
@@ -71,16 +88,16 @@ export class AuthController {
       }
     }
 
-    // Pass the creator's info to the service for automatic organization and college inheritance
-    return this.authService.createUser(dto, req.user.sub, req.user.organizationId, req.user.role, req.user.collegeName);
+    // Pass the creator's info to the service for automatic college inheritance
+    return this.authService.createUser(dto, req.user.sub, req.user.collegeId, req.user.role, req.user.collegeName);
   }
 
-  // Dedicated endpoint for SUPERADMIN to create users with organization selection
+  // Dedicated endpoint for SUPERADMIN to create users with college selection
   @Post('superadmin/create-user')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.SUPERADMIN)
   async superAdminCreateUser(@Body() dto: SuperAdminCreateUserDto, @Request() req) {
-    // SUPERADMIN can create any role with explicit organization selection
-    return this.authService.createUserWithOrganization(dto, req.user.sub);
+    // SUPERADMIN can create any role with explicit college selection
+    return this.authService.createUserWithCollege(dto, req.user.sub);
   }
 }

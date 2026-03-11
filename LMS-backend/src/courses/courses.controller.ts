@@ -21,7 +21,7 @@ import { Repository, In } from 'typeorm';
 import { Course, CourseStatus } from '../entities/course.entity';
 import { User, UserRole } from '../entities/user.entity';
 import { NotificationService } from '../common/notification.service';
-import { OrganizationFilterService } from '../common/organization-filter.service';
+import { CollegeFilterService } from '../common/college-filter.service';
 import { CreateCourseDto, UpdateCourseDto } from './courses.dto';
 import { CourseModule } from '../entities/module.entity';
 import { Lesson } from '../entities/lesson.entity';
@@ -41,7 +41,7 @@ export class CoursesController {
     @InjectRepository(Resource)
     private resourceRepo: Repository<Resource>,
     private notificationService: NotificationService,
-    private organizationFilterService: OrganizationFilterService,
+    private collegeFilterService: CollegeFilterService,
   ) {}
 
   @UseGuards(JwtAuthGuard)
@@ -49,15 +49,15 @@ export class CoursesController {
   async findAll(@Request() req: any) {
     const userRole = req.user?.role;
     const userId = req.user?.sub;
-    const userOrganizationId = req.user?.organizationId;
+    const userCollegeId = req.user?.collegeId;
 
-    // Get organization filter based on user role
-    const orgFilter = this.organizationFilterService.getOrganizationFilter(
+    // Get college filter based on user role
+    const orgFilter = this.collegeFilterService.getCollegeFilter(
       userRole,
-      userOrganizationId,
+      userCollegeId,
     );
 
-    // ADMIN can see all courses (including pending for approval) within their organization
+    // ADMIN can see all courses (including pending for approval) within their college
     if (userRole === UserRole.ADMIN) {
       return this.courseRepo.find({ 
         where: orgFilter,
@@ -65,7 +65,7 @@ export class CoursesController {
       });
     }
 
-    // SUPERADMIN can see ALL courses (including pending and approved) across all organizations
+    // SUPERADMIN can see ALL courses (including pending and approved) across all colleges
     if (userRole === UserRole.SUPERADMIN) {
       return this.courseRepo.find({
         relations: ['instructor', 'approver'],
@@ -73,7 +73,7 @@ export class CoursesController {
       });
     }
 
-    // INSTRUCTOR can see their own courses (all statuses) + approved courses from their organization
+    // INSTRUCTOR can see their own courses (all statuses) + approved courses from their college
     if (userRole === UserRole.INSTRUCTOR) {
       return this.courseRepo.find({
         where: [
@@ -84,7 +84,7 @@ export class CoursesController {
       });
     }
 
-    // STUDENT (or unauthenticated) can only see approved and published courses within their organization
+    // STUDENT (or unauthenticated) can only see approved and published courses within their college
     return this.courseRepo.find({
       where: { status: CourseStatus.APPROVED, published: true, ...orgFilter },
       relations: ['instructor'],
@@ -98,7 +98,7 @@ export class CoursesController {
     @Query('category') category?: string,
     @Query('level') level?: string,
     @Query('search') search?: string,
-    @Query('organizationId') organizationId?: string,
+    @Query('collegeId') collegeId?: string,
   ) {
     console.log('📚 Public browse request:', {
       page,
@@ -106,7 +106,7 @@ export class CoursesController {
       category,
       level,
       search,
-      organizationId,
+      collegeId,
     });
 
     const pageNum = parseInt(page) || 1;
@@ -127,9 +127,9 @@ export class CoursesController {
       where.level = level;
     }
 
-    // Filter by organization if provided
-    if (organizationId) {
-      where.organizationId = parseInt(organizationId);
+    // Filter by college if provided
+    if (collegeId) {
+      where.collegeId = parseInt(collegeId);
     }
 
     // Get courses with pagination
@@ -147,9 +147,9 @@ export class CoursesController {
       queryBuilder.andWhere('course.level = :level', { level });
     }
 
-    if (organizationId) {
-      queryBuilder.andWhere('course.organizationId = :organizationId', { 
-        organizationId: parseInt(organizationId) 
+    if (collegeId) {
+      queryBuilder.andWhere('course.collegeId = :collegeId', { 
+        collegeId: parseInt(collegeId) 
       });
     }
 
@@ -217,38 +217,38 @@ export class CoursesController {
 
     const userRole = req.user?.role;
     const userId = req.user?.sub;
-    const userOrganizationId = req.user?.organizationId;
+    const userCollegeId = req.user?.collegeId;
 
     console.log('🔍 Access check:', {
       userRole,
       userId,
-      userOrganizationId,
-      courseOrganizationId: course.organizationId,
+      userCollegeId,
+      coursecollegeId: course.collegeId,
       courseInstructorId: course.instructorId,
       courseStatus: course.status
     });
 
-    // SUPERADMIN can see any course from any organization
+    // SUPERADMIN can see any course from any college
     if (userRole === UserRole.SUPERADMIN) {
       return await this.getCourseWithStructure(course);
     }
 
-    // Check if user can access this course's organization (ADMIN/INSTRUCTOR/STUDENT must be in same org)
-    if (userRole && !this.organizationFilterService.canAccessOrganization(
+    // Check if user can access this course's college (ADMIN/INSTRUCTOR/STUDENT must be in same college)
+    if (userRole && !this.collegeFilterService.canAccessCollege(
       userRole, 
-      userOrganizationId, 
-      course.organizationId
+      userCollegeId, 
+      course.collegeId
     )) {
-      console.log(`❌ User cannot access course from different organization`);
+      console.log(`❌ User cannot access course from different college`);
       throw new HttpException('You do not have access to this course', HttpStatus.FORBIDDEN);
     }
 
-    // ADMIN can see any course within their organization
+    // ADMIN can see any course within their college
     if (userRole === UserRole.ADMIN) {
       return await this.getCourseWithStructure(course);
     }
 
-    // INSTRUCTOR can see their own courses or approved courses within their organization
+    // INSTRUCTOR can see their own courses or approved courses within their college
     if (userRole === UserRole.INSTRUCTOR) {
       if (
         course.instructorId === userId ||
@@ -260,7 +260,7 @@ export class CoursesController {
       throw new HttpException('You do not have access to this course', HttpStatus.FORBIDDEN);
     }
 
-    // STUDENT can only see approved and published courses within their organization
+    // STUDENT can only see approved and published courses within their college
     if (course.status === CourseStatus.APPROVED && course.published) {
       console.log(`✅ Student accessing approved course ${id}`);
       return await this.getCourseWithStructure(course);
@@ -325,15 +325,15 @@ export class CoursesController {
       // Get user details
       const user = await this.userRepo.findOne({
         where: { id: req.user.sub },
-        select: ['id', 'name', 'email', 'role', 'organizationId'],
+        select: ['id', 'name', 'email', 'role', 'collegeId'],
       });
 
-      console.log('User found:', user?.name, 'Role:', user?.role, 'Organization:', user?.organizationId);
+      console.log('User found:', user?.name, 'Role:', user?.role, 'College:', user?.collegeId);
 
-      // Validate organization access for ADMIN/INSTRUCTOR
-      if (user.role !== UserRole.SUPERADMIN && !user.organizationId) {
+      // Validate college access for ADMIN/INSTRUCTOR
+      if (user.role !== UserRole.SUPERADMIN && !user.collegeId) {
         throw new HttpException(
-          'Your account is not associated with an organization. Please contact the administrator to assign you to an organization before creating courses.',
+          'Your account is not associated with a college. Please contact the administrator to assign you to a college before creating courses.',
           HttpStatus.BAD_REQUEST
         );
       }
@@ -344,15 +344,15 @@ export class CoursesController {
         ? CourseStatus.APPROVED 
         : CourseStatus.PENDING_APPROVAL;
 
-      // Set organizationId: SUPERADMIN can specify, others use their own org
-      const organizationId = isSuperAdmin && dto.organizationId 
-        ? dto.organizationId 
-        : user.organizationId;
+      // Set collegeId: SUPERADMIN can specify, others use their own org
+      const collegeId = isSuperAdmin && dto.collegeId 
+        ? dto.collegeId 
+        : user.collegeId;
 
       const course = this.courseRepo.create({
         ...dto,
         instructorId: req.user.sub,
-        organizationId,
+        collegeId,
         status: courseStatus,
         published: isSuperAdmin ? dto.published ?? false : false, // SUPERADMIN can choose published status
         ...(isSuperAdmin && { approverId: req.user.sub, approvedAt: new Date() }), // Auto-approve for SUPERADMIN
@@ -362,7 +362,7 @@ export class CoursesController {
         title: course.title,
         status: course.status,
         instructorId: course.instructorId,
-        organizationId: course.organizationId,
+        collegeId: course.collegeId,
         published: course.published,
       });
 
@@ -440,17 +440,17 @@ export class CoursesController {
 
     const userRole = req.user.role;
     const userId = req.user.sub;
-    const userOrganizationId = req.user.organizationId;
+    const userCollegeId = req.user.collegeId;
 
     // SUPERADMIN can update any course
     if (userRole !== UserRole.SUPERADMIN) {
-      // Check organization access for non-SUPERADMIN users
-      if (!this.organizationFilterService.canAccessOrganization(
+      // Check college access for non-SUPERADMIN users
+      if (!this.collegeFilterService.canAccessCollege(
         userRole,
-        userOrganizationId,
-        course.organizationId
+        userCollegeId,
+        course.collegeId
       )) {
-        return { message: 'Cannot update course from different organization' };
+        return { message: 'Cannot update course from different college' };
       }
 
       // INSTRUCTOR can only update their own courses
@@ -474,17 +474,17 @@ export class CoursesController {
     }
 
     const userRole = req.user.role;
-    const userOrganizationId = req.user.organizationId;
+    const userCollegeId = req.user.collegeId;
 
     // SUPERADMIN can delete any course
     if (userRole !== UserRole.SUPERADMIN) {
-      // ADMIN can only delete courses within their organization
-      if (!this.organizationFilterService.canAccessOrganization(
+      // ADMIN can only delete courses within their college
+      if (!this.collegeFilterService.canAccessCollege(
         userRole,
-        userOrganizationId,
-        course.organizationId
+        userCollegeId,
+        course.collegeId
       )) {
-        return { message: 'Cannot delete course from different organization' };
+        return { message: 'Cannot delete course from different college' };
       }
     }
 
@@ -492,3 +492,4 @@ export class CoursesController {
     return { message: 'Course deleted' };
   }
 }
+

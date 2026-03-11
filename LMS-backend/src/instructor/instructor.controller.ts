@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, UseGuards, Request, Param } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/jwt.guard';
 import { RolesGuard } from '../common/roles.guard';
 import { Roles } from '../common/roles.decorator';
@@ -6,7 +6,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Course, CourseStatus } from '../entities/course.entity';
 import { Enrollment } from '../entities/enrollment.entity';
-import { UserRole } from '../entities/user.entity';
+import { User, UserRole } from '../entities/user.entity';
 
 @Controller('instructor')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -17,6 +17,8 @@ export class InstructorController {
     private courseRepo: Repository<Course>,
     @InjectRepository(Enrollment)
     private enrollRepo: Repository<Enrollment>,
+    @InjectRepository(User)
+    private userRepo: Repository<User>,
   ) { }
 
   @Get('dashboard')
@@ -108,5 +110,36 @@ export class InstructorController {
       relations: ['approver'],
       order: { updatedAt: 'DESC' },
     });
+  }
+
+  @Get('students')
+  async getStudents(@Request() req: any) {
+    const collegeId = req.user?.collegeId;
+
+    // INSTRUCTOR can only see STUDENTS from their college
+    return this.userRepo.find({
+      where: {
+        collegeId,
+        role: UserRole.STUDENT,
+      },
+      select: ['id', 'name', 'email', 'role', 'collegeId', 'collegeName', 'isActive', 'lastLoginAt', 'createdAt'],
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  @Get('students/:id')
+  async getStudentById(@Param('id') id: number, @Request() req: any) {
+    const collegeId = req.user?.collegeId;
+
+    const user = await this.userRepo.findOne({
+      where: {
+        id,
+        collegeId,
+        role: UserRole.STUDENT,
+      },
+      select: ['id', 'name', 'email', 'role', 'collegeId', 'collegeName', 'isActive', 'lastLoginAt', 'createdAt', 'updatedAt'],
+    });
+
+    return user;
   }
 }

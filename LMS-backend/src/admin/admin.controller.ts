@@ -34,19 +34,19 @@ export class AdminController {
   @Get('dashboard')
   async getDashboard(@Request() req: any) {
     const userRole = req.user?.role;
-    const organizationId = req.user?.organizationId;
+    const collegeId = req.user?.collegeId;
 
-    // ADMIN sees only their organization's data
+    // ADMIN sees only their college's data
     if (userRole === UserRole.ADMIN) {
       const totalUsers = await this.userRepo.count({
-        where: { organizationId },
+        where: { collegeId },
       });
       const totalCourses = await this.courseRepo.count({
-        where: { organizationId },
+        where: { collegeId },
       });
       const totalEnrollments = await this.enrollRepo.count();
       const pendingApprovals = await this.courseRepo.count({
-        where: { status: CourseStatus.PENDING_APPROVAL, organizationId },
+        where: { status: CourseStatus.PENDING_APPROVAL, collegeId },
       });
 
       return {
@@ -82,16 +82,16 @@ export class AdminController {
   @Get('users')
   async getUsers(@Request() req: any) {
     const userRole = req.user?.role;
-    const organizationId = req.user?.organizationId;
+    const collegeId = req.user?.collegeId;
 
-    // ADMIN can only see INSTRUCTORS and STUDENTS from their organization
+    // ADMIN can only see INSTRUCTORS and STUDENTS from their college
     if (userRole === UserRole.ADMIN) {
       return this.userRepo.find({
         where: {
-          organizationId,
+          collegeId,
           role: In([UserRole.INSTRUCTOR, UserRole.STUDENT]),
         },
-        select: ['id', 'name', 'email', 'role', 'createdAt', 'organizationId'],
+        select: ['id', 'name', 'email', 'role', 'createdAt', 'collegeId'],
         order: { createdAt: 'DESC' },
       });
     }
@@ -100,6 +100,34 @@ export class AdminController {
     return this.userRepo.find({
       select: ['id', 'name', 'email', 'role', 'createdAt'],
     });
+  }
+
+  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
+  @Get('users/:id')
+  async getUserById(@Param('id') id: number, @Request() req: any) {
+    const userRole = req.user?.role;
+    const collegeId = req.user?.collegeId;
+
+    const user = await this.userRepo.findOne({
+      where: { id },
+      select: ['id', 'name', 'email', 'role', 'collegeId', 'collegeName', 'isActive', 'lastLoginAt', 'createdAt', 'updatedAt'],
+    });
+
+    if (!user) {
+      return null;
+    }
+
+    // ADMIN can only see users from their college (INSTRUCTOR or STUDENT)
+    if (userRole === UserRole.ADMIN) {
+      if (user.collegeId !== collegeId) {
+        return null; // Not authorized to view this user
+      }
+      if (user.role !== UserRole.INSTRUCTOR && user.role !== UserRole.STUDENT) {
+        return null; // ADMIN cannot view other ADMINs or SUPERADMINs
+      }
+    }
+
+    return user;
   }
 
   @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)

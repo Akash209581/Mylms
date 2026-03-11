@@ -53,7 +53,7 @@ export default function CreateUserPage() {
                 email: form.email,
                 password: form.password,
                 role: form.role
-                // organizationId is NOT sent - it will be automatically inherited from the admin's organization
+                // collegeId is NOT sent - it will be automatically inherited from the admin's college
                 // collegeName is NOT sent - it will be automatically inherited from the admin's college
             }
 
@@ -109,7 +109,7 @@ export default function CreateUserPage() {
                     <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
                         <h1 className="text-2xl font-bold text-gray-800">Create New User</h1>
                         <p className="text-gray-600 text-sm mt-1">
-                            Create INSTRUCTOR or STUDENT accounts within your organization
+                            Create INSTRUCTOR or STUDENT accounts. They will automatically be assigned to your college: <strong>{user?.collegeName}</strong>
                         </p>
                     </div>
 
@@ -182,18 +182,18 @@ export default function CreateUserPage() {
                                 </div>
                             </div>
 
-                            {/* Organization Information */}
+                            {/* College Information */}
                             <div className="border-b pb-6">
-                                <h2 className="text-lg font-bold text-gray-800 mb-4">Organization Information</h2>
+                                <h2 className="text-lg font-bold text-gray-800 mb-4">College Assignment</h2>
                                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
                                     <p className="text-sm text-blue-800">
-                                        <strong>Note:</strong> Users created by you will automatically be assigned to your organization and college. 
-                                        You cannot change the organization or college name when creating users.
+                                        <strong>🔒 Fixed Assignment:</strong> Users you create will automatically be assigned to your college. 
+                                        This assignment is permanent and cannot be changed.
                                     </p>
                                 </div>
                                 {user?.collegeName && (
                                     <div>
-                                        <label className="block text-sm font-semibold mb-1.5 text-gray-700">College Name (Read-Only)</label>
+                                        <label className="block text-sm font-semibold mb-1.5 text-gray-700">College Name (Fixed)</label>
                                         <input
                                             type="text"
                                             className="input-field bg-gray-100 cursor-not-allowed"
@@ -202,7 +202,7 @@ export default function CreateUserPage() {
                                             readOnly
                                         />
                                         <p className="text-xs text-gray-500 mt-1">
-                                            This college name will be automatically assigned to the new user. You cannot change it.
+                                            ✅ All users you create will be automatically assigned to this college
                                         </p>
                                     </div>
                                 )}

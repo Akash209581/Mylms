@@ -90,6 +90,11 @@ export default function StudentDashboard() {
                     <div className="relative z-10">
                         <p className="text-gray-500 text-sm font-medium mb-1">Welcome back 👋</p>
                         <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-3">{user?.name || 'Student'}</h1>
+                        {user?.collegeName && (
+                            <div className="flex items-center gap-2 mb-3">
+                                <span className="text-indigo-600 font-semibold">🎓 {user.collegeName}</span>
+                            </div>
+                        )}
                         <p className="text-gray-600 mb-6 max-w-lg">Continue your learning journey. Keep up the great work!</p>
                         <a href="/dashboard/student/courses">
                             <button className="btn-primary px-8 py-3.5 text-sm">

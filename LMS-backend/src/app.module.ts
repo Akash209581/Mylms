@@ -8,7 +8,7 @@ import { EnrollmentsModule } from './enrollments/enrollments.module';
 import { InstructorModule } from './instructor/instructor.module';
 import { AdminModule } from './admin/admin.module';
 import { SuperadminModule } from './superadmin/superadmin.module';
-import { OrganizationModule } from './organization/organization.module';
+import { CollegeModule } from './college/college.module';
 import { QuestionBankModule } from './question-bank/question-bank.module';
 import { ContestModule } from './contest/contest.module';
 import { DailyStreakModule } from './daily-streak/daily-streak.module';
@@ -25,7 +25,7 @@ import { Progress } from './entities/progress.entity';
 import { Question } from './entities/question.entity';
 import { Contest } from './entities/contest.entity';
 import { DailyStreak } from './entities/daily-streak.entity';
-import { Organization } from './entities/organization.entity';
+import { College } from './entities/college.entity';
 
 @Module({
   imports: [
@@ -47,9 +47,9 @@ import { Organization } from './entities/organization.entity';
         Question,
         Contest,
         DailyStreak,
-        Organization,
+        College,
       ],
-      // Using manual migrations for schema changes (see migrate-organization.ts)
+      // Using manual migrations for schema changes
       // Auto-sync disabled to prevent conflicts with existing data
       synchronize: false,
       logging: false,
@@ -61,7 +61,7 @@ import { Organization } from './entities/organization.entity';
     InstructorModule,
     AdminModule,
     SuperadminModule,
-    OrganizationModule,
+    CollegeModule,
     QuestionBankModule,
     ContestModule,
     DailyStreakModule,

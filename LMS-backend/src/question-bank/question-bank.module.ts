@@ -5,7 +5,7 @@ import { QuestionBankController } from './question-bank.controller';
 import { BulkImportService } from './bulk-import.service';
 import { QuestionValidatorService } from './question-validator.service';
 import { FileParserService } from './file-parser.service';
-import { OrganizationFilterService } from '../common/organization-filter.service';
+import { CollegeFilterService } from '../common/college-filter.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Question])],
@@ -14,7 +14,8 @@ import { OrganizationFilterService } from '../common/organization-filter.service
     BulkImportService,
     QuestionValidatorService,
     FileParserService,
-    OrganizationFilterService,
+    CollegeFilterService,
   ],
 })
 export class QuestionBankModule {}
+

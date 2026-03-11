@@ -64,8 +64,8 @@ export class CreateCourseDto {
   @IsOptional()
   @IsNumber()
   @Type(() => Number)
-  @Min(1, { message: 'Organization ID must be a positive number' })
-  organizationId?: number; // SUPERADMIN can specify organization when creating course
+  @Min(1, { message: 'College ID must be a positive number' })
+  collegeId?: number; // SUPERADMIN can specify college when creating course
 }
 
 export class UpdateCourseDto {

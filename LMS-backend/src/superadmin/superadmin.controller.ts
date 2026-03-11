@@ -16,6 +16,7 @@ import { Repository } from 'typeorm';
 import { User, UserRole } from '../entities/user.entity';
 import { Course, CourseStatus } from '../entities/course.entity';
 import { Enrollment } from '../entities/enrollment.entity';
+import { College } from '../entities/college.entity';
 import { IsEnum, IsOptional } from 'class-validator';
 
 class UpdateRoleDto {
@@ -30,6 +31,7 @@ export class SuperadminController {
     @InjectRepository(User) private userRepo: Repository<User>,
     @InjectRepository(Course) private courseRepo: Repository<Course>,
     @InjectRepository(Enrollment) private enrollRepo: Repository<Enrollment>,
+    @InjectRepository(College) private collegeRepo: Repository<College>,
   ) { }
 
   @Get('dashboard')
@@ -47,6 +49,12 @@ export class SuperadminController {
       where: { role: UserRole.ADMIN },
     });
 
+    // College count
+    const totalColleges = await this.collegeRepo.count();
+    const activeColleges = await this.collegeRepo.count({
+      where: { active: true },
+    });
+
     // Course status counts
     const pendingCourses = await this.courseRepo.count({
       where: { status: CourseStatus.PENDING_APPROVAL },
@@ -61,13 +69,15 @@ export class SuperadminController {
     const recentUsers = await this.userRepo.find({
       order: { createdAt: 'DESC' },
       take: 10,
-      select: ['id', 'name', 'email', 'role', 'createdAt'],
+      select: ['id', 'name', 'email', 'role', 'createdAt', 'collegeId', 'collegeName'],
     });
 
     return {
       totalUsers,
       totalCourses,
       totalEnrollments,
+      totalColleges,
+      activeColleges,
       studentCount,
       instructorCount,
       adminCount,
@@ -76,6 +86,57 @@ export class SuperadminController {
       rejectedCourses,
       recentUsers,
     };
+  }
+
+  // Get all colleges with user stats for SUPERADMIN dashboard
+  @Get('colleges-stats')
+  async getCollegesWithStats() {
+    const colleges = await this.collegeRepo.find({
+      where: { active: true },
+      order: { name: 'ASC' },
+    });
+
+    const collegesWithStats = await Promise.all(
+      colleges.map(async (college) => {
+        const adminCount = await this.userRepo.count({
+          where: { collegeId: college.id, role: UserRole.ADMIN },
+        });
+
+        const instructorCount = await this.userRepo.count({
+          where: { collegeId: college.id, role: UserRole.INSTRUCTOR },
+        });
+
+        const studentCount = await this.userRepo.count({
+          where: { collegeId: college.id, role: UserRole.STUDENT },
+        });
+
+        return {
+          id: college.id,
+          name: college.name,
+          type: college.type,
+          city: college.city,
+          state: college.state,
+          country: college.country,
+          adminCount,
+          instructorCount,
+          studentCount,
+          totalUsers: adminCount + instructorCount + studentCount,
+          createdAt: college.createdAt,
+        };
+      }),
+    );
+
+    return collegesWithStats;
+  }
+
+  // Get simple list of all college names for dropdown
+  @Get('colleges')
+  async getAllColleges() {
+    const colleges = await this.collegeRepo.find({
+      select: ['id', 'name'],
+      order: { name: 'ASC' },
+    });
+    return colleges;
   }
 
   @Get('users')
@@ -87,29 +148,48 @@ export class SuperadminController {
         'email',
         'role',
         'createdAt',
-        'organizationId',
+        'collegeId',
         'collegeName',
+        'isActive',
       ],
-      relations: ['organization'],
       order: { createdAt: 'DESC' },
     });
   }
 
-  @Get('users/organization/:organizationId')
-  async getUsersByOrganization(@Param('organizationId') organizationId: number) {
+  @Get('users/college/:collegeId')
+  async getUsersByCollege(@Param('collegeId', ParseIntPipe) collegeId: number) {
     return this.userRepo.find({
-      where: { organizationId },
+      where: { collegeId },
       select: [
         'id',
         'name',
         'email',
         'role',
         'createdAt',
-        'organizationId',
+        'collegeId',
         'collegeName',
+        'isActive',
       ],
-      relations: ['organization'],
       order: { createdAt: 'DESC' },
+    });
+  }
+
+  @Get('users/:id')
+  async getUserById(@Param('id', ParseIntPipe) id: number) {
+    return this.userRepo.findOne({
+      where: { id },
+      select: [
+        'id',
+        'name',
+        'email',
+        'role',
+        'collegeId',
+        'collegeName',
+        'isActive',
+        'lastLoginAt',
+        'createdAt',
+        'updatedAt',
+      ],
     });
   }
 
