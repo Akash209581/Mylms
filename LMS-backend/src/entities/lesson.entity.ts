@@ -44,9 +44,13 @@ export class Lesson {
   @Column({ default: 0 })
   order: number;
 
-  /** Block-based TipTap JSON content */
+  /** Block-based TipTap JSON content (Live version) */
   @Column({ type: 'jsonb', nullable: true, name: 'rich_content' })
   content: Record<string, any>;
+
+  /** Draft content used when editing approved courses */
+  @Column({ type: 'jsonb', nullable: true, name: 'draft_content' })
+  draftContent: Record<string, any>;
 
   /** Increments on every content save */
   @Column({ default: 1 })

@@ -17,6 +17,7 @@ import { Repository } from 'typeorm';
 import { User, UserRole } from '../entities/user.entity';
 import { Course, CourseStatus } from '../entities/course.entity';
 import { Enrollment } from '../entities/enrollment.entity';
+import { Lesson } from '../entities/lesson.entity';
 import { NotificationService } from '../common/notification.service';
 import { ApproveCourseDto, RejectCourseDto } from '../courses/courses.dto';
 
@@ -26,9 +27,10 @@ export class AdminController {
   constructor(
     @InjectRepository(User) private userRepo: Repository<User>,
     @InjectRepository(Course) private courseRepo: Repository<Course>,
+    @InjectRepository(Lesson) private lessonRepo: Repository<Lesson>,
     @InjectRepository(Enrollment) private enrollRepo: Repository<Enrollment>,
     private notificationService: NotificationService,
-  ) {}
+  ) { }
 
   @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
   @Get('dashboard')
@@ -155,6 +157,20 @@ export class AdminController {
     course.rejectionReason = null;
 
     await this.courseRepo.save(course);
+
+    // Merge draft content into live content for all lessons in the course
+    const lessons = await this.lessonRepo.find({
+      where: { module: { courseId: id } },
+      relations: ['module'],
+    });
+
+    for (const lesson of lessons) {
+      if (lesson.draftContent) {
+        lesson.content = lesson.draftContent;
+        lesson.draftContent = null;
+        await this.lessonRepo.save(lesson);
+      }
+    }
 
     // Notify instructor about approval
     await this.notificationService.notifyInstructorOfApproval(

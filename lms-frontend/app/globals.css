@@ -1528,6 +1528,7 @@ table .text-gray-500 {
 .nb-cells-list {
   display: flex;
   flex-direction: column;
+  padding-bottom: 250px;
 }
 
 .nb-cells-preview {
@@ -2441,5 +2442,3 @@ table .text-gray-500 {
   max-width: 760px;
   margin: 0 auto;
 }
-
-.nb-viewer-cell {}

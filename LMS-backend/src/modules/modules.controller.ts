@@ -15,7 +15,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { CourseModule } from '../entities/module.entity';
-import { Course } from '../entities/course.entity';
+import { Course, CourseStatus } from '../entities/course.entity';
 import { JwtAuthGuard } from '../common/jwt.guard';
 import { RolesGuard } from '../common/roles.guard';
 import { Roles } from '../common/roles.decorator';
@@ -37,7 +37,7 @@ export class ModulesController {
   ) { }
 
   @Post()
-  @Roles(UserRole.INSTRUCTOR)
+  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN)
   async create(@Body() dto: CreateModuleDto, @Req() req: any) {
     console.log('📚 Creating module:', dto);
     console.log('👤 Logged-in user ID:', req.user.sub);
@@ -76,6 +76,15 @@ export class ModulesController {
     const saved = await this.moduleRepository.save(module);
     console.log('✅ Module created:', saved.id);
 
+    // Revert course approval status
+    if (course.status === CourseStatus.APPROVED) {
+      course.status = CourseStatus.DRAFT;
+      course.published = false;
+      course.approvedBy = null;
+      course.rejectionReason = null;
+      await this.courseRepository.save(course);
+    }
+
     return saved;
   }
 
@@ -103,7 +112,7 @@ export class ModulesController {
   }
 
   @Put(':id')
-  @Roles(UserRole.INSTRUCTOR)
+  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN)
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateModuleDto,
@@ -126,11 +135,23 @@ export class ModulesController {
     }
 
     Object.assign(module, dto);
-    return this.moduleRepository.save(module);
+    await this.moduleRepository.save(module);
+
+    // Revert course approval status
+    const course = module.course;
+    if (course.status === CourseStatus.APPROVED) {
+      course.status = CourseStatus.DRAFT;
+      course.published = false;
+      course.approvedBy = null;
+      course.rejectionReason = null;
+      await this.courseRepository.save(course);
+    }
+
+    return module;
   }
 
   @Delete(':id')
-  @Roles(UserRole.INSTRUCTOR)
+  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN)
   async delete(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
     const module = await this.moduleRepository.findOne({
       where: { id },
@@ -149,11 +170,22 @@ export class ModulesController {
     }
 
     await this.moduleRepository.remove(module);
+
+    // Revert course approval status
+    const course = module.course;
+    if (course.status === CourseStatus.APPROVED) {
+      course.status = CourseStatus.DRAFT;
+      course.published = false;
+      course.approvedBy = null;
+      course.rejectionReason = null;
+      await this.courseRepository.save(course);
+    }
+
     return { message: 'Module deleted successfully' };
   }
 
   @Post('reorder')
-  @Roles(UserRole.INSTRUCTOR)
+  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN)
   async reorder(@Body() dto: ReorderModulesDto, @Req() req: any) {
     const modules = await this.moduleRepository.findBy({ id: In(dto.moduleIds) });
 
@@ -173,6 +205,17 @@ export class ModulesController {
     // Update order
     for (let i = 0; i < dto.moduleIds.length; i++) {
       await this.moduleRepository.update(dto.moduleIds[i], { order: i });
+    }
+
+    // Revert course approval status for the modified courses
+    for (const course of courses) {
+      if (course.status === CourseStatus.APPROVED) {
+        course.status = CourseStatus.DRAFT;
+        course.published = false;
+        course.approvedBy = null;
+        course.rejectionReason = null;
+        await this.courseRepository.save(course);
+      }
     }
 
     return { message: 'Modules reordered successfully' };

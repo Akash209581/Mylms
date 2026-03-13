@@ -305,7 +305,7 @@ export class CoursesController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.INSTRUCTOR)
+  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN)
   @Post(':id/submit')
   async submitCourse(@Param('id') id: number, @Request() req: any) {
     const course = await this.courseRepo.findOne({ where: { id, instructorId: req.user.sub } });
@@ -332,28 +332,81 @@ export class CoursesController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN)
+  @Post(':id/discard-drafts')
+  async discardDrafts(@Param('id') id: number, @Request() req: any) {
+    const course = await this.courseRepo.findOne({ where: { id, instructorId: req.user.sub } });
+    if (!course) {
+      return { success: false, message: 'Course not found or unauthorized' };
+    }
+
+    // Assuming we only allow this if the course is currently a DRAFT but we want to revert to APPROVED
+    course.status = CourseStatus.APPROVED;
+    course.published = true;
+    await this.courseRepo.save(course);
+
+    // Fetch all lessons in this course
+    const modules = await this.moduleRepo.find({ where: { courseId: id } });
+    if (modules.length > 0) {
+      const lessons = await this.lessonRepo.find({
+        where: { moduleId: In(modules.map(m => m.id)) }
+      });
+
+      for (const lesson of lessons) {
+        if (lesson.draftContent) {
+          lesson.draftContent = null;
+          await this.lessonRepo.save(lesson);
+        }
+      }
+    }
+
+    return { success: true, message: 'Draft changes discarded successfully. Course is back to live.' };
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN)
   @Put(':id')
   async update(
     @Param('id') id: number,
-    @Body() dto: UpdateCourseDto,
+    @Body()
+    dto: {
+      title?: string;
+      description?: string;
+      thumbnail?: string;
+      category?: string;
+      level?: string;
+      price?: number;
+      objectives?: string;
+      prerequisites?: string;
+      targetAudience?: string;
+      duration?: number;
+      published?: boolean;
+    },
     @Request() req: any,
   ) {
-    const course = await this.courseRepo.findOne({ where: { id } });
+    const course = await this.courseRepo.findOne({
+      where: { id, instructorId: req.user.sub },
+    });
 
     if (!course) {
-      return { message: 'Course not found' };
+      return { success: false, message: 'Course not found' };
     }
 
-    const userRole = req.user.role;
-    const userId = req.user.sub;
-
-    // Only course owner or admin/superadmin can update
-    if (userRole === UserRole.INSTRUCTOR && course.instructorId !== userId) {
-      return { message: 'You can only update your own courses' };
+    // If an instructor edits an approved course, or explicitly republishes a course, force it through approval again
+    if (course.status === CourseStatus.APPROVED && (Object.keys(dto).length > 0)) {
+      dto.published = false;
+      course.status = CourseStatus.DRAFT;
+      course.approvedBy = null;
+      course.rejectionReason = null;
     }
 
-    await this.courseRepo.update(id, dto);
-    return this.courseRepo.findOne({ where: { id } });
+    Object.assign(course, dto);
+    await this.courseRepo.save(course);
+
+    return {
+      success: true,
+      message: 'Course updated successfully',
+      course,
+    };
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

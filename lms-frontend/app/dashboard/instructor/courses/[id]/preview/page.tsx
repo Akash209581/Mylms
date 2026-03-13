@@ -24,6 +24,8 @@ interface Lesson {
     published: boolean
     order: number
     resources?: Resource[]
+    content?: any
+    draftContent?: any
 }
 
 interface Module {

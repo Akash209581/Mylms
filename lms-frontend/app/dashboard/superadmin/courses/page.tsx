@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
+import CoursePreviewModal from '@/components/course/CoursePreviewModal'
 
 const gradients = [
     'linear-gradient(135deg, #667eea, #764ba2)',
@@ -18,6 +19,7 @@ export default function SuperAdminCoursesPage() {
     const [courses, setCourses] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState('')
+    const [previewCourseId, setPreviewCourseId] = useState<number | null>(null)
 
     useEffect(() => {
         const stored = localStorage.getItem('user')
@@ -51,9 +53,18 @@ export default function SuperAdminCoursesPage() {
             <Navbar title="All Courses" />
             <main className="page-content">
                 {/* Header */}
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-white mb-1">Course Management</h1>
-                    <p className="text-gray-400">View and manage all courses on the platform</p>
+                <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <h1 className="text-3xl font-bold text-white mb-1">Course Management</h1>
+                        <p className="text-gray-400">View and manage all courses on the platform</p>
+                    </div>
+                    <button
+                        onClick={() => router.push('/dashboard/superadmin/courses/create')}
+                        className="px-6 py-2.5 rounded-xl font-bold transition-all hover:scale-105 shadow-lg shadow-indigo-500/25"
+                        style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', color: 'white' }}
+                    >
+                        + Create Course
+                    </button>
                 </div>
 
                 {/* Stats row */}
@@ -119,16 +130,26 @@ export default function SuperAdminCoursesPage() {
                                     <p className="text-gray-500 text-xs mb-4">
                                         by <span className="text-primary-400">{course.instructor?.name || 'Unknown Instructor'}</span>
                                     </p>
-                                    <div className="flex gap-2">
-                                        <button className="flex-1 py-2 rounded-xl text-xs font-semibold transition-all hover:scale-105"
-                                            style={{ background: 'rgba(99,102,241,0.15)', color: '#a5b4fc', border: '1px solid rgba(99,102,241,0.3)' }}>
-                                            View Details
-                                        </button>
+                                    <div className="flex flex-col gap-2">
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => router.push(`/dashboard/instructor/edit-lesson/${course.id}`)}
+                                                className="flex-1 py-1.5 rounded-xl text-xs font-semibold transition-all hover:scale-105"
+                                                style={{ background: 'rgba(99,102,241,0.15)', color: '#a5b4fc', border: '1px solid rgba(99,102,241,0.3)' }}>
+                                                Edit Content
+                                            </button>
+                                            <button
+                                                onClick={() => setPreviewCourseId(course.id)}
+                                                className="flex-1 py-1.5 rounded-xl text-xs font-semibold transition-all hover:scale-105"
+                                                style={{ background: 'rgba(16,185,129,0.15)', color: '#6ee7b7', border: '1px solid rgba(16,185,129,0.3)' }}>
+                                                View Preview
+                                            </button>
+                                        </div>
                                         <button
                                             onClick={() => handleDelete(course.id)}
-                                            className="px-3 py-2 rounded-xl text-xs font-semibold transition-all hover:scale-105"
+                                            className="w-full py-1.5 rounded-xl text-xs font-semibold transition-all hover:scale-105"
                                             style={{ background: 'rgba(239,68,68,0.15)', color: '#fca5a5', border: '1px solid rgba(239,68,68,0.3)' }}>
-                                            Delete
+                                            Delete Course
                                         </button>
                                     </div>
                                 </div>
@@ -142,6 +163,12 @@ export default function SuperAdminCoursesPage() {
                         <p className="text-gray-400 text-sm">Courses created by instructors will appear here</p>
                     </div>
                 )}
+
+                <CoursePreviewModal
+                    isOpen={previewCourseId !== null}
+                    courseId={previewCourseId}
+                    onClose={() => setPreviewCourseId(null)}
+                />
             </main>
         </div>
     )

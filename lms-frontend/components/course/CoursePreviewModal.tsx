@@ -47,7 +47,7 @@ export default function CoursePreviewModal({ courseId, isOpen, onClose }: Course
                 }
 
                 if (isMounted) {
-                    setLessonContent(firstLesson.content || { type: 'notebook', cells: [] })
+                    setLessonContent((firstLesson.draftContent ?? firstLesson.content) || { type: 'notebook', cells: [] })
                 }
             } catch (err: any) {
                 console.error('Failed to load preview:', err)

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
 import { getAuthHeaders } from '@/lib/authHeaders'
+import CoursePreviewModal from '@/components/course/CoursePreviewModal'
 
 interface Course {
     id: number
@@ -41,6 +42,7 @@ export default function AdminApprovalsPage() {
     const [showRejectModal, setShowRejectModal] = useState(false)
     const [rejectionReason, setRejectionReason] = useState('')
     const [showApproveModal, setShowApproveModal] = useState(false)
+    const [previewCourseId, setPreviewCourseId] = useState<number | null>(null)
 
     useEffect(() => {
         const stored = localStorage.getItem('user')
@@ -69,11 +71,11 @@ export default function AdminApprovalsPage() {
         console.log('Active tab:', activeTab)
         console.log('User role:', user?.role)
         try {
-            const endpoint = activeTab === 'pending' 
+            const endpoint = activeTab === 'pending'
                 ? '/admin/courses/pending'
                 : activeTab === 'approved'
-                ? '/admin/courses/approved'
-                : '/admin/courses/rejected'
+                    ? '/admin/courses/approved'
+                    : '/admin/courses/rejected'
 
             console.log('Endpoint:', endpoint)
             const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}${endpoint}`
@@ -85,7 +87,7 @@ export default function AdminApprovalsPage() {
             })
 
             console.log('Response status:', res.status)
-            
+
             if (!res.ok) {
                 const errorText = await res.text()
                 console.error('❌ Error response:', errorText)
@@ -223,11 +225,10 @@ export default function AdminApprovalsPage() {
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id as TabType)}
-                            className={`px-6 py-3 rounded-lg font-medium transition-all whitespace-nowrap ${
-                                activeTab === tab.id
+                            className={`px-6 py-3 rounded-lg font-medium transition-all whitespace-nowrap ${activeTab === tab.id
                                     ? 'bg-white/10 text-white border-2 border-primary-500'
                                     : 'bg-white/5 text-gray-400 border-2 border-transparent hover:bg-white/10 hover:text-white'
-                            }`}
+                                }`}
                         >
                             <span className="flex items-center gap-2">
                                 <span>{tab.icon}</span>
@@ -256,11 +257,11 @@ export default function AdminApprovalsPage() {
                             No {activeTab} courses
                         </p>
                         <p className="text-gray-400 text-sm">
-                            {activeTab === 'pending' 
+                            {activeTab === 'pending'
                                 ? 'All caught up! No courses awaiting approval.'
                                 : activeTab === 'approved'
-                                ? 'No approved courses yet.'
-                                : 'No rejected courses.'}
+                                    ? 'No approved courses yet.'
+                                    : 'No rejected courses.'}
                         </p>
                     </div>
                 ) : (
@@ -296,8 +297,8 @@ export default function AdminApprovalsPage() {
                                                     {course.level && (
                                                         <span className="flex items-center gap-1">
                                                             <span>
-                                                                {course.level === 'Beginner' ? '🟢' : 
-                                                                 course.level === 'Intermediate' ? '🟡' : '🔴'}
+                                                                {course.level === 'Beginner' ? '🟢' :
+                                                                    course.level === 'Intermediate' ? '🟡' : '🔴'}
                                                             </span>
                                                             {course.level}
                                                         </span>
@@ -360,6 +361,12 @@ export default function AdminApprovalsPage() {
                                             >
                                                 ❌ Reject
                                             </button>
+                                            <button
+                                                onClick={() => setPreviewCourseId(course.id)}
+                                                className="btn-secondary flex-1 lg:flex-none"
+                                            >
+                                                👀 Preview
+                                            </button>
                                         </div>
                                     )}
                                 </div>
@@ -375,7 +382,7 @@ export default function AdminApprovalsPage() {
                     <div className="glass-card p-6 max-w-md w-full">
                         <h3 className="text-xl font-bold text-white mb-4">Approve Course</h3>
                         <p className="text-gray-400 mb-6">
-                            Are you sure you want to approve <span className="text-white font-semibold">"{selectedCourse.title}"</span>? 
+                            Are you sure you want to approve <span className="text-white font-semibold">"{selectedCourse.title}"</span>?
                             This will make it visible to all students.
                         </p>
                         <div className="flex gap-3">
@@ -414,7 +421,7 @@ export default function AdminApprovalsPage() {
                     <div className="glass-card p-6 max-w-md w-full">
                         <h3 className="text-xl font-bold text-white mb-4">Reject Course</h3>
                         <p className="text-gray-400 mb-4">
-                            You are about to reject <span className="text-white font-semibold">"{selectedCourse.title}"</span>. 
+                            You are about to reject <span className="text-white font-semibold">"{selectedCourse.title}"</span>.
                             Please provide a reason for rejection:
                         </p>
                         <textarea
@@ -455,6 +462,12 @@ export default function AdminApprovalsPage() {
                     </div>
                 </div>
             )}
+
+            <CoursePreviewModal
+                isOpen={previewCourseId !== null}
+                courseId={previewCourseId}
+                onClose={() => setPreviewCourseId(null)}
+            />
         </div>
     )
 }

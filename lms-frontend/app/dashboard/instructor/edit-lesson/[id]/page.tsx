@@ -31,6 +31,7 @@ interface Lesson {
   type: string
   published: boolean
   content?: Record<string, any> | null
+  draftContent?: any
   version?: number
   lastEditedBy?: string
   updatedAt?: string
@@ -166,6 +167,28 @@ export default function EditLessonPage() {
     } : prev)
   }, [lesson?.id])
 
+  /* ── Handle Discard Draft ── */
+  const handleDiscardDraft = async () => {
+    if (!confirm('Are you sure you want to discard your draft edits? This will revert the course back to its last approved state and cannot be undone.')) return
+    try {
+      const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+      const res = await fetch(`${API}/courses/${courseId}/discard-drafts`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: getAuthHeaders(),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.message || 'Failed to discard drafts.')
+      }
+      alert('Draft discarded. Course reverted to live version.')
+      fetchLessonData() // Reload the lesson and course status to reflect the revert
+    } catch (e: any) {
+      console.error(e)
+      alert(e.message || 'Failed to discard drafts.')
+    }
+  }
+
   /* ── Handle Submit ── */
   const handleSubmitForApproval = async () => {
     if (!confirm('Are you sure you want to submit this course for admin approval?')) return
@@ -288,14 +311,24 @@ export default function EditLessonPage() {
                   </span>
                 </div>
 
-                {/* Submit Course Button */}
+                {/* Action Buttons */}
                 {(courseStatus === 'DRAFT' || courseStatus === 'REJECTED') && (
-                  <button
-                    onClick={handleSubmitForApproval}
-                    className="btn-primary text-sm px-4 py-2 shadow-sm rounded-lg"
-                  >
-                    {courseStatus === 'REJECTED' ? 'Resubmit Course' : 'Submit Course'}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {courseStatus === 'DRAFT' && (
+                      <button
+                        onClick={handleDiscardDraft}
+                        className="btn-secondary text-sm px-4 py-2 shadow-sm rounded-lg"
+                      >
+                        Discard Draft
+                      </button>
+                    )}
+                    <button
+                      onClick={handleSubmitForApproval}
+                      className="btn-primary text-sm px-4 py-2 shadow-sm rounded-lg"
+                    >
+                      {courseStatus === 'REJECTED' ? 'Resubmit Course' : 'Submit Course'}
+                    </button>
+                  </div>
                 )}
 
                 {courseStatus === 'PENDING_APPROVAL' && (
@@ -327,7 +360,7 @@ export default function EditLessonPage() {
           {lesson?.id && (
             <LessonEditor
               lessonId={lesson.id}
-              initialContent={lesson.content ?? null}
+              initialContent={lesson.draftContent ?? lesson.content ?? null}
               lessonTitle={lesson.title}
               onSave={handleSave}
             />

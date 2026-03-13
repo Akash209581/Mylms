@@ -12,10 +12,10 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Lesson } from '../entities/lesson.entity';
 import { CourseModule } from '../entities/module.entity';
-import { Course } from '../entities/course.entity';
+import { Course, CourseStatus } from '../entities/course.entity';
 import { JwtAuthGuard } from '../common/jwt.guard';
 import { RolesGuard } from '../common/roles.guard';
 import { Roles } from '../common/roles.decorator';
@@ -37,10 +37,10 @@ export class LessonsController {
     private moduleRepository: Repository<CourseModule>,
     @InjectRepository(Course)
     private courseRepository: Repository<Course>,
-  ) {}
+  ) { }
 
   @Post()
-  @Roles(UserRole.INSTRUCTOR)
+  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN)
   async create(@Body() dto: CreateLessonDto, @Req() req: any) {
     console.log('🎥 Creating lesson:', dto);
     console.log('👤 Logged-in user ID:', req.user.sub);
@@ -80,6 +80,16 @@ export class LessonsController {
     const saved = await this.lessonRepository.save(lesson);
     console.log('✅ Lesson created:', saved.id);
 
+    // Revert course approval status
+    const course = module.course;
+    if (course.status === CourseStatus.APPROVED) {
+      course.status = CourseStatus.DRAFT;
+      course.published = false;
+      course.approvedBy = null;
+      course.rejectionReason = null;
+      await this.courseRepository.save(course);
+    }
+
     return saved;
   }
 
@@ -106,7 +116,7 @@ export class LessonsController {
   }
 
   @Put(':id')
-  @Roles(UserRole.INSTRUCTOR)
+  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN)
   async update(
     @Param('id') id: number,
     @Body() dto: UpdateLessonDto,
@@ -114,6 +124,7 @@ export class LessonsController {
   ) {
     const lesson = await this.lessonRepository.findOne({
       where: { id },
+      relations: ['module', 'module.course'], // Load relations for ownership check and course status update
     });
 
     if (!lesson) {
@@ -121,12 +132,7 @@ export class LessonsController {
     }
 
     // Check ownership
-    const module = await this.moduleRepository.findOne({
-      where: { id: lesson.moduleId },
-      relations: ['course'],
-    });
-
-    if (module.course.instructorId !== req.user.sub) {
+    if (lesson.module.course.instructorId !== req.user.sub) {
       throw new HttpException(
         'You can only edit lessons in your own courses',
         HttpStatus.FORBIDDEN,
@@ -134,14 +140,27 @@ export class LessonsController {
     }
 
     Object.assign(lesson, dto);
-    return this.lessonRepository.save(lesson);
+    const updatedLesson = await this.lessonRepository.save(lesson);
+
+    // Revert course approval status
+    const course = lesson.module.course;
+    if (course.status === CourseStatus.APPROVED) {
+      course.status = CourseStatus.DRAFT;
+      course.published = false;
+      course.approvedBy = null;
+      course.rejectionReason = null;
+      await this.courseRepository.save(course);
+    }
+
+    return updatedLesson;
   }
 
   @Delete(':id')
-  @Roles(UserRole.INSTRUCTOR)
+  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN)
   async delete(@Param('id') id: number, @Req() req: any) {
     const lesson = await this.lessonRepository.findOne({
       where: { id },
+      relations: ['module', 'module.course'], // Load relations for ownership check and course status update
     });
 
     if (!lesson) {
@@ -149,12 +168,7 @@ export class LessonsController {
     }
 
     // Check ownership
-    const module = await this.moduleRepository.findOne({
-      where: { id: lesson.moduleId },
-      relations: ['course'],
-    });
-
-    if (module.course.instructorId !== req.user.sub) {
+    if (lesson.module.course.instructorId !== req.user.sub) {
       throw new HttpException(
         'You can only delete lessons from your own courses',
         HttpStatus.FORBIDDEN,
@@ -162,34 +176,58 @@ export class LessonsController {
     }
 
     await this.lessonRepository.remove(lesson);
+
+    // Revert course approval status
+    const course = lesson.module.course;
+    if (course.status === CourseStatus.APPROVED) {
+      course.status = CourseStatus.DRAFT;
+      course.published = false;
+      course.approvedBy = null;
+      course.rejectionReason = null;
+      await this.courseRepository.save(course);
+    }
+
     return { message: 'Lesson deleted successfully' };
   }
 
   @Post('reorder')
-  @Roles(UserRole.INSTRUCTOR)
+  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN)
   async reorder(@Body() dto: ReorderLessonsDto, @Req() req: any) {
-    const lessons = await this.lessonRepository.findByIds(dto.lessonIds);
-
-    // Verify ownership
-    const moduleIds = [...new Set(lessons.map((l) => l.moduleId))];
-    const modules = await this.moduleRepository.find({
-      where: moduleIds.map((id) => ({ id })),
-      relations: ['course'],
+    const lessons = await this.lessonRepository.find({
+      where: { id: In(dto.lessonIds) },
+      relations: ['module', 'module.course'],
     });
 
-    const allOwned = modules.every(
-      (m) => m.course.instructorId === req.user.sub,
-    );
-    if (!allOwned) {
-      throw new HttpException(
-        'You can only reorder lessons in your own courses',
-        HttpStatus.FORBIDDEN,
-      );
+    // Verify ownership
+    const courseIds = new Set<number>();
+    for (const lesson of lessons) {
+      if (lesson.module.course.instructorId !== req.user.sub) {
+        throw new HttpException(
+          'You can only reorder lessons in your own courses',
+          HttpStatus.FORBIDDEN,
+        );
+      }
+      courseIds.add(lesson.module.course.id);
     }
 
     // Update order
     for (let i = 0; i < dto.lessonIds.length; i++) {
       await this.lessonRepository.update(dto.lessonIds[i], { order: i });
+    }
+
+    // Revert course approval status for modified courses
+    const coursesToUpdate = await this.courseRepository.find({
+      where: { id: In([...courseIds]) },
+    });
+
+    for (const course of coursesToUpdate) {
+      if (course.status === CourseStatus.APPROVED) {
+        course.status = CourseStatus.DRAFT;
+        course.published = false;
+        course.approvedBy = null;
+        course.rejectionReason = null;
+        await this.courseRepository.save(course);
+      }
     }
 
     return { message: 'Lessons reordered successfully' };
@@ -207,7 +245,10 @@ export class LessonsController {
     @Body() dto: UpdateContentDto,
     @Req() req: any,
   ) {
-    const lesson = await this.lessonRepository.findOne({ where: { id } });
+    const lesson = await this.lessonRepository.findOne({
+      where: { id },
+      relations: ['module', 'module.course'], // Load relations for ownership check and course status update
+    });
 
     if (!lesson) {
       throw new HttpException('Lesson not found', HttpStatus.NOT_FOUND);
@@ -236,16 +277,27 @@ export class LessonsController {
     }
 
     // Increment version, record who saved it
-    lesson.content = dto.content;
+    lesson.draftContent = dto.content;
     lesson.version = (lesson.version || 1) + 1;
     lesson.lastEditedBy = req.user.name || req.user.email || String(req.user.sub);
 
     const saved = await this.lessonRepository.save(lesson);
 
+    // Revert course approval status
+    const course = lesson.module?.course;
+    if (course && course.status === CourseStatus.APPROVED) {
+      course.status = CourseStatus.DRAFT;
+      course.published = false;
+      course.approvedBy = null;
+      course.rejectionReason = null;
+      await this.courseRepository.save(course);
+    }
+
     return {
       id: saved.id,
       title: saved.title,
       content: saved.content,
+      draftContent: saved.draftContent,
       version: saved.version,
       lastEditedBy: saved.lastEditedBy,
       updatedAt: saved.updatedAt,
