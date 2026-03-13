@@ -57,7 +57,7 @@ export default function Sidebar({ role }: { role?: string }) {
     return (
         <aside className="sidebar">
             {/* Logo */}
-            <div className="p-6 border-b" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+            <div className="p-6 border-b" style={{ borderColor: 'var(--border)' }}>
                 <Link href="/" className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white"
                         style={{ background: `linear-gradient(135deg, ${roleColor}, ${roleColor}cc)` }}>
@@ -67,7 +67,7 @@ export default function Sidebar({ role }: { role?: string }) {
                         </svg>
                     </div>
                     <div>
-                        <p className="text-white font-bold text-lg leading-none">EduVerse</p>
+                        <p className="text-[var(--text-primary)] font-bold text-lg leading-none">EduVerse</p>
                         <p className="text-xs mt-0.5" style={{ color: roleColor }}>{role}</p>
                     </div>
                 </Link>
@@ -88,7 +88,7 @@ export default function Sidebar({ role }: { role?: string }) {
             </nav>
 
             {/* Footer */}
-            <div className="p-4 border-t" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+            <div className="p-4 border-t" style={{ borderColor: 'var(--border)' }}>
                 <button
                     onClick={handleLogout}
                     className="sidebar-link w-full text-left text-red-400 hover:text-red-300"

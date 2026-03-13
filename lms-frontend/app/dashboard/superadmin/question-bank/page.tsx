@@ -97,7 +97,7 @@ export default function QuestionBankPage() {
                                 }}>
                                 <div className="text-2xl mb-2">{t.icon}</div>
                                 <p className="text-white font-semibold text-sm">{t.label}</p>
-                                <p className="text-gray-500 text-xs mb-2">{t.desc}</p>
+                                <p className="text-[var(--text-secondary)] text-xs mb-2">{t.desc}</p>
                                 <p className="text-2xl font-bold" style={{ color: t.color }}>{count}</p>
                             </div>
                         )
@@ -119,7 +119,7 @@ export default function QuestionBankPage() {
                         ))}
                     </div>
                     <div className="flex-1 relative">
-                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-secondary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
                         <input type="text" placeholder="Search by topic or question text..." value={search}
@@ -153,9 +153,9 @@ export default function QuestionBankPage() {
                                     {filtered.map((q: any, i: number) => {
                                         const qType = QUESTION_TYPES.find(t => t.key === q.type)
                                         return (
-                                            <tr key={q.id} className="border-b hover:bg-white/5 transition-colors"
+                                            <tr key={q.id} className="border-b hover:bg-[var(--bg-surface)]/5 transition-colors"
                                                 style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
-                                                <td className="py-4 pr-4 text-gray-500 text-sm">{i + 1}</td>
+                                                <td className="py-4 pr-4 text-[var(--text-secondary)] text-sm">{i + 1}</td>
                                                 <td className="py-4 pr-4">
                                                     <span className="text-xs font-mono font-semibold text-primary-400">{q.questionNumber}</span>
                                                 </td>

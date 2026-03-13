@@ -58,8 +58,8 @@ export default function DailyChallengePage() {
             <main className="page-content flex items-center justify-center">
                 <div className="text-center">
                     <div className="text-6xl mb-4">🌙</div>
-                    <h1 className="text-2xl font-bold text-gray-900">No Daily Challenge</h1>
-                    <p className="text-gray-500 mt-2">Come back tomorrow for a new coding challenge!</p>
+                    <h1 className="text-2xl font-bold text-[var(--text-primary)]">No Daily Challenge</h1>
+                    <p className="text-[var(--text-secondary)] mt-2">Come back tomorrow for a new coding challenge!</p>
                     <button onClick={() => router.push('/dashboard/student')} className="btn-primary mt-6 px-6 py-2.5">Back to Dashboard</button>
                 </div>
             </main>
@@ -76,8 +76,8 @@ export default function DailyChallengePage() {
                 <div className="max-w-3xl mx-auto">
                     <div className="mb-8 flex items-center justify-between">
                         <div>
-                            <h1 className="text-3xl font-bold text-gray-900 mb-1">Daily Challenge</h1>
-                            <p className="text-gray-500">Earn streak points by solving today's puzzle.</p>
+                            <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-1">Daily Challenge</h1>
+                            <p className="text-[var(--text-secondary)]">Earn streak points by solving today's puzzle.</p>
                         </div>
                         <div className="bg-amber-100 px-4 py-2 rounded-2xl flex items-center gap-2 border border-amber-200">
                             <span className="text-xl">🔥</span>
@@ -92,7 +92,7 @@ export default function DailyChallengePage() {
                         </div>
 
                         <div className="prose prose-indigo max-w-none">
-                            <p className="text-xl text-gray-800 leading-relaxed font-medium mb-8">
+                            <p className="text-xl text-[var(--text-primary)] leading-relaxed font-medium mb-8">
                                 {q.questionText}
                             </p>
                         </div>
@@ -106,7 +106,7 @@ export default function DailyChallengePage() {
                                     </h3>
                                 </div>
                                 <p className={`${result.success ? 'text-emerald-700' : 'text-rose-700'} mb-4`}>{result.message}</p>
-                                {result.explanation && <p className="text-sm text-gray-500 mt-2 italic font-mono">{result.explanation}</p>}
+                                {result.explanation && <p className="text-sm text-[var(--text-secondary)] mt-2 italic font-mono">{result.explanation}</p>}
 
                                 <button onClick={() => router.push('/dashboard/student')} className="btn-primary mt-4 px-6 py-2">Return to Dashboard</button>
                             </div>
@@ -118,10 +118,10 @@ export default function DailyChallengePage() {
                                             <button
                                                 key={i}
                                                 onClick={() => setAnswer(opt)}
-                                                className={`p-4 rounded-xl border text-left transition-all hover:border-indigo-500 ${answer === opt ? 'bg-indigo-50 border-indigo-500 ring-2 ring-indigo-200' : 'bg-gray-50 border-gray-100'}`}
+                                                className={`p-4 rounded-xl border text-left transition-all hover:border-indigo-500 ${answer === opt ? 'bg-indigo-50 border-indigo-500 ring-2 ring-indigo-200' : 'bg-gray-50 border-[var(--border)]'}`}
                                             >
                                                 <span className="font-bold mr-3 text-indigo-400">{String.fromCharCode(65 + i)}</span>
-                                                <span className="text-gray-700">{opt}</span>
+                                                <span className="text-[var(--text-primary)]">{opt}</span>
                                             </button>
                                         ))}
                                     </div>
@@ -129,7 +129,7 @@ export default function DailyChallengePage() {
 
                                 {(q.type === 'FIB' || q.type === 'OP') && (
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Enter your answer</label>
+                                        <label className="block text-sm font-bold text-[var(--text-primary)] mb-2 uppercase tracking-wide">Enter your answer</label>
                                         <input
                                             type="text"
                                             value={answer}

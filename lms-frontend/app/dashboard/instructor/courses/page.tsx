@@ -60,7 +60,7 @@ export default function InstructorCoursesPage() {
 
     const getStatusBadge = (status: string) => {
         const badges = {
-            DRAFT: { label: 'Draft', color: 'bg-slate-100 text-slate-800', icon: '📝' },
+            DRAFT: { label: 'Draft', color: 'bg-[var(--bg-hover)] text-[var(--text-primary)]', icon: '📝' },
             PENDING_APPROVAL: { label: 'Pending Approval', color: 'bg-yellow-100 text-yellow-800', icon: '⏳' },
             APPROVED: { label: 'Approved', color: 'bg-green-100 text-green-800', icon: '✅' },
             REJECTED: { label: 'Rejected', color: 'bg-red-100 text-red-800', icon: '❌' }
@@ -144,7 +144,7 @@ export default function InstructorCoursesPage() {
                             onClick={() => setFilter(btn.value as any)}
                             className={`px-4 py-2 rounded-lg font-medium transition-all ${filter === btn.value
                                 ? 'bg-indigo-600 text-white shadow-lg'
-                                : 'bg-white text-gray-700 hover:bg-gray-50'
+                                : 'bg-[var(--bg-surface)] text-[var(--text-primary)] hover:bg-gray-50'
                                 }`}
                         >
                             <span className="mr-2">{btn.icon}</span>
@@ -164,8 +164,8 @@ export default function InstructorCoursesPage() {
                 {!loading && courses.length === 0 && (
                     <div className="text-center py-12">
                         <div className="text-6xl mb-4">📚</div>
-                        <h3 className="text-xl font-semibold text-gray-900 mb-2">No courses found</h3>
-                        <p className="text-gray-600 mb-6">
+                        <h3 className="text-xl font-semibold text-[var(--text-primary)] mb-2">No courses found</h3>
+                        <p className="text-[var(--text-secondary)] mb-6">
                             {filter === 'all' ? 'Create your first course to get started!' : `No ${filter} courses yet.`}
                         </p>
                         <button
@@ -189,12 +189,12 @@ export default function InstructorCoursesPage() {
                                     </div>
 
                                     {/* Course Title */}
-                                    <h3 className="text-xl font-bold text-gray-900 mb-2 group-hover:text-indigo-600 transition-colors">
+                                    <h3 className="text-xl font-bold text-[var(--text-primary)] mb-2 group-hover:text-indigo-600 transition-colors">
                                         {course.title}
                                     </h3>
 
                                     {/* Description */}
-                                    <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+                                    <p className="text-[var(--text-secondary)] text-sm mb-4 line-clamp-2">
                                         {course.description || 'No description available'}
                                     </p>
 
@@ -237,7 +237,7 @@ export default function InstructorCoursesPage() {
                                     )}
 
                                     {/* Dates */}
-                                    <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
+                                    <div className="flex items-center justify-between text-xs text-[var(--text-secondary)] mb-4">
                                         <span>Created: {new Date(course.createdAt).toLocaleDateString()}</span>
                                         {course.status !== 'PENDING_APPROVAL' && (
                                             <span>Updated: {new Date(course.updatedAt).toLocaleDateString()}</span>

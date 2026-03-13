@@ -225,8 +225,8 @@ export default function AdminApprovalsPage() {
                             onClick={() => setActiveTab(tab.id as TabType)}
                             className={`px-6 py-3 rounded-lg font-medium transition-all whitespace-nowrap ${
                                 activeTab === tab.id
-                                    ? 'bg-white/10 text-white border-2 border-primary-500'
-                                    : 'bg-white/5 text-gray-400 border-2 border-transparent hover:bg-white/10 hover:text-white'
+                                    ? 'bg-[var(--bg-surface)]/10 text-white border-2 border-primary-500'
+                                    : 'bg-[var(--bg-surface)]/5 text-gray-400 border-2 border-transparent hover:bg-[var(--bg-surface)]/10 hover:text-white'
                             }`}
                         >
                             <span className="flex items-center gap-2">
@@ -266,7 +266,7 @@ export default function AdminApprovalsPage() {
                 ) : (
                     <div className="space-y-4">
                         {courses.map(course => (
-                            <div key={course.id} className="glass-card p-6 hover:bg-white/10 transition-colors">
+                            <div key={course.id} className="glass-card p-6 hover:bg-[var(--bg-surface)]/10 transition-colors">
                                 <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
                                     {/* Course Info */}
                                     <div className="flex-1">
@@ -282,7 +282,7 @@ export default function AdminApprovalsPage() {
                                                 <p className="text-gray-400 text-sm line-clamp-2 mb-2">
                                                     {course.description}
                                                 </p>
-                                                <div className="flex flex-wrap gap-3 text-xs text-gray-500">
+                                                <div className="flex flex-wrap gap-3 text-xs text-[var(--text-secondary)]">
                                                     <span className="flex items-center gap-1">
                                                         <span>👤</span>
                                                         <span className="text-primary-400">{course.instructor.name}</span>
@@ -326,7 +326,7 @@ export default function AdminApprovalsPage() {
 
                                         {/* Approver Info */}
                                         {(course.status === 'APPROVED' || course.status === 'REJECTED') && course.approver && (
-                                            <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
+                                            <div className="mt-3 flex items-center gap-2 text-xs text-[var(--text-secondary)]">
                                                 <span>
                                                     {course.status === 'APPROVED' ? 'Approved' : 'Rejected'} by
                                                 </span>

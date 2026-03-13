@@ -34,8 +34,8 @@ export default function ReportsPage() {
             <Navbar title="Platform Reports" />
             <main className="page-content">
                 <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">Platform Analytics</h1>
-                    <p className="text-gray-600">Comprehensive overview of platform activity and growth.</p>
+                    <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-2">Platform Analytics</h1>
+                    <p className="text-[var(--text-secondary)]">Comprehensive overview of platform activity and growth.</p>
                 </div>
 
                 {/* Stats Grid */}
@@ -53,8 +53,8 @@ export default function ReportsPage() {
                                     Live
                                 </span>
                             </div>
-                            <p className="text-gray-500 text-sm font-medium">{s.label}</p>
-                            <p className="text-3xl font-bold text-gray-900">{s.value}</p>
+                            <p className="text-[var(--text-secondary)] text-sm font-medium">{s.label}</p>
+                            <p className="text-3xl font-bold text-[var(--text-primary)]">{s.value}</p>
                         </div>
                     ))}
                 </div>
@@ -62,18 +62,18 @@ export default function ReportsPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     {/* User Distribution */}
                     <div className="glass-card p-6">
-                        <h3 className="text-lg font-bold text-gray-900 mb-6">User Distribution by Role</h3>
+                        <h3 className="text-lg font-bold text-[var(--text-primary)] mb-6">User Distribution by Role</h3>
                         <div className="space-y-4">
                             {data?.roles?.map((r: any) => (
                                 <div key={r.role} className="flex items-center gap-4">
-                                    <div className="w-24 text-sm font-medium text-gray-600">{r.role}</div>
+                                    <div className="w-24 text-sm font-medium text-[var(--text-secondary)]">{r.role}</div>
                                     <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
                                         <div
                                             className="h-full bg-indigo-500"
                                             style={{ width: `${data?.stats?.totalUsers ? (r.count / data.stats.totalUsers) * 100 : 0}%` }}
                                         ></div>
                                     </div>
-                                    <div className="w-12 text-right text-sm font-bold text-gray-900">{r.count}</div>
+                                    <div className="w-12 text-right text-sm font-bold text-[var(--text-primary)]">{r.count}</div>
                                 </div>
                             ))}
                         </div>
@@ -81,11 +81,11 @@ export default function ReportsPage() {
 
                     {/* Recent Enrollments */}
                     <div className="glass-card p-6">
-                        <h3 className="text-lg font-bold text-gray-900 mb-6">Recent Platform Activity</h3>
+                        <h3 className="text-lg font-bold text-[var(--text-primary)] mb-6">Recent Platform Activity</h3>
                         <div className="overflow-x-auto">
                             <table className="w-full">
                                 <thead>
-                                    <tr className="text-left border-b border-gray-100">
+                                    <tr className="text-left border-b border-[var(--border)]">
                                         <th className="pb-3 text-xs font-bold text-gray-400 uppercase tracking-wider">User</th>
                                         <th className="pb-3 text-xs font-bold text-gray-400 uppercase tracking-wider">Course</th>
                                         <th className="pb-3 text-xs font-bold text-gray-400 uppercase tracking-wider">Date</th>
@@ -94,8 +94,8 @@ export default function ReportsPage() {
                                 <tbody className="divide-y divide-gray-50">
                                     {data?.recentEnrollments?.map((e: any) => (
                                         <tr key={e.id}>
-                                            <td className="py-3 text-sm font-medium text-gray-900">{e.user?.name}</td>
-                                            <td className="py-3 text-sm text-gray-600">{e.course?.title}</td>
+                                            <td className="py-3 text-sm font-medium text-[var(--text-primary)]">{e.user?.name}</td>
+                                            <td className="py-3 text-sm text-[var(--text-secondary)]">{e.course?.title}</td>
                                             <td className="py-3 text-sm text-gray-400">{new Date(e.enrolledAt).toLocaleDateString()}</td>
                                         </tr>
                                     ))}

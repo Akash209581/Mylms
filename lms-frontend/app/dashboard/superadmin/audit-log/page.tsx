@@ -116,9 +116,9 @@ export default function AuditLogPage() {
                                             const cfg = ACTION_COLORS[log.action] || { bg: 'rgba(99,102,241,0.1)', color: '#a5b4fc', icon: '•' }
                                             const details = getDetails(log)
                                             return (
-                                                <tr key={log.id} className="border-b transition-colors hover:bg-white/5"
+                                                <tr key={log.id} className="border-b transition-colors hover:bg-[var(--bg-surface)]/5"
                                                     style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
-                                                    <td className="py-4 pr-4 text-gray-500 text-xs whitespace-nowrap">
+                                                    <td className="py-4 pr-4 text-[var(--text-secondary)] text-xs whitespace-nowrap">
                                                         {new Date(log.createdAt).toLocaleString()}
                                                     </td>
                                                     <td className="py-4 pr-4">
@@ -129,7 +129,7 @@ export default function AuditLogPage() {
                                                             </div>
                                                             <div>
                                                                 <p className="text-white text-sm font-medium">{log.actorName || 'Unknown'}</p>
-                                                                <p className="text-gray-500 text-xs">{log.actorRole}</p>
+                                                                <p className="text-[var(--text-secondary)] text-xs">{log.actorRole}</p>
                                                             </div>
                                                         </div>
                                                     </td>
@@ -141,13 +141,13 @@ export default function AuditLogPage() {
                                                     </td>
                                                     <td className="py-4 pr-4">
                                                         <p className="text-white text-sm">{log.targetName || '—'}</p>
-                                                        <p className="text-gray-500 text-xs">{log.targetType} #{log.targetId}</p>
+                                                        <p className="text-[var(--text-secondary)] text-xs">{log.targetType} #{log.targetId}</p>
                                                     </td>
                                                     <td className="py-4 text-gray-400 text-xs max-w-[200px]">
                                                         {details ? (
                                                             <div className="space-y-0.5">
                                                                 {Object.entries(details).map(([k, v]) => (
-                                                                    <div key={k}><span className="text-gray-600">{k}:</span> {String(v)}</div>
+                                                                    <div key={k}><span className="text-[var(--text-secondary)]">{k}:</span> {String(v)}</div>
                                                                 ))}
                                                             </div>
                                                         ) : '—'}

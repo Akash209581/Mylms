@@ -68,17 +68,17 @@ export default function CoursePreviewModal({ courseId, isOpen, onClose }: Course
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 md:p-8">
-            <div className="bg-white w-full max-w-6xl h-full rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-scale-up">
+            <div className="bg-[var(--bg-surface)] w-full max-w-6xl h-full rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-scale-up">
 
                 {/* Modal Header */}
-                <div className="h-16 border-b border-gray-100 flex items-center justify-between px-6 bg-slate-50 shrink-0">
+                <div className="h-16 border-b border-[var(--border)] flex items-center justify-between px-6 bg-[var(--bg-raised)] shrink-0">
                     <div className="flex items-center gap-2">
                         <span className="text-xl">📺</span>
-                        <h2 className="font-bold text-slate-800 text-lg">Course Preview</h2>
+                        <h2 className="font-bold text-[var(--text-primary)] text-lg">Course Preview</h2>
                     </div>
                     <button
                         onClick={onClose}
-                        className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition-colors"
+                        className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-200 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
                         title="Close Preview (Esc)"
                     >
                         ✕
@@ -88,14 +88,14 @@ export default function CoursePreviewModal({ courseId, isOpen, onClose }: Course
                 {/* Modal Body */}
                 <div className="flex-1 overflow-y-auto bg-gray-50/50 p-6 md:p-12">
                     {loading && (
-                        <div className="flex flex-col items-center justify-center h-full text-slate-500 gap-4">
+                        <div className="flex flex-col items-center justify-center h-full text-[var(--text-secondary)] gap-4">
                             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div>
                             <p>Loading interactive content...</p>
                         </div>
                     )}
 
                     {error && !loading && (
-                        <div className="flex flex-col items-center justify-center h-full text-slate-500 gap-4">
+                        <div className="flex flex-col items-center justify-center h-full text-[var(--text-secondary)] gap-4">
                             <span className="text-5xl">📭</span>
                             <p className="text-lg font-medium">{error}</p>
                             <button
@@ -108,7 +108,7 @@ export default function CoursePreviewModal({ courseId, isOpen, onClose }: Course
                     )}
 
                     {!loading && !error && lessonContent && (
-                        <div className="max-w-4xl mx-auto w-full bg-white rounded-xl shadow-sm border border-gray-100 p-8 min-h-[500px]">
+                        <div className="max-w-4xl mx-auto w-full bg-[var(--bg-surface)] rounded-xl shadow-sm border border-[var(--border)] p-8 min-h-[500px]">
                             <LessonEditor
                                 lessonId={0} // Dummy ID, it's read-only
                                 initialContent={lessonContent}

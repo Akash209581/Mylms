@@ -264,7 +264,7 @@ function CellPreview({ cell }: { cell: Cell }) {
     // Standard HTML5 Video
     return (
       <div className="nb-video-wrap my-2">
-        <video src={src} controls className="nb-preview-video w-full rounded-lg border border-slate-200" preload="metadata" />
+        <video src={src} controls className="nb-preview-video w-full rounded-lg border border-[var(--border)]" preload="metadata" />
       </div>
     )
   }
@@ -533,15 +533,15 @@ function MediaMenu({ onImage, onVideo }: { onImage: () => void, onVideo: () => v
         </svg>
       </button>
       {open && (
-        <div className="absolute top-full mt-1 left-0 bg-white border border-slate-200 shadow-xl rounded-lg w-40 z-50 py-1 overflow-hidden font-medium text-sm text-slate-700 animate-in fade-in slide-in-from-top-2 duration-100">
+        <div className="absolute top-full mt-1 left-0 bg-[var(--bg-surface)] border border-[var(--border)] shadow-xl rounded-lg w-40 z-50 py-1 overflow-hidden font-medium text-sm text-[var(--text-primary)] animate-in fade-in slide-in-from-top-2 duration-100">
           <button
-            className="w-full text-left px-3 py-2 hover:bg-slate-50 flex items-center gap-2"
+            className="w-full text-left px-3 py-2 hover:bg-[var(--bg-raised)] flex items-center gap-2"
             onClick={() => { onImage(); setOpen(false) }}
           >
             <span className="text-base leading-none">📷</span> Image
           </button>
           <button
-            className="w-full text-left px-3 py-2 hover:bg-slate-50 flex items-center gap-2"
+            className="w-full text-left px-3 py-2 hover:bg-[var(--bg-raised)] flex items-center gap-2"
             onClick={() => { onVideo(); setOpen(false) }}
           >
             <span className="text-base leading-none">📹</span> Video List/Cell
@@ -586,12 +586,12 @@ function MathDropdown({ onInsert }: { onInsert: (formula: string) => void }) {
         </svg>
       </button>
       {open && (
-        <div className="absolute top-full mt-1 left-0 bg-white border border-slate-200 shadow-xl rounded-lg w-48 z-50 py-1 overflow-hidden font-medium text-sm text-slate-700 animate-in fade-in slide-in-from-top-2 duration-100">
-          <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider bg-slate-50 shadow-inner">Math Formulas</div>
+        <div className="absolute top-full mt-1 left-0 bg-[var(--bg-surface)] border border-[var(--border)] shadow-xl rounded-lg w-48 z-50 py-1 overflow-hidden font-medium text-sm text-[var(--text-primary)] animate-in fade-in slide-in-from-top-2 duration-100">
+          <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider bg-[var(--bg-raised)] shadow-inner">Math Formulas</div>
           {prebuilt.map(item => (
             <button
               key={item.label}
-              className="w-full text-left px-3 py-2 hover:bg-slate-50 flex items-center justify-between group"
+              className="w-full text-left px-3 py-2 hover:bg-[var(--bg-raised)] flex items-center justify-between group"
               onClick={() => { onInsert(item.value); setOpen(false) }}
             >
               <span>{item.label}</span>
@@ -720,11 +720,11 @@ function ColorPicker({ activeColor, disabled, onApply }: ColorPickerProps) {
       <button title="Text colour" disabled={disabled}
         onClick={() => !disabled && setOpen(v => !v)}
         className={`nb-tbtn flex flex-col items-center justify-center gap-0.5 px-2 py-1 min-w-[32px] ${disabled ? 'opacity-35 cursor-not-allowed' : 'cursor-pointer'}`}>
-        <span className="text-sm font-extrabold leading-none text-slate-800 select-none">A</span>
+        <span className="text-sm font-extrabold leading-none text-[var(--text-primary)] select-none">A</span>
         <span className="w-4 h-[3px] rounded-full transition-colors" style={{ background: activeColor ?? '#94a3b8' }} />
       </button>
       {open && (
-        <div className="absolute top-full left-0 mt-1.5 z-50 bg-white rounded-2xl border border-slate-100 p-3.5 w-56"
+        <div className="absolute top-full left-0 mt-1.5 z-50 bg-[var(--bg-surface)] rounded-2xl border border-[var(--border)] p-3.5 w-56"
           style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.14),0 2px 8px rgba(0,0,0,0.06)' }}>
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2.5">Text Colour</p>
           <div className="grid grid-cols-6 gap-1.5 mb-3">
@@ -738,9 +738,9 @@ function ColorPicker({ activeColor, disabled, onApply }: ColorPickerProps) {
               </button>
             ))}
           </div>
-          <div className="flex items-center gap-2 pt-2.5 border-t border-slate-100">
-            <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wide">Custom</span>
-            <input type="color" value={customHex} className="w-7 h-6 cursor-pointer rounded border border-slate-200 p-0.5"
+          <div className="flex items-center gap-2 pt-2.5 border-t border-[var(--border)]">
+            <span className="text-[10px] text-[var(--text-secondary)] font-semibold uppercase tracking-wide">Custom</span>
+            <input type="color" value={customHex} className="w-7 h-6 cursor-pointer rounded border border-[var(--border)] p-0.5"
               onChange={e => setCustomHex(e.target.value)} />
             <button onClick={() => { onApply(customHex); setOpen(false) }}
               className="ml-auto text-[11px] text-indigo-600 font-semibold hover:text-indigo-800 transition-colors">Apply</button>
@@ -767,17 +767,17 @@ function FontSizePicker({ activeSize, disabled, onApply }: FontSizePickerProps) 
       <button title="Font size" disabled={disabled}
         onClick={() => !disabled && setOpen(v => !v)}
         className={`nb-tbtn flex items-center gap-1 px-2 py-1 text-xs font-semibold ${disabled ? 'opacity-35 cursor-not-allowed' : 'cursor-pointer'}`}>
-        <span className="text-slate-700 min-w-[38px] text-left">{currentName}</span>
+        <span className="text-[var(--text-primary)] min-w-[38px] text-left">{currentName}</span>
         <svg width="8" height="8" viewBox="0 0 10 6" fill="currentColor" className="text-slate-400 flex-shrink-0"><path d="M0 0l5 6 5-6z" /></svg>
       </button>
       {open && (
-        <div className="absolute top-full left-0 mt-1.5 z-50 bg-white rounded-2xl border border-slate-100 overflow-hidden w-36"
+        <div className="absolute top-full left-0 mt-1.5 z-50 bg-[var(--bg-surface)] rounded-2xl border border-[var(--border)] overflow-hidden w-36"
           style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.14),0 2px 8px rgba(0,0,0,0.06)' }}>
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3.5 pt-3 pb-1.5">Font Size</p>
           {TEXT_SIZES.map(s => (
             <button key={s.name} onClick={() => { onApply(s.px); setOpen(false) }}
-              className={`w-full text-left px-3.5 py-2 flex items-center justify-between transition-colors hover:bg-slate-50
-                ${activeSize === s.px ? 'text-indigo-700 font-bold bg-indigo-50/60' : 'text-slate-700'}`}>
+              className={`w-full text-left px-3.5 py-2 flex items-center justify-between transition-colors hover:bg-[var(--bg-raised)]
+                ${activeSize === s.px ? 'text-indigo-700 font-bold bg-indigo-50/60' : 'text-[var(--text-primary)]'}`}>
               <span style={{ fontSize: s.px ? `${Math.min(s.px, 18)}px` : undefined }}>{s.name}</span>
               {activeSize === s.px && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M5 13l4 4L19 7" /></svg>}
             </button>
@@ -1074,7 +1074,7 @@ export default function LessonEditor({
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-indigo-500">
               <rect x="3" y="3" width="18" height="18" rx="2" /><line x1="9" y1="3" x2="9" y2="21" />
             </svg>
-            <span className="text-sm font-semibold text-slate-700">Content Notebook</span>
+            <span className="text-sm font-semibold text-[var(--text-primary)]">Content Notebook</span>
           </div>
           <div className="flex items-center gap-3">
             <StatusPill status={saveStatus} />
@@ -1089,7 +1089,7 @@ export default function LessonEditor({
                   setTimeout(() => setSaveStatus('idle'), 2000)
                 } catch { setSaveStatus('error') }
               }}
-              className="nb-tbtn flex items-center gap-1.5 text-slate-600 border border-slate-200 hover:bg-slate-50 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all"
+              className="nb-tbtn flex items-center gap-1.5 text-[var(--text-secondary)] border border-[var(--border)] hover:bg-[var(--bg-raised)] px-2.5 py-1 rounded-lg text-xs font-semibold transition-all"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
@@ -1392,7 +1392,7 @@ export default function LessonEditor({
                                     />
                                     {snippets.length > 1 && (
                                       <button
-                                        className="text-slate-500 hover:text-red-400 p-0.5 rounded-full"
+                                        className="text-[var(--text-secondary)] hover:text-red-400 p-0.5 rounded-full"
                                         onClick={e => { e.stopPropagation(); removeTab(i) }}
                                         title="Remove tab"
                                       >
@@ -1441,15 +1441,15 @@ export default function LessonEditor({
                           const isUrl = src.startsWith('http') || src.startsWith('blob:')
                           if (isData || (isUrl && alt)) {
                             return (
-                              <div className="flex items-center gap-3 p-2.5 bg-slate-50 rounded-lg border border-slate-200">
+                              <div className="flex items-center gap-3 p-2.5 bg-[var(--bg-raised)] rounded-lg border border-[var(--border)]">
                                 <img
                                   src={src}
                                   alt={alt}
-                                  className="w-11 h-11 object-cover rounded-md border border-slate-200 flex-shrink-0"
+                                  className="w-11 h-11 object-cover rounded-md border border-[var(--border)] flex-shrink-0"
                                   onError={e => { (e.currentTarget as HTMLImageElement).style.opacity = '0.3' }}
                                 />
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium text-slate-700 truncate">{alt || 'image'}</p>
+                                  <p className="text-sm font-medium text-[var(--text-primary)] truncate">{alt || 'image'}</p>
                                   <p className="text-xs text-slate-400">{isData ? 'Uploaded from PC' : 'External URL'}</p>
                                 </div>
                                 <button
@@ -1574,18 +1574,18 @@ export default function LessonEditor({
 
       {/* Full-screen preview overlay */}
       {fullPreview && (
-        <div className="fixed inset-0 z-50 bg-white overflow-auto" style={{ animation: 'fadeIn 0.15s ease' }}>
-          <div className="sticky top-0 z-10 flex items-center justify-between px-8 py-3 bg-white/95 backdrop-blur-sm border-b border-slate-200 shadow-sm">
+        <div className="fixed inset-0 z-50 bg-[var(--bg-surface)] overflow-auto" style={{ animation: 'fadeIn 0.15s ease' }}>
+          <div className="sticky top-0 z-10 flex items-center justify-between px-8 py-3 bg-[var(--bg-surface)]/95 backdrop-blur-sm border-b border-[var(--border)] shadow-sm">
             <div className="flex items-center gap-2">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-indigo-600">
                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" />
               </svg>
-              <span className="font-bold text-slate-800 text-base">Course Preview</span>
+              <span className="font-bold text-[var(--text-primary)] text-base">Course Preview</span>
               <span className="text-xs text-slate-400 ml-2">How students will see your content</span>
             </div>
             <button
               onClick={() => setFullPreview(false)}
-              className="flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition-all"
+              className="flex items-center gap-1.5 text-sm font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-hover)] hover:bg-slate-200 px-3 py-1.5 rounded-lg transition-all"
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />

@@ -156,8 +156,8 @@ export default function BulkQuestionImport() {
 
   return (
     <div className="max-w-4xl mx-auto p-6">
-      <div className="bg-white rounded-lg shadow-lg p-6">
-        <h2 className="text-2xl font-bold mb-6 text-gray-800">
+      <div className="bg-[var(--bg-surface)] rounded-lg shadow-lg p-6">
+        <h2 className="text-2xl font-bold mb-6 text-[var(--text-primary)]">
           Bulk Question Import
         </h2>
 
@@ -198,7 +198,7 @@ export default function BulkQuestionImport() {
           {!file ? (
             <>
               <div className="text-6xl mb-4">📄</div>
-              <p className="text-gray-600 mb-2">
+              <p className="text-[var(--text-secondary)] mb-2">
                 Drag and drop your file here, or
               </p>
               <label
@@ -207,7 +207,7 @@ export default function BulkQuestionImport() {
               >
                 browse to upload
               </label>
-              <p className="text-sm text-gray-500 mt-2">
+              <p className="text-sm text-[var(--text-secondary)] mt-2">
                 Excel (.xlsx, .xls) or CSV files only
               </p>
             </>
@@ -215,8 +215,8 @@ export default function BulkQuestionImport() {
             <div className="flex items-center justify-center space-x-4">
               <div className="text-4xl">📊</div>
               <div className="text-left">
-                <p className="font-medium text-gray-800">{file.name}</p>
-                <p className="text-sm text-gray-500">
+                <p className="font-medium text-[var(--text-primary)]">{file.name}</p>
+                <p className="text-sm text-[var(--text-secondary)]">
                   {(file.size / 1024).toFixed(2)} KB
                 </p>
               </div>
@@ -277,15 +277,15 @@ export default function BulkQuestionImport() {
       {/* Result Modal */}
       {showResultModal && uploadResult && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-[var(--bg-surface)] rounded-lg shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex justify-between items-start mb-6">
-                <h3 className="text-2xl font-bold text-gray-800">
+                <h3 className="text-2xl font-bold text-[var(--text-primary)]">
                   Import Results
                 </h3>
                 <button
                   onClick={() => setShowResultModal(false)}
-                  className="text-gray-500 hover:text-gray-700 text-2xl"
+                  className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-2xl"
                 >
                   ×
                 </button>
@@ -318,10 +318,10 @@ export default function BulkQuestionImport() {
               {/* Success Rate */}
               <div className="mb-6">
                 <div className="flex justify-between mb-2">
-                  <span className="text-sm font-medium text-gray-700">
+                  <span className="text-sm font-medium text-[var(--text-primary)]">
                     Success Rate
                   </span>
-                  <span className="text-sm font-medium text-gray-700">
+                  <span className="text-sm font-medium text-[var(--text-primary)]">
                     {(
                       (uploadResult.successfullyInserted /
                         uploadResult.totalRows) *
@@ -343,20 +343,20 @@ export default function BulkQuestionImport() {
               {/* Error Details */}
               {uploadResult.errorDetails.length > 0 && (
                 <div className="mb-6">
-                  <h4 className="font-semibold text-gray-800 mb-3">
+                  <h4 className="font-semibold text-[var(--text-primary)] mb-3">
                     Error Details ({uploadResult.errorDetails.length} rows)
                   </h4>
                   <div className="max-h-60 overflow-y-auto border rounded-lg">
                     <table className="w-full text-sm">
                       <thead className="bg-gray-100 sticky top-0">
                         <tr>
-                          <th className="text-left p-2 font-medium text-gray-700">
+                          <th className="text-left p-2 font-medium text-[var(--text-primary)]">
                             Row
                           </th>
-                          <th className="text-left p-2 font-medium text-gray-700">
+                          <th className="text-left p-2 font-medium text-[var(--text-primary)]">
                             Type
                           </th>
-                          <th className="text-left p-2 font-medium text-gray-700">
+                          <th className="text-left p-2 font-medium text-[var(--text-primary)]">
                             Error Reason
                           </th>
                         </tr>
@@ -380,7 +380,7 @@ export default function BulkQuestionImport() {
                     </table>
                   </div>
                   {uploadResult.errorDetails.length > 50 && (
-                    <p className="text-sm text-gray-500 mt-2">
+                    <p className="text-sm text-[var(--text-secondary)] mt-2">
                       Showing first 50 errors. Download full report for all
                       errors.
                     </p>

@@ -51,11 +51,13 @@ class CreateQuestionDto {
   @IsString() @IsOptional() correctAnswer?: string;
   @IsArray() @IsOptional() blanks?: string[];
   @IsArray() @IsOptional() matchingPairs?: { left: string; right: string }[];
+  @IsArray() @IsOptional() extraRightMatches?: string[];
   @IsArray() @IsOptional() jumbledStatements?: string[];
   @IsString() @IsOptional() problemStatement?: string;
   @IsString() @IsOptional() inputFormat?: string;
   @IsString() @IsOptional() outputFormat?: string;
   @IsString() @IsOptional() constraints?: string;
+  @IsArray() @IsOptional() allowedLanguages?: string[];
   @IsArray() @IsOptional() testCases?: {
     input: string;
     output: string;
@@ -219,30 +221,40 @@ export class QuestionBankController {
 
   @Get(':id')
   async getOne(@Param('id', ParseIntPipe) id: number, @Request() req?: any) {
-    const question = await this.questionRepo.findOneBy({ id });
-    
-    if (!question) {
-      return null;
-    }
+    try {
+      const question = await this.questionRepo.findOneBy({ id });
+      
+      if (!question) {
+        return null;
+      }
 
-    const userRole = req?.user?.role;
-    const userOrganizationId = req?.user?.organizationId;
+      const userRole = req?.user?.role;
+      const userOrganizationId = req?.user?.organizationId;
 
-    // SUPERADMIN can access any question
-    if (userRole === UserRole.SUPERADMIN) {
+      // SUPERADMIN can access any question
+      if (userRole === UserRole.SUPERADMIN) {
+        return question;
+      }
+
+      // If question has no organizationId (legacy data), only SUPERADMIN can access
+      if (!question.organizationId) {
+        return null;
+      }
+
+      // Check if user can access this question's organization
+      if (!this.organizationFilterService.canAccessOrganization(
+        userRole,
+        userOrganizationId,
+        question.organizationId
+      )) {
+        return null; // User cannot access question from different organization
+      }
+
       return question;
+    } catch (error) {
+      console.error('Error fetching question:', error);
+      throw new Error(`Failed to fetch question: ${error.message}`);
     }
-
-    // Check if user can access this question's organization
-    if (!this.organizationFilterService.canAccessOrganization(
-      userRole,
-      userOrganizationId,
-      question.organizationId
-    )) {
-      return null; // User cannot access question from different organization
-    }
-
-    return question;
   }
 
   @Post()
@@ -277,29 +289,39 @@ export class QuestionBankController {
     @Body() dto: Partial<CreateQuestionDto>,
     @Request() req?: any,
   ) {
-    const question = await this.questionRepo.findOneBy({ id });
-    
-    if (!question) {
-      return { message: 'Question not found' };
-    }
-
-    const userRole = req?.user?.role;
-    const userOrganizationId = req?.user?.organizationId;
-
-    // SUPERADMIN can update any question
-    if (userRole !== UserRole.SUPERADMIN) {
-      // Check if user can access this question's organization
-      if (!this.organizationFilterService.canAccessOrganization(
-        userRole,
-        userOrganizationId,
-        question.organizationId
-      )) {
-        return { message: 'Cannot update question from different organization' };
+    try {
+      const question = await this.questionRepo.findOneBy({ id });
+      
+      if (!question) {
+        return { message: 'Question not found' };
       }
-    }
 
-    await this.questionRepo.update(id, dto);
-    return this.questionRepo.findOneBy({ id });
+      const userRole = req?.user?.role;
+      const userOrganizationId = req?.user?.organizationId;
+
+      // SUPERADMIN can update any question
+      if (userRole !== UserRole.SUPERADMIN) {
+        // If question has no organizationId (legacy data), only SUPERADMIN can update
+        if (!question.organizationId) {
+          return { message: 'This question belongs to no organization and can only be updated by SUPERADMIN' };
+        }
+
+        // Check if user can access this question's organization
+        if (!this.organizationFilterService.canAccessOrganization(
+          userRole,
+          userOrganizationId,
+          question.organizationId
+        )) {
+          return { message: 'Cannot update question from different organization' };
+        }
+      }
+
+      await this.questionRepo.update(id, dto);
+      return this.questionRepo.findOneBy({ id });
+    } catch (error) {
+      console.error('Error updating question:', error);
+      throw new Error(`Failed to update question: ${error.message}`);
+    }
   }
 
   @Delete(':id')

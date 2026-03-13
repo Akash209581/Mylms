@@ -159,7 +159,7 @@ export default function ContestManagementPage() {
                                 const tc = TYPE_CONFIG[c.type] || TYPE_CONFIG.TEST
                                 const sc = STATUS_CONFIG[c.status] || STATUS_CONFIG.DRAFT
                                 return (
-                                    <div key={c.id} className="flex items-center gap-4 p-4 rounded-2xl transition-colors hover:bg-white/5"
+                                    <div key={c.id} className="flex items-center gap-4 p-4 rounded-2xl transition-colors hover:bg-[var(--bg-surface)]/5"
                                         style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
                                         <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0"
                                             style={{ background: `${tc.color}20` }}>{tc.icon}</div>

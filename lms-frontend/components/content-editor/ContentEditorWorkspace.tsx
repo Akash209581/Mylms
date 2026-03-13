@@ -36,7 +36,7 @@ const CATEGORY_COLORS: Record<ContentDoc['category'], string> = {
   'course': 'bg-indigo-100 text-indigo-700',
   'exam-prep': 'bg-amber-100 text-amber-700',
   'notes': 'bg-emerald-100 text-emerald-700',
-  'other': 'bg-slate-100 text-slate-600',
+  'other': 'bg-[var(--bg-hover)] text-[var(--text-secondary)]',
 }
 
 function genId() { return `doc-${Date.now()}-${Math.random().toString(36).slice(2, 7)}` }
@@ -199,7 +199,7 @@ export default function ContentEditorWorkspace({ role }: { role: string }) {
                       <button
                         className={`w-full text-left px-3 py-2.5 rounded-lg transition-all group ${activeDoc?.id === doc.id
                             ? 'bg-indigo-600 text-white shadow'
-                            : 'hover:bg-slate-100 text-slate-700'
+                            : 'hover:bg-[var(--bg-hover)] text-[var(--text-primary)]'
                           }`}
                         onClick={() => openDoc(doc)}
                       >
@@ -217,7 +217,7 @@ export default function ContentEditorWorkspace({ role }: { role: string }) {
                           </button>
                         </div>
                         <span className={`inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded font-medium ${activeDoc?.id === doc.id
-                            ? 'bg-white/20 text-white'
+                            ? 'bg-[var(--bg-surface)]/20 text-white'
                             : CATEGORY_COLORS[doc.category]
                           }`}>
                           {CATEGORY_LABELS[doc.category]}
@@ -239,8 +239,8 @@ export default function ContentEditorWorkspace({ role }: { role: string }) {
               /* Empty state */
               <div className="glass-card p-16 text-center">
                 <div className="text-6xl mb-4">✏️</div>
-                <h2 className="text-xl font-bold text-slate-700 mb-2">No document open</h2>
-                <p className="text-slate-500 text-sm mb-6">
+                <h2 className="text-xl font-bold text-[var(--text-primary)] mb-2">No document open</h2>
+                <p className="text-[var(--text-secondary)] text-sm mb-6">
                   Select a document from the left or create a new one.
                 </p>
                 <button onClick={() => createDoc('other')} className="btn-primary">
@@ -251,7 +251,7 @@ export default function ContentEditorWorkspace({ role }: { role: string }) {
               <div className="glass-card p-6 space-y-4">
 
                 {/* ── Document header ── */}
-                <div className="flex items-start gap-3 pb-4 border-b border-slate-100">
+                <div className="flex items-start gap-3 pb-4 border-b border-[var(--border)]">
                   <div className="flex-1 min-w-0">
                     {/* Editable title */}
                     {editingTitle ? (
@@ -262,12 +262,12 @@ export default function ContentEditorWorkspace({ role }: { role: string }) {
                         onChange={e => setTitleDraft(e.target.value)}
                         onBlur={commitTitle}
                         onKeyDown={e => e.key === 'Enter' && commitTitle()}
-                        className="w-full text-2xl font-bold text-slate-900 bg-transparent border-b-2 border-indigo-500 outline-none pb-1 mb-1"
+                        className="w-full text-2xl font-bold text-[var(--text-primary)] bg-transparent border-b-2 border-indigo-500 outline-none pb-1 mb-1"
                         placeholder="Document title..."
                       />
                     ) : (
                       <h1
-                        className="text-2xl font-bold text-slate-900 cursor-pointer hover:text-indigo-600 transition-colors"
+                        className="text-2xl font-bold text-[var(--text-primary)] cursor-pointer hover:text-indigo-600 transition-colors"
                         onClick={() => { setTitleDraft(activeDoc.title); setEditingTitle(true) }}
                         title="Click to rename"
                       >

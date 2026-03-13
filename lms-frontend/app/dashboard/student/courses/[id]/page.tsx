@@ -396,7 +396,7 @@ export default function StudentCourseDetailsPage() {
                                             {/* Module Header */}
                                             <button
                                                 onClick={() => toggleModule(module.id)}
-                                                className="w-full p-4 bg-white/5 hover:bg-white/10 transition-colors flex items-center justify-between"
+                                                className="w-full p-4 bg-[var(--bg-surface)]/5 hover:bg-[var(--bg-surface)]/10 transition-colors flex items-center justify-between"
                                             >
                                                 <div className="flex items-center gap-3 text-left">
                                                     <span className="text-2xl">
@@ -411,7 +411,7 @@ export default function StudentCourseDetailsPage() {
                                                                 {module.description}
                                                             </p>
                                                         )}
-                                                        <p className="text-gray-500 text-xs mt-1">
+                                                        <p className="text-[var(--text-secondary)] text-xs mt-1">
                                                             {module.lessons.length} lecture{module.lessons.length !== 1 ? 's' : ''}
                                                         </p>
                                                     </div>
@@ -425,7 +425,7 @@ export default function StudentCourseDetailsPage() {
                                             {expandedModules.has(module.id) && (
                                                 <div className="p-4 space-y-3 bg-black/20">
                                                     {module.lessons.map((lesson, lessonIndex) => (
-                                                        <div key={lesson.id} className="p-4 bg-white/5 rounded-lg hover:bg-white/10 transition-colors">
+                                                        <div key={lesson.id} className="p-4 bg-[var(--bg-surface)]/5 rounded-lg hover:bg-[var(--bg-surface)]/10 transition-colors">
                                                             {/* Lesson Header */}
                                                             <div className="flex items-start justify-between gap-4">
                                                                 <div className="flex items-start gap-3 flex-1">
@@ -473,7 +473,7 @@ export default function StudentCourseDetailsPage() {
                                                                                         <span>📥</span>
                                                                                         <span>{resource.title}</span>
                                                                                         {resource.fileSize && (
-                                                                                            <span className="text-gray-500 text-xs">
+                                                                                            <span className="text-[var(--text-secondary)] text-xs">
                                                                                                 ({formatFileSize(resource.fileSize)})
                                                                                             </span>
                                                                                         )}

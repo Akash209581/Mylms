@@ -71,7 +71,7 @@ export default function CreateQuestionPage() {
             <main className="page-content">
                 <div className="flex items-center gap-3 mb-8">
                     <button onClick={() => router.push('/dashboard/superadmin/question-bank')}
-                        className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 transition-all">
+                        className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-[var(--bg-surface)]/10 transition-all">
                         ← Back
                     </button>
                     <div>
@@ -221,7 +221,7 @@ export default function CreateQuestionPage() {
                                                     const em = [...form.extraRightMatches];
                                                     em[i] = e.target.value;
                                                     set('extraRightMatches', em);
-                                                }} placeholder="Unrelated right match..." className="input-field flex-1 text-sm bg-white/5" />
+                                                }} placeholder="Unrelated right match..." className="input-field flex-1 text-sm bg-[var(--bg-surface)]/5" />
                                                 <button onClick={() => set('extraRightMatches', form.extraRightMatches.filter((_: any, idx: number) => idx !== i))}
                                                     className="text-red-400 hover:text-red-500 p-1">×</button>
                                             </div>
@@ -261,7 +261,7 @@ export default function CreateQuestionPage() {
                                             <button onClick={() => set('allowedLanguages', LANGUAGES.filter(l => l !== 'Any'))}
                                                 className="text-[9px] font-bold text-primary-400 hover:text-primary-300 uppercase tracking-wider">Select All</button>
                                             <button onClick={() => set('allowedLanguages', [])}
-                                                className="text-[9px] font-bold text-gray-500 hover:text-gray-400 uppercase tracking-wider">Clear</button>
+                                                className="text-[9px] font-bold text-[var(--text-secondary)] hover:text-gray-400 uppercase tracking-wider">Clear</button>
                                         </div>
                                     </div>
                                     <div className="flex flex-wrap gap-2">
@@ -270,7 +270,7 @@ export default function CreateQuestionPage() {
                                                 const current = form.allowedLanguages || [];
                                                 const next = current.includes(lang) ? current.filter((l: string) => l !== lang) : [...current, lang];
                                                 set('allowedLanguages', next);
-                                            }} className={`px-3 py-1.5 rounded-xl text-[10px] font-bold border transition-all ${form.allowedLanguages?.includes(lang) ? 'bg-primary-500 border-primary-500 text-white shadow-lg shadow-primary-500/20' : 'bg-white/5 border-white/10 text-gray-400 hover:border-white/30'}`}>
+                                            }} className={`px-3 py-1.5 rounded-xl text-[10px] font-bold border transition-all ${form.allowedLanguages?.includes(lang) ? 'bg-primary-500 border-primary-500 text-white shadow-lg shadow-primary-500/20' : 'bg-[var(--bg-surface)]/5 border-white/10 text-gray-400 hover:border-white/30'}`}>
                                                 {lang}
                                             </button>
                                         ))}
@@ -314,7 +314,7 @@ export default function CreateQuestionPage() {
                                 <div className="glass-card p-6">
                                     <div className="flex justify-between items-center mb-6">
                                         <h3 className="text-white font-semibold">🎯 Output Prediction</h3>
-                                        <div className="flex gap-2 bg-white/5 p-1 rounded-xl border border-white/10">
+                                        <div className="flex gap-2 bg-[var(--bg-surface)]/5 p-1 rounded-xl border border-white/10">
                                             <button onClick={() => { set('opMode', 'typing'); set('options', ['', '', '', '']) }}
                                                 className={`px-4 py-1.5 rounded-lg text-[10px] font-bold transition-all ${(form.opMode || (form.options && form.options.some((o: any) => o) ? 'mcq' : 'typing')) !== 'mcq' ? 'bg-primary-500 text-white' : 'text-gray-400 hover:text-white'}`}>
                                                 ⌨️ TYPING
@@ -355,7 +355,7 @@ export default function CreateQuestionPage() {
                                                 </div>
                                             ))}
                                         </div>
-                                        <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                                        <div className="p-4 rounded-xl bg-[var(--bg-surface)]/5 border border-white/10">
                                             <label className="text-gray-400 text-xs font-bold uppercase mb-2 block">Select Correct Answer</label>
                                             <div className="flex flex-wrap gap-2">
                                                 {(form.options || []).map((o: string, i: number) => o && (
@@ -372,7 +372,7 @@ export default function CreateQuestionPage() {
                         )}
 
                         {/* Footer Actions */}
-                        <div className="flex justify-between items-center bg-white/5 p-6 rounded-2xl border border-white/10">
+                        <div className="flex justify-between items-center bg-[var(--bg-surface)]/5 p-6 rounded-2xl border border-white/10">
                             <button onClick={() => setStep(1)} className="btn-secondary px-5 py-2.5">← Change Type</button>
                             <div className="flex gap-3">
                                 <button onClick={() => setShowPreview(true)}

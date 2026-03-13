@@ -137,7 +137,7 @@ export default function AdminDetailPage() {
                             
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-white/10">
                                 <div>
-                                    <p className="text-xs text-gray-500 mb-1">Organization</p>
+                                    <p className="text-xs text-[var(--text-secondary)] mb-1">Organization</p>
                                     <p className="text-white font-medium">
                                         {admin?.organization?.name || 'N/A'}
                                         {admin?.organization?.type && (
@@ -146,11 +146,11 @@ export default function AdminDetailPage() {
                                     </p>
                                 </div>
                                 <div>
-                                    <p className="text-xs text-gray-500 mb-1">College</p>
+                                    <p className="text-xs text-[var(--text-secondary)] mb-1">College</p>
                                     <p className="text-white font-medium">{admin?.collegeName || 'N/A'}</p>
                                 </div>
                                 <div>
-                                    <p className="text-xs text-gray-500 mb-1">Joined</p>
+                                    <p className="text-xs text-[var(--text-secondary)] mb-1">Joined</p>
                                     <p className="text-white font-medium">
                                         {admin?.createdAt ? new Date(admin.createdAt).toLocaleDateString('en-US', {
                                             year: 'numeric',
@@ -160,7 +160,7 @@ export default function AdminDetailPage() {
                                     </p>
                                 </div>
                                 <div>
-                                    <p className="text-xs text-gray-500 mb-1">Organization ID</p>
+                                    <p className="text-xs text-[var(--text-secondary)] mb-1">Organization ID</p>
                                     <p className="text-white font-medium">{admin?.organizationId || 'N/A'}</p>
                                 </div>
                             </div>
@@ -217,9 +217,9 @@ export default function AdminDetailPage() {
                                 </thead>
                                 <tbody>
                                     {filteredUsers.map((u, i) => (
-                                        <tr key={u.id} className="border-b transition-colors hover:bg-white/5"
+                                        <tr key={u.id} className="border-b transition-colors hover:bg-[var(--bg-surface)]/5"
                                             style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
-                                            <td className="py-4 pr-4 text-gray-500 text-sm">{i + 1}</td>
+                                            <td className="py-4 pr-4 text-[var(--text-secondary)] text-sm">{i + 1}</td>
                                             <td className="py-4 pr-4">
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-sm font-bold flex-shrink-0"

@@ -360,7 +360,7 @@ export default function CourseBuilderPage() {
                                         <h3 className="text-xl font-bold text-white flex items-center gap-3">
                                             <span className="text-purple-400">Section {index + 1}:</span>
                                             {module.title}
-                                            <span className="text-gray-500 text-sm">
+                                            <span className="text-[var(--text-secondary)] text-sm">
                                                 {expandedModules.has(module.id) ? '▼' : '▶'}
                                             </span>
                                         </h3>
@@ -406,7 +406,7 @@ export default function CourseBuilderPage() {
                                                 >
                                                     <div className="flex-1">
                                                         <div className="flex items-center gap-3">
-                                                            <span className="text-gray-500 font-semibold">
+                                                            <span className="text-[var(--text-secondary)] font-semibold">
                                                                 {index + 1}.{lessonIndex + 1}
                                                             </span>
                                                             <h4 className="text-white font-semibold">{lesson.title}</h4>
@@ -421,7 +421,7 @@ export default function CourseBuilderPage() {
                                                                 {lesson.type}
                                                             </span>
                                                             {lesson.duration && (
-                                                                <span className="text-gray-500 text-sm">
+                                                                <span className="text-[var(--text-secondary)] text-sm">
                                                                     ⏱️ {lesson.duration} min
                                                                 </span>
                                                             )}
@@ -459,7 +459,7 @@ export default function CourseBuilderPage() {
                                                 </div>
                                             ))
                                         ) : (
-                                            <div className="text-gray-500 text-sm italic">
+                                            <div className="text-[var(--text-secondary)] text-sm italic">
                                                 No lectures yet. Click "Add Lecture" to create one.
                                             </div>
                                         )}
@@ -474,12 +474,12 @@ export default function CourseBuilderPage() {
             {/* Course Overview Modal */}
             {showCourseOverviewModal && (
                 <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-white border-2 border-purple-500/30 rounded-2xl p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-                        <h2 className="text-3xl font-bold text-gray-900 mb-6">Edit Course Overview</h2>
+                    <div className="bg-[var(--bg-surface)] border-2 border-purple-500/30 rounded-2xl p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+                        <h2 className="text-3xl font-bold text-[var(--text-primary)] mb-6">Edit Course Overview</h2>
                         
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-gray-900 font-medium mb-2">
+                                <label className="block text-[var(--text-primary)] font-medium mb-2">
                                     Learning Objectives
                                 </label>
                                 <textarea
@@ -492,7 +492,7 @@ export default function CourseBuilderPage() {
                             </div>
 
                             <div>
-                                <label className="block text-gray-900 font-medium mb-2">
+                                <label className="block text-[var(--text-primary)] font-medium mb-2">
                                     Prerequisites
                                 </label>
                                 <textarea
@@ -505,7 +505,7 @@ export default function CourseBuilderPage() {
                             </div>
 
                             <div>
-                                <label className="block text-gray-900 font-medium mb-2">
+                                <label className="block text-[var(--text-primary)] font-medium mb-2">
                                     Target Audience
                                 </label>
                                 <textarea
@@ -518,7 +518,7 @@ export default function CourseBuilderPage() {
                             </div>
 
                             <div>
-                                <label className="block text-gray-900 font-medium mb-2">
+                                <label className="block text-[var(--text-primary)] font-medium mb-2">
                                     Estimated Duration (hours)
                                 </label>
                                 <input
@@ -552,14 +552,14 @@ export default function CourseBuilderPage() {
             {/* Module Modal */}
             {showModuleModal && (
                 <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-white border-2 border-purple-500/30 rounded-2xl p-8 max-w-2xl w-full">
-                        <h2 className="text-3xl font-bold text-gray-900 mb-6">
+                    <div className="bg-[var(--bg-surface)] border-2 border-purple-500/30 rounded-2xl p-8 max-w-2xl w-full">
+                        <h2 className="text-3xl font-bold text-[var(--text-primary)] mb-6">
                             {editingModule ? 'Edit Section' : 'Add New Section'}
                         </h2>
                         
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-gray-900 font-medium mb-2">
+                                <label className="block text-[var(--text-primary)] font-medium mb-2">
                                     Section Title <span className="text-red-600">*</span>
                                 </label>
                                 <input
@@ -572,7 +572,7 @@ export default function CourseBuilderPage() {
                             </div>
 
                             <div>
-                                <label className="block text-gray-900 font-medium mb-2">
+                                <label className="block text-[var(--text-primary)] font-medium mb-2">
                                     Section Description
                                 </label>
                                 <textarea
@@ -610,14 +610,14 @@ export default function CourseBuilderPage() {
             {/* Lesson Modal */}
             {showLessonModal && (
                 <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-white border-2 border-purple-500/30 rounded-2xl p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-                        <h2 className="text-3xl font-bold text-gray-900 mb-6">
+                    <div className="bg-[var(--bg-surface)] border-2 border-purple-500/30 rounded-2xl p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+                        <h2 className="text-3xl font-bold text-[var(--text-primary)] mb-6">
                             {editingLesson ? 'Edit Lecture' : 'Add New Lecture'}
                         </h2>
                         
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-gray-900 font-medium mb-2">
+                                <label className="block text-[var(--text-primary)] font-medium mb-2">
                                     Lecture Title <span className="text-red-600">*</span>
                                 </label>
                                 <input
@@ -630,7 +630,7 @@ export default function CourseBuilderPage() {
                             </div>
 
                             <div>
-                                <label className="block text-gray-900 font-medium mb-2">
+                                <label className="block text-[var(--text-primary)] font-medium mb-2">
                                     Lecture Description
                                 </label>
                                 <textarea
@@ -644,7 +644,7 @@ export default function CourseBuilderPage() {
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-gray-900 font-medium mb-2">
+                                    <label className="block text-[var(--text-primary)] font-medium mb-2">
                                         Content Type
                                     </label>
                                     <select
@@ -660,7 +660,7 @@ export default function CourseBuilderPage() {
                                 </div>
 
                                 <div>
-                                    <label className="block text-gray-900 font-medium mb-2">
+                                    <label className="block text-[var(--text-primary)] font-medium mb-2">
                                         Duration (minutes)
                                     </label>
                                     <input
@@ -674,7 +674,7 @@ export default function CourseBuilderPage() {
                             </div>
 
                             <div>
-                                <label className="block text-gray-900 font-medium mb-2">
+                                <label className="block text-[var(--text-primary)] font-medium mb-2">
                                     Video URL (YouTube, Vimeo, etc.)
                                 </label>
                                 <input
@@ -694,7 +694,7 @@ export default function CourseBuilderPage() {
                                         onChange={(e) => setLessonForm({ ...lessonForm, published: e.target.checked })}
                                         className="w-5 h-5 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500"
                                     />
-                                    <span className="text-gray-900 font-medium">
+                                    <span className="text-[var(--text-primary)] font-medium">
                                         Publish this lecture (make it visible to students)
                                     </span>
                                 </label>

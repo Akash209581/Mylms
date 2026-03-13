@@ -26,10 +26,10 @@ export default function SuperAdminBulkImportPage() {
         <div className="mb-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">
+              <h1 className="text-3xl font-bold text-[var(--text-primary)]">
                 Bulk Question Import
               </h1>
-              <p className="mt-2 text-gray-600">
+              <p className="mt-2 text-[var(--text-secondary)]">
                 Import multiple questions at once using Excel or CSV files
               </p>
             </div>

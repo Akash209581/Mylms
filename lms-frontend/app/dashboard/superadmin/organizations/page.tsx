@@ -175,7 +175,7 @@ export default function OrganizationsPage() {
         <form onSubmit={onSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                    <label className="block text-sm font-semibold mb-1.5 text-gray-700">Organization Name *</label>
+                    <label className="block text-sm font-semibold mb-1.5 text-[var(--text-primary)]">Organization Name *</label>
                     <input
                         type="text"
                         className="input-field"
@@ -186,7 +186,7 @@ export default function OrganizationsPage() {
                     />
                 </div>
                 <div>
-                    <label className="block text-sm font-semibold mb-1.5 text-gray-700">Type</label>
+                    <label className="block text-sm font-semibold mb-1.5 text-[var(--text-primary)]">Type</label>
                     <select
                         className="input-field"
                         value={formData.type}
@@ -203,7 +203,7 @@ export default function OrganizationsPage() {
             </div>
 
             <div>
-                <label className="block text-sm font-semibold mb-1.5 text-gray-700">Description</label>
+                <label className="block text-sm font-semibold mb-1.5 text-[var(--text-primary)]">Description</label>
                 <textarea
                     className="input-field"
                     placeholder="Brief description of the organization"
@@ -215,7 +215,7 @@ export default function OrganizationsPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                    <label className="block text-sm font-semibold mb-1.5 text-gray-700">Contact Email</label>
+                    <label className="block text-sm font-semibold mb-1.5 text-[var(--text-primary)]">Contact Email</label>
                     <input
                         type="email"
                         className="input-field"
@@ -225,7 +225,7 @@ export default function OrganizationsPage() {
                     />
                 </div>
                 <div>
-                    <label className="block text-sm font-semibold mb-1.5 text-gray-700">Contact Phone</label>
+                    <label className="block text-sm font-semibold mb-1.5 text-[var(--text-primary)]">Contact Phone</label>
                     <input
                         type="tel"
                         className="input-field"
@@ -237,7 +237,7 @@ export default function OrganizationsPage() {
             </div>
 
             <div>
-                <label className="block text-sm font-semibold mb-1.5 text-gray-700">Address</label>
+                <label className="block text-sm font-semibold mb-1.5 text-[var(--text-primary)]">Address</label>
                 <input
                     type="text"
                     className="input-field"
@@ -249,7 +249,7 @@ export default function OrganizationsPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                    <label className="block text-sm font-semibold mb-1.5 text-gray-700">City</label>
+                    <label className="block text-sm font-semibold mb-1.5 text-[var(--text-primary)]">City</label>
                     <input
                         type="text"
                         className="input-field"
@@ -259,7 +259,7 @@ export default function OrganizationsPage() {
                     />
                 </div>
                 <div>
-                    <label className="block text-sm font-semibold mb-1.5 text-gray-700">State/Province</label>
+                    <label className="block text-sm font-semibold mb-1.5 text-[var(--text-primary)]">State/Province</label>
                     <input
                         type="text"
                         className="input-field"
@@ -269,7 +269,7 @@ export default function OrganizationsPage() {
                     />
                 </div>
                 <div>
-                    <label className="block text-sm font-semibold mb-1.5 text-gray-700">Country</label>
+                    <label className="block text-sm font-semibold mb-1.5 text-[var(--text-primary)]">Country</label>
                     <input
                         type="text"
                         className="input-field"
@@ -288,7 +288,7 @@ export default function OrganizationsPage() {
                     onChange={e => setFormData({ ...formData, active: e.target.checked })}
                     className="w-4 h-4 text-blue-600 rounded"
                 />
-                <label htmlFor="active" className="ml-2 text-sm font-medium text-gray-700">
+                <label htmlFor="active" className="ml-2 text-sm font-medium text-[var(--text-primary)]">
                     Active
                 </label>
             </div>
@@ -300,7 +300,7 @@ export default function OrganizationsPage() {
                         isEdit ? setShowEditModal(false) : setShowCreateModal(false)
                         resetForm()
                     }}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition"
+                    className="px-4 py-2 text-sm font-medium text-[var(--text-primary)] bg-gray-100 rounded-lg hover:bg-gray-200 transition"
                 >
                     Cancel
                 </button>
@@ -320,11 +320,11 @@ export default function OrganizationsPage() {
             <Navbar title="Organization Management" />
             <main className="page-content">
                 {/* Header */}
-                <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
+                <div className="bg-[var(--bg-surface)] rounded-2xl shadow-xl p-6 mb-6">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <div>
-                            <h1 className="text-2xl font-bold text-gray-800">Organizations</h1>
-                            <p className="text-gray-600 text-sm mt-1">Manage multi-tenant organizations</p>
+                            <h1 className="text-2xl font-bold text-[var(--text-primary)]">Organizations</h1>
+                            <p className="text-[var(--text-secondary)] text-sm mt-1">Manage multi-tenant organizations</p>
                         </div>
                         <button
                             onClick={() => setShowCreateModal(true)}
@@ -355,10 +355,10 @@ export default function OrganizationsPage() {
                 ) : (
                     <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                         {organizations.map((org) => (
-                            <div key={org.id} className="bg-white rounded-2xl shadow-xl p-6 hover:shadow-2xl transition">
+                            <div key={org.id} className="bg-[var(--bg-surface)] rounded-2xl shadow-xl p-6 hover:shadow-2xl transition">
                                 <div className="flex justify-between items-start mb-4">
                                     <div className="flex-1">
-                                        <h3 className="text-xl font-bold text-gray-800 mb-1">{org.name}</h3>
+                                        <h3 className="text-xl font-bold text-[var(--text-primary)] mb-1">{org.name}</h3>
                                         {org.type && (
                                             <span className="inline-block px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded">
                                                 {org.type}
@@ -371,7 +371,7 @@ export default function OrganizationsPage() {
                                                 ● Active
                                             </span>
                                         ) : (
-                                            <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded">
+                                            <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-gray-100 text-[var(--text-primary)] rounded">
                                                 ● Inactive
                                             </span>
                                         )}
@@ -379,10 +379,10 @@ export default function OrganizationsPage() {
                                 </div>
 
                                 {org.description && (
-                                    <p className="text-sm text-gray-600 mb-4 line-clamp-2">{org.description}</p>
+                                    <p className="text-sm text-[var(--text-secondary)] mb-4 line-clamp-2">{org.description}</p>
                                 )}
 
-                                <div className="space-y-2 mb-4 text-sm text-gray-600">
+                                <div className="space-y-2 mb-4 text-sm text-[var(--text-secondary)]">
                                     {org.city && org.country && (
                                         <div className="flex items-center">
                                             <span className="mr-2">📍</span>
@@ -397,7 +397,7 @@ export default function OrganizationsPage() {
                                     )}
                                 </div>
 
-                                <div className="flex space-x-2 pt-4 border-t border-gray-100">
+                                <div className="flex space-x-2 pt-4 border-t border-[var(--border)]">
                                     <button
                                         onClick={() => viewOrgDetails(org)}
                                         className="flex-1 px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition"
@@ -406,7 +406,7 @@ export default function OrganizationsPage() {
                                     </button>
                                     <button
                                         onClick={() => openEditModal(org)}
-                                        className="flex-1 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition"
+                                        className="flex-1 px-3 py-2 text-sm font-medium text-[var(--text-primary)] bg-gray-100 rounded-lg hover:bg-gray-200 transition"
                                     >
                                         Edit
                                     </button>
@@ -425,15 +425,15 @@ export default function OrganizationsPage() {
                 {/* Organization Stats Modal */}
                 {selectedOrg && stats && !showEditModal && (
                     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => { setSelectedOrg(null); setStats(null); }}>
-                        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-2xl w-full mx-4" onClick={(e) => e.stopPropagation()}>
+                        <div className="bg-[var(--bg-surface)] rounded-2xl shadow-2xl p-8 max-w-2xl w-full mx-4" onClick={(e) => e.stopPropagation()}>
                             <div className="flex justify-between items-start mb-6">
                                 <div>
-                                    <h2 className="text-2xl font-bold text-gray-800">{selectedOrg.name}</h2>
-                                    <p className="text-gray-600 text-sm mt-1">Organization Statistics</p>
+                                    <h2 className="text-2xl font-bold text-[var(--text-primary)]">{selectedOrg.name}</h2>
+                                    <p className="text-[var(--text-secondary)] text-sm mt-1">Organization Statistics</p>
                                 </div>
                                 <button
                                     onClick={() => { setSelectedOrg(null); setStats(null); }}
-                                    className="text-gray-400 hover:text-gray-600 text-2xl"
+                                    className="text-gray-400 hover:text-[var(--text-secondary)] text-2xl"
                                 >
                                     ×
                                 </button>
@@ -442,39 +442,39 @@ export default function OrganizationsPage() {
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
                                 <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-xl">
                                     <div className="text-3xl mb-2">👥</div>
-                                    <div className="text-2xl font-bold text-gray-800">{stats.totalUsers}</div>
-                                    <div className="text-sm text-gray-600">Total Users</div>
+                                    <div className="text-2xl font-bold text-[var(--text-primary)]">{stats.totalUsers}</div>
+                                    <div className="text-sm text-[var(--text-secondary)]">Total Users</div>
                                 </div>
                                 <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-xl">
                                     <div className="text-3xl mb-2">📚</div>
-                                    <div className="text-2xl font-bold text-gray-800">{stats.totalCourses}</div>
-                                    <div className="text-sm text-gray-600">Total Courses</div>
+                                    <div className="text-2xl font-bold text-[var(--text-primary)]">{stats.totalCourses}</div>
+                                    <div className="text-sm text-[var(--text-secondary)]">Total Courses</div>
                                 </div>
                                 <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-xl">
                                     <div className="text-3xl mb-2">❓</div>
-                                    <div className="text-2xl font-bold text-gray-800">{stats.totalQuestions}</div>
-                                    <div className="text-sm text-gray-600">Questions</div>
+                                    <div className="text-2xl font-bold text-[var(--text-primary)]">{stats.totalQuestions}</div>
+                                    <div className="text-sm text-[var(--text-secondary)]">Questions</div>
                                 </div>
                                 <div className="bg-gradient-to-br from-red-50 to-red-100 p-4 rounded-xl">
                                     <div className="text-3xl mb-2">🛡️</div>
-                                    <div className="text-2xl font-bold text-gray-800">{stats.adminCount}</div>
-                                    <div className="text-sm text-gray-600">Admins</div>
+                                    <div className="text-2xl font-bold text-[var(--text-primary)]">{stats.adminCount}</div>
+                                    <div className="text-sm text-[var(--text-secondary)]">Admins</div>
                                 </div>
                                 <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 p-4 rounded-xl">
                                     <div className="text-3xl mb-2">👨‍🏫</div>
-                                    <div className="text-2xl font-bold text-gray-800">{stats.instructorCount}</div>
-                                    <div className="text-sm text-gray-600">Instructors</div>
+                                    <div className="text-2xl font-bold text-[var(--text-primary)]">{stats.instructorCount}</div>
+                                    <div className="text-sm text-[var(--text-secondary)]">Instructors</div>
                                 </div>
                                 <div className="bg-gradient-to-br from-pink-50 to-pink-100 p-4 rounded-xl">
                                     <div className="text-3xl mb-2">🎓</div>
-                                    <div className="text-2xl font-bold text-gray-800">{stats.studentCount}</div>
-                                    <div className="text-sm text-gray-600">Students</div>
+                                    <div className="text-2xl font-bold text-[var(--text-primary)]">{stats.studentCount}</div>
+                                    <div className="text-sm text-[var(--text-secondary)]">Students</div>
                                 </div>
                             </div>
 
                             <button
                                 onClick={() => { setSelectedOrg(null); setStats(null); }}
-                                className="w-full px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition"
+                                className="w-full px-4 py-2 text-sm font-medium text-[var(--text-primary)] bg-gray-100 rounded-lg hover:bg-gray-200 transition"
                             >
                                 Close
                             </button>
@@ -485,8 +485,8 @@ export default function OrganizationsPage() {
                 {/* Create Organization Modal */}
                 {showCreateModal && (
                     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
-                        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-3xl w-full mx-4 my-8">
-                            <h2 className="text-2xl font-bold text-gray-800 mb-6">Create New Organization</h2>
+                        <div className="bg-[var(--bg-surface)] rounded-2xl shadow-2xl p-8 max-w-3xl w-full mx-4 my-8">
+                            <h2 className="text-2xl font-bold text-[var(--text-primary)] mb-6">Create New Organization</h2>
                             {renderOrgForm(handleCreateOrganization)}
                         </div>
                     </div>
@@ -495,8 +495,8 @@ export default function OrganizationsPage() {
                 {/* Edit Organization Modal */}
                 {showEditModal && (
                     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
-                        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-3xl w-full mx-4 my-8">
-                            <h2 className="text-2xl font-bold text-gray-800 mb-6">Edit Organization</h2>
+                        <div className="bg-[var(--bg-surface)] rounded-2xl shadow-2xl p-8 max-w-3xl w-full mx-4 my-8">
+                            <h2 className="text-2xl font-bold text-[var(--text-primary)] mb-6">Edit Organization</h2>
                             {renderOrgForm(handleUpdateOrganization, true)}
                         </div>
                     </div>

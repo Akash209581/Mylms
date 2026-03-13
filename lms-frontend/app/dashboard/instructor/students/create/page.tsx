@@ -100,9 +100,9 @@ export default function CreateStudentPage() {
             <main className="page-content">
                 <div className="max-w-4xl mx-auto">
                     {/* Header */}
-                    <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
-                        <h1 className="text-2xl font-bold text-gray-800">Create New Student</h1>
-                        <p className="text-gray-600 text-sm mt-1">
+                    <div className="bg-[var(--bg-surface)] rounded-2xl shadow-xl p-6 mb-6">
+                        <h1 className="text-2xl font-bold text-[var(--text-primary)]">Create New Student</h1>
+                        <p className="text-[var(--text-secondary)] text-sm mt-1">
                             Create STUDENT accounts within your organization
                         </p>
                     </div>
@@ -120,14 +120,14 @@ export default function CreateStudentPage() {
                     )}
 
                     {/* Form */}
-                    <div className="bg-white rounded-2xl shadow-xl p-8">
+                    <div className="bg-[var(--bg-surface)] rounded-2xl shadow-xl p-8">
                         <form onSubmit={handleSubmit} className="space-y-6">
                             {/* Basic Information */}
                             <div className="border-b pb-6">
-                                <h2 className="text-lg font-bold text-gray-800 mb-4">Basic Information</h2>
+                                <h2 className="text-lg font-bold text-[var(--text-primary)] mb-4">Basic Information</h2>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-sm font-semibold mb-1.5 text-gray-700">Full Name *</label>
+                                        <label className="block text-sm font-semibold mb-1.5 text-[var(--text-primary)]">Full Name *</label>
                                         <input
                                             type="text"
                                             className="input-field"
@@ -138,7 +138,7 @@ export default function CreateStudentPage() {
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-semibold mb-1.5 text-gray-700">Email *</label>
+                                        <label className="block text-sm font-semibold mb-1.5 text-[var(--text-primary)]">Email *</label>
                                         <input
                                             type="email"
                                             className="input-field"
@@ -149,7 +149,7 @@ export default function CreateStudentPage() {
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-semibold mb-1.5 text-gray-700">Password *</label>
+                                        <label className="block text-sm font-semibold mb-1.5 text-[var(--text-primary)]">Password *</label>
                                         <input
                                             type="password"
                                             className="input-field"
@@ -161,7 +161,7 @@ export default function CreateStudentPage() {
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-semibold mb-1.5 text-gray-700">Mobile Number *</label>
+                                        <label className="block text-sm font-semibold mb-1.5 text-[var(--text-primary)]">Mobile Number *</label>
                                         <input
                                             type="tel"
                                             className="input-field"
@@ -176,7 +176,7 @@ export default function CreateStudentPage() {
 
                             {/* Organization Information */}
                             <div className="border-b pb-6">
-                                <h2 className="text-lg font-bold text-gray-800 mb-4">Organization Information</h2>
+                                <h2 className="text-lg font-bold text-[var(--text-primary)] mb-4">Organization Information</h2>
                                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
                                     <p className="text-sm text-blue-800">
                                         <strong>Note:</strong> Students created by you will automatically be assigned to your organization and college. 
@@ -185,7 +185,7 @@ export default function CreateStudentPage() {
                                 </div>
                                 {user?.collegeName && (
                                     <div>
-                                        <label className="block text-sm font-semibold mb-1.5 text-gray-700">College Name (Read-Only)</label>
+                                        <label className="block text-sm font-semibold mb-1.5 text-[var(--text-primary)]">College Name (Read-Only)</label>
                                         <input
                                             type="text"
                                             className="input-field bg-gray-100 cursor-not-allowed"
@@ -193,7 +193,7 @@ export default function CreateStudentPage() {
                                             disabled
                                             readOnly
                                         />
-                                        <p className="text-xs text-gray-500 mt-1">
+                                        <p className="text-xs text-[var(--text-secondary)] mt-1">
                                             This college name will be automatically assigned to the new student. You cannot change it.
                                         </p>
                                     </div>
@@ -202,10 +202,10 @@ export default function CreateStudentPage() {
 
                             {/* Location Information */}
                             <div className="border-b pb-6">
-                                <h2 className="text-lg font-bold text-gray-800 mb-4">Location Information</h2>
+                                <h2 className="text-lg font-bold text-[var(--text-primary)] mb-4">Location Information</h2>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-sm font-semibold mb-1.5 text-gray-700">Country *</label>
+                                        <label className="block text-sm font-semibold mb-1.5 text-[var(--text-primary)]">Country *</label>
                                         <select
                                             className="input-field"
                                             value={form.country}
@@ -223,7 +223,7 @@ export default function CreateStudentPage() {
                                     </div>
                                     {form.country === 'India' && (
                                         <div>
-                                            <label className="block text-sm font-semibold mb-1.5 text-gray-700">State</label>
+                                            <label className="block text-sm font-semibold mb-1.5 text-[var(--text-primary)]">State</label>
                                             <input
                                                 type="text"
                                                 className="input-field"
@@ -238,11 +238,11 @@ export default function CreateStudentPage() {
 
                             {/* Academic Information */}
                             <div className="space-y-4">
-                                <h2 className="text-lg font-bold text-gray-800">Academic Information</h2>
+                                <h2 className="text-lg font-bold text-[var(--text-primary)]">Academic Information</h2>
                                 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-sm font-semibold mb-1.5 text-gray-700">Course *</label>
+                                        <label className="block text-sm font-semibold mb-1.5 text-[var(--text-primary)]">Course *</label>
                                         <input
                                             type="text"
                                             className="input-field"
@@ -253,7 +253,7 @@ export default function CreateStudentPage() {
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-semibold mb-1.5 text-gray-700">Branch *</label>
+                                        <label className="block text-sm font-semibold mb-1.5 text-[var(--text-primary)]">Branch *</label>
                                         <input
                                             type="text"
                                             className="input-field"
@@ -267,7 +267,7 @@ export default function CreateStudentPage() {
 
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div>
-                                        <label className="block text-sm font-semibold mb-1.5 text-gray-700">Pursuing Year *</label>
+                                        <label className="block text-sm font-semibold mb-1.5 text-[var(--text-primary)]">Pursuing Year *</label>
                                         <select
                                             className="input-field"
                                             value={form.pursuingYear}
@@ -281,7 +281,7 @@ export default function CreateStudentPage() {
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-semibold mb-1.5 text-gray-700">Semester *</label>
+                                        <label className="block text-sm font-semibold mb-1.5 text-[var(--text-primary)]">Semester *</label>
                                         <select
                                             className="input-field"
                                             value={form.semester}
@@ -295,7 +295,7 @@ export default function CreateStudentPage() {
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-semibold mb-1.5 text-gray-700">Registration No *</label>
+                                        <label className="block text-sm font-semibold mb-1.5 text-[var(--text-primary)]">Registration No *</label>
                                         <input
                                             type="text"
                                             className="input-field"
@@ -313,7 +313,7 @@ export default function CreateStudentPage() {
                                 <button
                                     type="button"
                                     onClick={() => router.back()}
-                                    className="px-6 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition"
+                                    className="px-6 py-2.5 text-sm font-medium text-[var(--text-primary)] bg-gray-100 rounded-lg hover:bg-gray-200 transition"
                                 >
                                     Cancel
                                 </button>

@@ -121,7 +121,7 @@ export default function CreateCoursePage() {
             {/* Step 1 */}
             <div className="flex items-center gap-2">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all
-                    ${step >= 1 ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'bg-white/10 text-white/40'}`}>
+                    ${step >= 1 ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'bg-[var(--bg-surface)]/10 text-white/40'}`}>
                     {step > 1 ? (
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
@@ -132,14 +132,14 @@ export default function CreateCoursePage() {
             </div>
 
             {/* Connector */}
-            <div className="flex-1 mx-4 h-0.5 rounded-full bg-white/10 overflow-hidden max-w-[80px]">
+            <div className="flex-1 mx-4 h-0.5 rounded-full bg-[var(--bg-surface)]/10 overflow-hidden max-w-[80px]">
                 <div className={`h-full bg-indigo-500 transition-all duration-500 ${step >= 2 ? 'w-full' : 'w-0'}`} />
             </div>
 
             {/* Step 2 */}
             <div className="flex items-center gap-2">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all
-                    ${step >= 2 ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'bg-white/10 text-white/40'}`}>
+                    ${step >= 2 ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'bg-[var(--bg-surface)]/10 text-white/40'}`}>
                     2
                 </div>
                 <span className={`text-sm font-medium ${step >= 2 ? 'text-white' : 'text-white/40'}`}>Course Content</span>

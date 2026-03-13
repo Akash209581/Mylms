@@ -104,7 +104,7 @@ export default function DailyStreakPage() {
                                 </thead>
                                 <tbody>
                                     {streaks.map((s: any) => (
-                                        <tr key={s.id} className="border-b hover:bg-white/5 transition-colors"
+                                        <tr key={s.id} className="border-b hover:bg-[var(--bg-surface)]/5 transition-colors"
                                             style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
                                             <td className="py-4 pr-4 text-white font-medium">{s.date}</td>
                                             <td className="py-4 pr-4 text-primary-400 font-mono">Q#{s.questionId}</td>

@@ -229,7 +229,7 @@ export default function SignupPage() {
                         </option>
                     ))}
                 </select>
-                <p className="text-xs text-gray-500 mt-1">Select the organization you are affiliated with</p>
+                <p className="text-xs text-[var(--text-secondary)] mt-1">Select the organization you are affiliated with</p>
             </div>
             <div>
                 <label className="block text-sm font-semibold mb-1.5" style={{ color: '#374151' }}>Country *</label>
@@ -335,7 +335,7 @@ export default function SignupPage() {
                                 <div key={step} className="flex items-center">
                                     <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm transition-all ${currentStep >= step
                                         ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
-                                        : 'bg-gray-200 text-gray-500'
+                                        : 'bg-gray-200 text-[var(--text-secondary)]'
                                         }`}>
                                         {step}
                                     </div>

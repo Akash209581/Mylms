@@ -90,7 +90,7 @@ export default function SuperAdminUsersPage() {
 
                 {/* Search */}
                 <div className="relative mb-6">
-                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-secondary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
                     <input
@@ -134,11 +134,11 @@ export default function SuperAdminUsersPage() {
                                     {filtered.map((u: any, i: number) => (
                                         <tr 
                                             key={u.id} 
-                                            className="border-b transition-colors hover:bg-white/5 cursor-pointer"
+                                            className="border-b transition-colors hover:bg-[var(--bg-surface)]/5 cursor-pointer"
                                             style={{ borderColor: 'rgba(255,255,255,0.04)' }}
                                             onClick={() => u.role === 'ADMIN' && router.push(`/dashboard/superadmin/users/admin/${u.id}`)}
                                         >
-                                            <td className="py-4 pr-4 text-gray-500 text-sm">{i + 1}</td>
+                                            <td className="py-4 pr-4 text-[var(--text-secondary)] text-sm">{i + 1}</td>
                                             <td className="py-4 pr-4">
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-sm font-bold flex-shrink-0"

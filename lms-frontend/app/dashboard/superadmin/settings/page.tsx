@@ -97,39 +97,39 @@ export default function SuperAdminSettingsPage() {
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <p className="text-white font-medium">Allow New Registrations</p>
-                                        <p className="text-gray-500 text-xs">Enable/disable the signup page for new users</p>
+                                        <p className="text-[var(--text-secondary)] text-xs">Enable/disable the signup page for new users</p>
                                     </div>
                                     <button
                                         onClick={() => setSettings({ ...settings, allowRegistration: !settings.allowRegistration })}
                                         className={`w-12 h-6 rounded-full transition-colors relative ${settings.allowRegistration ? 'bg-indigo-600' : 'bg-gray-700'}`}
                                     >
-                                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${settings.allowRegistration ? 'left-7' : 'left-1'}`} />
+                                        <div className={`absolute top-1 w-4 h-4 bg-[var(--bg-surface)] rounded-full transition-all ${settings.allowRegistration ? 'left-7' : 'left-1'}`} />
                                     </button>
                                 </div>
 
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <p className="text-white font-medium text-amber-500">Maintenance Mode</p>
-                                        <p className="text-gray-500 text-xs">Lock the platform for everyone except Super Admins</p>
+                                        <p className="text-[var(--text-secondary)] text-xs">Lock the platform for everyone except Super Admins</p>
                                     </div>
                                     <button
                                         onClick={() => setSettings({ ...settings, maintenanceMode: !settings.maintenanceMode })}
                                         className={`w-12 h-6 rounded-full transition-colors relative ${settings.maintenanceMode ? 'bg-red-600' : 'bg-gray-700'}`}
                                     >
-                                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${settings.maintenanceMode ? 'left-7' : 'left-1'}`} />
+                                        <div className={`absolute top-1 w-4 h-4 bg-[var(--bg-surface)] rounded-full transition-all ${settings.maintenanceMode ? 'left-7' : 'left-1'}`} />
                                     </button>
                                 </div>
 
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <p className="text-white font-medium">Require Email Verification</p>
-                                        <p className="text-gray-500 text-xs">New users must verify their email before logging in</p>
+                                        <p className="text-[var(--text-secondary)] text-xs">New users must verify their email before logging in</p>
                                     </div>
                                     <button
                                         onClick={() => setSettings({ ...settings, requireEmailVerification: !settings.requireEmailVerification })}
                                         className={`w-12 h-6 rounded-full transition-colors relative ${settings.requireEmailVerification ? 'bg-indigo-600' : 'bg-gray-700'}`}
                                     >
-                                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${settings.requireEmailVerification ? 'left-7' : 'left-1'}`} />
+                                        <div className={`absolute top-1 w-4 h-4 bg-[var(--bg-surface)] rounded-full transition-all ${settings.requireEmailVerification ? 'left-7' : 'left-1'}`} />
                                     </button>
                                 </div>
                             </div>
@@ -186,7 +186,7 @@ export default function SuperAdminSettingsPage() {
 
                         <div className="glass-card p-6">
                             <h3 className="text-white font-semibold mb-3">🚀 Engine Version</h3>
-                            <p className="text-gray-500 text-xs mb-4">Enterprise v2.4.0 (National Edition)</p>
+                            <p className="text-[var(--text-secondary)] text-xs mb-4">Enterprise v2.4.0 (National Edition)</p>
                             <button className="w-full py-2 rounded-lg text-xs font-semibold" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#9ca3af' }}>
                                 Check for Updates
                             </button>

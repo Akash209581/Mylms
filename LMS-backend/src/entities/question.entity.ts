@@ -72,6 +72,10 @@ export class Question {
   @Column({ type: 'jsonb', nullable: true })
   matchingPairs: { left: string; right: string }[];
 
+  // MQ: extra right-side options (distractors)
+  @Column({ name: 'extra_right_matches', type: 'jsonb', nullable: true })
+  extraRightMatches: string[];
+
   // JC: jumbled statements
   @Column({ type: 'jsonb', nullable: true })
   jumbledStatements: string[];
@@ -89,6 +93,9 @@ export class Question {
   @Column({ type: 'text', nullable: true })
   constraints: string;
 
+  @Column({ name: 'allowed_languages', type: 'jsonb', nullable: true })
+  allowedLanguages: string[];
+
   @Column({ type: 'jsonb', nullable: true })
   testCases: { input: string; output: string; explanation?: string }[];
 
@@ -102,8 +109,8 @@ export class Question {
   @Column({ default: true })
   isActive: boolean;
 
-  // Organization - Multi-tenant support
-  @Column({ name: 'organization_id' })
+  // Organization - Multi-tenant support (nullable for backward compatibility with legacy data)
+  @Column({ name: 'organization_id', nullable: true })
   organizationId: number;
 
   @ManyToOne(() => Organization, (organization) => organization.questions)

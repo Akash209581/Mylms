@@ -34,12 +34,12 @@ function DailyStreakDisplay() {
     )
 
     return (
-        <div className="bg-white p-5 rounded-2xl border border-amber-100 shadow-sm">
+        <div className="bg-[var(--bg-surface)] p-5 rounded-2xl border border-amber-100 shadow-sm">
             <div className="flex items-center justify-between mb-3">
                 <span className="px-2 py-1 bg-amber-100 text-amber-700 text-[10px] font-bold rounded uppercase">Daily Challenge</span>
                 <span className="text-gray-400 text-xs font-mono">Q#{streak.question?.questionNumber}</span>
             </div>
-            <p className="text-gray-900 font-bold text-base mb-2 line-clamp-2">{streak.question?.questionText}</p>
+            <p className="text-[var(--text-primary)] font-bold text-base mb-2 line-clamp-2">{streak.question?.questionText}</p>
             <div className="flex items-center gap-3 mt-4">
                 <button
                     className="btn-primary py-2 px-6 text-sm flex-1"
@@ -86,11 +86,11 @@ export default function StudentDashboard() {
             <Navbar title="Student Dashboard" />
             <main className="page-content">
                 {/* Hero */}
-                <div className="hero-section mb-8 animate-fade-in bg-white border border-gray-100 shadow-sm">
+                <div className="hero-section mb-8 animate-fade-in bg-[var(--bg-surface)] border border-[var(--border)] shadow-sm">
                     <div className="relative z-10">
-                        <p className="text-gray-500 text-sm font-medium mb-1">Welcome back 👋</p>
-                        <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-3">{user?.name || 'Student'}</h1>
-                        <p className="text-gray-600 mb-6 max-w-lg">Continue your learning journey. Keep up the great work!</p>
+                        <p className="text-[var(--text-secondary)] text-sm font-medium mb-1">Welcome back 👋</p>
+                        <h1 className="text-3xl md:text-4xl font-extrabold text-[var(--text-primary)] mb-3">{user?.name || 'Student'}</h1>
+                        <p className="text-[var(--text-secondary)] mb-6 max-w-lg">Continue your learning journey. Keep up the great work!</p>
                         <a href="/dashboard/student/courses">
                             <button className="btn-primary px-8 py-3.5 text-sm">
                                 Browse Courses →
@@ -121,7 +121,7 @@ export default function StudentDashboard() {
                     {/* Daily Streak */}
                     <div className="glass-card p-6 border border-amber-500/20 shadow-amber-500/5 relative overflow-hidden">
                         <div className="absolute top-0 right-0 p-2 opacity-10 text-5xl">🔥</div>
-                        <h3 className="text-lg font-semibold text-gray-900 mb-5 flex items-center gap-2">
+                        <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-5 flex items-center gap-2">
                             <span className="w-2 h-5 rounded-full bg-amber-500" />
                             Today's Coding Streak
                         </h3>
@@ -150,12 +150,12 @@ export default function StudentDashboard() {
                         ) : (
                             <div className="space-y-3">
                                 {enrollments.map((e: any) => (
-                                    <div key={e.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors">
+                                    <div key={e.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-[var(--bg-surface)]/5 transition-colors">
                                         <div className="w-10 h-10 rounded-lg flex items-center justify-center text-xl"
                                             style={{ background: 'linear-gradient(135deg,#6366f1,#a855f7)' }}>📚</div>
                                         <div className="flex-1 min-w-0">
                                             <p className="text-white text-sm font-medium truncate">{e.course?.title || 'Course'}</p>
-                                            <p className="text-gray-500 text-xs mt-0.5">
+                                            <p className="text-[var(--text-secondary)] text-xs mt-0.5">
                                                 Enrolled {new Date(e.enrolledAt).toISOString().slice(0, 10)}
                                             </p>
                                         </div>

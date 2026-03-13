@@ -17,7 +17,7 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                             {(form.options || []).map((opt: string, i: number) => opt && (
                                 <div key={i} className={`p-4 rounded-xl border transition-all ${form.correctAnswer === opt
                                     ? 'bg-primary-500/10 border-primary-500 text-white'
-                                    : 'bg-white/5 border-white/10 text-gray-400'
+                                    : 'bg-[var(--bg-surface)]/5 border-white/10 text-gray-400'
                                     }`}>
                                     <div className="flex items-center gap-3">
                                         <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-xs font-bold ${form.correctAnswer === opt ? 'border-primary-500 text-primary-500' : 'border-gray-600'
@@ -36,7 +36,7 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
             case 'FIB':
                 return (
                     <div className="space-y-6">
-                        <div className="p-6 bg-white/5 rounded-2xl border border-white/10">
+                        <div className="p-6 bg-[var(--bg-surface)]/5 rounded-2xl border border-white/10">
                             <p className="text-white text-lg leading-relaxed">
                                 {(form.questionText || '').split('[BLANK]').map((part: string, i: number, arr: any[]) => (
                                     <React.Fragment key={i}>
@@ -84,8 +84,8 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                             <div className="space-y-3">
                                 <h4 className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-4">Column A</h4>
                                 {(form.matchingPairs || []).map((p: any, i: number) => (
-                                    <div key={i} className="p-4 bg-white/5 border border-white/10 rounded-xl text-white flex items-center gap-3">
-                                        <span className="w-6 h-6 bg-white/10 rounded flex items-center justify-center text-xs text-gray-400">{i + 1}</span>
+                                    <div key={i} className="p-4 bg-[var(--bg-surface)]/5 border border-white/10 rounded-xl text-white flex items-center gap-3">
+                                        <span className="w-6 h-6 bg-[var(--bg-surface)]/10 rounded flex items-center justify-center text-xs text-gray-400">{i + 1}</span>
                                         {p.left}
                                     </div>
                                 ))}
@@ -93,8 +93,8 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                             <div className="space-y-3">
                                 <h4 className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-4">Column B</h4>
                                 {shuffledRights.map((r: string, i: number) => (
-                                    <div key={i} className="p-4 bg-white/5 border border-white/10 rounded-xl text-white flex items-center gap-3">
-                                        <span className="w-6 h-6 bg-white/10 rounded flex items-center justify-center text-xs text-gray-400">{String.fromCharCode(65 + i)}</span>
+                                    <div key={i} className="p-4 bg-[var(--bg-surface)]/5 border border-white/10 rounded-xl text-white flex items-center gap-3">
+                                        <span className="w-6 h-6 bg-[var(--bg-surface)]/10 rounded flex items-center justify-center text-xs text-gray-400">{String.fromCharCode(65 + i)}</span>
                                         {r}
                                     </div>
                                 ))}
@@ -108,7 +108,7 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                     <div className="space-y-6">
                         <p className="text-white text-lg font-medium mb-4">{form.questionText}</p>
                         <div className="bg-gray-900/50 p-6 rounded-2xl border border-white/10 font-mono">
-                            <h4 className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-6">Correct Arrangement</h4>
+                            <h4 className="text-[var(--text-secondary)] text-xs font-bold uppercase tracking-widest mb-6">Correct Arrangement</h4>
                             <div className="space-y-2">
                                 {(form.jumbledStatements || []).map((s: string, i: number) => (
                                     <div key={i} className="flex gap-4 items-start group">
@@ -142,25 +142,25 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                             <div className="space-y-4">
                                 <div>
                                     <h4 className="text-primary-400 text-xs font-bold uppercase mb-2">Input Format</h4>
-                                    <div className="p-3 bg-white/5 rounded-lg border border-white/10 text-gray-300 text-sm font-mono whitespace-pre-wrap">{form.inputFormat}</div>
+                                    <div className="p-3 bg-[var(--bg-surface)]/5 rounded-lg border border-white/10 text-gray-300 text-sm font-mono whitespace-pre-wrap">{form.inputFormat}</div>
                                 </div>
                                 <div>
                                     <h4 className="text-primary-400 text-xs font-bold uppercase mb-2">Output Format</h4>
-                                    <div className="p-3 bg-white/5 rounded-lg border border-white/10 text-gray-300 text-sm font-mono whitespace-pre-wrap">{form.outputFormat}</div>
+                                    <div className="p-3 bg-[var(--bg-surface)]/5 rounded-lg border border-white/10 text-gray-300 text-sm font-mono whitespace-pre-wrap">{form.outputFormat}</div>
                                 </div>
                             </div>
                             <div className="space-y-4">
                                 <div>
                                     <h4 className="text-primary-400 text-xs font-bold uppercase mb-2">Constraints</h4>
-                                    <div className="p-3 bg-white/5 rounded-lg border border-white/10 text-gray-300 text-sm font-mono whitespace-pre-wrap">{form.constraints}</div>
+                                    <div className="p-3 bg-[var(--bg-surface)]/5 rounded-lg border border-white/10 text-gray-300 text-sm font-mono whitespace-pre-wrap">{form.constraints}</div>
                                 </div>
                                 <div>
                                     <h4 className="text-primary-400 text-xs font-bold uppercase mb-2">Sample Test Cases</h4>
                                     {(form.testCases || []).map((tc: any, i: number) => i === 0 && (
-                                        <div key={i} className="p-3 bg-white/5 rounded-lg border border-white/10 space-y-2">
-                                            <p className="text-[10px] text-gray-500 font-bold uppercase">Sample Input</p>
+                                        <div key={i} className="p-3 bg-[var(--bg-surface)]/5 rounded-lg border border-white/10 space-y-2">
+                                            <p className="text-[10px] text-[var(--text-secondary)] font-bold uppercase">Sample Input</p>
                                             <pre className="text-xs text-blue-300 bg-black/30 p-2 rounded">{tc.input}</pre>
-                                            <p className="text-[10px] text-gray-500 font-bold uppercase mt-2">Sample Output</p>
+                                            <p className="text-[10px] text-[var(--text-secondary)] font-bold uppercase mt-2">Sample Output</p>
                                             <pre className="text-xs text-green-300 bg-black/30 p-2 rounded">{tc.output}</pre>
                                         </div>
                                     ))}
@@ -175,11 +175,11 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                     <div className="space-y-6">
                         <p className="text-white text-lg font-medium">{form.questionText}</p>
                         <div className="bg-gray-950 p-6 rounded-2xl border border-white/10 font-mono overflow-hidden relative shadow-2xl">
-                            <div className="absolute top-0 left-0 right-0 h-8 bg-white/5 flex items-center px-4 gap-1.5">
+                            <div className="absolute top-0 left-0 right-0 h-8 bg-[var(--bg-surface)]/5 flex items-center px-4 gap-1.5">
                                 <div className="w-2.5 h-2.5 rounded-full bg-red-500/50" />
                                 <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/50" />
                                 <div className="w-2.5 h-2.5 rounded-full bg-green-500/50" />
-                                <span className="text-[10px] text-gray-500 ml-2 font-sans tracking-widest uppercase">main.code</span>
+                                <span className="text-[10px] text-[var(--text-secondary)] ml-2 font-sans tracking-widest uppercase">main.code</span>
                             </div>
                             <pre className="text-blue-300 text-sm pt-6 whitespace-pre-wrap">
                                 {form.codeSnippet}
@@ -193,7 +193,7 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                                     {(form.options || []).map((opt: string, i: number) => opt && (
                                         <div key={i} className={`p-4 rounded-xl border transition-all ${form.expectedOutput === opt
                                             ? 'bg-primary-500/10 border-primary-500 text-white'
-                                            : 'bg-white/5 border-white/10 text-gray-400'
+                                            : 'bg-[var(--bg-surface)]/5 border-white/10 text-gray-400'
                                             }`}>
                                             <div className="flex items-center gap-3">
                                                 <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-xs font-bold ${form.expectedOutput === opt ? 'border-primary-500 text-primary-500' : 'border-gray-600'
@@ -224,7 +224,7 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
             <div className="glass-card w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border-primary-500/20">
                 {/* Modal Header */}
-                <div className="p-6 border-b border-white/10 flex justify-between items-center bg-white/5">
+                <div className="p-6 border-b border-white/10 flex justify-between items-center bg-[var(--bg-surface)]/5">
                     <div>
                         <h2 className="text-xl font-bold text-white flex items-center gap-2">
                             <span>👀</span> Question Preview
@@ -234,7 +234,7 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                         </p>
                     </div>
                     <button onClick={onClose}
-                        className="w-10 h-10 rounded-full flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition-all text-2xl">
+                        className="w-10 h-10 rounded-full flex items-center justify-center text-gray-400 hover:text-white hover:bg-[var(--bg-surface)]/10 transition-all text-2xl">
                         &times;
                     </button>
                 </div>
@@ -245,9 +245,9 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                 </div>
 
                 {/* Modal Footer */}
-                <div className="p-6 border-t border-white/10 bg-white/5 flex justify-end gap-3">
+                <div className="p-6 border-t border-white/10 bg-[var(--bg-surface)]/5 flex justify-end gap-3">
                     <button onClick={onClose}
-                        className="px-6 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white text-sm font-semibold transition-all border border-white/10">
+                        className="px-6 py-2.5 rounded-xl bg-[var(--bg-surface)]/5 hover:bg-[var(--bg-surface)]/10 text-white text-sm font-semibold transition-all border border-white/10">
                         Close Preview
                     </button>
                     <button onClick={onClose}

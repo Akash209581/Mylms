@@ -48,14 +48,13 @@ export default function SuperAdminDashboard() {
             <Navbar title="SuperAdmin Panel" />
             <main className="page-content">
                 {/* Hero */}
-                <div className="hero-section hero-dark mb-8" style={{ background: 'linear-gradient(135deg,#7f1d1d,#991b1b,#b91c1c)' }}>
+                <div className="hero-section hero-dark mb-8 superadmin-hero">
                     <div className="relative z-10">
                         <p className="text-white/60 text-sm mb-1">Super Admin Control Center 🔑</p>
                         <h1 className="text-3xl font-bold text-white mb-2">Welcome, {user?.name}</h1>
                         <p className="text-white/70 mb-4">Full platform access — manage everything</p>
                         <div className="flex gap-3">
-                            <span className="px-3 py-1.5 rounded-lg text-xs font-semibold text-red-200"
-                                style={{ background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.3)' }}>
+                            <span className="px-3 py-1.5 rounded-lg text-xs font-semibold superadmin-badge">
                                 🔑 SUPERADMIN
                             </span>
                         </div>
@@ -103,7 +102,7 @@ export default function SuperAdminDashboard() {
                                 </thead>
                                 <tbody>
                                     {stats.recentUsers.map((u: any) => (
-                                        <tr key={u.id} className="border-b hover:bg-white/5 transition-colors"
+                                        <tr key={u.id} className="border-b hover:bg-[var(--bg-surface)]/5 transition-colors"
                                             style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
                                             <td className="py-4 pr-4">
                                                 <div className="flex items-center gap-3">

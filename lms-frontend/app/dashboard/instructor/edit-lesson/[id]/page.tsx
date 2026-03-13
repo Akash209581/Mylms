@@ -227,20 +227,20 @@ export default function EditLessonPage() {
             {moduleTitle && (
               <>
                 <span className="text-slate-400">/</span>
-                <span className="text-slate-500">{moduleTitle}</span>
+                <span className="text-[var(--text-secondary)]">{moduleTitle}</span>
               </>
             )}
             <span className="text-slate-400">/</span>
-            <span className="text-slate-700">Edit Lesson</span>
+            <span className="text-[var(--text-primary)]">Edit Lesson</span>
           </nav>
 
           {/* Meta info */}
-          <div className="flex items-center gap-3 text-xs text-slate-500">
+          <div className="flex items-center gap-3 text-xs text-[var(--text-secondary)]">
             {lesson?.version && lesson.version > 1 && (
-              <span className="px-2 py-1 bg-slate-100 rounded-lg font-mono">v{lesson.version}</span>
+              <span className="px-2 py-1 bg-[var(--bg-hover)] rounded-lg font-mono">v{lesson.version}</span>
             )}
             {lesson?.lastEditedBy && (
-              <span>Last edited by <strong className="text-slate-700">{lesson.lastEditedBy}</strong></span>
+              <span>Last edited by <strong className="text-[var(--text-primary)]">{lesson.lastEditedBy}</strong></span>
             )}
             {lesson?.updatedAt && (
               <span>{new Date(lesson.updatedAt).toLocaleString()}</span>
@@ -265,12 +265,12 @@ export default function EditLessonPage() {
                 </span>
 
                 {/* Title */}
-                <h1 className="text-2xl font-bold text-slate-900 mb-1">
+                <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-1">
                   {lesson?.title}
                 </h1>
 
                 {lesson?.description && (
-                  <p className="text-sm text-slate-500 mt-1">{lesson.description}</p>
+                  <p className="text-sm text-[var(--text-secondary)] mt-1">{lesson.description}</p>
                 )}
               </div>
 
@@ -281,7 +281,7 @@ export default function EditLessonPage() {
                   <span
                     className={`px-3 py-1.5 rounded-full text-xs font-semibold ${lesson?.published
                       ? 'bg-green-100 text-green-700'
-                      : 'bg-slate-100 text-slate-500'
+                      : 'bg-[var(--bg-hover)] text-[var(--text-secondary)]'
                       }`}
                   >
                     {lesson?.published ? '✓ Published content' : 'Draft content'}
@@ -385,8 +385,8 @@ function ErrorState({
         <div className="editor-page-layout">
           <div className="glass-card p-8 text-center">
             <div className="text-5xl mb-4">⚠️</div>
-            <h2 className="text-xl font-bold text-slate-900 mb-2">Failed to load lesson</h2>
-            <p className="text-slate-500 text-sm mb-6">{error}</p>
+            <h2 className="text-xl font-bold text-[var(--text-primary)] mb-2">Failed to load lesson</h2>
+            <p className="text-[var(--text-secondary)] text-sm mb-6">{error}</p>
             <div className="flex gap-3 justify-center">
               <button onClick={onRetry} className="btn-primary">Retry</button>
               <button onClick={onBack} className="btn-secondary">Go Back</button>

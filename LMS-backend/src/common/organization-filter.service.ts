@@ -35,11 +35,21 @@ export class OrganizationFilterService {
   canAccessOrganization(
     userRole: UserRole,
     userOrganizationId: number | undefined,
-    targetOrganizationId: number,
+    targetOrganizationId: number | undefined | null,
   ): boolean {
     // SUPERADMIN can access any organization
     if (userRole === UserRole.SUPERADMIN) {
       return true;
+    }
+
+    // If target organization is not set, deny access (except SUPERADMIN)
+    if (!targetOrganizationId) {
+      return false;
+    }
+
+    // If user has no organization, deny access
+    if (!userOrganizationId) {
+      return false;
     }
 
     // Other roles can only access their own organization

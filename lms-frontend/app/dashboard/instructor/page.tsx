@@ -109,15 +109,15 @@ export default function InstructorDashboard() {
                                 </thead>
                                 <tbody>
                                     {stats.courses.map((c: any) => (
-                                        <tr key={c.id} className="border-b hover:bg-white/5 transition-colors"
+                                        <tr key={c.id} className="border-b hover:bg-[var(--bg-surface)]/5 transition-colors"
                                             style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
                                             <td className="py-4 pr-4 text-white font-medium text-sm">{c.title}</td>
                                             <td className="py-4 pr-4">
                                                 <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${c.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
                                                         c.status === 'PENDING_APPROVAL' ? 'bg-yellow-100 text-yellow-800' :
                                                             c.status === 'REJECTED' ? 'bg-red-100 text-red-800' :
-                                                                c.status === 'DRAFT' ? 'bg-slate-100 text-slate-800' :
-                                                                    'bg-gray-100 text-gray-800'
+                                                                c.status === 'DRAFT' ? 'bg-[var(--bg-hover)] text-[var(--text-primary)]' :
+                                                                    'bg-gray-100 text-[var(--text-primary)]'
                                                     }`}>
                                                     {c.status === 'APPROVED' ? '✅ Approved' :
                                                         c.status === 'PENDING_APPROVAL' ? '⏳ Pending' :

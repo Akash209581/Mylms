@@ -72,7 +72,7 @@ export default function SuperAdminCreateCoursePage() {
             <main className="page-content">
                 <div className="flex items-center gap-3 mb-8">
                     <button onClick={() => router.push('/dashboard/superadmin/courses')}
-                        className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 transition-all">← Back</button>
+                        className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-[var(--bg-surface)]/10 transition-all">← Back</button>
                     <div>
                         <h1 className="text-2xl font-bold text-white">Create New Course</h1>
                         <p className="text-gray-400 text-sm">Courses created by SUPER ADMIN are automatically approved</p>
@@ -111,7 +111,7 @@ export default function SuperAdminCreateCoursePage() {
                                             className="input-field text-lg"
                                             maxLength={200}
                                         />
-                                        <p className="text-gray-500 text-xs mt-1">{form.title.length}/200 characters (min 5)</p>
+                                        <p className="text-[var(--text-secondary)] text-xs mt-1">{form.title.length}/200 characters (min 5)</p>
                                     </div>
 
                                     <div>
@@ -123,7 +123,7 @@ export default function SuperAdminCreateCoursePage() {
                                             placeholder="Provide a detailed description of what students will learn..."
                                             className="input-field resize-none"
                                         />
-                                        <p className="text-gray-500 text-xs mt-1">{form.description.length} characters (min 20)</p>
+                                        <p className="text-[var(--text-secondary)] text-xs mt-1">{form.description.length} characters (min 20)</p>
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -174,7 +174,7 @@ export default function SuperAdminCreateCoursePage() {
                                             step="0.01"
                                             className="input-field"
                                         />
-                                        <p className="text-gray-500 text-xs mt-1">Set to 0 for free courses</p>
+                                        <p className="text-[var(--text-secondary)] text-xs mt-1">Set to 0 for free courses</p>
                                     </div>
                                 </div>
                             </div>
@@ -216,18 +216,18 @@ export default function SuperAdminCreateCoursePage() {
                                     <span className="text-xl">🚀</span>
                                     Publishing Options
                                 </h3>
-                                <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5">
+                                <div className="flex items-center gap-3 p-4 rounded-xl bg-[var(--bg-surface)]/5">
                                     <button
                                         onClick={() => setForm(p => ({ ...p, published: !p.published }))}
                                         className={`relative w-14 h-7 rounded-full transition-all duration-300 ${form.published ? 'bg-green-500' : 'bg-gray-700'}`}
                                     >
-                                        <div className={`absolute top-1 w-5 h-5 rounded-full bg-white transition-all duration-300 ${form.published ? 'left-8' : 'left-1'}`} />
+                                        <div className={`absolute top-1 w-5 h-5 rounded-full bg-[var(--bg-surface)] transition-all duration-300 ${form.published ? 'left-8' : 'left-1'}`} />
                                     </button>
                                     <div>
                                         <p className="text-white text-sm font-medium">
                                             {form.published ? '🌐 Publish Immediately' : '📝 Save as Draft'}
                                         </p>
-                                        <p className="text-gray-500 text-xs">
+                                        <p className="text-[var(--text-secondary)] text-xs">
                                             {form.published 
                                                 ? 'Course will be visible to all users immediately' 
                                                 : 'Course will be approved but not visible to students yet'}
@@ -245,7 +245,7 @@ export default function SuperAdminCreateCoursePage() {
                                 {saving ? '⏳ Creating Course...' : '✅ Create & Approve Course'}
                             </button>
 
-                            <p className="text-center text-gray-500 text-xs">
+                            <p className="text-center text-[var(--text-secondary)] text-xs">
                                 💡 As a SUPER ADMIN, your course will be automatically approved and ready to build content
                             </p>
                         </div>
