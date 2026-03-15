@@ -1,8 +1,15 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
+import * as net from 'node:net';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const cookieParser = require('cookie-parser');
+
+// Node 22 can fail PostgreSQL connects on dual-stack hosts (IPv4 + IPv6).
+// Disable family auto-selection so pg uses stable single-family connect behavior.
+if (typeof net.setDefaultAutoSelectFamily === 'function') {
+  net.setDefaultAutoSelectFamily(false);
+}
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
