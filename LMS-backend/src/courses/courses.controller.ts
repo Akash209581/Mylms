@@ -22,7 +22,7 @@ import { Course, CourseStatus } from '../entities/course.entity';
 import { User, UserRole } from '../entities/user.entity';
 import { NotificationService } from '../common/notification.service';
 import { CollegeFilterService } from '../common/college-filter.service';
-import { CreateCourseDto, UpdateCourseDto } from './courses.dto';
+import { CreateCourseDto, UpdateCourseDto, AssignCourseDto } from './courses.dto';
 import { CourseModule } from '../entities/module.entity';
 import { Lesson } from '../entities/lesson.entity';
 import { Resource } from '../entities/resource.entity';
@@ -50,92 +50,89 @@ export class CoursesController {
     const userRole = req.user?.role;
     const userId = req.user?.sub;
     const userCollegeId = req.user?.collegeId;
+    const userCollegeName = req.user?.collegeName;
 
-    // Get college filter based on user role
-    const orgFilter = this.collegeFilterService.getCollegeFilter(
-      userRole,
-      userCollegeId,
-    );
+    const qb = this.courseRepo.createQueryBuilder('course')
+      .leftJoinAndSelect('course.instructor', 'instructor')
+      .leftJoinAndSelect('course.approver', 'approver')
+      .leftJoinAndSelect('course.assignedColleges', 'assignedCollege');
 
-    // ADMIN can see all courses (including pending for approval) within their college
-    if (userRole === UserRole.ADMIN) {
-      return this.courseRepo.find({ 
-        where: orgFilter,
-        relations: ['instructor', 'approver'] 
-      });
-    }
-
-    // SUPERADMIN can see ALL courses (including pending and approved) across all colleges
+    // SUPERADMIN can see ALL courses
     if (userRole === UserRole.SUPERADMIN) {
-      return this.courseRepo.find({
-        relations: ['instructor', 'approver'],
-        order: { createdAt: 'DESC' },
-      });
+      return qb.orderBy('course.createdAt', 'DESC').getMany();
     }
 
-    // INSTRUCTOR can see their own courses (all statuses) + approved courses from their college
+    if (!userCollegeId && !userCollegeName) {
+      return [];
+    }
+
+    // Common WHERE clause for matching college (own + assigned)
+    const collegeConditions = [];
+    if (userCollegeId) {
+      collegeConditions.push('course.collegeId = :userCollegeId OR assignedCollege.id = :userCollegeId');
+    }
+    if (userCollegeName) {
+      // Legacy user fallback: match by string name instead
+      collegeConditions.push('instructor.collegeName = :userCollegeName OR assignedCollege.name = :userCollegeName');
+    }
+    const collegeCondition = `(${collegeConditions.join(' OR ')})`;
+    const params: any = { userCollegeId, userCollegeName };
+
+    // ADMIN can see all courses (including pending for approval) within their college + assigned ones
+    if (userRole === UserRole.ADMIN) {
+      return qb.where(collegeCondition, params).getMany();
+    }
+
+    // INSTRUCTOR can see their own courses (all statuses) + approved courses from their college + assigned ones
     if (userRole === UserRole.INSTRUCTOR) {
-      return this.courseRepo.find({
-        where: [
-          { instructorId: userId, ...orgFilter }, // Own courses (including pending) within org
-          { status: CourseStatus.APPROVED, ...orgFilter }, // Approved courses within org
-        ],
-        relations: ['instructor', 'approver'],
-      });
+      params.userId = userId;
+      params.approvedStatus = CourseStatus.APPROVED;
+      return qb.where(`(course.instructorId = :userId AND ${collegeCondition})`, params)
+               .orWhere(`(course.status = :approvedStatus AND ${collegeCondition})`, params)
+               .getMany();
     }
 
-    // STUDENT (or unauthenticated) can only see approved and published courses within their college
-    return this.courseRepo.find({
-      where: { status: CourseStatus.APPROVED, published: true, ...orgFilter },
-      relations: ['instructor'],
-    });
+    // STUDENT (or unauthenticated) can only see approved and published courses within their college + assigned ones
+    params.approvedStatus = CourseStatus.APPROVED;
+    return qb.where(`course.status = :approvedStatus AND course.published = true`, params)
+             .andWhere(collegeCondition, params)
+             .getMany();
   }
 
+  @UseGuards(OptionalJwtAuthGuard)
   @Get('public/browse')
   async browsePublicCourses(
+    @Request() req: any,
     @Query('page') page: string = '1',
     @Query('limit') limit: string = '12',
     @Query('category') category?: string,
     @Query('level') level?: string,
     @Query('search') search?: string,
-    @Query('collegeId') collegeId?: string,
+    @Query('collegeId') queryCollegeId?: string,
   ) {
+    const authUser = req.user;
+    const isSuperAdmin = authUser && authUser.role === UserRole.SUPERADMIN;
+
     console.log('📚 Public browse request:', {
       page,
       limit,
       category,
       level,
       search,
-      collegeId,
+      queryCollegeId,
+      authUser: authUser ? { role: authUser.role, colId: authUser.collegeId, colName: authUser.collegeName } : null,
     });
 
     const pageNum = parseInt(page) || 1;
     const limitNum = parseInt(limit) || 12;
     const skip = (pageNum - 1) * limitNum;
 
-    // Build where clause
-    const where: any = {
-      status: CourseStatus.APPROVED,
-      published: true,
-    };
-
-    if (category) {
-      where.category = category;
-    }
-
-    if (level) {
-      where.level = level;
-    }
-
-    // Filter by college if provided
-    if (collegeId) {
-      where.collegeId = parseInt(collegeId);
-    }
-
-    // Get courses with pagination
+    // Build query
     const queryBuilder = this.courseRepo
       .createQueryBuilder('course')
       .leftJoinAndSelect('course.instructor', 'instructor')
+      .leftJoinAndSelect('course.approver', 'approver')
+      .leftJoinAndSelect('course.assignedColleges', 'assignedCollege')
       .where('course.status = :status', { status: CourseStatus.APPROVED })
       .andWhere('course.published = :published', { published: true });
 
@@ -147,17 +144,40 @@ export class CoursesController {
       queryBuilder.andWhere('course.level = :level', { level });
     }
 
-    if (collegeId) {
-      queryBuilder.andWhere('course.collegeId = :collegeId', { 
-        collegeId: parseInt(collegeId) 
-      });
-    }
-
     if (search) {
       queryBuilder.andWhere(
         '(LOWER(course.title) LIKE LOWER(:search) OR LOWER(course.description) LIKE LOWER(:search))',
         { search: `%${search}%` },
       );
+    }
+
+    // Determine effective college filtering
+    let effectiveCollegeId = queryCollegeId ? parseInt(queryCollegeId) : null;
+    let effectiveCollegeName = null;
+
+    if (authUser && !isSuperAdmin) {
+      // Force restriction to auth user's college
+      effectiveCollegeId = authUser.collegeId;
+      effectiveCollegeName = authUser.collegeName;
+    }
+
+    if (effectiveCollegeId || effectiveCollegeName) {
+      const collegeConditions = [];
+      const params: any = {};
+
+      if (effectiveCollegeId) {
+        collegeConditions.push('(course.collegeId = :effCollegeId OR assignedCollege.id = :effCollegeId)');
+        params.effCollegeId = effectiveCollegeId;
+      }
+      if (effectiveCollegeName) {
+        collegeConditions.push('(instructor.collegeName = :effCollegeName OR assignedCollege.name = :effCollegeName)');
+        params.effCollegeName = effectiveCollegeName;
+      }
+      
+      queryBuilder.andWhere(`(${collegeConditions.join(' OR ')})`, params);
+    } else if (authUser && !isSuperAdmin) {
+      // Guard: non-superadmin without any college assigned sees no courses
+      queryBuilder.andWhere('1 = 0');
     }
 
     const [courses, total] = await queryBuilder
@@ -207,7 +227,7 @@ export class CoursesController {
 
     const course = await this.courseRepo.findOne({
       where: { id },
-      relations: ['instructor', 'approver'],
+      relations: ['instructor', 'approver', 'assignedColleges'],
     });
 
     if (!course) {
@@ -219,10 +239,13 @@ export class CoursesController {
     const userId = req.user?.sub;
     const userCollegeId = req.user?.collegeId;
 
+    const userCollegeName = req.user?.collegeName;
+
     console.log('🔍 Access check:', {
       userRole,
       userId,
       userCollegeId,
+      userCollegeName,
       coursecollegeId: course.collegeId,
       courseInstructorId: course.instructorId,
       courseStatus: course.status
@@ -233,12 +256,18 @@ export class CoursesController {
       return await this.getCourseWithStructure(course);
     }
 
-    // Check if user can access this course's college (ADMIN/INSTRUCTOR/STUDENT must be in same college)
-    if (userRole && !this.collegeFilterService.canAccessCollege(
-      userRole, 
-      userCollegeId, 
-      course.collegeId
-    )) {
+    // Check if user can access this course's college (ADMIN/INSTRUCTOR/STUDENT must be in same college or assigned)
+    const isCollegeMatch = 
+      (userCollegeId && (
+        course.collegeId === userCollegeId || 
+        course.assignedColleges?.some(c => c.id === userCollegeId)
+      )) || 
+      (userCollegeName && (
+        course.instructor?.collegeName === userCollegeName ||
+        course.assignedColleges?.some(c => c.name === userCollegeName)
+      ));
+
+    if (userRole && !isCollegeMatch) {
       console.log(`❌ User cannot access course from different college`);
       throw new HttpException('You do not have access to this course', HttpStatus.FORBIDDEN);
     }
@@ -425,6 +454,35 @@ export class CoursesController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SUPERADMIN)
+  @Post(':id/assign')
+  async assignCourse(
+    @Param('id') id: number,
+    @Body() dto: AssignCourseDto,
+  ) {
+    const course = await this.courseRepo.findOne({ 
+      where: { id },
+      relations: ['assignedColleges']
+    });
+
+    if (!course) {
+      throw new HttpException('Course not found', HttpStatus.NOT_FOUND);
+    }
+
+    if (course.status !== CourseStatus.APPROVED) {
+      throw new HttpException(
+        `Cannot assign a course with status "${course.status}". Only APPROVED courses can be assigned to colleges.`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    course.assignedColleges = dto.collegeIds.map(cid => ({ id: cid } as any));
+    await this.courseRepo.save(course);
+
+    return { message: 'Course assigned to specified colleges successfully' };
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN)
   @Put(':id')
   async update(
@@ -432,7 +490,10 @@ export class CoursesController {
     @Body() dto: UpdateCourseDto,
     @Request() req: any,
   ) {
-    const course = await this.courseRepo.findOne({ where: { id } });
+    const course = await this.courseRepo.findOne({ 
+      where: { id },
+      relations: ['instructor'] 
+    });
 
     if (!course) {
       return { message: 'Course not found' };
@@ -444,18 +505,23 @@ export class CoursesController {
 
     // SUPERADMIN can update any course
     if (userRole !== UserRole.SUPERADMIN) {
+      // Check if course is assigned by SUPERADMIN
+      if (course.instructor && course.instructor.role === UserRole.SUPERADMIN) {
+        throw new HttpException('Courses assigned by SUPER ADMIN are view-only.', HttpStatus.FORBIDDEN);
+      }
+
       // Check college access for non-SUPERADMIN users
       if (!this.collegeFilterService.canAccessCollege(
         userRole,
         userCollegeId,
         course.collegeId
       )) {
-        return { message: 'Cannot update course from different college' };
+        throw new HttpException('Cannot update course from different college', HttpStatus.FORBIDDEN);
       }
 
       // INSTRUCTOR can only update their own courses
       if (userRole === UserRole.INSTRUCTOR && course.instructorId !== userId) {
-        return { message: 'You can only update your own courses' };
+        throw new HttpException('You can only update your own courses', HttpStatus.FORBIDDEN);
       }
     }
 
@@ -467,24 +533,38 @@ export class CoursesController {
   @Roles(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.INSTRUCTOR)
   @Delete(':id')
   async remove(@Param('id') id: number, @Request() req: any) {
-    const course = await this.courseRepo.findOne({ where: { id } });
+    const course = await this.courseRepo.findOne({ 
+      where: { id },
+      relations: ['instructor'] 
+    });
 
     if (!course) {
       return { message: 'Course not found' };
     }
 
     const userRole = req.user.role;
+    const userId = req.user.sub;
     const userCollegeId = req.user.collegeId;
 
     // SUPERADMIN can delete any course
     if (userRole !== UserRole.SUPERADMIN) {
-      // ADMIN can only delete courses within their college
+      // Check if course is assigned by SUPERADMIN
+      if (course.instructor && course.instructor.role === UserRole.SUPERADMIN) {
+        throw new HttpException('Courses assigned by SUPER ADMIN cannot be deleted by college staff.', HttpStatus.FORBIDDEN);
+      }
+
+      // ADMIN/INSTRUCTOR can only delete courses within their college
       if (!this.collegeFilterService.canAccessCollege(
         userRole,
         userCollegeId,
         course.collegeId
       )) {
-        return { message: 'Cannot delete course from different college' };
+        throw new HttpException('Cannot delete course from different college', HttpStatus.FORBIDDEN);
+      }
+
+      // INSTRUCTOR can only delete their own courses
+      if (userRole === UserRole.INSTRUCTOR && course.instructorId !== userId) {
+        throw new HttpException('You can only delete your own courses', HttpStatus.FORBIDDEN);
       }
     }
 

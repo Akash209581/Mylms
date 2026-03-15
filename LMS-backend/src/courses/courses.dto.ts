@@ -6,6 +6,7 @@ import {
   Min,
   MaxLength,
   MinLength,
+  IsArray,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -139,4 +140,10 @@ export class RejectCourseDto {
     message: 'Rejection reason must not exceed 1000 characters',
   })
   reason: string;
+}
+
+export class AssignCourseDto {
+  @IsArray()
+  @IsNumber({}, { each: true })
+  collegeIds: number[];
 }

@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { api } from '@/lib/api'
@@ -41,10 +41,32 @@ export default function SignupPage() {
     const [loadingColleges, setLoadingColleges] = useState(true)
     const [collegesFetchError, setCollegesFetchError] = useState(false)
 
+    // Autocomplete state
+    const [collegeQuery, setCollegeQuery] = useState('')
+    const [collegeDropdownOpen, setCollegeDropdownOpen] = useState(false)
+    const [collegeSelected, setCollegeSelected] = useState(false)
+    const autocompleteRef = useRef<HTMLDivElement>(null)
+
     // Fetch colleges when component mounts
     useEffect(() => {
         fetchColleges()
     }, [])
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (autocompleteRef.current && !autocompleteRef.current.contains(e.target as Node)) {
+                setCollegeDropdownOpen(false)
+                // If user blurred without selecting, restore the selected name or clear
+                if (!collegeSelected) {
+                    setCollegeQuery('')
+                    setForm(prev => ({ ...prev, collegeName: '' }))
+                }
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [collegeSelected])
 
     const fetchColleges = async () => {
         setLoadingColleges(true)
@@ -101,9 +123,12 @@ export default function SignupPage() {
         return true
     }
 
+    // Derived shorthand used in validation
+    const { collegeName } = form
+
     const validateStep2 = () => {
-        if (!form.collegeName || form.collegeName.length < 3) {
-            setError('Please enter your college/university name (min 3 characters)')
+        if (!collegeName || !collegeSelected) {
+            setError('Please select your college/university from the dropdown list')
             return false
         }
         if (!form.country) {
@@ -115,6 +140,33 @@ export default function SignupPage() {
             return false
         }
         return true
+    }
+
+    // Derived helpers for autocomplete
+    const filteredColleges = colleges.filter(c =>
+        c.name.toLowerCase().includes(collegeQuery.toLowerCase())
+    )
+
+    const handleCollegeQueryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const q = e.target.value
+        setCollegeQuery(q)
+        setCollegeSelected(false)
+        setForm(prev => ({ ...prev, collegeName: '' }))
+        setCollegeDropdownOpen(true)
+    }
+
+    const handleCollegeSelect = (college: { id: number; name: string }) => {
+        setCollegeQuery(college.name)
+        setForm(prev => ({ ...prev, collegeName: college.name }))
+        setCollegeSelected(true)
+        setCollegeDropdownOpen(false)
+    }
+
+    const handleCollegeClear = () => {
+        setCollegeQuery('')
+        setForm(prev => ({ ...prev, collegeName: '' }))
+        setCollegeSelected(false)
+        setCollegeDropdownOpen(false)
     }
 
     const validateStep3 = () => {
@@ -230,8 +282,10 @@ export default function SignupPage() {
     const renderStep2 = () => (
         <div className="space-y-4">
             <div>
-                <label className="block text-sm font-semibold mb-1.5" style={{ color: '#374151' }}>College/University Name *</label>
-                
+                <label className="block text-sm font-semibold mb-1.5" style={{ color: '#374151' }}>
+                    🏛️ College / University *
+                </label>
+
                 {collegesFetchError ? (
                     <div className="border-2 border-red-200 rounded-lg p-4 bg-red-50">
                         <p className="text-sm text-red-700 mb-2">
@@ -245,31 +299,137 @@ export default function SignupPage() {
                             🔄 Retry Loading Colleges
                         </button>
                     </div>
+                ) : loadingColleges ? (
+                    <div className="input-field flex items-center gap-2" style={{ color: '#9ca3af', cursor: 'default' }}>
+                        <svg className="animate-spin w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                        </svg>
+                        <span className="text-sm">Loading colleges...</span>
+                    </div>
                 ) : (
-                    <>
-                        <select 
-                            className="input-field" 
-                            value={form.collegeName}
-                            onChange={e => setForm({ ...form, collegeName: e.target.value })} 
-                            required
-                            disabled={loadingColleges || colleges.length === 0}
-                            aria-label="Select your college or university">
-                            <option value="">
-                                {loadingColleges ? 'Loading colleges...' : colleges.length === 0 ? 'No colleges available' : 'Select your College/University'}
-                            </option>
-                            {colleges.map(college => (
-                                <option key={college.id} value={college.name}>{college.name}</option>
-                            ))}
-                        </select>
-                        <p className="text-xs text-gray-500 mt-1">
-                            {loadingColleges 
-                                ? '🔄 Loading available colleges from database...' 
-                                : colleges.length > 0 
-                                    ? `✅ ${colleges.length} ${colleges.length === 1 ? 'college' : 'colleges'} available. Select yours from the list.`
-                                    : '⚠️ No colleges found. Please contact administration or try refreshing.'
-                            }
+                    <div ref={autocompleteRef} style={{ position: 'relative' }}>
+                        {/* Text input */}
+                        <div style={{ position: 'relative' }}>
+                            {/* Search icon or check icon */}
+                            <span style={{
+                                position: 'absolute', left: '12px', top: '50%',
+                                transform: 'translateY(-50%)', fontSize: '16px',
+                                pointerEvents: 'none', userSelect: 'none'
+                            }}>
+                                {collegeSelected ? '✅' : '🔍'}
+                            </span>
+                            <input
+                                type="text"
+                                className="input-field"
+                                style={{
+                                    paddingLeft: '38px',
+                                    paddingRight: collegeSelected ? '40px' : '14px',
+                                    borderColor: collegeSelected ? '#10b981' : undefined,
+                                    boxShadow: collegeSelected ? '0 0 0 3px rgba(16,185,129,0.15)' : undefined,
+                                }}
+                                placeholder={colleges.length === 0
+                                    ? 'No colleges available — contact admin'
+                                    : 'Type to search your college...'}
+                                value={collegeQuery}
+                                onChange={handleCollegeQueryChange}
+                                onFocus={() => {
+                                    if (!collegeSelected) setCollegeDropdownOpen(true)
+                                }}
+                                disabled={colleges.length === 0}
+                                autoComplete="off"
+                                aria-label="Search for your college or university"
+                            />
+                            {/* Clear button */}
+                            {collegeSelected && (
+                                <button
+                                    type="button"
+                                    onClick={handleCollegeClear}
+                                    title="Clear selection"
+                                    style={{
+                                        position: 'absolute', right: '10px', top: '50%',
+                                        transform: 'translateY(-50%)',
+                                        width: '22px', height: '22px',
+                                        borderRadius: '50%',
+                                        background: '#e5e7eb',
+                                        border: 'none', cursor: 'pointer',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        fontSize: '13px', color: '#6b7280',
+                                        lineHeight: 1,
+                                    }}
+                                >
+                                    ×
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Dropdown list */}
+                        {collegeDropdownOpen && !collegeSelected && (
+                            <div style={{
+                                position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0,
+                                background: '#ffffff',
+                                border: '1.5px solid #e5e7eb',
+                                borderRadius: '12px',
+                                boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
+                                zIndex: 999,
+                                maxHeight: '240px',
+                                overflowY: 'auto',
+                            }}>
+                                {filteredColleges.length === 0 ? (
+                                    <div style={{
+                                        padding: '16px 14px',
+                                        color: '#9ca3af',
+                                        fontSize: '0.875rem',
+                                        textAlign: 'center',
+                                    }}>
+                                        😕 No colleges match &ldquo;{collegeQuery}&rdquo;
+                                    </div>
+                                ) : (
+                                    filteredColleges.map((college, idx) => (
+                                        <button
+                                            key={college.id}
+                                            type="button"
+                                            onMouseDown={(e) => {
+                                                e.preventDefault() // prevent blur firing before click
+                                                handleCollegeSelect(college)
+                                            }}
+                                            style={{
+                                                display: 'block',
+                                                width: '100%',
+                                                textAlign: 'left',
+                                                padding: '10px 14px',
+                                                background: 'transparent',
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                fontSize: '0.875rem',
+                                                color: '#111827',
+                                                borderBottom: idx < filteredColleges.length - 1 ? '1px solid #f3f4f6' : 'none',
+                                                borderRadius: idx === 0
+                                                    ? '12px 12px 0 0'
+                                                    : idx === filteredColleges.length - 1
+                                                    ? '0 0 12px 12px' : undefined,
+                                                transition: 'background 0.1s',
+                                            }}
+                                            onMouseEnter={e => (e.currentTarget.style.background = '#f0f4ff')}
+                                            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                                        >
+                                            <span style={{ marginRight: '8px' }}>🏛️</span>
+                                            {college.name}
+                                        </button>
+                                    ))
+                                )}
+                            </div>
+                        )}
+
+                        {/* Helper text */}
+                        <p className="text-xs text-gray-500 mt-1.5">
+                            {collegeSelected
+                                ? `✅ Selected: ${form.collegeName}`
+                                : colleges.length > 0
+                                ? `${colleges.length} college${colleges.length !== 1 ? 's' : ''} available — type to search and select from the list`
+                                : '⚠️ No colleges found. Please contact administration.'}
                         </p>
-                    </>
+                    </div>
                 )}
             </div>
             <div>

@@ -60,6 +60,7 @@ export default function EditLessonPage() {
 
   const [courseTitle, setCourseTitle] = useState('')
   const [courseStatus, setCourseStatus] = useState<string>('')
+  const [isReadOnly, setIsReadOnly] = useState(false)
   const hasInitialized = useRef(false)
 
   /* ── Auth + Fetch ── */
@@ -100,6 +101,21 @@ export default function EditLessonPage() {
 
       setCourseTitle(courseData.title)
       setCourseStatus(courseData.status)
+
+      // Ownership and Role Check
+      const stored = localStorage.getItem('user')
+      const u = stored ? JSON.parse(stored) : null
+      
+      if (u && u.role !== 'SUPERADMIN') {
+        // If course created by SUPERADMIN, it's view-only for everyone else
+        if (courseData.instructor?.role === 'SUPERADMIN') {
+          setIsReadOnly(true)
+        }
+        // If course created by another instructor, it's view-only (or forbidden, but view-only is safer for UI)
+        else if (courseData.instructorId !== u.id) {
+           setIsReadOnly(true)
+        }
+      }
 
       // 2. See if there is a module and lesson
       let targetLesson: Lesson | null = courseData.modules?.[0]?.lessons?.[0]
@@ -289,13 +305,19 @@ export default function EditLessonPage() {
                 </div>
 
                 {/* Submit Course Button */}
-                {(courseStatus === 'DRAFT' || courseStatus === 'REJECTED') && (
+                {!isReadOnly && (courseStatus === 'DRAFT' || courseStatus === 'REJECTED') && (
                   <button
                     onClick={handleSubmitForApproval}
                     className="btn-primary text-sm px-4 py-2 shadow-sm rounded-lg"
                   >
                     {courseStatus === 'REJECTED' ? 'Resubmit Course' : 'Submit Course'}
                   </button>
+                )}
+
+                {isReadOnly && (
+                    <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 flex items-center gap-1">
+                        🔒 View Only Mode
+                    </span>
                 )}
 
                 {courseStatus === 'PENDING_APPROVAL' && (
@@ -330,6 +352,7 @@ export default function EditLessonPage() {
               initialContent={lesson.content ?? null}
               lessonTitle={lesson.title}
               onSave={handleSave}
+              readOnly={isReadOnly}
             />
           )}
 

@@ -69,17 +69,22 @@ export default function AdminCoursesPage() {
                                 <div className="h-40 relative overflow-hidden"
                                     style={{ background: gradients[i % gradients.length] }}>
                                     <div className="absolute inset-0 flex items-center justify-center text-5xl opacity-40">📚</div>
-                                    <div className="absolute top-3 right-3">
+                                    <div className="absolute top-3 right-3 flex flex-col gap-2">
                                         <span className={`badge ${course.published ? 'badge-student' : 'badge-instructor'}`}>
                                             {course.published ? 'Published' : 'Draft'}
                                         </span>
+                                        {course.approver?.role === 'SUPERADMIN' && (
+                                            <span className="badge bg-indigo-500/20 text-indigo-400 border-indigo-500/30">
+                                                👑 Assigned by Superadmin
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
                                 <div className="p-5">
                                     <h3 className="text-white font-semibold mb-1 line-clamp-1">{course.title}</h3>
                                     <p className="text-gray-400 text-sm mb-3 line-clamp-2">{course.description || 'No description'}</p>
                                     <p className="text-gray-500 text-xs">
-                                        by <span className="text-primary-400">{course.instructor?.name || 'Unknown'}</span>
+                                        by <span className="text-primary-400">{course.instructor?.role === 'SUPERADMIN' ? 'Superadmin' : (course.instructor?.name || 'Unknown')}</span>
                                     </p>
                                 </div>
                             </div>

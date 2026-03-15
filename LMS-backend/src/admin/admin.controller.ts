@@ -137,45 +137,75 @@ export class AdminController {
     return { message: 'User deleted' };
   }
 
+  private getCourseQueryBuilderWithCollegeFilter(req: any) {
+    const userRole = req.user?.role;
+    const userCollegeId = req.user?.collegeId;
+    const userCollegeName = req.user?.collegeName;
+
+    const qb = this.courseRepo.createQueryBuilder('course')
+      .leftJoinAndSelect('course.instructor', 'instructor')
+      .leftJoinAndSelect('course.approver', 'approver')
+      .leftJoinAndSelect('course.assignedColleges', 'assignedCollege');
+
+    if (userRole === UserRole.SUPERADMIN) {
+      return qb;
+    }
+
+    if (!userCollegeId && !userCollegeName) {
+      qb.andWhere('1 = 0');
+      return qb;
+    }
+
+    const collegeConditions = [];
+    const params: any = {};
+
+    if (userCollegeId) {
+      collegeConditions.push('(course.collegeId = :effCollegeId OR assignedCollege.id = :effCollegeId)');
+      params.effCollegeId = userCollegeId;
+    }
+    if (userCollegeName) {
+      collegeConditions.push('(instructor.collegeName = :effCollegeName OR assignedCollege.name = :effCollegeName)');
+      params.effCollegeName = userCollegeName;
+    }
+
+    return qb.andWhere(`(${collegeConditions.join(' OR ')})`, params);
+  }
+
   @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
   @Get('courses')
-  async getCourses() {
-    return this.courseRepo.find({ relations: ['instructor', 'approver'] });
+  async getCourses(@Request() req: any) {
+    return this.getCourseQueryBuilderWithCollegeFilter(req)
+      .orderBy('course.createdAt', 'DESC')
+      .getMany();
   }
 
   // ONLY ADMIN can see pending courses (NOT SUPERADMIN)
   @Roles(UserRole.ADMIN)
   @Get('courses/pending')
   async getPendingCourses(@Request() req: any) {
-    console.log('📋 Fetching pending courses for ADMIN:', req.user?.email);
-    const courses = await this.courseRepo.find({
-      where: { status: CourseStatus.PENDING_APPROVAL },
-      relations: ['instructor'],
-      order: { createdAt: 'ASC' },
-    });
-    console.log(`Found ${courses.length} pending courses`);
-    return courses;
+    return this.getCourseQueryBuilderWithCollegeFilter(req)
+      .andWhere('course.status = :status', { status: CourseStatus.PENDING_APPROVAL })
+      .orderBy('course.createdAt', 'ASC')
+      .getMany();
   }
 
   @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
   @Get('courses/approved')
-  async getApprovedCourses() {
-    return this.courseRepo.find({
-      where: { status: CourseStatus.APPROVED },
-      relations: ['instructor', 'approver'],
-      order: { updatedAt: 'DESC' },
-    });
+  async getApprovedCourses(@Request() req: any) {
+    return this.getCourseQueryBuilderWithCollegeFilter(req)
+      .andWhere('course.status = :status', { status: CourseStatus.APPROVED })
+      .orderBy('course.updatedAt', 'DESC')
+      .getMany();
   }
 
   // ONLY ADMIN can see rejected courses (NOT SUPERADMIN)
   @Roles(UserRole.ADMIN)
   @Get('courses/rejected')
-  async getRejectedCourses() {
-    return this.courseRepo.find({
-      where: { status: CourseStatus.REJECTED },
-      relations: ['instructor', 'approver'],
-      order: { updatedAt: 'DESC' },
-    });
+  async getRejectedCourses(@Request() req: any) {
+    return this.getCourseQueryBuilderWithCollegeFilter(req)
+      .andWhere('course.status = :status', { status: CourseStatus.REJECTED })
+      .orderBy('course.updatedAt', 'DESC')
+      .getMany();
   }
 
   // ONLY ADMIN can approve courses (NOT SUPERADMIN)

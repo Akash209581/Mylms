@@ -17,9 +17,13 @@ const gradients = [
 export default function SuperAdminCoursesPage() {
     const router = useRouter()
     const [courses, setCourses] = useState<any[]>([])
+    const [colleges, setColleges] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState('')
     const [previewCourseId, setPreviewCourseId] = useState<number | null>(null)
+    const [assignCourseId, setAssignCourseId] = useState<number | null>(null)
+    const [selectedColleges, setSelectedColleges] = useState<number[]>([])
+    const [originalAssignedColleges, setOriginalAssignedColleges] = useState<number[]>([])
 
     useEffect(() => {
         const stored = localStorage.getItem('user')
@@ -27,25 +31,132 @@ export default function SuperAdminCoursesPage() {
         const u = JSON.parse(stored)
         if (u.role !== 'SUPERADMIN') { router.push('/login'); return }
 
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/courses`, { credentials: 'include' })
-            .then(r => r.json())
-            .then(data => { if (Array.isArray(data)) setCourses(data) })
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+        Promise.all([
+            fetch(`${apiUrl}/courses`, { credentials: 'include' }).then(r => r.json()),
+            fetch(`${apiUrl}/colleges`, { credentials: 'include' }).then(r => r.json()),
+        ])
+            .then(([coursesData, collegesData]) => {
+                if (Array.isArray(coursesData)) setCourses(coursesData)
+                if (Array.isArray(collegesData)) setColleges(collegesData)
+            })
             .catch(() => { })
             .finally(() => setLoading(false))
     }, [])
 
     const handleDelete = async (courseId: number) => {
         if (!confirm('Delete this course permanently?')) return
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/superadmin/courses/${courseId}`, {
-            method: 'DELETE', credentials: 'include'
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/superadmin/courses/${courseId}`, {
+            method: 'DELETE', credentials: 'include',
         })
         setCourses(prev => prev.filter(c => c.id !== courseId))
     }
 
+    const handleAssign = async () => {
+        if (!assignCourseId) return
+        try {
+            const res = await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/courses/${assignCourseId}/assign`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ collegeIds: selectedColleges }),
+                },
+            )
+            if (res.ok) {
+                const addedCount = selectedColleges.filter(id => !originalAssignedColleges.includes(id)).length
+                const removedCount = originalAssignedColleges.filter(id => !selectedColleges.includes(id)).length
+                let message = 'Course assignments updated successfully.'
+                
+                if (addedCount > 0 && removedCount === 0) {
+                    message = 'Course successfully assigned to the selected College/University. The course is now available for all users of this college.'
+                } else if (removedCount > 0 && addedCount === 0) {
+                    message = 'Course successfully removed from the selected College/University.'
+                } else if (addedCount === 0 && removedCount === 0) {
+                    message = 'No changes were made to course assignments.'
+                }
+
+                const updatedIds = [...selectedColleges]
+                setCourses((prev: any[]) =>
+                    prev.map(c => {
+                        if (c.id !== assignCourseId) return c
+                        const newAssigned = colleges.filter((col: any) => updatedIds.includes(col.id))
+                        return { ...c, assignedColleges: newAssigned }
+                    }),
+                )
+                setAssignCourseId(null)
+                setSelectedColleges([])
+                setOriginalAssignedColleges([])
+                alert(message)
+            } else {
+                const data = await res.json().catch(() => ({}))
+                alert(data.message || 'Failed to assign course')
+            }
+        } catch (e) {
+            console.error(e)
+            alert('Error assigning course')
+        }
+    }
+
+    const closeAssignModal = () => {
+        setAssignCourseId(null)
+        setSelectedColleges([])
+        setOriginalAssignedColleges([])
+    }
+
+    // For an approved course, resolve the effective home college ID:
+    // Priority: course.collegeId (FK) → instructor.collegeId → instructor.collegeName match
+    const resolveHomeCollegeId = (course: any): number | null => {
+        if (course.collegeId) return Number(course.collegeId)
+        if (course.instructor?.collegeId) return Number(course.instructor.collegeId)
+        // Legacy fallback: match instructor's collegeName string against the colleges list
+        if (course.instructor?.collegeName) {
+            const matched = colleges.find((col: any) =>
+                col.name.trim().toLowerCase() === course.instructor.collegeName.trim().toLowerCase()
+            )
+            if (matched) return Number(matched.id)
+        }
+        return null
+    }
+
+    // All effective college IDs already having this course = M2M assigned + home college
+    // Use Number() everywhere to guard against JSON serializing integers as strings
+    const getEffectiveAssignedIds = (course: any): number[] => {
+        const m2mIds: number[] = (course.assignedColleges?.map((c: any) => Number(c.id)) || []) as number[]
+        if (course.status === 'APPROVED') {
+            const homeId = resolveHomeCollegeId(course)
+            if (homeId !== null) {
+                return Array.from(new Set([...m2mIds, homeId]))
+            }
+        }
+        return m2mIds
+    }
+
     const filtered = courses.filter(c =>
         c.title?.toLowerCase().includes(search.toLowerCase()) ||
-        c.instructor?.name?.toLowerCase().includes(search.toLowerCase())
+        c.instructor?.name?.toLowerCase().includes(search.toLowerCase()),
     )
+
+    // ── Modal state helpers ──────────────────────────────────────────────────
+    const assignedCourse = courses.find(c => c.id === assignCourseId)
+    // Resolve home college with fallback chain: FK → instructor FK → instructor name match
+    const homeCollegeId: number | null = assignedCourse ? resolveHomeCollegeId(assignedCourse) : null
+    const isHomeLocked  = (id: number) => Number(id) === homeCollegeId
+    const alreadyAssigned = (id: number) => originalAssignedColleges.map(Number).includes(Number(id))
+    const isSelected = (id: number) => selectedColleges.map(Number).includes(Number(id))
+    const newlyAdding = selectedColleges.filter(id => !originalAssignedColleges.map(Number).includes(Number(id)))
+    const removing    = originalAssignedColleges.filter(id => !selectedColleges.map(Number).includes(Number(id)) && !isHomeLocked(id))
+
+    const sortedColleges = [...colleges].sort((a, b) => {
+        const aHome = isHomeLocked(a.id) ? 0 : 1
+        const bHome = isHomeLocked(b.id) ? 0 : 1
+        if (aHome !== bHome) return aHome - bHome
+        const aAssigned = alreadyAssigned(a.id) ? 0 : 1
+        const bAssigned = alreadyAssigned(b.id) ? 0 : 1
+        if (aAssigned !== bAssigned) return aAssigned - bAssigned
+        return a.name.localeCompare(b.name)
+    })
 
     return (
         <div className="min-h-screen bg-mesh">
@@ -72,7 +183,7 @@ export default function SuperAdminCoursesPage() {
                         { label: 'Total Courses', value: courses.length, icon: '📚', gradient: 'linear-gradient(135deg,#6366f1,#8b5cf6)' },
                         { label: 'Approved', value: courses.filter(c => c.status === 'APPROVED').length, icon: '✅', gradient: 'linear-gradient(135deg,#10b981,#059669)' },
                         { label: 'Pending Approval', value: courses.filter(c => c.status === 'PENDING_APPROVAL').length, icon: '⏳', gradient: 'linear-gradient(135deg,#f59e0b,#d97706)' },
-                        { label: 'Instructors', value: new Set(courses.map(c => c.instructorId)).size, icon: '👨‍🏫', gradient: 'linear-gradient(135deg,#a855f7,#ec4899)' },
+                        { label: 'Rejected', value: courses.filter(c => c.status === 'REJECTED').length, icon: '❌', gradient: 'linear-gradient(135deg,#ef4444,#dc2626)' },
                     ].map((s, i) => (
                         <div key={i} className="stat-card">
                             <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl mb-3"
@@ -104,59 +215,119 @@ export default function SuperAdminCoursesPage() {
                     </div>
                 ) : filtered.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                        {filtered.map((course, i) => (
-                            <div key={course.id} className="course-card group">
-                                {/* Thumbnail */}
-                                <div className="h-40 relative overflow-hidden"
-                                    style={{ background: gradients[i % gradients.length] }}>
-                                    <div className="absolute inset-0 flex items-center justify-center text-5xl opacity-40 group-hover:scale-110 transition-transform duration-300">
-                                        📚
-                                    </div>
-                                    <div className="absolute top-3 right-3 flex flex-col gap-2">
-                                        {/* Status Badge */}
-                                        <span className={`badge ${course.status === 'APPROVED' ? 'badge-student' :
-                                                course.status === 'PENDING_APPROVAL' ? 'badge-instructor' :
-                                                    'badge-admin'
-                                            }`}>
-                                            {course.status === 'APPROVED' ? '✅ Approved' :
-                                                course.status === 'PENDING_APPROVAL' ? '⏳ Pending' :
-                                                    '❌ Rejected'}
-                                        </span>
-                                        {/* Published Badge */}
-                                        {course.status === 'APPROVED' && (
-                                            <span className={`badge ${course.published ? 'bg-green-500/20 text-green-300' : 'bg-gray-500/20 text-gray-300'}`}>
-                                                {course.published ? '🌐 Published' : '📝 Draft'}
-                                            </span>
-                                        )}
-                                    </div>
-                                    <div className="absolute bottom-3 left-3 text-white/60 text-xs font-medium">
-                                        ID: #{course.id}
-                                    </div>
-                                </div>
+                        {filtered.map((course, i) => {
+                            const isRejected = course.status === 'REJECTED'
+                            const isApproved = course.status === 'APPROVED'
+                            const isPending = course.status === 'PENDING_APPROVAL'
+                            const effectiveIds = getEffectiveAssignedIds(course)
 
-                                {/* Content */}
-                                <div className="p-5">
-                                    <h3 className="text-white font-semibold mb-1 line-clamp-1">{course.title}</h3>
-                                    <p className="text-gray-400 text-sm mb-3 line-clamp-2">{course.description || 'No description'}</p>
-                                    <p className="text-gray-500 text-xs mb-4">
-                                        by <span className="text-primary-400">{course.instructor?.name || 'Unknown Instructor'}</span>
-                                    </p>
-                                    <div className="flex gap-2">
-                                        <button onClick={() => setPreviewCourseId(course.id)}
-                                            className="flex-1 py-2 rounded-xl text-xs font-semibold transition-all hover:scale-105"
-                                            style={{ background: 'rgba(99,102,241,0.15)', color: '#a5b4fc', border: '1px solid rgba(99,102,241,0.3)' }}>
-                                            View Preview
-                                        </button>
-                                        <button
-                                            onClick={() => handleDelete(course.id)}
-                                            className="px-3 py-2 rounded-xl text-xs font-semibold transition-all hover:scale-105"
-                                            style={{ background: 'rgba(239,68,68,0.15)', color: '#fca5a5', border: '1px solid rgba(239,68,68,0.3)' }}>
-                                            Delete
-                                        </button>
+                            return (
+                                <div key={course.id} className="course-card group">
+                                    {/* Thumbnail */}
+                                    <div
+                                        className="h-40 relative overflow-hidden"
+                                        style={{ background: isRejected ? 'linear-gradient(135deg,#374151,#1f2937)' : gradients[i % gradients.length] }}
+                                    >
+                                        <div className="absolute inset-0 flex items-center justify-center text-5xl opacity-40 group-hover:scale-110 transition-transform duration-300">
+                                            {isRejected ? '🚫' : '📚'}
+                                        </div>
+                                        <div className="absolute top-3 right-3 flex flex-col gap-2">
+                                            {/* Status badge */}
+                                            <span className={`badge ${isApproved ? 'badge-student' : isPending ? 'badge-instructor' : 'bg-red-500/30 text-red-300 border border-red-500/40'}`}>
+                                                {isApproved ? '✅ Approved' : isPending ? '⏳ Pending' : '❌ Rejected'}
+                                            </span>
+                                            {/* Published badge */}
+                                            {isApproved && (
+                                                <span className={`badge ${course.published ? 'bg-green-500/20 text-green-300' : 'bg-gray-500/20 text-gray-300'}`}>
+                                                    {course.published ? '🌐 Published' : '📝 Draft'}
+                                                </span>
+                                            )}
+                                            {/* Assigned colleges count */}
+                                            {isApproved && effectiveIds.length > 0 && (
+                                                <span className="badge bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                                                    🏛️ {effectiveIds.length} College{effectiveIds.length !== 1 ? 's' : ''}
+                                                </span>
+                                            )}
+                                            {course.approver?.role === 'SUPERADMIN' && (
+                                                <span className="badge bg-indigo-500/20 text-indigo-400 border-indigo-500/30">
+                                                    👑 Assigned by Superadmin
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="absolute bottom-3 left-3 text-white/60 text-xs font-medium">
+                                            ID: #{course.id}
+                                        </div>
+                                    </div>
+
+                                    {/* Rejection reason banner */}
+                                    {isRejected && (
+                                        <div className="mx-4 mt-3 px-3 py-2.5 bg-red-500/10 border border-red-500/30 rounded-xl">
+                                            <div className="flex items-start gap-2">
+                                                <span className="text-red-400 text-sm mt-0.5 flex-shrink-0">⚠️</span>
+                                                <div>
+                                                    <p className="text-red-400 text-xs font-semibold mb-0.5">Rejected by Admin</p>
+                                                    <p className="text-red-300/80 text-xs leading-relaxed line-clamp-2">
+                                                        {course.rejectionReason || 'No reason provided'}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Content */}
+                                    <div className="p-5">
+                                        <h3 className={`font-semibold mb-1 line-clamp-1 ${isRejected ? 'text-gray-400' : 'text-white'}`}>
+                                            {course.title}
+                                        </h3>
+                                        <p className="text-gray-400 text-sm mb-3 line-clamp-2">{course.description || 'No description'}</p>
+                                        <p className="text-gray-500 text-xs mb-4">
+                                            by <span className="text-primary-400">{course.instructor?.role === 'SUPERADMIN' ? 'Superadmin' : (course.instructor?.name || 'Unknown Instructor')}</span>
+                                        </p>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => setPreviewCourseId(course.id)}
+                                                className="flex-1 py-2 rounded-xl text-xs font-semibold transition-all hover:scale-105"
+                                                style={{ background: 'rgba(99,102,241,0.15)', color: '#a5b4fc', border: '1px solid rgba(99,102,241,0.3)' }}
+                                            >
+                                                Preview
+                                            </button>
+
+                                            {/* Assign — only for APPROVED courses */}
+                                            {isApproved ? (
+                                                <button
+                                                    onClick={() => {
+                                                        const ids = getEffectiveAssignedIds(course)
+                                                        setAssignCourseId(course.id)
+                                                        setSelectedColleges(ids)
+                                                        setOriginalAssignedColleges(ids)
+                                                    }}
+                                                    className="flex-1 py-2 rounded-xl text-xs font-semibold transition-all hover:scale-105"
+                                                    style={{ background: 'rgba(16,185,129,0.15)', color: '#6ee7b7', border: '1px solid rgba(16,185,129,0.3)' }}
+                                                >
+                                                    🏛️ Assign
+                                                </button>
+                                            ) : (
+                                                <div
+                                                    className="flex-1 py-2 rounded-xl text-xs font-semibold text-center cursor-not-allowed"
+                                                    style={{ background: 'rgba(100,100,100,0.1)', color: '#4b5563', border: '1px solid rgba(100,100,100,0.2)' }}
+                                                    title={isRejected ? 'Rejected courses cannot be assigned' : 'Course must be approved first'}
+                                                >
+                                                    🔒 Assign
+                                                </div>
+                                            )}
+
+                                            <button
+                                                onClick={() => handleDelete(course.id)}
+                                                className="flex-1 py-2 rounded-xl text-xs font-semibold transition-all hover:scale-105"
+                                                style={{ background: 'rgba(239,68,68,0.15)', color: '#fca5a5', border: '1px solid rgba(239,68,68,0.3)' }}
+                                            >
+                                                Delete
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
+                            )
+                        })}
                     </div>
                 ) : (
                     <div className="text-center py-20 glass-card">
@@ -172,6 +343,198 @@ export default function SuperAdminCoursesPage() {
                 courseId={previewCourseId}
                 onClose={() => setPreviewCourseId(null)}
             />
+
+            {/* ── Assignment Modal ─────────────────────────────────────────── */}
+            {assignCourseId && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-white border border-slate-200 shadow-2xl rounded-2xl w-full max-w-md overflow-hidden">
+
+                        {/* Header */}
+                        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-5">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-lg font-bold text-white">Assign to Colleges</h3>
+                                    <p className="text-indigo-200 text-xs mt-0.5 line-clamp-1">
+                                        📚 {assignedCourse?.title || `Course #${assignCourseId}`}
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={closeAssignModal}
+                                    className="w-8 h-8 flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors text-xl leading-none"
+                                >×</button>
+                            </div>
+                        </div>
+
+                        {/* Legend */}
+                        <div className="flex flex-wrap gap-3 px-5 py-2.5 bg-slate-50 border-b border-slate-200 text-xs">
+                            {homeCollegeId && (
+                                <div className="flex items-center gap-1.5">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block"></span>
+                                    <span className="text-slate-600 font-medium">🏠 Home (locked)</span>
+                                </div>
+                            )}
+                            <div className="flex items-center gap-1.5">
+                                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
+                                <span className="text-slate-600 font-medium">Already assigned</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 inline-block"></span>
+                                <span className="text-slate-600 font-medium">Newly adding</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <span className="w-2.5 h-2.5 rounded-full bg-red-400 inline-block"></span>
+                                <span className="text-slate-600 font-medium">Removing</span>
+                            </div>
+                        </div>
+
+                        {/* College list */}
+                        <div className="max-h-64 overflow-y-auto p-3 space-y-1.5 bg-white">
+                            {colleges.length === 0 ? (
+                                <div className="text-center py-10 text-slate-400 text-sm">
+                                    <div className="text-4xl mb-2">🏛️</div>
+                                    No colleges found
+                                </div>
+                            ) : sortedColleges.map((c: any) => {
+                                const isHome    = isHomeLocked(c.id)
+                                const wasAssigned  = alreadyAssigned(c.id)
+                                const nowSelected  = isSelected(c.id)
+                                const isNewlyAdding = nowSelected && !wasAssigned && !isHome
+                                const isRemoving  = wasAssigned && !nowSelected && !isHome
+
+                                let rowClass = 'border border-transparent hover:bg-slate-50'
+                                if (isHome)                      rowClass = 'border border-amber-200 bg-amber-50'
+                                else if (wasAssigned && nowSelected) rowClass = 'border border-emerald-200 bg-emerald-50'
+                                else if (isNewlyAdding)          rowClass = 'border border-indigo-200 bg-indigo-50'
+                                else if (isRemoving)             rowClass = 'border border-red-200 bg-red-50'
+
+                                let cbClass = 'bg-white border-slate-300'
+                                if (isHome)                       cbClass = 'bg-amber-400 border-amber-400'
+                                else if (wasAssigned && nowSelected) cbClass = 'bg-emerald-500 border-emerald-500'
+                                else if (isNewlyAdding)           cbClass = 'bg-indigo-500 border-indigo-500'
+                                else if (isRemoving)              cbClass = 'bg-white border-red-400'
+
+                                const textClass =
+                                    isHome ? 'text-amber-800'
+                                    : wasAssigned && nowSelected ? 'text-emerald-800'
+                                    : isNewlyAdding ? 'text-indigo-800'
+                                    : isRemoving ? 'text-red-700'
+                                    : 'text-slate-700'
+
+                                return (
+                                    <label
+                                        key={c.id}
+                                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all select-none ${rowClass} ${isHome ? 'cursor-default' : 'cursor-pointer'}`}
+                                    >
+                                        {/* Custom checkbox */}
+                                        <div className="relative flex-shrink-0">
+                                            <input
+                                                type="checkbox"
+                                                checked={nowSelected}
+                                                disabled={isHome}
+                                                onChange={(e) => {
+                                                    if (isHome) return
+                                                    const nid = Number(c.id)
+                                                    if (e.target.checked) setSelectedColleges([...selectedColleges, nid])
+                                                    else setSelectedColleges(selectedColleges.filter((id: number) => Number(id) !== nid))
+                                                }}
+                                                className="sr-only"
+                                            />
+                                            <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${cbClass}`}>
+                                                {nowSelected && (
+                                                    <svg className="w-3 h-3 text-white" viewBox="0 0 12 12" fill="none">
+                                                        <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                                    </svg>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Name */}
+                                        <div className="flex-1 min-w-0">
+                                            <span className={`text-sm font-semibold block truncate ${textClass}`}>
+                                                🏛️ {c.name}
+                                            </span>
+                                        </div>
+
+                                        {/* Status badge */}
+                                        {isHome && (
+                                            <span className="flex-shrink-0 text-xs bg-amber-100 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full font-semibold whitespace-nowrap">
+                                                🏠 Home
+                                            </span>
+                                        )}
+                                        {!isHome && wasAssigned && nowSelected && (
+                                            <span className="flex-shrink-0 text-xs bg-emerald-100 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full font-semibold whitespace-nowrap">
+                                                ✓ Assigned
+                                            </span>
+                                        )}
+                                        {isNewlyAdding && (
+                                            <span className="flex-shrink-0 text-xs bg-indigo-100 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded-full font-semibold whitespace-nowrap">
+                                                + Adding
+                                            </span>
+                                        )}
+                                        {isRemoving && (
+                                            <span className="flex-shrink-0 text-xs bg-red-100 text-red-600 border border-red-200 px-2 py-0.5 rounded-full font-semibold whitespace-nowrap">
+                                                − Removing
+                                            </span>
+                                        )}
+                                    </label>
+                                )
+                            })}
+                        </div>
+
+                        {/* Summary bar */}
+                        <div className="px-6 py-3 bg-slate-50 border-t border-slate-200">
+                            <div className="flex items-center justify-around text-center">
+                                {homeCollegeId && (
+                                    <>
+                                        <div>
+                                            <div className="text-lg font-bold text-amber-500">1</div>
+                                            <div className="text-xs text-slate-500">Home</div>
+                                        </div>
+                                        <div className="w-px h-8 bg-slate-200"></div>
+                                    </>
+                                )}
+                                <div>
+                                    <div className="text-lg font-bold text-emerald-600">
+                                        {originalAssignedColleges.filter(id => selectedColleges.includes(id) && !isHomeLocked(id)).length}
+                                    </div>
+                                    <div className="text-xs text-slate-500">Keeping</div>
+                                </div>
+                                <div className="w-px h-8 bg-slate-200"></div>
+                                <div>
+                                    <div className="text-lg font-bold text-indigo-600">{newlyAdding.length}</div>
+                                    <div className="text-xs text-slate-500">Adding</div>
+                                </div>
+                                <div className="w-px h-8 bg-slate-200"></div>
+                                <div>
+                                    <div className="text-lg font-bold text-red-500">{removing.length}</div>
+                                    <div className="text-xs text-slate-500">Removing</div>
+                                </div>
+                                <div className="w-px h-8 bg-slate-200"></div>
+                                <div>
+                                    <div className="text-lg font-bold text-slate-700">{selectedColleges.length}</div>
+                                    <div className="text-xs text-slate-500">Total</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Buttons */}
+                        <div className="flex gap-3 px-6 py-4 border-t border-slate-200">
+                            <button
+                                onClick={closeAssignModal}
+                                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition-colors text-sm"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleAssign}
+                                className="flex-1 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold rounded-xl transition-all shadow-md shadow-indigo-200 text-sm"
+                            >
+                                Save Assignment
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

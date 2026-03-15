@@ -6,6 +6,8 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  ManyToMany,
+  JoinTable,
 } from 'typeorm';
 import { User } from './user.entity';
 import { College } from './college.entity';
@@ -66,12 +68,20 @@ export class Course {
   instructor: User;
 
   // College/University - Multi-tenant support
-  @Column({ name: 'college_id' })
+  @Column({ name: 'college_id', nullable: true })
   collegeId: number;
 
   @ManyToOne(() => College, (college) => college.courses)
   @JoinColumn({ name: 'college_id' })
   college: College;
+
+  @ManyToMany(() => College)
+  @JoinTable({
+    name: 'course_assignments',
+    joinColumn: { name: 'course_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'college_id', referencedColumnName: 'id' }
+  })
+  assignedColleges: College[];
 
   @Column({ default: true })
   published: boolean;

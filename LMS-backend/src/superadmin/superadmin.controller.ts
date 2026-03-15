@@ -98,17 +98,19 @@ export class SuperadminController {
 
     const collegesWithStats = await Promise.all(
       colleges.map(async (college) => {
-        const adminCount = await this.userRepo.count({
-          where: { collegeId: college.id, role: UserRole.ADMIN },
-        });
+        // Count users matched by collegeId OR by collegeName (for legacy users without FK set)
+        const countByRole = async (role: UserRole) => {
+          const qb = this.userRepo.createQueryBuilder('u');
+          qb.where(
+            '(u.college_id = :cid OR (u.college_id IS NULL AND u.college_name = :cname))',
+            { cid: college.id, cname: college.name },
+          ).andWhere('u.role = :role', { role });
+          return qb.getCount();
+        };
 
-        const instructorCount = await this.userRepo.count({
-          where: { collegeId: college.id, role: UserRole.INSTRUCTOR },
-        });
-
-        const studentCount = await this.userRepo.count({
-          where: { collegeId: college.id, role: UserRole.STUDENT },
-        });
+        const adminCount = await countByRole(UserRole.ADMIN);
+        const instructorCount = await countByRole(UserRole.INSTRUCTOR);
+        const studentCount = await countByRole(UserRole.STUDENT);
 
         return {
           id: college.id,
@@ -158,20 +160,28 @@ export class SuperadminController {
 
   @Get('users/college/:collegeId')
   async getUsersByCollege(@Param('collegeId', ParseIntPipe) collegeId: number) {
-    return this.userRepo.find({
-      where: { collegeId },
-      select: [
-        'id',
-        'name',
-        'email',
-        'role',
-        'createdAt',
-        'collegeId',
-        'collegeName',
-        'isActive',
-      ],
-      order: { createdAt: 'DESC' },
-    });
+    // Find the college name so we can also match legacy users by name
+    const college = await this.collegeRepo.findOne({ where: { id: collegeId } });
+    const collegeName = college?.name ?? '';
+
+    return this.userRepo
+      .createQueryBuilder('u')
+      .where(
+        '(u.college_id = :cid OR (u.college_id IS NULL AND u.college_name = :cname))',
+        { cid: collegeId, cname: collegeName },
+      )
+      .select([
+        'u.id',
+        'u.name',
+        'u.email',
+        'u.role',
+        'u.createdAt',
+        'u.collegeId',
+        'u.collegeName',
+        'u.isActive',
+      ])
+      .orderBy('u.createdAt', 'DESC')
+      .getMany();
   }
 
   @Get('users/:id')
@@ -211,6 +221,58 @@ export class SuperadminController {
       relations: ['instructor', 'approver'],
       order: { createdAt: 'DESC' },
     });
+  }
+
+  @Get('courses/college/:collegeId')
+  async getCoursesByCollege(@Param('collegeId', ParseIntPipe) collegeId: number) {
+    // Find the college name so we can also match legacy users/courses by name
+    const college = await this.collegeRepo.findOne({ where: { id: collegeId } });
+    const collegeName = college?.name ?? '';
+
+    // Courses directly belonging to this college:
+    // 1. Course has college_id set to this college
+    // 2. OR Course has no college_id but its instructor belongs to this college (by ID or legacy name)
+    const directCourses = await this.courseRepo
+      .createQueryBuilder('c')
+      .leftJoinAndSelect('c.instructor', 'instructor')
+      .leftJoinAndSelect('c.approver', 'approver')
+      .where(
+        '(c.college_id = :collegeId OR (c.college_id IS NULL AND instructor.id IS NOT NULL AND (instructor.college_id = :collegeId OR instructor.college_name = :collegeName)))',
+        { collegeId, collegeName },
+      )
+      .andWhere('c.status = :status', { status: CourseStatus.APPROVED })
+      .getMany();
+
+    // Courses assigned to this college via the course_assignments join table
+    // (Typically courses created by Super Admin or other colleges and shared)
+    const assignedCourses = await this.courseRepo
+      .createQueryBuilder('c')
+      .leftJoinAndSelect('c.instructor', 'instructor')
+      .leftJoinAndSelect('c.approver', 'approver')
+      .innerJoin('course_assignments', 'ca', 'ca.course_id = c.id AND ca.college_id = :collegeId', { collegeId })
+      .andWhere('c.status = :status', { status: CourseStatus.APPROVED })
+      .getMany();
+
+    // Merge and deduplicate by ID
+    const allMap = new Map<number, Course>();
+    for (const course of [...directCourses, ...assignedCourses]) {
+      allMap.set(course.id, course);
+    }
+
+    return Array.from(allMap.values()).map((course) => ({
+      id: course.id,
+      title: course.title,
+      status: course.status,
+      createdBy: course.instructor
+        ? { id: course.instructor.id, name: course.instructor.name, role: (course.instructor as any).role }
+        : course.approver && (course.approver as any).role === UserRole.SUPERADMIN
+        ? { id: course.approver.id, name: course.approver.name, role: UserRole.SUPERADMIN }
+        : { id: null, name: 'SUPER ADMIN', role: UserRole.SUPERADMIN },
+      assignedBy: course.approver
+        ? { id: course.approver.id, name: course.approver.name, role: (course.approver as any).role }
+        : null,
+      createdAt: course.createdAt,
+    }));
   }
 
   @Delete('courses/:id')

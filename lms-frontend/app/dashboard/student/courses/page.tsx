@@ -38,6 +38,9 @@ interface Course {
         id: number
         name: string
     }
+    approver?: {
+        role?: string
+    }
 }
 
 export default function StudentCoursesPage() {
@@ -280,6 +283,11 @@ export default function StudentCoursesPage() {
                                                 <span className="badge bg-green-500/20 text-green-400 border-green-500/30">
                                                     ✅ APPROVED
                                                 </span>
+                                                {course.approver?.role === 'SUPERADMIN' && (
+                                                    <span className="badge bg-indigo-500/20 text-indigo-400 border-indigo-500/30">
+                                                        👑 Assigned by Superadmin
+                                                    </span>
+                                                )}
                                             </div>
                                             {course.level && (
                                                 <div className="absolute top-3 right-3">
@@ -313,7 +321,7 @@ export default function StudentCoursesPage() {
 
                                             {/* Instructor */}
                                             <p className="text-gray-500 text-xs mb-4">
-                                                by <span className="text-primary-400 font-medium">{course.instructor?.name || 'Instructor'}</span>
+                                                by <span className="text-primary-400 font-medium">{course.instructor?.role === 'SUPERADMIN' ? 'Superadmin' : (course.instructor?.name || 'Instructor')}</span>
                                             </p>
 
                                             {/* Stats */}
