@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
+import { getAuthHeaders } from '@/lib/authHeaders'
 
 const STAT_CONFIG = [
     { label: 'Enrolled Courses', icon: '📚', gradient: 'linear-gradient(135deg, #6366f1, #8b5cf6)', key: 'enrollments' },
@@ -60,13 +61,30 @@ export default function StudentDashboard() {
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
+        // Initial state from localStorage
         const stored = localStorage.getItem('user')
         if (!stored) { router.push('/login'); return }
         const u = JSON.parse(stored)
         if (u.role !== 'STUDENT') { router.push(`/dashboard/${u.role.toLowerCase()}`); return }
         setUser(u)
 
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/enrollments/my`, { credentials: 'include' })
+        // Refresh user profile to get latest college logo
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/auth/me`, {
+            headers: getAuthHeaders(),
+        })
+            .then(r => r.json())
+            .then(updatedUser => {
+                if (updatedUser && !updatedUser.message) {
+                    setUser(updatedUser)
+                    localStorage.setItem('user', JSON.stringify(updatedUser))
+                }
+            })
+            .catch(() => { })
+
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/enrollments/my`, {
+            credentials: 'include',
+            headers: getAuthHeaders(),
+        })
             .then(r => r.json())
             .then(data => { if (Array.isArray(data)) setEnrollments(data) })
             .catch(() => { })
@@ -86,24 +104,43 @@ export default function StudentDashboard() {
             <Navbar title="Student Dashboard" />
             <main className="page-content">
                 {/* Hero */}
-                <div className="hero-section mb-8 animate-fade-in bg-white border border-gray-100 shadow-sm">
-                    <div className="relative z-10">
-                        <p className="text-gray-500 text-sm font-medium mb-1">Welcome back 👋</p>
-                        <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-3">{user?.name || 'Student'}</h1>
-                        {user?.collegeName && (
-                            <div className="flex items-center gap-2 mb-3">
-                                <span className="text-indigo-600 font-semibold">🎓 {user.collegeName}</span>
-                            </div>
-                        )}
-                        <p className="text-gray-600 mb-6 max-w-lg">Continue your learning journey. Keep up the great work!</p>
-                        <a href="/dashboard/student/courses">
-                            <button className="btn-primary px-8 py-3.5 text-sm">
-                                Browse Courses →
-                            </button>
-                        </a>
-                    </div>
-                    <div className="absolute right-8 top-1/2 -translate-y-1/2 hidden lg:block opacity-20">
-                        <div className="w-40 h-40 rounded-full border-4 border-indigo-100 flex items-center justify-center text-7xl animate-float">🎓</div>
+                <div className="hero-section mb-8 animate-fade-in bg-white border border-gray-100 shadow-sm relative overflow-hidden">
+                    <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                        <div>
+                            <p className="text-gray-500 text-sm font-medium mb-1">Welcome back 👋</p>
+                            <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-3">{user?.name || 'Student'}</h1>
+                            {user?.collegeName && (
+                                <div className="flex items-center gap-2 mb-3">
+                                    <span className="text-indigo-600 font-semibold">🎓 {user.collegeName}</span>
+                                </div>
+                            )}
+                            <p className="text-gray-600 mb-6 max-w-lg">Continue your learning journey. Keep up the great work!</p>
+                            <a href="/dashboard/student/courses">
+                                <button className="btn-primary px-8 py-3.5 text-sm">
+                                    Browse Courses →
+                                </button>
+                            </a>
+                        </div>
+
+                        {/* College Logo */}
+                        <div className="flex-shrink-0 bg-indigo-50/50 p-4 rounded-3xl border border-indigo-100/50 shadow-sm hidden md:block">
+                            {user?.collegeLogo ? (
+                                <div className="relative w-32 h-32 flex items-center justify-center overflow-hidden rounded-2xl bg-white shadow-inner">
+                                    <img
+                                        src={user.collegeLogo}
+                                        alt={user.collegeName || 'College Logo'}
+                                        className="max-w-full max-h-full object-contain p-2"
+                                        onError={(e) => {
+                                            (e.target as HTMLImageElement).src = 'https://cdn-icons-png.flaticon.com/512/5322/5322033.png';
+                                        }}
+                                    />
+                                </div>
+                            ) : (
+                                <div className="w-32 h-32 flex items-center justify-center text-7xl bg-white rounded-2xl shadow-inner animate-float">
+                                    🎓
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
 

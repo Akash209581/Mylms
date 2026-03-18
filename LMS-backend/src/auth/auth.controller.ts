@@ -30,7 +30,7 @@ export class AuthController {
   async getColleges() {
     const colleges = await this.collegeRepo.find({
       where: { active: true },
-      select: ['id', 'name'],
+      select: ['id', 'name', 'logoUrl'],
       order: { name: 'ASC' },
     });
     return colleges;

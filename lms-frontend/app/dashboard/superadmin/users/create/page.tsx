@@ -27,10 +27,11 @@ export default function CreateUserPage() {
     const [error, setError] = useState('')
     const [success, setSuccess] = useState('')
     const [loading, setLoading] = useState(false)
-    const [colleges, setColleges] = useState<Array<{ id: number; name: string }>>([])
+    const [colleges, setColleges] = useState<Array<{ id: number; name: string; logoUrl?: string }>>([])
     const [loadingColleges, setLoadingColleges] = useState(true)
     const [showCollegeDropdown, setShowCollegeDropdown] = useState(false)
     const [collegeSearchTerm, setCollegeSearchTerm] = useState('')
+    const [logoPreview, setLogoPreview] = useState<string | null>(null)
 
     useEffect(() => {
         const stored = localStorage.getItem('user')
@@ -78,9 +79,10 @@ export default function CreateUserPage() {
         }
     }
 
-    const handleCollegeSelect = (collegeName: string) => {
-        console.log('College selected:', collegeName)
-        setForm({ ...form, collegeName })
+    const handleCollegeSelect = (college: { name: string; logoUrl?: string }) => {
+        console.log('College selected:', college.name)
+        setForm({ ...form, collegeName: college.name })
+        setLogoPreview(college.logoUrl || null)
         setCollegeSearchTerm('')
         setShowCollegeDropdown(false)
     }
@@ -96,6 +98,17 @@ export default function CreateUserPage() {
         console.log('showCollegeDropdown will be set to true')
         setShowCollegeDropdown(true)
         setCollegeSearchTerm(form.collegeName) // Sync search term with current value
+    }
+
+    const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (file) {
+            const reader = new FileReader()
+            reader.onloadend = () => {
+                setLogoPreview(reader.result as string)
+            }
+            reader.readAsDataURL(file)
+        }
     }
 
     const filteredColleges = collegeSearchTerm 
@@ -116,7 +129,8 @@ export default function CreateUserPage() {
                 email: form.email,
                 password: form.password,
                 role: form.role,
-                collegeName: form.collegeName
+                collegeName: form.collegeName,
+                collegeLogo: logoPreview
             }
 
             // Include additional fields for STUDENT role
@@ -150,6 +164,7 @@ export default function CreateUserPage() {
                 semester: '',
                 registrationNumber: ''
             })
+            setLogoPreview(null)
 
             // Redirect after 2 seconds
             setTimeout(() => {
@@ -290,7 +305,7 @@ export default function CreateUserPage() {
                                                             className="px-4 py-2.5 hover:bg-blue-50 cursor-pointer flex items-center gap-2 transition-colors"
                                                             onMouseDown={(e) => {
                                                                 e.preventDefault() // Prevent input blur
-                                                                handleCollegeSelect(college.name)
+                                                                handleCollegeSelect(college)
                                                             }}
                                                         >
                                                             <span className="text-blue-600">🎓</span>
@@ -321,6 +336,47 @@ export default function CreateUserPage() {
                                             Debug: colleges={colleges.length}, showDropdown={showCollegeDropdown.toString()}, loading={loadingColleges.toString()}
                                         </p>
                                     )}
+                                </div>
+
+                                {/* Logo Management */}
+                                <div className="mt-6 flex flex-col md:flex-row items-start gap-6 p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                                    <div className="flex-shrink-0">
+                                        <div className="w-24 h-24 rounded-2xl bg-white border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden group hover:border-indigo-400 transition-all">
+                                            {logoPreview ? (
+                                                <img src={logoPreview} alt="Logo Preview" className="w-full h-full object-contain" />
+                                            ) : (
+                                                <span className="text-3xl text-slate-300 group-hover:text-indigo-400 transition-colors">🖼️</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="flex-1 space-y-2">
+                                        <h3 className="text-sm font-bold text-slate-800">College Logo</h3>
+                                        <p className="text-xs text-slate-500">
+                                            {logoPreview 
+                                                ? "Logo found or uploaded. You can replace it if needed." 
+                                                : "No logo provided. Please upload a logo for this college."}
+                                        </p>
+                                        <div className="flex items-center gap-3">
+                                            <label className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer shadow-sm transition-all">
+                                                {logoPreview ? 'Replace Logo' : 'Upload Logo'}
+                                                <input
+                                                    type="file"
+                                                    className="hidden"
+                                                    accept="image/*"
+                                                    onChange={handleLogoUpload}
+                                                />
+                                            </label>
+                                            {logoPreview && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setLogoPreview(null)}
+                                                    className="px-4 py-2 text-xs font-bold text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                                >
+                                                    Remove
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 

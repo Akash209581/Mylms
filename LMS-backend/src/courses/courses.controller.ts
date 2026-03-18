@@ -459,6 +459,7 @@ export class CoursesController {
   async assignCourse(
     @Param('id') id: number,
     @Body() dto: AssignCourseDto,
+    @Request() req: any,
   ) {
     const course = await this.courseRepo.findOne({ 
       where: { id },
@@ -469,17 +470,20 @@ export class CoursesController {
       throw new HttpException('Course not found', HttpStatus.NOT_FOUND);
     }
 
+    // Auto-approve and publish if assigning (Super Admin acts as final validator)
+    course.published = true;
     if (course.status !== CourseStatus.APPROVED) {
-      throw new HttpException(
-        `Cannot assign a course with status "${course.status}". Only APPROVED courses can be assigned to colleges.`,
-        HttpStatus.BAD_REQUEST,
-      );
+      course.status = CourseStatus.APPROVED;
+      // Mark who approved it
+      if ((req.user as any)?.sub) {
+        course.approvedBy = req.user.sub;
+      }
     }
 
     course.assignedColleges = dto.collegeIds.map(cid => ({ id: cid } as any));
     await this.courseRepo.save(course);
 
-    return { message: 'Course assigned to specified colleges successfully' };
+    return { message: 'Course assigned, approved and published successfully' };
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

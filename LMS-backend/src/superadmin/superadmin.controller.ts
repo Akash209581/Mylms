@@ -102,7 +102,7 @@ export class SuperadminController {
         const countByRole = async (role: UserRole) => {
           const qb = this.userRepo.createQueryBuilder('u');
           qb.where(
-            '(u.college_id = :cid OR (u.college_id IS NULL AND u.college_name = :cname))',
+            '(u.college_id = :cid OR LOWER(TRIM(u.college_name)) = LOWER(TRIM(:cname)))',
             { cid: college.id, cname: college.name },
           ).andWhere('u.role = :role', { role });
           return qb.getCount();
@@ -119,6 +119,7 @@ export class SuperadminController {
           city: college.city,
           state: college.state,
           country: college.country,
+          logoUrl: college.logoUrl,
           adminCount,
           instructorCount,
           studentCount,
@@ -135,7 +136,7 @@ export class SuperadminController {
   @Get('colleges')
   async getAllColleges() {
     const colleges = await this.collegeRepo.find({
-      select: ['id', 'name'],
+      select: ['id', 'name', 'logoUrl'],
       order: { name: 'ASC' },
     });
     return colleges;
@@ -167,7 +168,7 @@ export class SuperadminController {
     return this.userRepo
       .createQueryBuilder('u')
       .where(
-        '(u.college_id = :cid OR (u.college_id IS NULL AND u.college_name = :cname))',
+        '(u.college_id = :cid OR LOWER(TRIM(u.college_name)) = LOWER(TRIM(:cname)))',
         { cid: collegeId, cname: collegeName },
       )
       .select([

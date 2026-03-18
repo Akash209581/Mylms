@@ -42,6 +42,9 @@ export class College {
   @Column({ name: 'contact_phone', length: 20, nullable: true })
   contactPhone?: string;
 
+  @Column({ name: 'logo_url', type: 'text', nullable: true })
+  logoUrl?: string;
+
   @Column({ name: 'created_by', nullable: true })
   createdBy?: number; // SUPERADMIN who created this college
 

@@ -145,6 +145,10 @@ export class SuperAdminCreateUserDto extends CreateUserDto {
   @IsNotEmpty({ message: 'College/University name is required' })
   @MaxLength(200, { message: 'College name must not exceed 200 characters' })
   collegeName: string;
+
+  @IsOptional()
+  @IsString()
+  collegeLogo?: string;
 }
 
 export class LoginDto {

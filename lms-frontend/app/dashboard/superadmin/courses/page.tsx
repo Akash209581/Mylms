@@ -24,6 +24,7 @@ export default function SuperAdminCoursesPage() {
     const [assignCourseId, setAssignCourseId] = useState<number | null>(null)
     const [selectedColleges, setSelectedColleges] = useState<number[]>([])
     const [originalAssignedColleges, setOriginalAssignedColleges] = useState<number[]>([])
+    const [collegeSearch, setCollegeSearch] = useState('')
 
     useEffect(() => {
         const stored = localStorage.getItem('user')
@@ -103,6 +104,7 @@ export default function SuperAdminCoursesPage() {
         setAssignCourseId(null)
         setSelectedColleges([])
         setOriginalAssignedColleges([])
+        setCollegeSearch('')
     }
 
     // For an approved course, resolve the effective home college ID:
@@ -292,29 +294,18 @@ export default function SuperAdminCoursesPage() {
                                                 Preview
                                             </button>
 
-                                            {/* Assign — only for APPROVED courses */}
-                                            {isApproved ? (
-                                                <button
-                                                    onClick={() => {
-                                                        const ids = getEffectiveAssignedIds(course)
-                                                        setAssignCourseId(course.id)
-                                                        setSelectedColleges(ids)
-                                                        setOriginalAssignedColleges(ids)
-                                                    }}
-                                                    className="flex-1 py-2 rounded-xl text-xs font-semibold transition-all hover:scale-105"
-                                                    style={{ background: 'rgba(16,185,129,0.15)', color: '#6ee7b7', border: '1px solid rgba(16,185,129,0.3)' }}
-                                                >
-                                                    🏛️ Assign
-                                                </button>
-                                            ) : (
-                                                <div
-                                                    className="flex-1 py-2 rounded-xl text-xs font-semibold text-center cursor-not-allowed"
-                                                    style={{ background: 'rgba(100,100,100,0.1)', color: '#4b5563', border: '1px solid rgba(100,100,100,0.2)' }}
-                                                    title={isRejected ? 'Rejected courses cannot be assigned' : 'Course must be approved first'}
-                                                >
-                                                    🔒 Assign
-                                                </div>
-                                            )}
+                                            <button
+                                                onClick={() => {
+                                                    const ids = getEffectiveAssignedIds(course)
+                                                    setAssignCourseId(course.id)
+                                                    setSelectedColleges(ids)
+                                                    setOriginalAssignedColleges(ids)
+                                                }}
+                                                className="flex-1 py-2 rounded-xl text-xs font-semibold transition-all hover:scale-105"
+                                                style={{ background: 'rgba(16,185,129,0.15)', color: '#6ee7b7', border: '1px solid rgba(16,185,129,0.3)' }}
+                                            >
+                                                🏛️ Assign
+                                            </button>
 
                                             <button
                                                 onClick={() => handleDelete(course.id)}
@@ -387,98 +378,124 @@ export default function SuperAdminCoursesPage() {
                             </div>
                         </div>
 
+                        {/* Search Bar */}
+                        <div className="px-5 py-3 border-b border-slate-100 bg-white">
+                            <div className="relative">
+                                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
+                                <input
+                                    type="text"
+                                    placeholder="Search for a college..."
+                                    value={collegeSearch}
+                                    onChange={(e) => setCollegeSearch(e.target.value)}
+                                    className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
+                                />
+                            </div>
+                        </div>
+
                         {/* College list */}
                         <div className="max-h-64 overflow-y-auto p-3 space-y-1.5 bg-white">
-                            {colleges.length === 0 ? (
-                                <div className="text-center py-10 text-slate-400 text-sm">
-                                    <div className="text-4xl mb-2">🏛️</div>
-                                    No colleges found
-                                </div>
-                            ) : sortedColleges.map((c: any) => {
-                                const isHome    = isHomeLocked(c.id)
-                                const wasAssigned  = alreadyAssigned(c.id)
-                                const nowSelected  = isSelected(c.id)
-                                const isNewlyAdding = nowSelected && !wasAssigned && !isHome
-                                const isRemoving  = wasAssigned && !nowSelected && !isHome
-
-                                let rowClass = 'border border-transparent hover:bg-slate-50'
-                                if (isHome)                      rowClass = 'border border-amber-200 bg-amber-50'
-                                else if (wasAssigned && nowSelected) rowClass = 'border border-emerald-200 bg-emerald-50'
-                                else if (isNewlyAdding)          rowClass = 'border border-indigo-200 bg-indigo-50'
-                                else if (isRemoving)             rowClass = 'border border-red-200 bg-red-50'
-
-                                let cbClass = 'bg-white border-slate-300'
-                                if (isHome)                       cbClass = 'bg-amber-400 border-amber-400'
-                                else if (wasAssigned && nowSelected) cbClass = 'bg-emerald-500 border-emerald-500'
-                                else if (isNewlyAdding)           cbClass = 'bg-indigo-500 border-indigo-500'
-                                else if (isRemoving)              cbClass = 'bg-white border-red-400'
-
-                                const textClass =
-                                    isHome ? 'text-amber-800'
-                                    : wasAssigned && nowSelected ? 'text-emerald-800'
-                                    : isNewlyAdding ? 'text-indigo-800'
-                                    : isRemoving ? 'text-red-700'
-                                    : 'text-slate-700'
-
-                                return (
-                                    <label
-                                        key={c.id}
-                                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all select-none ${rowClass} ${isHome ? 'cursor-default' : 'cursor-pointer'}`}
-                                    >
-                                        {/* Custom checkbox */}
-                                        <div className="relative flex-shrink-0">
-                                            <input
-                                                type="checkbox"
-                                                checked={nowSelected}
-                                                disabled={isHome}
-                                                onChange={(e) => {
-                                                    if (isHome) return
-                                                    const nid = Number(c.id)
-                                                    if (e.target.checked) setSelectedColleges([...selectedColleges, nid])
-                                                    else setSelectedColleges(selectedColleges.filter((id: number) => Number(id) !== nid))
-                                                }}
-                                                className="sr-only"
-                                            />
-                                            <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${cbClass}`}>
-                                                {nowSelected && (
-                                                    <svg className="w-3 h-3 text-white" viewBox="0 0 12 12" fill="none">
-                                                        <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                                    </svg>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        {/* Name */}
-                                        <div className="flex-1 min-w-0">
-                                            <span className={`text-sm font-semibold block truncate ${textClass}`}>
-                                                🏛️ {c.name}
-                                            </span>
-                                        </div>
-
-                                        {/* Status badge */}
-                                        {isHome && (
-                                            <span className="flex-shrink-0 text-xs bg-amber-100 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full font-semibold whitespace-nowrap">
-                                                🏠 Home
-                                            </span>
-                                        )}
-                                        {!isHome && wasAssigned && nowSelected && (
-                                            <span className="flex-shrink-0 text-xs bg-emerald-100 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full font-semibold whitespace-nowrap">
-                                                ✓ Assigned
-                                            </span>
-                                        )}
-                                        {isNewlyAdding && (
-                                            <span className="flex-shrink-0 text-xs bg-indigo-100 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded-full font-semibold whitespace-nowrap">
-                                                + Adding
-                                            </span>
-                                        )}
-                                        {isRemoving && (
-                                            <span className="flex-shrink-0 text-xs bg-red-100 text-red-600 border border-red-200 px-2 py-0.5 rounded-full font-semibold whitespace-nowrap">
-                                                − Removing
-                                            </span>
-                                        )}
-                                    </label>
+                            {(() => {
+                                const filteredColleges = sortedColleges.filter(c => 
+                                    c.name.toLowerCase().includes(collegeSearch.toLowerCase())
                                 )
-                            })}
+                                
+                                if (filteredColleges.length === 0) {
+                                    return (
+                                        <div className="text-center py-10 text-slate-400 text-sm">
+                                            <div className="text-4xl mb-2">🔍</div>
+                                            {collegeSearch ? `No matches for "${collegeSearch}"` : "No colleges found"}
+                                        </div>
+                                    )
+                                }
+
+                                return filteredColleges.map((c: any) => {
+                                    const isHome    = isHomeLocked(c.id)
+                                    const wasAssigned  = alreadyAssigned(c.id)
+                                    const nowSelected  = isSelected(c.id)
+                                    const isNewlyAdding = nowSelected && !wasAssigned && !isHome
+                                    const isRemoving  = wasAssigned && !nowSelected && !isHome
+
+                                    let rowClass = 'border border-transparent hover:bg-slate-50'
+                                    if (isHome)                      rowClass = 'border border-amber-200 bg-amber-50'
+                                    else if (wasAssigned && nowSelected) rowClass = 'border border-emerald-200 bg-emerald-50'
+                                    else if (isNewlyAdding)          rowClass = 'border border-indigo-200 bg-indigo-50'
+                                    else if (isRemoving)             rowClass = 'border border-red-200 bg-red-50'
+
+                                    let cbClass = 'bg-white border-slate-300'
+                                    if (isHome)                       cbClass = 'bg-amber-400 border-amber-400'
+                                    else if (wasAssigned && nowSelected) cbClass = 'bg-emerald-500 border-emerald-500'
+                                    else if (isNewlyAdding)           cbClass = 'bg-indigo-500 border-indigo-500'
+                                    else if (isRemoving)              cbClass = 'bg-white border-red-400'
+
+                                    const textClass =
+                                        isHome ? 'text-amber-800'
+                                        : wasAssigned && nowSelected ? 'text-emerald-800'
+                                        : isNewlyAdding ? 'text-indigo-800'
+                                        : isRemoving ? 'text-red-700'
+                                        : 'text-slate-700'
+
+                                    return (
+                                        <label
+                                            key={c.id}
+                                            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all select-none ${rowClass} ${isHome ? 'cursor-default' : 'cursor-pointer'}`}
+                                        >
+                                            {/* Custom checkbox */}
+                                            <div className="relative flex-shrink-0">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={nowSelected}
+                                                    disabled={isHome}
+                                                    onChange={(e) => {
+                                                        if (isHome) return
+                                                        const nid = Number(c.id)
+                                                        if (e.target.checked) setSelectedColleges([...selectedColleges, nid])
+                                                        else setSelectedColleges(selectedColleges.filter((id: number) => Number(id) !== nid))
+                                                    }}
+                                                    className="sr-only"
+                                                />
+                                                <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${cbClass}`}>
+                                                    {nowSelected && (
+                                                        <svg className="w-3 h-3 text-white" viewBox="0 0 12 12" fill="none">
+                                                            <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                                        </svg>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Name */}
+                                            <div className="flex-1 min-w-0">
+                                                <span className={`text-sm font-semibold block truncate ${textClass}`}>
+                                                    🏛️ {c.name}
+                                                </span>
+                                            </div>
+
+                                            {/* Status badge */}
+                                            {isHome && (
+                                                <span className="flex-shrink-0 text-xs bg-amber-100 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full font-semibold whitespace-nowrap">
+                                                    🏠 Home
+                                                </span>
+                                            )}
+                                            {!isHome && wasAssigned && nowSelected && (
+                                                <span className="flex-shrink-0 text-xs bg-emerald-100 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full font-semibold whitespace-nowrap">
+                                                    ✓ Assigned
+                                                </span>
+                                            )}
+                                            {isNewlyAdding && (
+                                                <span className="flex-shrink-0 text-xs bg-indigo-100 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded-full font-semibold whitespace-nowrap">
+                                                    + Adding
+                                                </span>
+                                            )}
+                                            {isRemoving && (
+                                                <span className="flex-shrink-0 text-xs bg-red-100 text-red-600 border border-red-200 px-2 py-0.5 rounded-full font-semibold whitespace-nowrap">
+                                                    − Removing
+                                                </span>
+                                            )}
+                                        </label>
+                                    )
+                                })
+                            })()}
                         </div>
 
                         {/* Summary bar */}

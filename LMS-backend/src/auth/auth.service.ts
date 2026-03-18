@@ -88,6 +88,13 @@ export class AuthService {
     };
     const token = this.jwtService.sign(payload);
 
+    let college = null;
+    if (user.collegeId) {
+      college = await this.collegeRepository.findOne({ where: { id: user.collegeId } });
+    } else if (user.collegeName) {
+      college = await this.collegeRepository.findOne({ where: { name: user.collegeName } });
+    }
+
     return {
       access_token: token,
       user: {
@@ -95,8 +102,9 @@ export class AuthService {
         name: user.name,
         email: user.email,
         role: user.role,
-        collegeId: user.collegeId,
-        collegeName: user.collegeName, // Include collegeName in response
+        collegeId: user.collegeId || college?.id,
+        collegeName: user.collegeName || college?.name,
+        collegeLogo: college?.logoUrl,
       },
     };
   }
@@ -104,8 +112,20 @@ export class AuthService {
   async getProfile(userId: number) {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) throw new UnauthorizedException();
+    
+    let college = null;
+    if (user.collegeId) {
+      college = await this.collegeRepository.findOne({ where: { id: user.collegeId } });
+    } else if (user.collegeName) {
+      college = await this.collegeRepository.findOne({ where: { name: user.collegeName } });
+    }
     const { passwordHash, ...result } = user;
-    return result;
+    return { 
+      ...result, 
+      collegeId: user.collegeId || college?.id,
+      collegeName: user.collegeName || college?.name,
+      collegeLogo: college?.logoUrl 
+    };
   }
 
   async createUser(dto: CreateUserDto, createdBy: number, creatorCollegeId?: number, creatorRole?: string, creatorCollegeName?: string) {
@@ -217,7 +237,12 @@ export class AuthService {
         name: dto.collegeName,
         createdBy: createdBy,
         active: true,
+        logoUrl: dto.collegeLogo,
       });
+      await this.collegeRepository.save(college);
+    } else if (dto.collegeLogo) {
+      // Update logo if provided and college exists
+      college.logoUrl = dto.collegeLogo;
       await this.collegeRepository.save(college);
     }
 

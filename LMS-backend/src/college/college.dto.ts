@@ -52,6 +52,10 @@ export class CreateCollegeDto {
   @IsString()
   @MaxLength(20)
   contactPhone?: string;
+
+  @IsOptional()
+  @IsString()
+  logoUrl?: string;
 }
 
 export class UpdateCollegeDto {
@@ -103,4 +107,8 @@ export class UpdateCollegeDto {
   @IsOptional()
   @IsBoolean()
   active?: boolean;
+
+  @IsOptional()
+  @IsString()
+  logoUrl?: string;
 }

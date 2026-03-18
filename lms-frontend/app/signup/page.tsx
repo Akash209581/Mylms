@@ -37,7 +37,7 @@ export default function SignupPage() {
     const [error, setError] = useState('')
     const [loading, setLoading] = useState(false)
     const [success, setSuccess] = useState(false)
-    const [colleges, setColleges] = useState<Array<{ id: number; name: string }>>([])
+    const [colleges, setColleges] = useState<Array<{ id: number; name: string; logoUrl?: string }>>([])
     const [loadingColleges, setLoadingColleges] = useState(true)
     const [collegesFetchError, setCollegesFetchError] = useState(false)
 
@@ -45,6 +45,7 @@ export default function SignupPage() {
     const [collegeQuery, setCollegeQuery] = useState('')
     const [collegeDropdownOpen, setCollegeDropdownOpen] = useState(false)
     const [collegeSelected, setCollegeSelected] = useState(false)
+    const [selectedCollegeLogo, setSelectedCollegeLogo] = useState<string | null>(null)
     const autocompleteRef = useRef<HTMLDivElement>(null)
 
     // Fetch colleges when component mounts
@@ -155,9 +156,10 @@ export default function SignupPage() {
         setCollegeDropdownOpen(true)
     }
 
-    const handleCollegeSelect = (college: { id: number; name: string }) => {
+    const handleCollegeSelect = (college: { id: number; name: string; logoUrl?: string }) => {
         setCollegeQuery(college.name)
         setForm(prev => ({ ...prev, collegeName: college.name }))
+        setSelectedCollegeLogo(college.logoUrl || null)
         setCollegeSelected(true)
         setCollegeDropdownOpen(false)
     }
@@ -165,6 +167,7 @@ export default function SignupPage() {
     const handleCollegeClear = () => {
         setCollegeQuery('')
         setForm(prev => ({ ...prev, collegeName: '' }))
+        setSelectedCollegeLogo(null)
         setCollegeSelected(false)
         setCollegeDropdownOpen(false)
     }
@@ -319,11 +322,11 @@ export default function SignupPage() {
                             }}>
                                 {collegeSelected ? '✅' : '🔍'}
                             </span>
-                            <input
+                             <input
                                 type="text"
                                 className="input-field"
                                 style={{
-                                    paddingLeft: '38px',
+                                    paddingLeft: selectedCollegeLogo ? '48px' : '38px',
                                     paddingRight: collegeSelected ? '40px' : '14px',
                                     borderColor: collegeSelected ? '#10b981' : undefined,
                                     boxShadow: collegeSelected ? '0 0 0 3px rgba(16,185,129,0.15)' : undefined,
@@ -340,6 +343,19 @@ export default function SignupPage() {
                                 autoComplete="off"
                                 aria-label="Search for your college or university"
                             />
+                            {/* Logo display in input if selected */}
+                            {selectedCollegeLogo && (
+                                <div style={{
+                                    position: 'absolute', left: '8px', top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    width: '32px', height: '32px',
+                                    borderRadius: '6px', overflow: 'hidden',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    background: 'white', border: '1px solid #e5e7eb'
+                                }}>
+                                    <img src={selectedCollegeLogo} alt="Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectContain: 'contain' }} />
+                                </div>
+                            )}
                             {/* Clear button */}
                             {collegeSelected && (
                                 <button
@@ -412,9 +428,22 @@ export default function SignupPage() {
                                             }}
                                             onMouseEnter={e => (e.currentTarget.style.background = '#f0f4ff')}
                                             onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                                        >
-                                            <span style={{ marginRight: '8px' }}>🏛️</span>
-                                            {college.name}
+                                         >
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                <div style={{
+                                                    width: '28px', height: '28px', borderRadius: '4px',
+                                                    background: '#f8fafc', border: '1px solid #e2e8f0',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    overflow: 'hidden', flexShrink: 0
+                                                }}>
+                                                    {college.logoUrl ? (
+                                                        <img src={college.logoUrl} alt="logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                                                    ) : (
+                                                        <span style={{ fontSize: '14px' }}>🏛️</span>
+                                                    )}
+                                                </div>
+                                                <span style={{ flex: 1 }}>{college.name}</span>
+                                            </div>
                                         </button>
                                     ))
                                 )}

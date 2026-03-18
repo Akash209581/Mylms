@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { api } from '@/lib/api'
 
 export default function Navbar({ title }: { title?: string }) {
     const [user, setUser] = useState<any>(null)
@@ -8,6 +9,15 @@ export default function Navbar({ title }: { title?: string }) {
     useEffect(() => {
         const stored = localStorage.getItem('user')
         if (stored) setUser(JSON.parse(stored))
+
+        // Refresh profile to get latest college logo and user info
+        api.get('/auth/me').then(res => {
+            const updatedUser = res.data
+            setUser(updatedUser)
+            localStorage.setItem('user', JSON.stringify(updatedUser))
+        }).catch(err => {
+            console.error('Failed to refresh profile:', err)
+        })
 
         const tick = () => {
             const now = new Date()

@@ -91,18 +91,22 @@ export class CollegeService {
 
   async getCollegeStats(collegeId: number) {
     const college = await this.getCollegeById(collegeId);
+    const collegeName = college.name;
 
-    const adminCount = await this.userRepository.count({
-      where: { collegeId, role: UserRole.ADMIN },
-    });
+    const countByRole = async (role: UserRole) => {
+      return this.userRepository
+        .createQueryBuilder('u')
+        .where(
+          '(u.college_id = :cid OR LOWER(TRIM(u.college_name)) = LOWER(TRIM(:cname)))',
+          { cid: collegeId, cname: collegeName },
+        )
+        .andWhere('u.role = :role', { role })
+        .getCount();
+    };
 
-    const instructorCount = await this.userRepository.count({
-      where: { collegeId, role: UserRole.INSTRUCTOR },
-    });
-
-    const studentCount = await this.userRepository.count({
-      where: { collegeId, role: UserRole.STUDENT },
-    });
+    const adminCount = await countByRole(UserRole.ADMIN);
+    const instructorCount = await countByRole(UserRole.INSTRUCTOR);
+    const studentCount = await countByRole(UserRole.STUDENT);
 
     return {
       college,
