@@ -18,6 +18,12 @@ interface Course {
     approver?: {
         name: string
         email: string
+        role?: string
+    }
+    instructorId?: number
+    instructor?: {
+        name: string
+        role: string
     }
 }
 
@@ -184,8 +190,14 @@ export default function InstructorCoursesPage() {
                             <div key={course.id} className="card group hover:shadow-xl transition-all duration-300">
                                 <div className="p-6">
                                     {/* Status Badge */}
-                                    <div className="mb-4">
+                                    <div className="mb-4 flex flex-wrap gap-2">
                                         {getStatusBadge(course.status)}
+                                        {course.approver?.role === 'SUPERADMIN' && (
+                                            <span className="inline-flex items-center gap-1 px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-xs font-medium border border-indigo-200">
+                                                <span>👑</span>
+                                                Assigned by Superadmin
+                                            </span>
+                                        )}
                                     </div>
 
                                     {/* Course Title */}
@@ -247,12 +259,18 @@ export default function InstructorCoursesPage() {
                                     {/* Actions */}
                                     <div className="flex flex-col gap-2">
                                         <div className="flex gap-2">
-                                            <button
-                                                onClick={() => router.push(`/dashboard/instructor/edit-lesson/${course.id}`)}
-                                                className="flex-1 btn-secondary text-sm"
-                                            >
-                                                Edit Content
-                                            </button>
+                                            {course.instructorId === user?.id && course.instructor?.role !== 'SUPERADMIN' ? (
+                                                <button
+                                                    onClick={() => router.push(`/dashboard/instructor/edit-lesson/${course.id}`)}
+                                                    className="flex-1 btn-secondary text-sm"
+                                                >
+                                                    Edit Content
+                                                </button>
+                                            ) : (
+                                                <span className="flex-1 px-3 py-2 bg-slate-50 text-slate-400 border border-slate-100 rounded-lg text-xs font-medium flex items-center justify-center gap-1 cursor-not-allowed">
+                                                    🔒 View Only
+                                                </span>
+                                            )}
                                             <button
                                                 onClick={() => setPreviewCourseId(course.id)}
                                                 className="flex-1 btn-secondary text-sm"
@@ -261,20 +279,24 @@ export default function InstructorCoursesPage() {
                                             </button>
                                         </div>
                                         <div className="flex gap-2">
-                                            {(course.status === 'REJECTED' || course.status === 'DRAFT') && (
-                                                <button
-                                                    className="flex-1 btn-primary text-sm shadow-sm opacity-90 hover:opacity-100"
-                                                    onClick={() => handleSubmitForApproval(course.id)}
-                                                >
-                                                    {course.status === 'REJECTED' ? 'Resubmit for Approval' : 'Submit for Approval'}
-                                                </button>
+                                            {course.instructorId === user?.id && course.instructor?.role !== 'SUPERADMIN' && (
+                                                <>
+                                                    {(course.status === 'REJECTED' || course.status === 'DRAFT') && (
+                                                        <button
+                                                            className="flex-1 btn-primary text-sm shadow-sm opacity-90 hover:opacity-100"
+                                                            onClick={() => handleSubmitForApproval(course.id)}
+                                                        >
+                                                            {course.status === 'REJECTED' ? 'Resubmit' : 'Submit'}
+                                                        </button>
+                                                    )}
+                                                    <button
+                                                        className="flex-1 px-4 py-2 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white rounded-lg font-medium transition-colors text-sm"
+                                                        onClick={() => handleDeleteCourse(course.id)}
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                </>
                                             )}
-                                            <button
-                                                className="flex-1 px-4 py-2 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white rounded-lg font-medium transition-colors text-sm"
-                                                onClick={() => handleDeleteCourse(course.id)}
-                                            >
-                                                Delete Course
-                                            </button>
                                         </div>
                                     </div>
                                 </div>

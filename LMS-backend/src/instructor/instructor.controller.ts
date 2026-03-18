@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, UseGuards, Request, Param } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/jwt.guard';
 import { RolesGuard } from '../common/roles.guard';
 import { Roles } from '../common/roles.decorator';
@@ -6,7 +6,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Course, CourseStatus } from '../entities/course.entity';
 import { Enrollment } from '../entities/enrollment.entity';
-import { UserRole } from '../entities/user.entity';
+import { User, UserRole } from '../entities/user.entity';
 
 @Controller('instructor')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -17,14 +17,51 @@ export class InstructorController {
     private courseRepo: Repository<Course>,
     @InjectRepository(Enrollment)
     private enrollRepo: Repository<Enrollment>,
+    @InjectRepository(User)
+    private userRepo: Repository<User>,
   ) { }
+
+  private getInstructorCoursesQueryBuilder(req: any) {
+    const userId = req.user.sub;
+    const userCollegeId = req.user.collegeId;
+    const userCollegeName = req.user.collegeName;
+
+    const qb = this.courseRepo.createQueryBuilder('course')
+      .leftJoinAndSelect('course.instructor', 'instructor')
+      .leftJoinAndSelect('course.approver', 'approver')
+      .leftJoinAndSelect('course.assignedColleges', 'assignedCollege');
+
+    // Logic:
+    // 1. Own courses (any status)
+    // 2. Approved courses assigned to instructor's college
+    
+    const ownerCondition = 'course.instructorId = :userId';
+    
+    const collegeConditions = [];
+    const params: any = { userId, approvedStatus: CourseStatus.APPROVED };
+
+    if (userCollegeId) {
+      collegeConditions.push('(course.collegeId = :effCollegeId OR assignedCollege.id = :effCollegeId)');
+      params.effCollegeId = userCollegeId;
+    }
+    if (userCollegeName) {
+      collegeConditions.push('(instructor.collegeName = :effCollegeName OR assignedCollege.name = :effCollegeName)');
+      params.effCollegeName = userCollegeName;
+    }
+    
+    if (collegeConditions.length > 0) {
+      const collegeCondition = `(${collegeConditions.join(' OR ')})`;
+      qb.where(`(${ownerCondition}) OR (course.status = :approvedStatus AND ${collegeCondition})`, params);
+    } else {
+      qb.where(ownerCondition, params);
+    }
+
+    return qb;
+  }
 
   @Get('dashboard')
   async getDashboard(@Request() req: any) {
-    const courses = await this.courseRepo.find({
-      where: { instructorId: req.user.sub },
-      relations: ['approver'],
-    });
+    const courses = await this.getInstructorCoursesQueryBuilder(req).getMany();
 
     const courseIds = courses.map((c) => c.id);
     const totalStudents = courseIds.length
@@ -57,56 +94,71 @@ export class InstructorController {
 
   @Get('courses')
   async getMyCourses(@Request() req: any) {
-    return this.courseRepo.find({
-      where: { instructorId: req.user.sub },
-      relations: ['approver'],
-      order: { createdAt: 'DESC' },
-    });
+    return this.getInstructorCoursesQueryBuilder(req)
+      .orderBy('course.createdAt', 'DESC')
+      .getMany();
   }
 
   @Get('courses/pending')
   async getPendingCourses(@Request() req: any) {
-    return this.courseRepo.find({
-      where: {
-        instructorId: req.user.sub,
-        status: CourseStatus.PENDING_APPROVAL,
-      },
-      order: { createdAt: 'DESC' },
-    });
+    return this.getInstructorCoursesQueryBuilder(req)
+      .andWhere('course.status = :status', { status: CourseStatus.PENDING_APPROVAL })
+      .orderBy('course.createdAt', 'DESC')
+      .getMany();
   }
 
   @Get('courses/draft')
   async getDraftCourses(@Request() req: any) {
-    return this.courseRepo.find({
-      where: {
-        instructorId: req.user.sub,
-        status: CourseStatus.DRAFT,
-      },
-      order: { createdAt: 'DESC' },
-    });
+    return this.getInstructorCoursesQueryBuilder(req)
+      .andWhere('course.status = :status', { status: CourseStatus.DRAFT })
+      .orderBy('course.createdAt', 'DESC')
+      .getMany();
   }
 
   @Get('courses/approved')
   async getApprovedCourses(@Request() req: any) {
-    return this.courseRepo.find({
-      where: {
-        instructorId: req.user.sub,
-        status: CourseStatus.APPROVED,
-      },
-      relations: ['approver'],
-      order: { updatedAt: 'DESC' },
-    });
+    return this.getInstructorCoursesQueryBuilder(req)
+      .andWhere('course.status = :status', { status: CourseStatus.APPROVED })
+      .orderBy('course.updatedAt', 'DESC')
+      .getMany();
   }
 
   @Get('courses/rejected')
   async getRejectedCourses(@Request() req: any) {
-    return this.courseRepo.find({
+    return this.getInstructorCoursesQueryBuilder(req)
+      .andWhere('course.status = :status', { status: CourseStatus.REJECTED })
+      .orderBy('course.updatedAt', 'DESC')
+      .getMany();
+  }
+
+  @Get('students')
+  async getStudents(@Request() req: any) {
+    const collegeId = req.user?.collegeId;
+
+    // INSTRUCTOR can only see STUDENTS from their college
+    return this.userRepo.find({
       where: {
-        instructorId: req.user.sub,
-        status: CourseStatus.REJECTED,
+        collegeId,
+        role: UserRole.STUDENT,
       },
-      relations: ['approver'],
-      order: { updatedAt: 'DESC' },
+      select: ['id', 'name', 'email', 'role', 'collegeId', 'collegeName', 'isActive', 'lastLoginAt', 'createdAt'],
+      order: { createdAt: 'DESC' },
     });
+  }
+
+  @Get('students/:id')
+  async getStudentById(@Param('id') id: number, @Request() req: any) {
+    const collegeId = req.user?.collegeId;
+
+    const user = await this.userRepo.findOne({
+      where: {
+        id,
+        collegeId,
+        role: UserRole.STUDENT,
+      },
+      select: ['id', 'name', 'email', 'role', 'collegeId', 'collegeName', 'isActive', 'lastLoginAt', 'createdAt', 'updatedAt'],
+    });
+
+    return user;
   }
 }

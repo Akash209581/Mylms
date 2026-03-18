@@ -42,23 +42,28 @@ export class ModulesController {
     console.log('📚 Creating module:', dto);
     console.log('👤 Logged-in user ID:', req.user.sub);
 
-    // Verify course exists and user owns it
+    // Verify course exists and user owns it or has permission
     const course = await this.courseRepository.findOne({
       where: { id: dto.courseId },
+      relations: ['instructor'],
     });
 
     if (!course) {
       throw new HttpException('Course not found', HttpStatus.NOT_FOUND);
     }
 
-    console.log('📖 Course instructorId:', course.instructorId);
-    console.log('🔍 IDs match:', course.instructorId === req.user.sub);
+    if (req.user.role !== UserRole.SUPERADMIN) {
+      // Protect SUPERADMIN courses
+      if (course.instructor?.role === UserRole.SUPERADMIN) {
+        throw new HttpException('Courses assigned by SUPER ADMIN are view-only.', HttpStatus.FORBIDDEN);
+      }
 
-    if (course.instructorId !== req.user.sub) {
-      throw new HttpException(
-        'You can only add modules to your own courses',
-        HttpStatus.FORBIDDEN,
-      );
+      if (course.instructorId !== req.user.sub) {
+        throw new HttpException(
+          'You can only add modules to your own courses',
+          HttpStatus.FORBIDDEN,
+        );
+      }
     }
 
     // Get highest order number
@@ -118,11 +123,18 @@ export class ModulesController {
       throw new HttpException('Module not found', HttpStatus.NOT_FOUND);
     }
 
-    if (module.course.instructorId !== req.user.sub) {
-      throw new HttpException(
-        'You can only edit modules in your own courses',
-        HttpStatus.FORBIDDEN,
-      );
+    if (req.user.role !== UserRole.SUPERADMIN) {
+      // Protect SUPERADMIN courses
+      if (module.course.instructor?.role === UserRole.SUPERADMIN) {
+        throw new HttpException('Courses assigned by SUPER ADMIN are view-only.', HttpStatus.FORBIDDEN);
+      }
+
+      if (module.course.instructorId !== req.user.sub) {
+        throw new HttpException(
+          'You can only edit modules in your own courses',
+          HttpStatus.FORBIDDEN,
+        );
+      }
     }
 
     Object.assign(module, dto);
@@ -141,11 +153,18 @@ export class ModulesController {
       throw new HttpException('Module not found', HttpStatus.NOT_FOUND);
     }
 
-    if (module.course.instructorId !== req.user.sub) {
-      throw new HttpException(
-        'You can only delete modules from your own courses',
-        HttpStatus.FORBIDDEN,
-      );
+    if (req.user.role !== UserRole.SUPERADMIN) {
+      // Protect SUPERADMIN courses
+      if (module.course.instructor?.role === UserRole.SUPERADMIN) {
+        throw new HttpException('Courses assigned by SUPER ADMIN cannot be modified.', HttpStatus.FORBIDDEN);
+      }
+
+      if (module.course.instructorId !== req.user.sub) {
+        throw new HttpException(
+          'You can only delete modules from your own courses',
+          HttpStatus.FORBIDDEN,
+        );
+      }
     }
 
     await this.moduleRepository.remove(module);

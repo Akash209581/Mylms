@@ -58,11 +58,18 @@ export class LessonsController {
     console.log('📖 Course instructorId:', module.course.instructorId);
     console.log('🔍 IDs match:', module.course.instructorId === req.user.sub);
 
-    if (module.course.instructorId !== req.user.sub) {
-      throw new HttpException(
-        'You can only add lessons to your own courses',
-        HttpStatus.FORBIDDEN,
-      );
+    if (req.user.role !== UserRole.SUPERADMIN) {
+      // Protect SUPERADMIN courses
+      if (module.course.instructor?.role === UserRole.SUPERADMIN) {
+        throw new HttpException('Courses assigned by SUPER ADMIN are view-only.', HttpStatus.FORBIDDEN);
+      }
+
+      if (module.course.instructorId !== req.user.sub) {
+        throw new HttpException(
+          'You can only add lessons to your own courses',
+          HttpStatus.FORBIDDEN,
+        );
+      }
     }
 
     // Get highest order number
@@ -126,11 +133,18 @@ export class LessonsController {
       relations: ['course'],
     });
 
-    if (module.course.instructorId !== req.user.sub) {
-      throw new HttpException(
-        'You can only edit lessons in your own courses',
-        HttpStatus.FORBIDDEN,
-      );
+    if (req.user.role !== UserRole.SUPERADMIN) {
+      // Protect SUPERADMIN courses
+      if (module.course.instructor?.role === UserRole.SUPERADMIN) {
+        throw new HttpException('Courses assigned by SUPER ADMIN are view-only.', HttpStatus.FORBIDDEN);
+      }
+
+      if (module.course.instructorId !== req.user.sub) {
+        throw new HttpException(
+          'You can only edit lessons in your own courses',
+          HttpStatus.FORBIDDEN,
+        );
+      }
     }
 
     Object.assign(lesson, dto);
@@ -154,11 +168,18 @@ export class LessonsController {
       relations: ['course'],
     });
 
-    if (module.course.instructorId !== req.user.sub) {
-      throw new HttpException(
-        'You can only delete lessons from your own courses',
-        HttpStatus.FORBIDDEN,
-      );
+    if (req.user.role !== UserRole.SUPERADMIN) {
+      // Protect SUPERADMIN courses
+      if (module.course.instructor?.role === UserRole.SUPERADMIN) {
+        throw new HttpException('Courses assigned by SUPER ADMIN cannot be modified.', HttpStatus.FORBIDDEN);
+      }
+
+      if (module.course.instructorId !== req.user.sub) {
+        throw new HttpException(
+          'You can only delete lessons from your own courses',
+          HttpStatus.FORBIDDEN,
+        );
+      }
     }
 
     await this.lessonRepository.remove(lesson);
@@ -201,7 +222,7 @@ export class LessonsController {
    * Accessible by: INSTRUCTOR (owner), ADMIN, SUPERADMIN
    */
   @Put(':id/content')
-  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN)
+  @Roles(UserRole.INSTRUCTOR, UserRole.SUPERADMIN)
   async updateContent(
     @Param('id') id: number,
     @Body() dto: UpdateContentDto,
@@ -225,9 +246,19 @@ export class LessonsController {
     if (req.user.role === UserRole.INSTRUCTOR) {
       const module = await this.moduleRepository.findOne({
         where: { id: lesson.moduleId },
-        relations: ['course'],
+        relations: ['course', 'course.instructor'],
       });
-      if (!module || module.course.instructorId !== req.user.sub) {
+      
+      if (!module) {
+        throw new HttpException('Module not found', HttpStatus.NOT_FOUND);
+      }
+
+      // Protect SUPERADMIN courses
+      if (module.course.instructor?.role === UserRole.SUPERADMIN) {
+        throw new HttpException('Courses assigned by SUPER ADMIN are view-only.', HttpStatus.FORBIDDEN);
+      }
+
+      if (module.course.instructorId !== req.user.sub) {
         throw new HttpException(
           'You can only edit content in your own courses',
           HttpStatus.FORBIDDEN,

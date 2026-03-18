@@ -4,24 +4,17 @@ import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
 import { api } from '@/lib/api'
-
-interface Organization {
-    id: number
-    name: string
-    type?: string
-    active: boolean
-}
+import { getAuthHeaders } from '@/lib/authHeaders'
 
 export default function CreateUserPage() {
     const router = useRouter()
     const [user, setUser] = useState<any>(null)
-    const [organizations, setOrganizations] = useState<Organization[]>([])
     const [form, setForm] = useState({
         name: '',
         email: '',
         password: '',
         role: '',
-        organizationId: '',
+        collegeName: '',
         mobileNumber: '',
         country: '',
         state: '',
@@ -29,12 +22,16 @@ export default function CreateUserPage() {
         branch: '',
         pursuingYear: '',
         semester: '',
-        registrationNumber: '',
-        collegeName: ''
+        registrationNumber: ''
     })
     const [error, setError] = useState('')
     const [success, setSuccess] = useState('')
     const [loading, setLoading] = useState(false)
+    const [colleges, setColleges] = useState<Array<{ id: number; name: string; logoUrl?: string }>>([])
+    const [loadingColleges, setLoadingColleges] = useState(true)
+    const [showCollegeDropdown, setShowCollegeDropdown] = useState(false)
+    const [collegeSearchTerm, setCollegeSearchTerm] = useState('')
+    const [logoPreview, setLogoPreview] = useState<string | null>(null)
 
     useEffect(() => {
         const stored = localStorage.getItem('user')
@@ -43,29 +40,82 @@ export default function CreateUserPage() {
             return
         }
         const u = JSON.parse(stored)
-        if (u.role !== 'SUPERADMIN' && u.role !== 'ADMIN') {
+        if (u.role !== 'SUPERADMIN') {
             router.push(`/dashboard/${u.role.toLowerCase()}`)
             return
         }
         setUser(u)
-
-        // Fetch organizations for SUPERADMIN, or get user's org for ADMIN
-        if (u.role === 'SUPERADMIN') {
-            fetchOrganizations()
-        } else if (u.role === 'ADMIN' && u.organizationId) {
-            // Admin can only create users in their own organization
-            setForm(prev => ({ ...prev, organizationId: u.organizationId.toString() }))
-        }
+        
+        // Fetch existing colleges for dropdown
+        fetchColleges()
     }, [])
 
-    const fetchOrganizations = async () => {
+    const fetchColleges = async () => {
+        console.log('Starting to fetch colleges...')
         try {
-            const response = await api.get('/organizations')
-            setOrganizations(response.data.filter((org: Organization) => org.active))
-        } catch (err: any) {
-            console.error('Failed to fetch organizations:', err)
+            const headers = getAuthHeaders()
+            console.log('Auth headers:', headers)
+            const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/superadmin/colleges`
+            console.log('Fetching from:', apiUrl)
+            const response = await fetch(apiUrl, {
+                headers,
+                credentials: 'include'
+            })
+            console.log('Response status:', response.status)
+            if (response.ok) {
+                const data = await response.json()
+                console.log('✅ Successfully fetched colleges:', data)
+                setColleges(data)
+            } else {
+                console.error('❌ Failed to fetch colleges, status:', response.status)
+                const errorText = await response.text()
+                console.error('Error response:', errorText)
+            }
+        } catch (err) {
+            console.error('❌ Exception while fetching colleges:', err)
+        } finally {
+            setLoadingColleges(false)
+            console.log('Loading colleges complete')
         }
     }
+
+    const handleCollegeSelect = (college: { name: string; logoUrl?: string }) => {
+        console.log('College selected:', college.name)
+        setForm({ ...form, collegeName: college.name })
+        setLogoPreview(college.logoUrl || null)
+        setCollegeSearchTerm('')
+        setShowCollegeDropdown(false)
+    }
+
+    const handleCollegeInputChange = (value: string) => {
+        setForm({ ...form, collegeName: value })
+        setCollegeSearchTerm(value)
+        setShowCollegeDropdown(true)
+    }
+
+    const handleCollegeFocus = () => {
+        console.log('Field focused, colleges:', colleges)
+        console.log('showCollegeDropdown will be set to true')
+        setShowCollegeDropdown(true)
+        setCollegeSearchTerm(form.collegeName) // Sync search term with current value
+    }
+
+    const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (file) {
+            const reader = new FileReader()
+            reader.onloadend = () => {
+                setLogoPreview(reader.result as string)
+            }
+            reader.readAsDataURL(file)
+        }
+    }
+
+    const filteredColleges = collegeSearchTerm 
+        ? colleges.filter(college =>
+            college.name.toLowerCase().includes(collegeSearchTerm.toLowerCase())
+        )
+        : colleges // Show all colleges if no search term
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -79,7 +129,8 @@ export default function CreateUserPage() {
                 email: form.email,
                 password: form.password,
                 role: form.role,
-                organizationId: parseInt(form.organizationId)
+                collegeName: form.collegeName,
+                collegeLogo: logoPreview
             }
 
             // Include additional fields for STUDENT role
@@ -93,11 +144,6 @@ export default function CreateUserPage() {
                 payload.semester = parseInt(form.semester)
                 payload.registrationNumber = form.registrationNumber
             }
-            
-            // Include collegeName for all roles if provided
-            if (form.collegeName) {
-                payload.collegeName = form.collegeName
-            }
 
             await api.post('/auth/superadmin/create-user', payload)
             setSuccess(`User created successfully as ${form.role}!`)
@@ -108,7 +154,7 @@ export default function CreateUserPage() {
                 email: '',
                 password: '',
                 role: '',
-                organizationId: user.role === 'ADMIN' ? user.organizationId.toString() : '',
+                collegeName: '',
                 mobileNumber: '',
                 country: '',
                 state: '',
@@ -116,9 +162,9 @@ export default function CreateUserPage() {
                 branch: '',
                 pursuingYear: '',
                 semester: '',
-                registrationNumber: '',
-                collegeName: ''
+                registrationNumber: ''
             })
+            setLogoPreview(null)
 
             // Redirect after 2 seconds
             setTimeout(() => {
@@ -132,12 +178,8 @@ export default function CreateUserPage() {
     }
 
     const getRoleOptions = () => {
-        if (user?.role === 'SUPERADMIN') {
-            return ['ADMIN', 'INSTRUCTOR', 'STUDENT']
-        } else if (user?.role === 'ADMIN') {
-            return ['INSTRUCTOR', 'STUDENT']
-        }
-        return []
+        // SUPERADMIN can create ADMIN, INSTRUCTOR, or STUDENT
+        return ['ADMIN', 'INSTRUCTOR', 'STUDENT']
     }
 
     return (
@@ -150,10 +192,7 @@ export default function CreateUserPage() {
                     <div className="bg-[var(--bg-surface)] rounded-2xl shadow-xl p-6 mb-6">
                         <h1 className="text-2xl font-bold text-[var(--text-primary)]">Create New User</h1>
                         <p className="text-[var(--text-secondary)] text-sm mt-1">
-                            {user?.role === 'SUPERADMIN' 
-                                ? 'Create ADMIN, INSTRUCTOR, or STUDENT accounts with organization assignment'
-                                : 'Create INSTRUCTOR or STUDENT accounts within your organization'
-                            }
+                            Create ADMIN, INSTRUCTOR, or STUDENT accounts with college assignment
                         </p>
                     </div>
 
@@ -227,53 +266,121 @@ export default function CreateUserPage() {
                                 </div>
                             </div>
 
-                            {/* Organization Selection */}
-                            {user?.role === 'SUPERADMIN' && (
-                                <div className="border-b pb-6">
-                                    <h2 className="text-lg font-bold text-[var(--text-primary)] mb-4">Organization Assignment</h2>
-                                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
-                                        <p className="text-sm text-amber-800">
-                                            <strong>SUPERADMIN Note:</strong> You must explicitly select an organization and college for the user. 
-                                            These cannot be changed after creation by lower-level admins or instructors. The college name will be 
-                                            automatically inherited by all users they create.
-                                        </p>
-                                    </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-semibold mb-1.5 text-[var(--text-primary)]">Organization *</label>
-                                            <select
-                                                className="input-field"
-                                                value={form.organizationId}
-                                                onChange={e => setForm({ ...form, organizationId: e.target.value })}
-                                                required
-                                            >
-                                                <option value="">Select Organization</option>
-                                                {organizations.map(org => (
-                                                    <option key={org.id} value={org.id}>
-                                                        {org.name} {org.type ? `(${org.type})` : ''}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                            <p className="text-xs text-[var(--text-secondary)] mt-1">
-                                                Select the organization this user will belong to
-                                            </p>
+                            {/* College Assignment */}
+                            <div className="border-b pb-6">
+                                <h2 className="text-lg font-bold text-[var(--text-primary)] mb-4">🎓 College Assignment</h2>
+                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                                    <p className="text-sm text-blue-800">
+                                        <strong>📝 Important:</strong> Select an existing college or enter a new one. If you enter a new college name, it will be automatically created. 
+                                        The college assignment cannot be changed later, and all users created by this user will automatically inherit this college.
+                                    </p>
+                                </div>
+                                <div className="relative">
+                                    <label className="block text-sm font-semibold mb-1.5 text-[var(--text-primary)]">College/University Name *</label>
+                                    <input
+                                        type="text"
+                                        className="input-field"
+                                        placeholder={loadingColleges ? "Loading colleges..." : "Select or type to create new..."}
+                                        value={form.collegeName}
+                                        onChange={(e) => handleCollegeInputChange(e.target.value)}
+                                        onFocus={handleCollegeFocus}
+                                        onBlur={() => {
+                                            console.log('Input blurred')
+                                            setTimeout(() => setShowCollegeDropdown(false), 150)
+                                        }}
+                                        required
+                                        disabled={loadingColleges}
+                                        autoComplete="off"
+                                    />
+                                    
+                                    {/* Custom Dropdown */}
+                                    {showCollegeDropdown && colleges.length > 0 && (
+                                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                            {filteredColleges.length > 0 ? (
+                                                <>
+                                                    <div className="px-3 py-2 bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-600 uppercase">
+                                                        Existing Colleges ({filteredColleges.length})
+                                                    </div>
+                                                    {filteredColleges.map((college) => (
+                                                        <div
+                                                            key={college.id}
+                                                            className="px-4 py-2.5 hover:bg-blue-50 cursor-pointer flex items-center gap-2 transition-colors"
+                                                            onMouseDown={(e) => {
+                                                                e.preventDefault() // Prevent input blur
+                                                                handleCollegeSelect(college)
+                                                            }}
+                                                        >
+                                                            <span className="text-blue-600">🎓</span>
+                                                            <span className="text-gray-800">{college.name}</span>
+                                                        </div>
+                                                    ))}
+                                                </>
+                                            ) : (
+                                                <div className="px-4 py-3 text-sm text-gray-500 text-center">
+                                                    No matching colleges found. Press Enter to create "{form.collegeName}"
+                                                </div>
+                                            )}
                                         </div>
-                                        <div>
-                                            <label className="block text-sm font-semibold mb-1.5 text-[var(--text-primary)]">College Name</label>
-                                            <input
-                                                type="text"
-                                                className="input-field"
-                                                placeholder="e.g. XYZ University, ABC College"
-                                                value={form.collegeName}
-                                                onChange={e => setForm({ ...form, collegeName: e.target.value })}
-                                            />
-                                            <p className="text-xs text-[var(--text-secondary)] mt-1">
-                                                Set the college name that will be inherited by all users created by this user
-                                            </p>
+                                    )}
+                                    
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        💡 {loadingColleges 
+                                            ? 'Loading colleges from database...'
+                                            : colleges.length > 0 
+                                                ? `${colleges.length} existing ${colleges.length === 1 ? 'college' : 'colleges'} available. Click field to see dropdown or type to filter/create new.`
+                                                : 'No existing colleges. Type a name to create the first one.'
+                                        }
+                                    </p>
+                                    
+                                    {/* Debug info - remove in production */}
+                                    {process.env.NODE_ENV === 'development' && (
+                                        <p className="text-xs text-purple-600 mt-1">
+                                            Debug: colleges={colleges.length}, showDropdown={showCollegeDropdown.toString()}, loading={loadingColleges.toString()}
+                                        </p>
+                                    )}
+                                </div>
+
+                                {/* Logo Management */}
+                                <div className="mt-6 flex flex-col md:flex-row items-start gap-6 p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                                    <div className="flex-shrink-0">
+                                        <div className="w-24 h-24 rounded-2xl bg-white border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden group hover:border-indigo-400 transition-all">
+                                            {logoPreview ? (
+                                                <img src={logoPreview} alt="Logo Preview" className="w-full h-full object-contain" />
+                                            ) : (
+                                                <span className="text-3xl text-slate-300 group-hover:text-indigo-400 transition-colors">🖼️</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="flex-1 space-y-2">
+                                        <h3 className="text-sm font-bold text-slate-800">College Logo</h3>
+                                        <p className="text-xs text-slate-500">
+                                            {logoPreview 
+                                                ? "Logo found or uploaded. You can replace it if needed." 
+                                                : "No logo provided. Please upload a logo for this college."}
+                                        </p>
+                                        <div className="flex items-center gap-3">
+                                            <label className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer shadow-sm transition-all">
+                                                {logoPreview ? 'Replace Logo' : 'Upload Logo'}
+                                                <input
+                                                    type="file"
+                                                    className="hidden"
+                                                    accept="image/*"
+                                                    onChange={handleLogoUpload}
+                                                />
+                                            </label>
+                                            {logoPreview && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setLogoPreview(null)}
+                                                    className="px-4 py-2 text-xs font-bold text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                                >
+                                                    Remove
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
-                            )}
+                            </div>
 
                             {/* Additional Information for Students */}
                             {form.role === 'STUDENT' && (

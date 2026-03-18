@@ -60,7 +60,7 @@ export default function CreateStudentPage() {
                 pursuingYear: parseInt(form.pursuingYear),
                 semester: parseInt(form.semester),
                 registrationNumber: form.registrationNumber
-                // organizationId is NOT sent - it will be automatically inherited from the instructor's organization
+                // collegeId is NOT sent - it will be automatically inherited from the instructor's college
                 // collegeName is NOT sent - it will be automatically inherited from the instructor's college
             }
 
@@ -103,7 +103,7 @@ export default function CreateStudentPage() {
                     <div className="bg-[var(--bg-surface)] rounded-2xl shadow-xl p-6 mb-6">
                         <h1 className="text-2xl font-bold text-[var(--text-primary)]">Create New Student</h1>
                         <p className="text-[var(--text-secondary)] text-sm mt-1">
-                            Create STUDENT accounts within your organization
+                            Create STUDENT accounts. They will automatically be assigned to your college: <strong>{user?.collegeName}</strong>
                         </p>
                     </div>
 
@@ -174,13 +174,13 @@ export default function CreateStudentPage() {
                                 </div>
                             </div>
 
-                            {/* Organization Information */}
+                            {/* College Information */}
                             <div className="border-b pb-6">
-                                <h2 className="text-lg font-bold text-[var(--text-primary)] mb-4">Organization Information</h2>
+                                <h2 className="text-lg font-bold text-[var(--text-primary)] mb-4">College Assignment</h2>
                                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
                                     <p className="text-sm text-blue-800">
-                                        <strong>Note:</strong> Students created by you will automatically be assigned to your organization and college. 
-                                        You cannot change the organization or college name when creating students.
+                                        <strong>🔒 Fixed Assignment:</strong> Students you create will automatically be assigned to your college. 
+                                        This assignment is permanent and cannot be changed.
                                     </p>
                                 </div>
                                 {user?.collegeName && (

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
+import UserDetailModal from '@/components/UserDetailModal'
 import { getAuthHeaders } from '@/lib/authHeaders'
 
 export default function AdminUsersPage() {
@@ -10,6 +11,8 @@ export default function AdminUsersPage() {
     const [users, setUsers] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState('')
+    const [selectedUser, setSelectedUser] = useState<any>(null)
+    const [loadingDetails, setLoadingDetails] = useState(false)
 
     useEffect(() => {
         const stored = localStorage.getItem('user')
@@ -26,6 +29,24 @@ export default function AdminUsersPage() {
             .catch(() => { })
             .finally(() => setLoading(false))
     }, [])
+
+    const handleViewUser = async (userId: number) => {
+        setLoadingDetails(true)
+        try {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/admin/users/${userId}`, {
+                credentials: 'include',
+                headers: getAuthHeaders(),
+            })
+            if (response.ok) {
+                const userData = await response.json()
+                setSelectedUser(userData)
+            }
+        } catch (error) {
+            console.error('Failed to fetch user details:', error)
+        } finally {
+            setLoadingDetails(false)
+        }
+    }
 
     const handleDelete = async (id: number) => {
         if (!confirm('Delete this user?')) return
@@ -49,7 +70,7 @@ export default function AdminUsersPage() {
             <main className="page-content">
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold text-white mb-1">User Management</h1>
-                    <p className="text-gray-400">Manage instructors and students in your organization</p>
+                    <p className="text-gray-400">Manage instructors and students in your college</p>
                 </div>
 
                 <div className="relative mb-6">
@@ -89,7 +110,8 @@ export default function AdminUsersPage() {
                                 <tbody>
                                     {filtered.map((u: any) => (
                                         <tr key={u.id} className="border-b transition-colors hover:bg-[var(--bg-surface)]/5"
-                                            style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
+                                            style={{ borderColor: 'rgba(255,255,255,0.04)' }}
+                                            onClick={() => handleViewUser(u.id)}>
                                             <td className="py-4 pr-4">
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-sm font-bold"
@@ -109,9 +131,9 @@ export default function AdminUsersPage() {
                                             <td className="py-4 pr-4 text-gray-400 text-sm">
                                                 {new Date(u.createdAt).toISOString().slice(0, 10)}
                                             </td>
-                                            <td className="py-4">
+                                            <td className="py-4" onClick={(e) => e.stopPropagation()}>
                                                 <button onClick={() => handleDelete(u.id)}
-                                                    className="px-3 py-1 rounded-lg text-xs font-medium"
+                                                    className="px-3 py-1 rounded-lg text-xs font-medium transition-colors hover:bg-red-500/30"
                                                     style={{ background: 'rgba(239,68,68,0.15)', color: '#fca5a5', border: '1px solid rgba(239,68,68,0.3)' }}>
                                                     Delete
                                                 </button>
@@ -127,6 +149,23 @@ export default function AdminUsersPage() {
                     )}
                 </div>
             </main>
+
+            {/* User Detail Modal */}
+            {selectedUser && (
+                <UserDetailModal
+                    user={selectedUser}
+                    onClose={() => setSelectedUser(null)}
+                    canDelete={true}
+                    onDelete={handleDelete}
+                />
+            )}
+
+            {/* Loading Details Overlay */}
+            {loadingDetails && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                    <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin" />
+                </div>
+            )}
         </div>
     )
 }

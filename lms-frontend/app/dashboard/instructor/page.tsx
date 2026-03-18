@@ -12,11 +12,25 @@ export default function InstructorDashboard() {
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
+        // Initial state from localStorage
         const stored = localStorage.getItem('user')
         if (!stored) { router.push('/login'); return }
         const u = JSON.parse(stored)
         if (u.role !== 'INSTRUCTOR') { router.push(`/dashboard/${u.role.toLowerCase()}`); return }
         setUser(u)
+
+        // Refresh user profile to get latest college logo
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/auth/me`, {
+            headers: getAuthHeaders(),
+        })
+            .then(r => r.json())
+            .then(updatedUser => {
+                if (updatedUser && !updatedUser.message) {
+                    setUser(updatedUser)
+                    localStorage.setItem('user', JSON.stringify(updatedUser))
+                }
+            })
+            .catch(() => { })
 
         fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/instructor/dashboard`, {
             credentials: 'include',
@@ -41,11 +55,38 @@ export default function InstructorDashboard() {
             <Navbar title="Instructor Dashboard" />
             <main className="page-content">
                 {/* Hero */}
-                <div className="hero-section hero-dark mb-8" style={{ background: 'linear-gradient(135deg,#4338ca,#6d28d9)' }}>
-                    <div className="relative z-10">
-                        <p className="text-white/60 text-sm mb-1">Instructor Portal 🎓</p>
-                        <h1 className="text-3xl font-bold text-white mb-2">Welcome, {user?.name}</h1>
-                        <p className="text-white/70 mb-4">Manage your courses and track student progress</p>
+                <div className="hero-section hero-dark mb-8 relative overflow-hidden" style={{ background: 'linear-gradient(135deg,#4338ca,#6d28d9)' }}>
+                    <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                        <div>
+                            <p className="text-white/60 text-sm mb-1">Instructor Portal 🎓</p>
+                            <h1 className="text-3xl font-bold text-white mb-2">Welcome, {user?.name}</h1>
+                            {user?.collegeName && (
+                                <div className="flex items-center gap-2 mb-2">
+                                    <span className="text-white/90 font-semibold">🎓 {user.collegeName}</span>
+                                </div>
+                            )}
+                            <p className="text-white/70 mb-0 text-sm md:text-base">Manage your courses and track student progress</p>
+                        </div>
+
+                        {/* College Logo */}
+                        <div className="flex-shrink-0 bg-white/10 p-3 rounded-2xl border border-white/20 backdrop-blur-sm shadow-inner group transition-all hover:bg-white/20">
+                            {user?.collegeLogo ? (
+                                <div className="relative w-24 h-24 flex items-center justify-center overflow-hidden rounded-xl bg-white/5">
+                                    <img
+                                        src={user.collegeLogo}
+                                        alt={user.collegeName || 'College Logo'}
+                                        className="max-w-full max-h-full object-contain p-1"
+                                        onError={(e) => {
+                                            (e.target as HTMLImageElement).src = 'https://cdn-icons-png.flaticon.com/512/5322/5322033.png';
+                                        }}
+                                    />
+                                </div>
+                            ) : (
+                                <div className="w-24 h-24 flex items-center justify-center text-5xl bg-white/5 rounded-xl">
+                                    🏫
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
 

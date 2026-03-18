@@ -6,6 +6,7 @@ import {
   Min,
   MaxLength,
   MinLength,
+  IsArray,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -64,8 +65,8 @@ export class CreateCourseDto {
   @IsOptional()
   @IsNumber()
   @Type(() => Number)
-  @Min(1, { message: 'Organization ID must be a positive number' })
-  organizationId?: number; // SUPERADMIN can specify organization when creating course
+  @Min(1, { message: 'College ID must be a positive number' })
+  collegeId?: number; // SUPERADMIN can specify college when creating course
 }
 
 export class UpdateCourseDto {
@@ -139,4 +140,10 @@ export class RejectCourseDto {
     message: 'Rejection reason must not exceed 1000 characters',
   })
   reason: string;
+}
+
+export class AssignCourseDto {
+  @IsArray()
+  @IsNumber({}, { each: true })
+  collegeIds: number[];
 }

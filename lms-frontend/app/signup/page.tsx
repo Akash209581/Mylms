@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { api } from '@/lib/api'
@@ -15,13 +15,6 @@ const INDIAN_STATES = [
 ]
 
 const COUNTRIES = ['India', 'United States', 'United Kingdom', 'Canada', 'Australia', 'Other']
-
-interface Organization {
-    id: number
-    name: string
-    type?: string
-    active: boolean
-}
 
 export default function SignupPage() {
     const router = useRouter()
@@ -39,26 +32,73 @@ export default function SignupPage() {
         pursuingYear: '',
         semester: '',
         registrationNumber: '',
-        collegeName: '',
-        organizationId: ''
+        collegeName: ''
     })
-    const [organizations, setOrganizations] = useState<Organization[]>([])
     const [error, setError] = useState('')
     const [loading, setLoading] = useState(false)
     const [success, setSuccess] = useState(false)
+    const [colleges, setColleges] = useState<Array<{ id: number; name: string; logoUrl?: string }>>([])
+    const [loadingColleges, setLoadingColleges] = useState(true)
+    const [collegesFetchError, setCollegesFetchError] = useState(false)
 
+    // Autocomplete state
+    const [collegeQuery, setCollegeQuery] = useState('')
+    const [collegeDropdownOpen, setCollegeDropdownOpen] = useState(false)
+    const [collegeSelected, setCollegeSelected] = useState(false)
+    const [selectedCollegeLogo, setSelectedCollegeLogo] = useState<string | null>(null)
+    const autocompleteRef = useRef<HTMLDivElement>(null)
+
+    // Fetch colleges when component mounts
     useEffect(() => {
-        // Fetch available organizations
-        const fetchOrganizations = async () => {
-            try {
-                const response = await api.get('/organizations')
-                setOrganizations(response.data.filter((org: Organization) => org.active))
-            } catch (err) {
-                console.error('Failed to fetch organizations:', err)
+        fetchColleges()
+    }, [])
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (autocompleteRef.current && !autocompleteRef.current.contains(e.target as Node)) {
+                setCollegeDropdownOpen(false)
+                // If user blurred without selecting, restore the selected name or clear
+                if (!collegeSelected) {
+                    setCollegeQuery('')
+                    setForm(prev => ({ ...prev, collegeName: '' }))
+                }
             }
         }
-        fetchOrganizations()
-    }, [])
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [collegeSelected])
+
+    const fetchColleges = async () => {
+        setLoadingColleges(true)
+        setCollegesFetchError(false)
+        try {
+            const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/auth/colleges`
+            console.log('Fetching colleges from:', apiUrl)
+            const response = await fetch(apiUrl, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            console.log('Response status:', response.status)
+            if (response.ok) {
+                const data = await response.json()
+                console.log('✅ Colleges fetched successfully:', data)
+                setColleges(data)
+                setCollegesFetchError(false)
+            } else {
+                const errorText = await response.text()
+                console.error('❌ Failed to fetch colleges. Status:', response.status, 'Error:', errorText)
+                setCollegesFetchError(true)
+            }
+        } catch (err) {
+            console.error('❌ Error fetching colleges:', err)
+            setCollegesFetchError(true)
+        } finally {
+            setLoadingColleges(false)
+        }
+    }
 
     const validateStep1 = () => {
         if (!form.name || form.name.length < 2) {
@@ -84,9 +124,12 @@ export default function SignupPage() {
         return true
     }
 
+    // Derived shorthand used in validation
+    const { collegeName } = form
+
     const validateStep2 = () => {
-        if (!form.organizationId) {
-            setError('Please select your organization')
+        if (!collegeName || !collegeSelected) {
+            setError('Please select your college/university from the dropdown list')
             return false
         }
         if (!form.country) {
@@ -97,11 +140,36 @@ export default function SignupPage() {
             setError('State is required for Indian learners')
             return false
         }
-        if (!form.collegeName || form.collegeName.length < 3) {
-            setError('Please enter your college name')
-            return false
-        }
         return true
+    }
+
+    // Derived helpers for autocomplete
+    const filteredColleges = colleges.filter(c =>
+        c.name.toLowerCase().includes(collegeQuery.toLowerCase())
+    )
+
+    const handleCollegeQueryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const q = e.target.value
+        setCollegeQuery(q)
+        setCollegeSelected(false)
+        setForm(prev => ({ ...prev, collegeName: '' }))
+        setCollegeDropdownOpen(true)
+    }
+
+    const handleCollegeSelect = (college: { id: number; name: string; logoUrl?: string }) => {
+        setCollegeQuery(college.name)
+        setForm(prev => ({ ...prev, collegeName: college.name }))
+        setSelectedCollegeLogo(college.logoUrl || null)
+        setCollegeSelected(true)
+        setCollegeDropdownOpen(false)
+    }
+
+    const handleCollegeClear = () => {
+        setCollegeQuery('')
+        setForm(prev => ({ ...prev, collegeName: '' }))
+        setSelectedCollegeLogo(null)
+        setCollegeSelected(false)
+        setCollegeDropdownOpen(false)
     }
 
     const validateStep3 = () => {
@@ -162,7 +230,6 @@ export default function SignupPage() {
                     state: form.state || undefined,
                     course: form.course,
                     branch: form.branch,
-                    organizationId: parseInt(form.organizationId),
                     pursuingYear: parseInt(form.pursuingYear),
                     semester: parseInt(form.semester),
                     registrationNumber: form.registrationNumber,
@@ -218,24 +285,237 @@ export default function SignupPage() {
     const renderStep2 = () => (
         <div className="space-y-4">
             <div>
-                <label className="block text-sm font-semibold mb-1.5" style={{ color: '#374151' }}>Organization *</label>
-                <select className="input-field" value={form.organizationId}
-                    onChange={e => setForm({ ...form, organizationId: e.target.value })} required
-                    aria-label="Select your organization">
-                    <option value="">Select your organization</option>
-                    {organizations.map(org => (
-                        <option key={org.id} value={org.id}>
-                            {org.name} {org.type ? `(${org.type})` : ''}
-                        </option>
-                    ))}
-                </select>
-                <p className="text-xs text-[var(--text-secondary)] mt-1">Select the organization you are affiliated with</p>
+                <label className="block text-sm font-semibold mb-1.5" style={{ color: '#374151' }}>
+                    🏛️ College / University *
+                </label>
+
+                {collegesFetchError ? (
+                    <div className="border-2 border-red-200 rounded-lg p-4 bg-red-50">
+                        <p className="text-sm text-red-700 mb-2">
+                            ⚠️ Unable to load colleges from server. Please check your connection.
+                        </p>
+                        <button
+                            type="button"
+                            onClick={fetchColleges}
+                            className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
+                        >
+                            🔄 Retry Loading Colleges
+                        </button>
+                    </div>
+                ) : loadingColleges ? (
+                    <div className="input-field flex items-center gap-2" style={{ color: '#9ca3af', cursor: 'default' }}>
+                        <svg className="animate-spin w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                        </svg>
+                        <span className="text-sm">Loading colleges...</span>
+                    </div>
+                ) : (
+                    <div ref={autocompleteRef} style={{ position: 'relative' }}>
+                        <div style={{ position: 'relative' }}>
+                            <span
+                                style={{
+                                    position: 'absolute',
+                                    left: '12px',
+                                    top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    fontSize: '16px',
+                                    pointerEvents: 'none',
+                                    userSelect: 'none',
+                                }}
+                            >
+                                {collegeSelected ? '✅' : '🔍'}
+                            </span>
+                            <input
+                                type="text"
+                                className="input-field"
+                                style={{
+                                    paddingLeft: selectedCollegeLogo ? '48px' : '38px',
+                                    paddingRight: collegeSelected ? '40px' : '14px',
+                                    borderColor: collegeSelected ? '#10b981' : undefined,
+                                    boxShadow: collegeSelected ? '0 0 0 3px rgba(16,185,129,0.15)' : undefined,
+                                }}
+                                placeholder={
+                                    colleges.length === 0
+                                        ? 'No colleges available — contact admin'
+                                        : 'Type to search your college...'
+                                }
+                                value={collegeQuery}
+                                onChange={handleCollegeQueryChange}
+                                onFocus={() => {
+                                    if (!collegeSelected) setCollegeDropdownOpen(true)
+                                }}
+                                disabled={colleges.length === 0}
+                                autoComplete="off"
+                                aria-label="Search for your college or university"
+                            />
+
+                            {selectedCollegeLogo && (
+                                <div
+                                    style={{
+                                        position: 'absolute',
+                                        left: '8px',
+                                        top: '50%',
+                                        transform: 'translateY(-50%)',
+                                        width: '32px',
+                                        height: '32px',
+                                        borderRadius: '6px',
+                                        overflow: 'hidden',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        background: 'white',
+                                        border: '1px solid #e5e7eb',
+                                    }}
+                                >
+                                    <img
+                                        src={selectedCollegeLogo}
+                                        alt="Logo"
+                                        style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                                    />
+                                </div>
+                            )}
+
+                            {collegeSelected && (
+                                <button
+                                    type="button"
+                                    onClick={handleCollegeClear}
+                                    title="Clear selection"
+                                    style={{
+                                        position: 'absolute',
+                                        right: '10px',
+                                        top: '50%',
+                                        transform: 'translateY(-50%)',
+                                        width: '22px',
+                                        height: '22px',
+                                        borderRadius: '50%',
+                                        background: '#e5e7eb',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: '13px',
+                                        color: '#6b7280',
+                                        lineHeight: 1,
+                                    }}
+                                >
+                                    ×
+                                </button>
+                            )}
+                        </div>
+
+                        {collegeDropdownOpen && !collegeSelected && (
+                            <div
+                                style={{
+                                    position: 'absolute',
+                                    top: 'calc(100% + 4px)',
+                                    left: 0,
+                                    right: 0,
+                                    background: '#ffffff',
+                                    border: '1.5px solid #e5e7eb',
+                                    borderRadius: '12px',
+                                    boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
+                                    zIndex: 999,
+                                    maxHeight: '240px',
+                                    overflowY: 'auto',
+                                }}
+                            >
+                                {filteredColleges.length === 0 ? (
+                                    <div
+                                        style={{
+                                            padding: '16px 14px',
+                                            color: '#9ca3af',
+                                            fontSize: '0.875rem',
+                                            textAlign: 'center',
+                                        }}
+                                    >
+                                        😕 No colleges match &ldquo;{collegeQuery}&rdquo;
+                                    </div>
+                                ) : (
+                                    filteredColleges.map((college, idx) => (
+                                        <button
+                                            key={college.id}
+                                            type="button"
+                                            onMouseDown={(e) => {
+                                                e.preventDefault()
+                                                handleCollegeSelect(college)
+                                            }}
+                                            style={{
+                                                display: 'block',
+                                                width: '100%',
+                                                textAlign: 'left',
+                                                padding: '10px 14px',
+                                                background: 'transparent',
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                fontSize: '0.875rem',
+                                                color: '#111827',
+                                                borderBottom:
+                                                    idx < filteredColleges.length - 1 ? '1px solid #f3f4f6' : 'none',
+                                                borderRadius:
+                                                    idx === 0
+                                                        ? '12px 12px 0 0'
+                                                        : idx === filteredColleges.length - 1
+                                                          ? '0 0 12px 12px'
+                                                          : undefined,
+                                                transition: 'background 0.1s',
+                                            }}
+                                            onMouseEnter={(e) => (e.currentTarget.style.background = '#f0f4ff')}
+                                            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                                        >
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                <div
+                                                    style={{
+                                                        width: '28px',
+                                                        height: '28px',
+                                                        borderRadius: '4px',
+                                                        background: '#f8fafc',
+                                                        border: '1px solid #e2e8f0',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        overflow: 'hidden',
+                                                        flexShrink: 0,
+                                                    }}
+                                                >
+                                                    {college.logoUrl ? (
+                                                        <img
+                                                            src={college.logoUrl}
+                                                            alt="logo"
+                                                            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                                                        />
+                                                    ) : (
+                                                        <span style={{ fontSize: '14px' }}>🏛️</span>
+                                                    )}
+                                                </div>
+                                                <span style={{ flex: 1 }}>{college.name}</span>
+                                            </div>
+                                        </button>
+                                    ))
+                                )}
+                            </div>
+                        )}
+
+                        <p className="text-xs text-gray-500 mt-1.5">
+                            {collegeSelected
+                                ? `✅ Selected: ${form.collegeName}`
+                                : colleges.length > 0
+                                  ? `${colleges.length} college${colleges.length !== 1 ? 's' : ''} available — type to search and select from the list`
+                                  : '⚠️ No colleges found. Please contact administration.'}
+                        </p>
+                    </div>
+                )}
             </div>
             <div>
                 <label className="block text-sm font-semibold mb-1.5" style={{ color: '#374151' }}>Country *</label>
-                <select className="input-field" value={form.country}
-                    onChange={e => setForm({ ...form, country: e.target.value, state: '' })} required
-                    aria-label="Select your country">
+                <select
+                    className="input-field"
+                    value={form.country}
+                    onChange={e => setForm({ ...form, country: e.target.value, state: '' })}
+                    required
+                    aria-label="Select your country"
+                >
                     <option value="">Select your country</option>
                     {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
@@ -243,20 +523,18 @@ export default function SignupPage() {
             {form.country === 'India' && (
                 <div>
                     <label className="block text-sm font-semibold mb-1.5" style={{ color: '#374151' }}>State *</label>
-                    <select className="input-field" value={form.state}
-                        onChange={e => setForm({ ...form, state: e.target.value })} required
-                        aria-label="Select your state">
+                    <select
+                        className="input-field"
+                        value={form.state}
+                        onChange={e => setForm({ ...form, state: e.target.value })}
+                        required
+                        aria-label="Select your state"
+                    >
                         <option value="">Select your state</option>
                         {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                 </div>
             )}
-            <div>
-                <label className="block text-sm font-semibold mb-1.5" style={{ color: '#374151' }}>Name of the College *</label>
-                <input type="text" className="input-field" placeholder="e.g. St. Stephen's College"
-                    value={form.collegeName}
-                    onChange={e => setForm({ ...form, collegeName: e.target.value })} required />
-            </div>
         </div>
     )
 
@@ -426,3 +704,4 @@ export default function SignupPage() {
         </div>
     )
 }
+

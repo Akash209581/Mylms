@@ -90,7 +90,7 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
         setSaving(true); setError('')
         try {
             // Only send fields that the API expects - exclude system fields and UI-only state like opMode
-            const { id: _, questionNumber, organizationId, organization, createdAt, updatedAt, isActive, opMode, question_number, organization_id, created_at, updated_at, ...submitData } = form;
+            const { id: _, questionNumber, createdAt, updatedAt, isActive, opMode, question_number, created_at, updated_at, ...submitData } = form;
 
             // Normalize Matching Pairs
             if (submitData.type === 'MQ' && submitData.matchingPairs) {

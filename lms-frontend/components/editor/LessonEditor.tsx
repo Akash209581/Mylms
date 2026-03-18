@@ -1147,117 +1147,125 @@ export default function LessonEditor({
             return (
               <>
                 <div className="nb-tbg items-center">
-                  <ColorPicker
-                    activeColor={activeCell?.color ?? lastColor}
-                    disabled={!canStyle}
-                    onApply={applyColor}
-                  />
-                  <FontSizePicker
-                    activeSize={activeCell?.fontSize ?? lastSizePx}
-                    disabled={!canStyle}
-                    onApply={applyFontSize}
-                  />
+                  {!readOnly && (
+                    <>
+                      <ColorPicker
+                        activeColor={activeCell?.color ?? lastColor}
+                        disabled={!canStyle}
+                        onApply={applyColor}
+                      />
+                      <FontSizePicker
+                        activeSize={activeCell?.fontSize ?? lastSizePx}
+                        disabled={!canStyle}
+                        onApply={applyFontSize}
+                      />
+                    </>
+                  )}
                 </div>
                 <span className="nb-tb-sep2" />
               </>
             )
           })()}
 
-          {/* Headings */}
-          <div className="nb-tbg">
-            <button className="nb-tbtn" title="Heading 1 — changes active cell type" onClick={() => setHeading('heading')}>H1</button>
-            <button className="nb-tbtn" title="Heading 2 — changes active cell type" onClick={() => setHeading('subheading')}>H2</button>
-            <button className="nb-tbtn" title="Heading 3 — changes active cell type" onClick={() => setHeading('h3')}>H3</button>
-          </div>
-          <span className="nb-tb-sep2" />
+          {!readOnly && (
+            <>
+              {/* Headings */}
+              <div className="nb-tbg">
+                <button className="nb-tbtn" title="Heading 1 — changes active cell type" onClick={() => setHeading('heading')}>H1</button>
+                <button className="nb-tbtn" title="Heading 2 — changes active cell type" onClick={() => setHeading('subheading')}>H2</button>
+                <button className="nb-tbtn" title="Heading 3 — changes active cell type" onClick={() => setHeading('h3')}>H3</button>
+              </div>
+              <span className="nb-tb-sep2" />
 
-          {/* Inline formatting */}
-          <div className="nb-tbg">
-            <button className="nb-tbtn font-bold" title="Bold — wraps selection with **bold**" onClick={() => applyFmt('bold')}>B</button>
-            <button className="nb-tbtn italic" title="Italic — wraps selection with *italic*" onClick={() => applyFmt('italic')}>I</button>
-            <button className="nb-tbtn font-mono text-xs" title="Insert code block cell" onClick={() => addBelow('code')}>&lt;/&gt;</button>
-            <button className="nb-tbtn" title="Highlight — wraps selection with ==text==" onClick={() => applyFmt('highlight')}>
-              <span className="bg-yellow-200 px-0.5 rounded text-xs font-bold leading-none py-0.5">H</span>
-            </button>
-          </div>
-          <span className="nb-tb-sep2" />
+              {/* Inline formatting */}
+              <div className="nb-tbg">
+                <button className="nb-tbtn font-bold" title="Bold — wraps selection with **bold**" onClick={() => applyFmt('bold')}>B</button>
+                <button className="nb-tbtn italic" title="Italic — wraps selection with *italic*" onClick={() => applyFmt('italic')}>I</button>
+                <button className="nb-tbtn font-mono text-xs" title="Insert code block cell" onClick={() => addBelow('code')}>&lt;/&gt;</button>
+                <button className="nb-tbtn" title="Highlight — wraps selection with ==text==" onClick={() => applyFmt('highlight')}>
+                  <span className="bg-yellow-200 px-0.5 rounded text-xs font-bold leading-none py-0.5">H</span>
+                </button>
+              </div>
+              <span className="nb-tb-sep2" />
 
-          {/* Links & Media */}
-          <div className="nb-tbg">
-            <button className="nb-tbtn" title="Insert link — [text](url)" onClick={() => applyFmt('link')}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-              </svg>
-            </button>
-            <MediaMenu onImage={() => applyFmt('image')} onVideo={() => addBelow('video')} />
-          </div>
-          <span className="nb-tb-sep2" />
+              {/* Links & Media */}
+              <div className="nb-tbg">
+                <button className="nb-tbtn" title="Insert link — [text](url)" onClick={() => applyFmt('link')}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                  </svg>
+                </button>
+                <MediaMenu onImage={() => applyFmt('image')} onVideo={() => addBelow('video')} />
+              </div>
+              <span className="nb-tb-sep2" />
 
-          {/* Alignment */}
-          <div className="nb-tbg">
-            <button className={`nb-tbtn ${cells.find(c => c.id === activeId)?.align === 'left' ? 'text-indigo-600 bg-indigo-50' : ''}`} title="Align Left" onClick={() => applyAlign('left')}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="21" x2="3" y1="6" y2="6" /><line x1="15" x2="3" y1="12" y2="12" /><line x1="17" x2="3" y1="18" y2="18" />
-              </svg>
-            </button>
-            <button className={`nb-tbtn ${cells.find(c => c.id === activeId)?.align === 'center' ? 'text-indigo-600 bg-indigo-50' : ''}`} title="Align Center" onClick={() => applyAlign('center')}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="21" x2="3" y1="6" y2="6" /><line x1="19" x2="5" y1="12" y2="12" /><line x1="21" x2="3" y1="18" y2="18" />
-              </svg>
-            </button>
-          </div>
-          <span className="nb-tb-sep2" />
+              {/* Alignment */}
+              <div className="nb-tbg">
+                <button className={`nb-tbtn ${cells.find(c => c.id === activeId)?.align === 'left' ? 'text-indigo-600 bg-indigo-50' : ''}`} title="Align Left" onClick={() => applyAlign('left')}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="21" x2="3" y1="6" y2="6" /><line x1="15" x2="3" y1="12" y2="12" /><line x1="17" x2="3" y1="18" y2="18" />
+                  </svg>
+                </button>
+                <button className={`nb-tbtn ${cells.find(c => c.id === activeId)?.align === 'center' ? 'text-indigo-600 bg-indigo-50' : ''}`} title="Align Center" onClick={() => applyAlign('center')}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="21" x2="3" y1="6" y2="6" /><line x1="19" x2="5" y1="12" y2="12" /><line x1="21" x2="3" y1="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
+              <span className="nb-tb-sep2" />
 
-          {/* Lists */}
-          <div className="nb-tbg">
-            <button className="nb-tbtn" title="Bullet list — inserts - Item at cursor" onClick={() => applyFmt('ul')}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" />
-                <circle cx="3" cy="6" r="1.5" fill="currentColor" />
-                <circle cx="3" cy="12" r="1.5" fill="currentColor" />
-                <circle cx="3" cy="18" r="1.5" fill="currentColor" />
-              </svg>
-            </button>
-            <button className="nb-tbtn" title="Numbered list — inserts 1. First at cursor" onClick={() => applyFmt('ol')}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <line x1="10" y1="6" x2="21" y2="6" /><line x1="10" y1="12" x2="21" y2="12" /><line x1="10" y1="18" x2="21" y2="18" />
-                <path d="M4 6h1v4" strokeLinecap="round" /><path d="M4 10h2" />
-                <path d="M4 15a1 1 0 0 1 1-1h0a1 1 0 0 1 0 2H4a1 1 0 0 0 0 2h2" />
-              </svg>
-            </button>
-            <button className="nb-tbtn" title="Checklist — inserts - [ ] Task at cursor" onClick={() => applyFmt('checklist')}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <rect x="3" y="5" width="6" height="6" rx="1" />
-                <polyline points="5 8 6.5 9.5 9 6" />
-                <line x1="13" y1="8" x2="21" y2="8" />
-                <rect x="3" y="13" width="6" height="6" rx="1" />
-                <line x1="13" y1="16" x2="21" y2="16" />
-              </svg>
-            </button>
-            <button className="nb-tbtn" title="Table — inserts a 3×2 markdown table at cursor" onClick={() => applyFmt('table')}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <rect x="3" y="3" width="18" height="18" rx="2" />
-                <line x1="3" y1="9" x2="21" y2="9" /><line x1="3" y1="15" x2="21" y2="15" />
-                <line x1="9" y1="3" x2="9" y2="21" /><line x1="15" y1="3" x2="15" y2="21" />
-              </svg>
-            </button>
-          </div>
-          <span className="nb-tb-sep2" />
+              {/* Lists */}
+              <div className="nb-tbg">
+                <button className="nb-tbtn" title="Bullet list — inserts - Item at cursor" onClick={() => applyFmt('ul')}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" />
+                    <circle cx="3" cy="6" r="1.5" fill="currentColor" />
+                    <circle cx="3" cy="12" r="1.5" fill="currentColor" />
+                    <circle cx="3" cy="18" r="1.5" fill="currentColor" />
+                  </svg>
+                </button>
+                <button className="nb-tbtn" title="Numbered list — inserts 1. First at cursor" onClick={() => applyFmt('ol')}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <line x1="10" y1="6" x2="21" y2="6" /><line x1="10" y1="12" x2="21" y2="12" /><line x1="10" y1="18" x2="21" y2="18" />
+                    <path d="M4 6h1v4" strokeLinecap="round" /><path d="M4 10h2" />
+                    <path d="M4 15a1 1 0 0 1 1-1h0a1 1 0 0 1 0 2H4a1 1 0 0 0 0 2h2" />
+                  </svg>
+                </button>
+                <button className="nb-tbtn" title="Checklist — inserts - [ ] Task at cursor" onClick={() => applyFmt('checklist')}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <rect x="3" y="5" width="6" height="6" rx="1" />
+                    <polyline points="5 8 6.5 9.5 9 6" />
+                    <line x1="13" y1="8" x2="21" y2="8" />
+                    <rect x="3" y="13" width="6" height="6" rx="1" />
+                    <line x1="13" y1="16" x2="21" y2="16" />
+                  </svg>
+                </button>
+                <button className="nb-tbtn" title="Table — inserts a 3×2 markdown table at cursor" onClick={() => applyFmt('table')}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                    <line x1="3" y1="9" x2="21" y2="9" /><line x1="3" y1="15" x2="21" y2="15" />
+                    <line x1="9" y1="3" x2="9" y2="21" /><line x1="15" y1="3" x2="15" y2="21" />
+                  </svg>
+                </button>
+              </div>
+              <span className="nb-tb-sep2" />
 
-          {/* Divider & Math */}
-          <div className="nb-tbg">
-            <MathDropdown onInsert={(formula) => { if (activeId) insertAtCursor(activeId, formula) }} />
-            <button className="nb-tbtn" title="Add divider cell below" onClick={() => addBelow('divider')}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <line x1="2" y1="12" x2="22" y2="12" />
-              </svg>
-            </button>
-          </div>
-          <span className="nb-tb-sep2" />
+              {/* Divider & Math */}
+              <div className="nb-tbg">
+                <MathDropdown onInsert={(formula) => { if (activeId) insertAtCursor(activeId, formula) }} />
+                <button className="nb-tbtn" title="Add divider cell below" onClick={() => addBelow('divider')}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <line x1="2" y1="12" x2="22" y2="12" />
+                  </svg>
+                </button>
+              </div>
+              <span className="nb-tb-sep2" />
 
-          {/* Callout blocks — dropdown */}
-          <CalloutDropdown onAdd={t => addBelow(t)} />
+              {/* Callout blocks — dropdown */}
+              <CalloutDropdown onAdd={t => addBelow(t)} />
+            </>
+          )}
         </div>{/* end nb-toolbar-v2 */}
       </div>{/* end nb-sticky-header */}
 
@@ -1277,7 +1285,7 @@ export default function LessonEditor({
               if (cell.type === 'divider') {
                 return (
                   <div key={cell.id}>
-                    <AddCellMenu onAdd={t => insertCell(idx > 0 ? cells[idx - 1].id : null, t)} />
+                    {!readOnly && <AddCellMenu onAdd={t => insertCell(idx > 0 ? cells[idx - 1].id : null, t)} />}
                     <div className="nb-divider-row group">
                       <hr className="nb-divider" />
                       <div className="nb-cell-actions opacity-0 group-hover:opacity-100">
@@ -1293,7 +1301,7 @@ export default function LessonEditor({
               /* ── Normal / callout cell ── */
               return (
                 <div key={cell.id}>
-                  <AddCellMenu onAdd={t => insertCell(idx > 0 ? cells[idx - 1].id : null, t)} />
+                  {!readOnly && <AddCellMenu onAdd={t => insertCell(idx > 0 ? cells[idx - 1].id : null, t)} />}
 
                   <div
                     className={[
@@ -1301,7 +1309,11 @@ export default function LessonEditor({
                       isActive ? 'nb-cell-active' : '',
                       isCallout ? `nb-cell-callout nb-callout-${cell.type}` : '',
                     ].join(' ')}
-                    onClick={e => { e.stopPropagation(); setActiveId(cell.id) }}
+                    onClick={e => {
+                        if (readOnly) return;
+                        e.stopPropagation();
+                        setActiveId(cell.id);
+                    }}
                   >
                     {/* Cell header row */}
                     <div className="nb-cell-header">
@@ -1326,16 +1338,18 @@ export default function LessonEditor({
                       )}
 
                       {/* Move / delete */}
-                      <div className="nb-cell-actions opacity-0 group-hover:opacity-100 ml-auto" onClick={e => e.stopPropagation()}>
-                        <button className="nb-action-btn" title="Move up" disabled={idx === 0} onClick={() => moveCell(cell.id, 'up')}>↑</button>
-                        <button className="nb-action-btn" title="Move down" disabled={idx === cells.length - 1} onClick={() => moveCell(cell.id, 'down')}>↓</button>
-                        <button className="nb-action-btn nb-action-delete" title="Delete cell" onClick={() => deleteCell(cell.id)}>
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" />
-                            <path d="M10 11v6" /><path d="M14 11v6" /><path d="M9 6V4h6v2" />
-                          </svg>
-                        </button>
-                      </div>
+                      {!readOnly && (
+                        <div className="nb-cell-actions opacity-0 group-hover:opacity-100 ml-auto" onClick={e => e.stopPropagation()}>
+                          <button className="nb-action-btn" title="Move up" disabled={idx === 0} onClick={() => moveCell(cell.id, 'up')}>↑</button>
+                          <button className="nb-action-btn" title="Move down" disabled={idx === cells.length - 1} onClick={() => moveCell(cell.id, 'down')}>↓</button>
+                          <button className="nb-action-btn nb-action-delete" title="Delete cell" onClick={() => deleteCell(cell.id)}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" />
+                              <path d="M10 11v6" /><path d="M14 11v6" /><path d="M9 6V4h6v2" />
+                            </svg>
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     {/* Textarea — code cell gets its own dark IDE wrapper */}
@@ -1387,10 +1401,11 @@ export default function LessonEditor({
                                       className={`bg-transparent outline-none w-16 text-xs font-semibold ${activeTab === i ? 'text-white' : 'text-slate-400'}`}
                                       value={s.lang}
                                       placeholder="lang"
+                                      readOnly={readOnly}
                                       onChange={e => updateSnippet(i, { lang: e.target.value })}
                                       onClick={e => { e.stopPropagation(); setActiveCodeTabs(prev => ({ ...prev, [cell.id]: i })) }}
                                     />
-                                    {snippets.length > 1 && (
+                                    {snippets.length > 1 && !readOnly && (
                                       <button
                                         className="text-[var(--text-secondary)] hover:text-red-400 p-0.5 rounded-full"
                                         onClick={e => { e.stopPropagation(); removeTab(i) }}
@@ -1401,7 +1416,7 @@ export default function LessonEditor({
                                     )}
                                   </div>
                                 ))}
-                                <button className="px-2 py-0.5 text-xs text-slate-400 hover:text-white font-bold" onClick={e => { e.stopPropagation(); addTab() }} title="Add Language Tab">+</button>
+                                {!readOnly && <button className="px-2 py-0.5 text-xs text-slate-400 hover:text-white font-bold" onClick={e => { e.stopPropagation(); addTab() }} title="Add Language Tab">+</button>}
                               </div>
                             </div>
                             <div className="nb-code-write-body relative">
@@ -1417,6 +1432,7 @@ export default function LessonEditor({
                                 placeholder={`// Write your ${activeSnippet?.lang || 'code'} here…`}
                                 className="nb-code-write-ta"
                                 spellCheck={false}
+                                readOnly={readOnly}
                                 onChange={e => {
                                   if (!isUndoRedo.current) pushHistory(cell.id, cell.content)
                                   isUndoRedo.current = false
@@ -1484,7 +1500,7 @@ export default function LessonEditor({
                             />
                           )
                         })()}
-                        {isActive && (
+                        {isActive && !readOnly && (
                           <button
                             className="nb-upload-btn"
                             onClick={e => { e.stopPropagation(); setImgTarget(cell.id) }}
@@ -1516,6 +1532,7 @@ export default function LessonEditor({
                       <textarea
                         ref={el => { taRefs.current[cell.id] = el }}
                         value={cell.content}
+                        readOnly={readOnly}
                         placeholder={
                           isCallout ? `Write ${calloutCfg!.label.toLowerCase()} content… (supports markdown)` :
                             cell.type === 'heading' ? 'Heading…' :

@@ -11,13 +11,13 @@ interface User {
     email: string
     role: string
     createdAt: string
+    collegeId?: number
+    collegeName?: string
     organizationId?: number
     organization?: {
-        id: number
-        name: string
+        name?: string
         type?: string
     }
-    collegeName?: string
 }
 
 export default function AdminDetailPage() {
@@ -71,12 +71,12 @@ export default function AdminDetailPage() {
             
             setAdmin(adminUser)
             
-            // Filter users by admin's organization
-            if (adminUser.organizationId) {
-                const orgUsersData = allUsers.filter(
-                    (u: User) => u.organizationId === adminUser.organizationId && u.id !== adminUser.id
+            // Filter users by admin's college
+            if (adminUser.collegeId) {
+                const collegeUsersData = allUsers.filter(
+                    (u: User) => u.collegeId === adminUser.collegeId && u.id !== adminUser.id
                 )
-                setOrgUsers(orgUsersData)
+                setOrgUsers(collegeUsersData)
             }
         } catch (err) {
             console.error('Failed to fetch admin details:', err)
@@ -150,6 +150,10 @@ export default function AdminDetailPage() {
                                     <p className="text-white font-medium">{admin?.collegeName || 'N/A'}</p>
                                 </div>
                                 <div>
+                                    <p className="text-xs text-[var(--text-secondary)] mb-1">College ID</p>
+                                    <p className="text-white font-medium">{admin?.collegeId || 'N/A'}</p>
+                                </div>
+                                <div>
                                     <p className="text-xs text-[var(--text-secondary)] mb-1">Joined</p>
                                     <p className="text-white font-medium">
                                         {admin?.createdAt ? new Date(admin.createdAt).toLocaleDateString('en-US', {
@@ -168,12 +172,12 @@ export default function AdminDetailPage() {
                     </div>
                 </div>
 
-                {/* Organization Users */}
+                {/* College Users */}
                 <div className="glass-card p-6">
                     <div className="flex items-center justify-between mb-6">
                         <div>
                             <h2 className="text-xl font-bold text-white mb-1">
-                                Users in {admin?.organization?.name}
+                                Users in {admin?.collegeName}
                             </h2>
                             <p className="text-gray-400 text-sm">
                                 {filteredUsers.length} user{filteredUsers.length !== 1 ? 's' : ''} found

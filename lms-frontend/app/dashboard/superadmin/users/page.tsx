@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
+import UserDetailModal from '@/components/UserDetailModal'
+import { getAuthHeaders } from '@/lib/authHeaders'
 
 export default function SuperAdminUsersPage() {
     const router = useRouter()
@@ -10,6 +12,8 @@ export default function SuperAdminUsersPage() {
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState('')
     const [filterRole, setFilterRole] = useState('ALL')
+    const [selectedUser, setSelectedUser] = useState<any>(null)
+    const [loadingDetails, setLoadingDetails] = useState(false)
 
     useEffect(() => {
         const stored = localStorage.getItem('user')
@@ -17,12 +21,33 @@ export default function SuperAdminUsersPage() {
         const u = JSON.parse(stored)
         if (u.role !== 'SUPERADMIN') { router.push('/login'); return }
 
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/superadmin/users`, { credentials: 'include' })
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/superadmin/users`, { 
+            credentials: 'include',
+            headers: getAuthHeaders(),
+        })
             .then(r => r.json())
             .then(data => { if (Array.isArray(data)) setUsers(data) })
             .catch(() => { })
             .finally(() => setLoading(false))
     }, [])
+
+    const handleViewUser = async (userId: number) => {
+        setLoadingDetails(true)
+        try {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/superadmin/users/${userId}`, {
+                credentials: 'include',
+                headers: getAuthHeaders(),
+            })
+            if (response.ok) {
+                const userData = await response.json()
+                setSelectedUser(userData)
+            }
+        } catch (error) {
+            console.error('Failed to fetch user details:', error)
+        } finally {
+            setLoadingDetails(false)
+        }
+    }
 
     const handleRoleChange = async (userId: number, newRole: string) => {
         await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/superadmin/users/${userId}/role`, {
@@ -66,7 +91,7 @@ export default function SuperAdminUsersPage() {
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold text-white mb-1">User Management</h1>
                     <p className="text-gray-400">
-                        Manage all platform users and their roles • Click on <span className="text-orange-400 font-medium">ADMIN</span> users to view their organization details
+                        Manage all platform users and their roles across all colleges
                     </p>
                 </div>
 
@@ -125,7 +150,7 @@ export default function SuperAdminUsersPage() {
                             <table className="w-full">
                                 <thead>
                                     <tr className="border-b" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
-                                        {['#', 'User', 'Email', 'Role', 'Organization', 'College', 'Joined', 'Actions'].map(h => (
+                                        {['#', 'User', 'Email', 'Role', 'College', 'Joined', 'Actions'].map(h => (
                                             <th key={h} className="text-left text-xs font-semibold text-gray-400 pb-3 pr-4">{h}</th>
                                         ))}
                                     </tr>
@@ -136,7 +161,7 @@ export default function SuperAdminUsersPage() {
                                             key={u.id} 
                                             className="border-b transition-colors hover:bg-[var(--bg-surface)]/5 cursor-pointer"
                                             style={{ borderColor: 'rgba(255,255,255,0.04)' }}
-                                            onClick={() => u.role === 'ADMIN' && router.push(`/dashboard/superadmin/users/admin/${u.id}`)}
+                                            onClick={() => handleViewUser(u.id)}
                                         >
                                             <td className="py-4 pr-4 text-[var(--text-secondary)] text-sm">{i + 1}</td>
                                             <td className="py-4 pr-4">
@@ -159,9 +184,6 @@ export default function SuperAdminUsersPage() {
                                                         <option key={r} value={r} style={{ background: '#1a1a2e' }}>{r}</option>
                                                     ))}
                                                 </select>
-                                            </td>
-                                            <td className="py-4 pr-4 text-gray-400 text-sm">
-                                                {u.organization?.name || (u.role === 'SUPERADMIN' ? '—' : 'N/A')}
                                             </td>
                                             <td className="py-4 pr-4 text-gray-400 text-sm">
                                                 {u.collegeName || '—'}
@@ -191,6 +213,23 @@ export default function SuperAdminUsersPage() {
                     )}
                 </div>
             </main>
+
+            {/* User Detail Modal */}
+            {selectedUser && (
+                <UserDetailModal
+                    user={selectedUser}
+                    onClose={() => setSelectedUser(null)}
+                    canDelete={true}
+                    onDelete={handleDelete}
+                />
+            )}
+
+            {/* Loading Details Overlay */}
+            {loadingDetails && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                    <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin" />
+                </div>
+            )}
         </div>
     )
 }

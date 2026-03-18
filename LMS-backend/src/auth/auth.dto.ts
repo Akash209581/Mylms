@@ -73,10 +73,6 @@ export class SignupDto {
   @IsNotEmpty({ message: 'College name is required' })
   @MaxLength(200, { message: 'College name must not exceed 200 characters' })
   collegeName: string;
-
-  @IsOptional()
-  @IsInt({ message: 'Organization ID must be a number' })
-  organizationId?: number;
 }
 
 export class CreateUserDto {
@@ -96,8 +92,9 @@ export class CreateUserDto {
   @IsNotEmpty({ message: 'Role is required' })
   role: string; // ADMIN, INSTRUCTOR, STUDENT
 
-  // organizationId is NOT in the DTO - it will be automatically inherited from the creator
-  // This prevents admins and instructors from changing the organization when creating users
+  // collegeId is NOT in the DTO for ADMIN/INSTRUCTOR creation
+  // It will be automatically inherited from the creator
+  // This prevents admins and instructors from changing the college when creating users
 
   // collegeName is NOT in the DTO - it will be automatically inherited from the creator
   // This prevents admins and instructors from changing the college when creating users
@@ -142,16 +139,16 @@ export class CreateUserDto {
   registrationNumber?: string;
 }
 
-// DTO for SUPERADMIN to create users with explicit organization and college selection
+// DTO for SUPERADMIN to create users with college name (auto-creates college if doesn't exist)
 export class SuperAdminCreateUserDto extends CreateUserDto {
-  @IsInt({ message: 'Organization ID must be a number' })
-  @IsNotEmpty({ message: 'Organization ID is required' })
-  organizationId: number;
+  @IsString()
+  @IsNotEmpty({ message: 'College/University name is required' })
+  @MaxLength(200, { message: 'College name must not exceed 200 characters' })
+  collegeName: string;
 
   @IsOptional()
   @IsString()
-  @MaxLength(200, { message: 'College name must not exceed 200 characters' })
-  collegeName?: string;
+  collegeLogo?: string;
 }
 
 export class LoginDto {

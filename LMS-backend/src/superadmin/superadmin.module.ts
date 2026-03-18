@@ -4,11 +4,12 @@ import { User } from '../entities/user.entity';
 import { Course } from '../entities/course.entity';
 import { Enrollment } from '../entities/enrollment.entity';
 import { Question } from '../entities/question.entity';
+import { College } from '../entities/college.entity';
 import { SuperadminController } from './superadmin.controller';
 import { ReportsController } from './reports.controller';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User, Course, Enrollment, Question])],
+  imports: [TypeOrmModule.forFeature([User, Course, Enrollment, Question, College])],
   controllers: [SuperadminController, ReportsController],
 })
 export class SuperadminModule {}
