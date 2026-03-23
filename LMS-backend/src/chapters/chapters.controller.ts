@@ -34,12 +34,18 @@ export class ChaptersController {
   @Post()
   @Roles(UserRole.INSTRUCTOR, UserRole.SUPERADMIN)
   async create(@Body() dto: { title: string; description?: string; moduleId: number }, @Req() req: any) {
+    console.log('📖 New Chapter request:', dto);
     const module = await this.moduleRepository.findOne({
       where: { id: dto.moduleId },
       relations: ['course'],
     });
 
-    if (!module) throw new HttpException('Module not found', HttpStatus.NOT_FOUND);
+    if (!module) {
+        console.error('❌ Module not found:', dto.moduleId);
+        throw new HttpException(`Module ${dto.moduleId} not found in database`, HttpStatus.NOT_FOUND);
+    }
+
+
 
     if (req.user.role !== UserRole.SUPERADMIN && module.course.instructorId !== req.user.sub) {
       throw new HttpException('Forbidden', HttpStatus.FORBIDDEN);
