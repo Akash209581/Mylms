@@ -21,9 +21,10 @@ interface CoursePreviewModalProps {
 }
 
 export default function CoursePreviewModal({ courseId, isOpen, onClose }: CoursePreviewModalProps) {
-    const [lessonContent, setLessonContent] = useState<any>(null)
+    const [lessonData, setLessonData] = useState<{ title: string; type: string; content: any } | null>(null)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
+
 
     useEffect(() => {
         if (!isOpen || !courseId) return
@@ -60,8 +61,13 @@ export default function CoursePreviewModal({ courseId, isOpen, onClose }: Course
 
 
                 if (isMounted) {
-                    setLessonContent(firstLesson.content || { type: 'notebook', cells: [] })
+                    setLessonData({
+                        title: firstLesson.title,
+                        type: firstLesson.type,
+                        content: firstLesson.content || { type: 'notebook', cells: [] }
+                    })
                 }
+
             } catch (err: any) {
                 console.error('Failed to load preview:', err)
                 if (isMounted) {
@@ -125,16 +131,29 @@ export default function CoursePreviewModal({ courseId, isOpen, onClose }: Course
                         </div>
                     )}
 
-                    {!loading && !error && lessonContent && (
-                        <div className="max-w-4xl mx-auto w-full bg-[var(--bg-surface)] rounded-xl shadow-sm border border-[var(--border)] p-8 min-h-[500px]">
-                            <LessonEditor
-                                lessonId={0} // Dummy ID, it's read-only
-                                initialContent={lessonContent}
-                                onSave={async () => { }} // Dummy save, it's read-only
-                                readOnly={true}
-                            />
+                    {!loading && !error && lessonData && (
+                        <div className="max-w-4xl mx-auto w-full space-y-4">
+                            <div className="bg-[var(--bg-surface)] rounded-xl shadow-sm border border-[var(--border)] p-6">
+                                <div className="flex items-center justify-between mb-4 border-b border-[var(--border)] pb-4">
+                                    <div>
+                                        <h3 className="text-xl font-bold text-[var(--text-primary)]">{lessonData.title}</h3>
+                                        <p className="text-xs text-[var(--text-secondary)] uppercase tracking-wider mt-1">{lessonData.type} Content</p>
+                                    </div>
+                                    <span className="px-3 py-1 bg-indigo-500/10 text-indigo-400 text-[10px] font-bold rounded-lg border border-indigo-500/20">PREVIEW MODE</span>
+                                </div>
+                                
+                                <div className="min-h-[400px]">
+                                    <LessonEditor
+                                        lessonId={0}
+                                        initialContent={lessonData.content}
+                                        onSave={async () => { }}
+                                        readOnly={true}
+                                    />
+                                </div>
+                            </div>
                         </div>
                     )}
+
                 </div>
             </div>
         </div>
