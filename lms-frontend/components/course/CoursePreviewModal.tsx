@@ -38,13 +38,26 @@ export default function CoursePreviewModal({ courseId, isOpen, onClose }: Course
                 const course = res.data
                 if (!course) throw new Error('Course not found')
 
-                // Grab the very first lesson's content if it exists
-                const firstModule = course.modules?.[0]
-                const firstLesson = firstModule?.lessons?.[0]
+                // Find the first lesson in the course structure
+                let firstLesson = null;
+                if (course.modules) {
+                    for (const module of course.modules) {
+                        if (module.chapters) {
+                            for (const chapter of module.chapters) {
+                                if (chapter.lessons && chapter.lessons.length > 0) {
+                                    firstLesson = chapter.lessons[0];
+                                    break;
+                                }
+                            }
+                        }
+                        if (firstLesson) break;
+                    }
+                }
 
                 if (!firstLesson) {
-                    throw new Error('This course has no published content yet.')
+                    throw new Error('This course has no topics or content to preview yet.')
                 }
+
 
                 if (isMounted) {
                     setLessonContent(firstLesson.content || { type: 'notebook', cells: [] })
