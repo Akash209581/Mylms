@@ -11,6 +11,8 @@ import {
 } from 'typeorm';
 import { User } from './user.entity';
 import { College } from './college.entity';
+import { Organization } from './organization.entity';
+
 
 export enum CourseStatus {
   DRAFT = 'DRAFT',
@@ -74,6 +76,17 @@ export class Course {
   @ManyToOne(() => College, (college) => college.courses)
   @JoinColumn({ name: 'college_id' })
   college: College;
+
+  // Organization - Multi-tenant support
+  @Column({ name: 'organization_id', nullable: true })
+  organizationId: number;
+
+  @ManyToOne(() => Organization, (organization) => organization.courses, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'organization_id' })
+  organization: Organization;
+
 
   @ManyToMany(() => College)
   @JoinTable({

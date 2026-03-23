@@ -8,6 +8,9 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { College } from './college.entity';
+import { Organization } from './organization.entity';
+
+
 
 export enum UserRole {
   SUPERADMIN = 'SUPERADMIN',
@@ -42,6 +45,18 @@ export class User {
   })
   @JoinColumn({ name: 'college_id' })
   college?: College;
+
+  // Organization - Multi-tenant support
+  @Column({ name: 'organization_id', nullable: true })
+  organizationId?: number;
+
+  @ManyToOne(() => Organization, (organization) => organization.users, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'organization_id' })
+  organization?: Organization;
+
 
   // Student Profile Fields
   @Column({ name: 'mobile_number', length: 15, nullable: true })

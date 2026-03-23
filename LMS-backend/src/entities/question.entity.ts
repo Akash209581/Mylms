@@ -7,6 +7,8 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { College } from './college.entity';
+import { Organization } from './organization.entity';
+
 
 export enum QuestionType {
   MCQ = 'MCQ',
@@ -113,18 +115,20 @@ export class Question {
   @Column({ name: 'college_id' })
   collegeId: number;
 
-  // Backward-compatible alias for older code paths still using organizationId.
-  get organizationId(): number {
-    return this.collegeId;
-  }
+  // Organization - Multi-tenant support
+  @Column({ name: 'organization_id' })
+  organizationId: number;
 
-  set organizationId(value: number) {
-    this.collegeId = value;
-  }
+  @ManyToOne(() => Organization, (organization) => organization.questions, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'organization_id' })
+  organization: Organization;
 
   @ManyToOne(() => College, (college) => college.questions)
   @JoinColumn({ name: 'college_id' })
   college: College;
+
 
   @CreateDateColumn()
   createdAt: Date;
