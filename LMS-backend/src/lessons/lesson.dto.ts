@@ -38,7 +38,8 @@ export class CreateLessonDto {
   type?: string;
 
   @IsInt()
-  moduleId: number;
+  chapterId: number;
+
 
   @IsInt()
   @Min(0)

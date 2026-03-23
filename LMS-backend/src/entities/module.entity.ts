@@ -3,9 +3,11 @@ import {
   PrimaryGeneratedColumn,
   Column,
   ManyToOne,
+  OneToMany,
   JoinColumn,
 } from 'typeorm';
 import { Course } from './course.entity';
+import { Chapter } from './chapter.entity';
 
 @Entity('modules')
 export class CourseModule {
@@ -25,6 +27,10 @@ export class CourseModule {
   @JoinColumn({ name: 'course_id' })
   course: Course;
 
+  @OneToMany(() => Chapter, (chapter) => chapter.module)
+  chapters: Chapter[];
+
   @Column({ default: 0 })
   order: number;
 }
+

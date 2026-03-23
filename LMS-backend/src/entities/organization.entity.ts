@@ -55,12 +55,13 @@ export class Organization {
   updatedAt: Date;
 
   // Relations
-  @OneToMany(() => User, (user) => user.organization)
+  @OneToMany(() => User, (user: any) => user.organization)
   users: User[];
 
-  @OneToMany(() => Course, (course) => course.organization)
+  @OneToMany(() => Course, (course: any) => course.organization)
   courses: Course[];
 
-  @OneToMany(() => Question, (question) => question.organization)
+  @OneToMany(() => Question, (question: any) => question.organization)
   questions: Question[];
+
 }

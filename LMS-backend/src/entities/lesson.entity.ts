@@ -6,7 +6,7 @@ import {
   JoinColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { CourseModule } from './module.entity';
+import { Chapter } from './chapter.entity';
 
 @Entity('lessons')
 export class Lesson {
@@ -34,12 +34,13 @@ export class Lesson {
   @Column({ default: false })
   published: boolean;
 
-  @Column({ name: 'module_id' })
-  moduleId: number;
+  @Column({ name: 'chapter_id' })
+  chapterId: number;
 
-  @ManyToOne(() => CourseModule, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'module_id' })
-  module: CourseModule;
+  @ManyToOne(() => Chapter, (chapter) => chapter.lessons, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'chapter_id' })
+  chapter: Chapter;
+
 
   @Column({ default: 0 })
   order: number;

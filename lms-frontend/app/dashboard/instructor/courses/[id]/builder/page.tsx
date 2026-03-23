@@ -27,6 +27,14 @@ interface Module {
     courseId: number;
 }
 
+interface Chapter {
+    id: number;
+    title: string;
+    description?: string;
+    order: number;
+    moduleId: number;
+}
+
 interface Lesson {
     id: number;
     title: string;
@@ -36,9 +44,10 @@ interface Lesson {
     duration?: number;
     type: string;
     order: number;
-    moduleId: number;
+    chapterId: number;
     published: boolean;
 }
+
 
 export default function CourseBuilderPage() {
     const params = useParams();
@@ -47,18 +56,27 @@ export default function CourseBuilderPage() {
 
     const [course, setCourse] = useState<Course | null>(null);
     const [modules, setModules] = useState<Module[]>([]);
-    const [lessons, setLessons] = useState<{ [moduleId: number]: Lesson[] }>({});
+    const [chapters, setChapters] = useState<{ [moduleId: number]: Chapter[] }>({});
+    const [lessons, setLessons] = useState<{ [chapterId: number]: Lesson[] }>({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
     // Modal states
     const [showCourseOverviewModal, setShowCourseOverviewModal] = useState(false);
     const [showModuleModal, setShowModuleModal] = useState(false);
+    const [showChapterModal, setShowChapterModal] = useState(false);
     const [showLessonModal, setShowLessonModal] = useState(false);
+
     const [editingModule, setEditingModule] = useState<Module | null>(null);
+    const [editingChapter, setEditingChapter] = useState<Chapter | null>(null);
     const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
+
     const [selectedModuleId, setSelectedModuleId] = useState<number | null>(null);
+    const [selectedChapterId, setSelectedChapterId] = useState<number | null>(null);
+
     const [expandedModules, setExpandedModules] = useState<Set<number>>(new Set());
+    const [expandedChapters, setExpandedChapters] = useState<Set<number>>(new Set());
+
 
     // Form states
     const [courseForm, setCourseForm] = useState({
@@ -73,6 +91,11 @@ export default function CourseBuilderPage() {
         description: '',
     });
 
+    const [chapterForm, setChapterForm] = useState({
+        title: '',
+        description: '',
+    });
+
     const [lessonForm, setLessonForm] = useState({
         title: '',
         description: '',
@@ -81,6 +104,7 @@ export default function CourseBuilderPage() {
         type: 'video',
         published: false,
     });
+
 
     useEffect(() => {
         fetchCourseData();
@@ -104,15 +128,23 @@ export default function CourseBuilderPage() {
             const modulesRes = await api.get(`/modules/course/${courseId}`);
             setModules(modulesRes.data);
 
-            // Fetch lessons for each module
-            const lessonsData: { [key: number]: Lesson[] } = {};
+            const chaptersData: { [key: number]: Chapter[] } = {};
+            const topicsData: { [key: number]: Lesson[] } = {};
+
             for (const module of modulesRes.data) {
-                const lessonsRes = await api.get(`/lessons/module/${module.id}`);
-                lessonsData[module.id] = lessonsRes.data;
+                const chaptersRes = await api.get(`/chapters/module/${module.id}`);
+                chaptersData[module.id] = chaptersRes.data;
+
+                for (const chapter of chaptersRes.data) {
+                    const lessonsRes = await api.get(`/lessons/chapter/${chapter.id}`);
+                    topicsData[chapter.id] = lessonsRes.data;
+                }
             }
-            setLessons(lessonsData);
+            setChapters(chaptersData);
+            setLessons(topicsData);
 
             setLoading(false);
+
         } catch (err: any) {
             console.error('Error fetching course data:', err);
             setError('Failed to load course data');
@@ -173,15 +205,54 @@ export default function CourseBuilderPage() {
         }
     };
 
-    const handleCreateLesson = async () => {
+    const handleCreateChapter = async () => {
         if (!selectedModuleId) return;
+        try {
+            await api.post('/chapters', {
+                ...chapterForm,
+                moduleId: selectedModuleId,
+            });
+            setShowChapterModal(false);
+            setChapterForm({ title: '', description: '' });
+            fetchCourseData();
+        } catch (err: any) {
+            alert('Failed: ' + (err.response?.data?.message || err.message));
+        }
+    };
+
+    const handleUpdateChapter = async () => {
+        if (!editingChapter) return;
+        try {
+            await api.put(`/chapters/${editingChapter.id}`, chapterForm);
+            setShowChapterModal(false);
+            setEditingChapter(null);
+            setChapterForm({ title: '', description: '' });
+            fetchCourseData();
+        } catch (err: any) {
+            alert('Failed: ' + (err.response?.data?.message || err.message));
+        }
+    };
+
+    const handleDeleteChapter = async (id: number) => {
+        if (!confirm('Are you sure?')) return;
+        try {
+            await api.delete(`/chapters/${id}`);
+            fetchCourseData();
+        } catch (err: any) {
+            alert('Failed: ' + (err.response?.data?.message || err.message));
+        }
+    };
+
+    const handleCreateLesson = async () => {
+        if (!selectedChapterId) return;
         
         try {
             await api.post('/lessons', {
                 ...lessonForm,
-                moduleId: selectedModuleId,
+                chapterId: selectedChapterId,
             });
-            alert('Lecture created successfully!');
+            alert('Topic created successfully!');
+
             setShowLessonModal(false);
             setLessonForm({ title: '', description: '', videoUrl: '', duration: 0, type: 'video', published: false });
             fetchCourseData();
@@ -239,6 +310,15 @@ export default function CourseBuilderPage() {
         setShowLessonModal(true);
     };
 
+    const openEditChapterModal = (chapter: Chapter) => {
+        setEditingChapter(chapter);
+        setChapterForm({
+            title: chapter.title,
+            description: chapter.description || '',
+        });
+        setShowChapterModal(true);
+    };
+
     const toggleModuleExpand = (moduleId: number) => {
         const newExpanded = new Set(expandedModules);
         if (newExpanded.has(moduleId)) {
@@ -248,6 +328,18 @@ export default function CourseBuilderPage() {
         }
         setExpandedModules(newExpanded);
     };
+
+    const toggleChapterExpand = (chapterId: number) => {
+
+        const newExpanded = new Set(expandedChapters);
+        if (newExpanded.has(chapterId)) {
+            newExpanded.delete(chapterId);
+        } else {
+            newExpanded.add(chapterId);
+        }
+        setExpandedChapters(newExpanded);
+    };
+
 
     if (loading) {
         return (
@@ -342,43 +434,44 @@ export default function CourseBuilderPage() {
                         }}
                         className="btn-success px-6 py-3"
                     >
-                        ➕ Add New Section
+                        ➕ Add New Module
                     </button>
+
                 </div>
 
                 {modules.length === 0 ? (
                     <div className="glass-card p-12 text-center">
-                        <p className="text-gray-400 text-lg mb-4">No sections yet. Add your first section to start building your course!</p>
+                        <p className="text-gray-400 text-lg mb-4">No modules yet. Add your first module to start building your course!</p>
                     </div>
                 ) : (
                     <div className="space-y-4">
                         {modules.map((module, index) => (
-                            <div key={module.id} className="glass-card p-6">
+                            <div key={module.id} className="glass-card p-6 border-l-4 border-purple-500">
                                 {/* Module Header */}
                                 <div className="flex justify-between items-start mb-4">
                                     <div className="flex-1 cursor-pointer" onClick={() => toggleModuleExpand(module.id)}>
                                         <h3 className="text-xl font-bold text-white flex items-center gap-3">
-                                            <span className="text-purple-400">Section {index + 1}:</span>
+                                            <span className="text-purple-400">Module {index + 1}:</span>
                                             {module.title}
                                             <span className="text-[var(--text-secondary)] text-sm">
                                                 {expandedModules.has(module.id) ? '▼' : '▶'}
                                             </span>
                                         </h3>
                                         {module.description && (
-                                            <p className="text-gray-400 mt-2">{module.description}</p>
+                                            <p className="text-gray-400 mt-1">{module.description}</p>
                                         )}
                                     </div>
                                     <div className="flex gap-2">
                                         <button
                                             onClick={() => {
                                                 setSelectedModuleId(module.id);
-                                                setEditingLesson(null);
-                                                setLessonForm({ title: '', description: '', videoUrl: '', duration: 0, type: 'video', published: false });
-                                                setShowLessonModal(true);
+                                                setEditingChapter(null);
+                                                setChapterForm({ title: '', description: '' });
+                                                setShowChapterModal(true);
                                             }}
                                             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm"
                                         >
-                                            ➕ Add Lecture
+                                            ➕ Add Chapter
                                         </button>
                                         <button
                                             onClick={() => openEditModuleModal(module)}
@@ -395,73 +488,69 @@ export default function CourseBuilderPage() {
                                     </div>
                                 </div>
 
-                                {/* Lessons List */}
+                                {/* Chapters List */}
                                 {expandedModules.has(module.id) && (
-                                    <div className="mt-4 ml-6 space-y-3">
-                                        {lessons[module.id]?.length > 0 ? (
-                                            lessons[module.id].map((lesson, lessonIndex) => (
-                                                <div
-                                                    key={lesson.id}
-                                                    className="bg-slate-800/50 p-4 rounded-lg flex justify-between items-start"
-                                                >
-                                                    <div className="flex-1">
-                                                        <div className="flex items-center gap-3">
-                                                            <span className="text-[var(--text-secondary)] font-semibold">
-                                                                {index + 1}.{lessonIndex + 1}
-                                                            </span>
-                                                            <h4 className="text-white font-semibold">{lesson.title}</h4>
-                                                            <span className={`px-2 py-1 rounded text-xs ${
-                                                                lesson.published
-                                                                    ? 'bg-green-500/20 text-green-400'
-                                                                    : 'bg-gray-500/20 text-gray-400'
-                                                            }`}>
-                                                                {lesson.published ? '✓ Published' : 'Draft'}
-                                                            </span>
-                                                            <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-xs">
-                                                                {lesson.type}
-                                                            </span>
-                                                            {lesson.duration && (
-                                                                <span className="text-[var(--text-secondary)] text-sm">
-                                                                    ⏱️ {lesson.duration} min
+                                    <div className="mt-4 ml-6 space-y-4">
+                                        {chapters[module.id]?.length > 0 ? (
+                                            chapters[module.id].map((chapter, chapterIndex) => (
+                                                <div key={chapter.id} className="bg-slate-800/30 p-4 rounded-xl border border-slate-700/50">
+                                                    <div className="flex justify-between items-center mb-2">
+                                                        <div className="flex-1 cursor-pointer" onClick={() => toggleChapterExpand(chapter.id)}>
+                                                            <h4 className="text-lg font-semibold text-white flex items-center gap-2">
+                                                                <span className="text-blue-400">Chapter {index + 1}.{chapterIndex + 1}:</span>
+                                                                {chapter.title}
+                                                                <span className="text-xs text-gray-400">
+                                                                    {expandedChapters.has(chapter.id) ? '▼' : '▶'}
                                                                 </span>
+                                                            </h4>
+                                                        </div>
+                                                        <div className="flex gap-2">
+                                                            <button 
+                                                                onClick={() => {
+                                                                    setSelectedChapterId(chapter.id);
+                                                                    setEditingLesson(null);
+                                                                    setLessonForm({ title: '', description: '', videoUrl: '', duration: 0, type: 'video', published: false });
+                                                                    setShowLessonModal(true);
+                                                                }}
+                                                                className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-xs"
+                                                            >
+                                                                ➕ Topic
+                                                            </button>
+                                                            <button onClick={() => openEditChapterModal(chapter)} className="p-1 hover:text-purple-400">✏️</button>
+                                                            <button onClick={() => handleDeleteChapter(chapter.id)} className="p-1 hover:text-red-400">🗑️</button>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Topics (Lessons) List */}
+                                                    {expandedChapters.has(chapter.id) && (
+                                                        <div className="mt-3 ml-4 space-y-2">
+                                                            {lessons[chapter.id]?.length > 0 ? (
+                                                                lessons[chapter.id].map((lesson, lessonIndex) => (
+                                                                    <div
+                                                                        key={lesson.id}
+                                                                        className="bg-slate-900/40 p-3 rounded-lg flex justify-between items-center group"
+                                                                    >
+                                                                        <div className="flex items-center gap-3">
+                                                                            <span className="text-gray-500 text-xs">{index+1}.{chapterIndex+1}.{lessonIndex+1}</span>
+                                                                            <h5 className="text-gray-200 font-medium text-sm">{lesson.title}</h5>
+                                                                            <span className="text-[10px] px-1.5 py-0.5 bg-blue-500/10 text-blue-400 rounded uppercase">{lesson.type}</span>
+                                                                        </div>
+                                                                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                            <button onClick={() => router.push(`/dashboard/instructor/edit-lesson/${lesson.id}`)} className="text-xs text-purple-400 hover:underline">Content</button>
+                                                                            <button onClick={() => openEditLessonModal(lesson)} className="text-gray-400 hover:text-white">✏️</button>
+                                                                            <button onClick={() => handleDeleteLesson(lesson.id)} className="text-gray-400 hover:text-red-400">🗑️</button>
+                                                                        </div>
+                                                                    </div>
+                                                                ))
+                                                            ) : (
+                                                                <p className="text-gray-500 text-xs italic">No topics.</p>
                                                             )}
                                                         </div>
-                                                        {lesson.description && (
-                                                            <p className="text-gray-400 text-sm mt-2 ml-10">{lesson.description}</p>
-                                                        )}
-                                                        {lesson.videoUrl && (
-                                                            <p className="text-purple-400 text-sm mt-1 ml-10">
-                                                                🎥 {lesson.videoUrl}
-                                                            </p>
-                                                        )}
-                                                    </div>
-                                                    <div className="flex gap-2 ml-4">
-                                                        <button
-                                                            onClick={() => router.push(`/dashboard/instructor/edit-lesson/${lesson.id}`)}
-                                                            className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-sm font-medium"
-                                                            title="Open markdown content editor"
-                                                        >
-                                                            ✍️ Content
-                                                        </button>
-                                                        <button
-                                                            onClick={() => openEditLessonModal(lesson)}
-                                                            className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-sm"
-                                                        >
-                                                            ✏️
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleDeleteLesson(lesson.id)}
-                                                            className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-sm"
-                                                        >
-                                                            🗑️
-                                                        </button>
-                                                    </div>
+                                                    )}
                                                 </div>
                                             ))
                                         ) : (
-                                            <div className="text-[var(--text-secondary)] text-sm italic">
-                                                No lectures yet. Click "Add Lecture" to create one.
-                                            </div>
+                                            <div className="text-gray-500 text-sm italic">No chapters. Add one to start adding topics.</div>
                                         )}
                                     </div>
                                 )}
@@ -469,6 +558,7 @@ export default function CourseBuilderPage() {
                         ))}
                     </div>
                 )}
+
             </div>
 
             {/* Course Overview Modal */}
@@ -560,7 +650,7 @@ export default function CourseBuilderPage() {
                         <div className="space-y-4">
                             <div>
                                 <label className="block text-[var(--text-primary)] font-medium mb-2">
-                                    Section Title <span className="text-red-600">*</span>
+                                    Module Title <span className="text-red-600">*</span>
                                 </label>
                                 <input
                                     type="text"
@@ -573,14 +663,14 @@ export default function CourseBuilderPage() {
 
                             <div>
                                 <label className="block text-[var(--text-primary)] font-medium mb-2">
-                                    Section Description
+                                    Module Description
                                 </label>
                                 <textarea
                                     value={moduleForm.description}
                                     onChange={(e) => setModuleForm({ ...moduleForm, description: e.target.value })}
                                     rows={4}
                                     className="input-field w-full resize-none"
-                                    placeholder="Brief description of what this section covers..."
+                                    placeholder="Brief description of what this module covers..."
                                 />
                             </div>
                         </div>
@@ -590,8 +680,9 @@ export default function CourseBuilderPage() {
                                 onClick={editingModule ? handleUpdateModule : handleCreateModule}
                                 className="btn-success flex-1 py-3"
                             >
-                                {editingModule ? '💾 Update Section' : '➕ Create Section'}
+                                {editingModule ? '💾 Update Module' : '➕ Create Module'}
                             </button>
+
                             <button
                                 onClick={() => {
                                     setShowModuleModal(false);
@@ -607,18 +698,77 @@ export default function CourseBuilderPage() {
                 </div>
             )}
 
-            {/* Lesson Modal */}
-            {showLessonModal && (
+            {/* Chapter Modal */}
+            {showChapterModal && (
                 <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-[var(--bg-surface)] border-2 border-purple-500/30 rounded-2xl p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+                    <div className="bg-[var(--bg-surface)] border-2 border-blue-500/30 rounded-2xl p-8 max-w-2xl w-full">
                         <h2 className="text-3xl font-bold text-[var(--text-primary)] mb-6">
-                            {editingLesson ? 'Edit Lecture' : 'Add New Lecture'}
+                            {editingChapter ? 'Edit Chapter' : 'Add New Chapter'}
                         </h2>
                         
                         <div className="space-y-4">
                             <div>
                                 <label className="block text-[var(--text-primary)] font-medium mb-2">
-                                    Lecture Title <span className="text-red-600">*</span>
+                                    Chapter Title <span className="text-red-600">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={chapterForm.title}
+                                    onChange={(e) => setChapterForm({ ...chapterForm, title: e.target.value })}
+                                    className="input-field w-full"
+                                    placeholder="e.g., Components and Props"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-[var(--text-primary)] font-medium mb-2">
+                                    Chapter Description
+                                </label>
+                                <textarea
+                                    value={chapterForm.description}
+                                    onChange={(e) => setChapterForm({ ...chapterForm, description: e.target.value })}
+                                    rows={4}
+                                    className="input-field w-full resize-none"
+                                    placeholder="Brief description..."
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex gap-4 mt-8">
+                            <button
+                                onClick={editingChapter ? handleUpdateChapter : handleCreateChapter}
+                                className="btn-success flex-1 py-3"
+                            >
+                                {editingChapter ? '💾 Update Chapter' : '➕ Create Chapter'}
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setShowChapterModal(false);
+                                    setEditingChapter(null);
+                                    setChapterForm({ title: '', description: '' });
+                                }}
+                                className="btn-danger flex-1 py-3"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Lesson Modal */}
+            {showLessonModal && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-[var(--bg-surface)] border-2 border-purple-500/30 rounded-2xl p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+                        <h2 className="text-3xl font-bold text-[var(--text-primary)] mb-6">
+                            {editingLesson ? 'Edit Topic' : 'Add New Topic'}
+                        </h2>
+
+                        
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-[var(--text-primary)] font-medium mb-2">
+                                    Topic Title <span className="text-red-600">*</span>
                                 </label>
                                 <input
                                     type="text"
@@ -631,16 +781,17 @@ export default function CourseBuilderPage() {
 
                             <div>
                                 <label className="block text-[var(--text-primary)] font-medium mb-2">
-                                    Lecture Description
+                                    Topic Description
                                 </label>
                                 <textarea
                                     value={lessonForm.description}
                                     onChange={(e) => setLessonForm({ ...lessonForm, description: e.target.value })}
                                     rows={4}
                                     className="input-field w-full resize-none"
-                                    placeholder="What will students learn in this lecture?"
+                                    placeholder="What will students learn in this topic?"
                                 />
                             </div>
+
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
@@ -706,7 +857,7 @@ export default function CourseBuilderPage() {
                                 onClick={editingLesson ? handleUpdateLesson : handleCreateLesson}
                                 className="btn-success flex-1 py-3"
                             >
-                                {editingLesson ? '💾 Update Lecture' : '➕ Create Lecture'}
+                                {editingLesson ? '💾 Update Topic' : '➕ Create Topic'}
                             </button>
                             <button
                                 onClick={() => {
@@ -719,6 +870,7 @@ export default function CourseBuilderPage() {
                                 Cancel
                             </button>
                         </div>
+
                     </div>
                 </div>
             )}

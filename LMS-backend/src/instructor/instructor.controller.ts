@@ -63,12 +63,20 @@ export class InstructorController {
   async getDashboard(@Request() req: any) {
     const courses = await this.getInstructorCoursesQueryBuilder(req).getMany();
 
-    const courseIds = courses.map((c) => c.id);
-    const totalStudents = courseIds.length
-      ? await this.enrollRepo.count({
-        where: courseIds.map((id) => ({ courseId: id })) as any,
-      })
+    // Count college students (consistent with My Students page)
+    const collegeId = req.user?.collegeId;
+    const isSuperAdmin = req.user?.role === UserRole.SUPERADMIN;
+    
+    const totalStudents = (collegeId || isSuperAdmin)
+      ? await this.userRepo.count({
+          where: {
+            ...(isSuperAdmin ? {} : { collegeId }),
+            role: UserRole.STUDENT,
+          },
+        })
       : 0;
+
+
 
     // Count by status
     const pendingCourses = courses.filter(
@@ -134,13 +142,16 @@ export class InstructorController {
   @Get('students')
   async getStudents(@Request() req: any) {
     const collegeId = req.user?.collegeId;
+    const isSuperAdmin = req.user?.role === UserRole.SUPERADMIN;
 
     // INSTRUCTOR can only see STUDENTS from their college
+    // SUPERADMIN can see all students
     return this.userRepo.find({
       where: {
-        collegeId,
+        ...(isSuperAdmin ? {} : { collegeId }),
         role: UserRole.STUDENT,
       },
+
       select: ['id', 'name', 'email', 'role', 'collegeId', 'collegeName', 'isActive', 'lastLoginAt', 'createdAt'],
       order: { createdAt: 'DESC' },
     });

@@ -28,7 +28,8 @@ import { DailyStreak } from './entities/daily-streak.entity';
 import { College } from './entities/college.entity';
 import { Organization } from './entities/organization.entity';
 import { OrganizationModule } from './organization/organization.module';
-
+import { Chapter } from './entities/chapter.entity';
+import { ChaptersModule } from './chapters/chapters.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { OrganizationModule } from './organization/organization.module';
         User,
         Course,
         CourseModule,
+        Chapter,
         Lesson,
         Resource,
         Enrollment,
@@ -54,10 +56,10 @@ import { OrganizationModule } from './organization/organization.module';
         Organization,
       ],
 
-      // Using manual migrations for schema changes
-      // Auto-sync disabled to prevent conflicts with existing data
+      // Set to false to prevent accidental data loss in dev
       synchronize: false,
       logging: false,
+
     }),
     AuthModule,
     UsersModule,
@@ -71,9 +73,11 @@ import { OrganizationModule } from './organization/organization.module';
     ContestModule,
     DailyStreakModule,
     ModulesModule,
+    ChaptersModule,
     LessonsModule,
     OrganizationModule,
   ],
+
 
   providers: [KeepAliveService],
   exports: [],

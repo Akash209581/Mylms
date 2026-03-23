@@ -197,7 +197,8 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
                         <div className="mt-4">
                             <label className="text-gray-400 text-sm mb-2 block">Question Text *</label>
                             <textarea value={form.questionText} onChange={e => set('questionText', e.target.value)}
-                                rows={3} placeholder="Enter the question..." className="input-field resize-none" />
+                                rows={5} placeholder="Enter the question..." className="input-field" />
+
                         </div>
                     </div>
 
@@ -320,15 +321,17 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
                                 </div>
                             </div>
                             {[
-                                ['problemStatement', 'Problem Statement', 4],
-                                ['inputFormat', 'Input Format', 3],
-                                ['outputFormat', 'Output Format', 3],
-                                ['constraints', 'Constraints', 2],
+                                ['problemStatement', 'Problem Statement', 8],
+                                ['inputFormat', 'Input Format', 4],
+                                ['outputFormat', 'Output Format', 4],
+                                ['constraints', 'Constraints', 10],
                             ].map(([key, label, rows]: any) => (
+
                                 <div key={key}>
                                     <label className="text-gray-400 text-sm mb-2 block">{label}</label>
                                     <textarea value={form[key]} onChange={e => set(key, e.target.value)}
-                                        rows={rows} placeholder={label} className="input-field resize-none font-mono text-sm" />
+                                        rows={rows} placeholder={label} className="input-field font-mono text-sm" />
+
                                 </div>
                             ))}
                             <div>
@@ -340,9 +343,10 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
                                         </div>
                                         <div className="grid grid-cols-2 gap-3">
                                             <textarea value={tc.input} onChange={e => { const tcs = [...form.testCases]; tcs[i].input = e.target.value; set('testCases', tcs) }}
-                                                rows={2} placeholder="Input" className="input-field resize-none font-mono text-sm" />
+                                                rows={4} placeholder="Input" className="input-field font-mono text-sm" />
                                             <textarea value={tc.output} onChange={e => { const tcs = [...form.testCases]; tcs[i].output = e.target.value; set('testCases', tcs) }}
-                                                rows={2} placeholder="Expected Output" className="input-field resize-none font-mono text-sm" />
+                                                rows={4} placeholder="Expected Output" className="input-field font-mono text-sm" />
+
                                         </div>
                                         <input value={tc.explanation} onChange={e => { const tcs = [...form.testCases]; tcs[i].explanation = e.target.value; set('testCases', tcs) }}
                                             placeholder="Explanation (optional)" className="input-field mt-2 text-sm" />

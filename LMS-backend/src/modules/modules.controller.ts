@@ -37,7 +37,7 @@ export class ModulesController {
   ) { }
 
   @Post()
-  @Roles(UserRole.INSTRUCTOR)
+  @Roles(UserRole.INSTRUCTOR, UserRole.SUPERADMIN)
   async create(@Body() dto: CreateModuleDto, @Req() req: any) {
     console.log('📚 Creating module:', dto);
     console.log('👤 Logged-in user ID:', req.user.sub);
@@ -108,7 +108,7 @@ export class ModulesController {
   }
 
   @Put(':id')
-  @Roles(UserRole.INSTRUCTOR)
+  @Roles(UserRole.INSTRUCTOR, UserRole.SUPERADMIN)
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateModuleDto,
@@ -142,7 +142,7 @@ export class ModulesController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.INSTRUCTOR)
+  @Roles(UserRole.INSTRUCTOR, UserRole.SUPERADMIN)
   async delete(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
     const module = await this.moduleRepository.findOne({
       where: { id },
@@ -172,7 +172,7 @@ export class ModulesController {
   }
 
   @Post('reorder')
-  @Roles(UserRole.INSTRUCTOR)
+  @Roles(UserRole.INSTRUCTOR, UserRole.SUPERADMIN)
   async reorder(@Body() dto: ReorderModulesDto, @Req() req: any) {
     const modules = await this.moduleRepository.findBy({ id: In(dto.moduleIds) });
 
@@ -181,13 +181,16 @@ export class ModulesController {
       id: In(modules.map((m) => m.courseId)),
     });
 
-    const allOwned = courses.every((c) => c.instructorId === req.user.sub);
-    if (!allOwned) {
-      throw new HttpException(
-        'You can only reorder modules in your own courses',
-        HttpStatus.FORBIDDEN,
-      );
+    if (req.user.role !== UserRole.SUPERADMIN) {
+      const allOwned = courses.every((c) => c.instructorId === req.user.sub);
+      if (!allOwned) {
+        throw new HttpException(
+          'You can only reorder modules in your own courses',
+          HttpStatus.FORBIDDEN,
+        );
+      }
     }
+
 
     // Update order
     for (let i = 0; i < dto.moduleIds.length; i++) {

@@ -8,10 +8,13 @@ import {
   JoinColumn,
   ManyToMany,
   JoinTable,
+  OneToMany,
 } from 'typeorm';
 import { User } from './user.entity';
 import { College } from './college.entity';
 import { Organization } from './organization.entity';
+import { CourseModule } from './module.entity';
+
 
 
 export enum CourseStatus {
@@ -96,7 +99,11 @@ export class Course {
   })
   assignedColleges: College[];
 
+  @OneToMany(() => CourseModule, (m) => m.course)
+  modules: CourseModule[];
+
   @Column({ default: true })
+
   published: boolean;
 
   @Column({

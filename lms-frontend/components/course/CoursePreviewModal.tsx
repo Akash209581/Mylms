@@ -67,8 +67,13 @@ export default function CoursePreviewModal({ courseId, isOpen, onClose }: Course
     if (!isOpen) return null
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 md:p-8">
-            <div className="bg-[var(--bg-surface)] w-full max-w-6xl h-full rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-scale-up">
+        <div 
+            className="fixed inset-0 z-[9999] flex items-center justify-center modal-backdrop p-4 md:p-8 animate-fade-in"
+            onClick={(e) => {
+                if (e.target === e.currentTarget) onClose()
+            }}
+        >
+            <div className="bg-[var(--bg-surface)] w-full max-w-6xl h-full rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-scale-up border border-[var(--border-strong)]">
 
                 {/* Modal Header */}
                 <div className="h-16 border-b border-[var(--border)] flex items-center justify-between px-6 bg-[var(--bg-raised)] shrink-0">

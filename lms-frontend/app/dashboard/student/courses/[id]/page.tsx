@@ -26,13 +26,23 @@ interface Lesson {
     resources?: Resource[]
 }
 
-interface Module {
+interface Chapter {
+
     id: number
     title: string
     description?: string
     order: number
     lessons: Lesson[]
 }
+
+interface Module {
+    id: number
+    title: string
+    description?: string
+    order: number
+    chapters: Chapter[]
+}
+
 
 interface Course {
     id: number
@@ -209,10 +219,17 @@ export default function StudentCourseDetailsPage() {
         )
     }
 
-    const totalLectures = course.modules?.reduce((acc, m) => acc + m.lessons.length, 0) || 0
-    const totalDuration = course.modules?.reduce((acc, m) => 
-        acc + m.lessons.reduce((sum, l) => sum + (l.duration || 0), 0), 0
+    const totalChapters = course.modules?.reduce((acc, m) => acc + (m.chapters?.length || 0), 0) || 0
+    const totalLectures = course.modules?.reduce((acc, m) => 
+        acc + (m.chapters?.reduce((accChapter, c) => accChapter + (c.lessons?.length || 0), 0) || 0), 0
     ) || 0
+    
+    const totalDuration = course.modules?.reduce((acc, m) => 
+        acc + (m.chapters?.reduce((accChapter, c) => 
+            accChapter + (c.lessons?.reduce((sum, l) => sum + (l.duration || 0), 0) || 0), 0
+        ) || 0), 0
+    ) || 0
+
 
     return (
         <div className="min-h-screen bg-mesh">
@@ -404,7 +421,7 @@ export default function StudentCourseDetailsPage() {
                                                     </span>
                                                     <div>
                                                         <p className="text-white font-semibold text-lg">
-                                                            Section {moduleIndex + 1}: {module.title}
+                                                            Module {moduleIndex + 1}: {module.title}
                                                         </p>
                                                         {module.description && (
                                                             <p className="text-gray-400 text-sm mt-1">
@@ -412,8 +429,9 @@ export default function StudentCourseDetailsPage() {
                                                             </p>
                                                         )}
                                                         <p className="text-[var(--text-secondary)] text-xs mt-1">
-                                                            {module.lessons.length} lecture{module.lessons.length !== 1 ? 's' : ''}
+                                                            {module.chapters?.length || 0} chapters
                                                         </p>
+
                                                     </div>
                                                 </div>
                                                 <span className="text-gray-400">
@@ -421,91 +439,100 @@ export default function StudentCourseDetailsPage() {
                                                 </span>
                                             </button>
 
-                                            {/* Lessons */}
+                                            {/* Chapters */}
                                             {expandedModules.has(module.id) && (
-                                                <div className="p-4 space-y-3 bg-black/20">
-                                                    {module.lessons.map((lesson, lessonIndex) => (
-                                                        <div key={lesson.id} className="p-4 bg-[var(--bg-surface)]/5 rounded-lg hover:bg-[var(--bg-surface)]/10 transition-colors">
-                                                            {/* Lesson Header */}
-                                                            <div className="flex items-start justify-between gap-4">
-                                                                <div className="flex items-start gap-3 flex-1">
-                                                                    <span className="text-xl mt-1">
-                                                                        {typeIcons[lesson.type] || '📄'}
-                                                                    </span>
-                                                                    <div className="flex-1">
-                                                                        <p className="text-white font-medium">
-                                                                            {moduleIndex + 1}.{lessonIndex + 1} {lesson.title}
-                                                                        </p>
-                                                                        {lesson.description && (
-                                                                            <p className="text-gray-400 text-sm mt-1">
-                                                                                {lesson.description}
-                                                                            </p>
-                                                                        )}
-                                                                        
-                                                                        {/* Video URL */}
-                                                                        {lesson.videoUrl && (
-                                                                            <div className="mt-2">
-                                                                                <a 
-                                                                                    href={lesson.videoUrl}
-                                                                                    target="_blank"
-                                                                                    rel="noopener noreferrer"
-                                                                                    className="text-blue-400 hover:text-blue-300 text-sm flex items-center gap-1"
-                                                                                >
-                                                                                    <span>🎬</span> Watch Video
-                                                                                </a>
-                                                                            </div>
-                                                                        )}
-
-                                                                        {/* Resources */}
-                                                                        {lesson.resources && lesson.resources.length > 0 && (
-                                                                            <div className="mt-3 space-y-1">
-                                                                                <p className="text-gray-400 text-xs font-semibold">
-                                                                                    📎 Resources:
-                                                                                </p>
-                                                                                {lesson.resources.map((resource) => (
-                                                                                    <a
-                                                                                        key={resource.id}
-                                                                                        href={resource.fileUrl}
-                                                                                        target="_blank"
-                                                                                        rel="noopener noreferrer"
-                                                                                        className="flex items-center gap-2 text-purple-400 hover:text-purple-300 text-sm"
-                                                                                    >
-                                                                                        <span>📥</span>
-                                                                                        <span>{resource.title}</span>
-                                                                                        {resource.fileSize && (
-                                                                                            <span className="text-[var(--text-secondary)] text-xs">
-                                                                                                ({formatFileSize(resource.fileSize)})
-                                                                                            </span>
-                                                                                        )}
-                                                                                    </a>
-                                                                                ))}
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-                                                                </div>
-
-                                                                {/* Lesson Duration */}
-                                                                {lesson.duration && (
-                                                                    <div className="text-gray-400 text-sm whitespace-nowrap">
-                                                                        {formatDuration(lesson.duration)}
-                                                                    </div>
-                                                                )}
-                                                            </div>
-
-                                                            {/* Lesson Type Badge */}
-                                                            <div className="mt-2 flex gap-2">
-                                                                <span className="badge bg-blue-500/20 text-blue-400 border-blue-500/30 text-xs">
-                                                                    {lesson.type}
+                                                <div className="p-4 space-y-4 bg-black/20">
+                                                    {module.chapters?.map((chapter, chapterIndex) => (
+                                                        <div key={chapter.id} className="border border-white/5 rounded-lg overflow-hidden">
+                                                            <div className="bg-white/5 p-3 flex justify-between items-center">
+                                                                <h4 className="text-purple-400 font-medium text-sm">
+                                                                    Chapter {moduleIndex+1}.{chapterIndex+1}: {chapter.title}
+                                                                </h4>
+                                                                <span className="text-[10px] text-gray-500 uppercase">
+                                                                    {chapter.lessons?.length || 0} topics
                                                                 </span>
-                                                                {lesson.published ? (
-                                                                    <span className="badge bg-green-500/20 text-green-400 border-green-500/30 text-xs">
-                                                                        Published
-                                                                    </span>
-                                                                ) : (
-                                                                    <span className="badge bg-gray-500/20 text-gray-400 border-gray-500/30 text-xs">
-                                                                        Draft
-                                                                    </span>
-                                                                )}
+                                                            </div>
+                                                            <div className="p-2 space-y-2">
+                                                                {chapter.lessons?.map((lesson, lessonIndex) => (
+                                                                    <div key={lesson.id} className="p-3 bg-[var(--bg-surface)]/5 rounded-lg hover:bg-[var(--bg-surface)]/10 transition-colors">
+                                                                        {/* Lesson Header */}
+                                                                        <div className="flex items-start justify-between gap-4">
+                                                                            <div className="flex items-start gap-3 flex-1">
+                                                                                <span className="text-base mt-0.5">
+                                                                                    {typeIcons[lesson.type] || '📄'}
+                                                                                </span>
+                                                                                <div className="flex-1">
+                                                                                    <p className="text-white font-medium text-sm">
+                                                                                        {moduleIndex + 1}.{chapterIndex+1}.{lessonIndex + 1} {lesson.title}
+                                                                                    </p>
+                                                                                    
+                                                                                    {/* Video URL */}
+                                                                                    {lesson.videoUrl && (
+                                                                                        <div className="mt-1">
+                                                                                            <a 
+                                                                                                href={lesson.videoUrl}
+                                                                                                target="_blank"
+                                                                                                rel="noopener noreferrer"
+                                                                                                className="text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1"
+                                                                                            >
+                                                                                                <span>🎬</span> Watch Video
+                                                                                            </a>
+                                                                                        </div>
+                                                                                    )}
+
+                                                                                    {/* Resources */}
+                                                                                    {lesson.resources && lesson.resources.length > 0 && (
+                                                                                        <div className="mt-3 space-y-1">
+                                                                                            <p className="text-gray-400 text-xs font-semibold">
+                                                                                                📎 Resources:
+                                                                                            </p>
+                                                                                            {lesson.resources.map((resource) => (
+                                                                                                <a
+                                                                                                    key={resource.id}
+                                                                                                    href={resource.fileUrl}
+                                                                                                    target="_blank"
+                                                                                                    rel="noopener noreferrer"
+                                                                                                    className="flex items-center gap-2 text-purple-400 hover:text-purple-300 text-sm"
+                                                                                                >
+                                                                                                    <span>📥</span>
+                                                                                                    <span>{resource.title}</span>
+                                                                                                    {resource.fileSize && (
+                                                                                                        <span className="text-[var(--text-secondary)] text-xs">
+                                                                                                            ({formatFileSize(resource.fileSize)})
+                                                                                                        </span>
+                                                                                                    )}
+                                                                                                </a>
+                                                                                            ))}
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+                                                                            </div>
+
+                                                                            {/* Lesson Duration */}
+                                                                            {lesson.duration && (
+                                                                                <div className="text-gray-400 text-xs whitespace-nowrap">
+                                                                                    {formatDuration(lesson.duration)}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+
+                                                                        {/* Lesson Type Badge */}
+                                                                        <div className="mt-2 flex gap-2">
+                                                                            <span className="badge bg-blue-500/20 text-blue-400 border-blue-500/30 text-xs">
+                                                                                {lesson.type}
+                                                                            </span>
+                                                                            {lesson.published ? (
+                                                                                <span className="badge bg-green-500/20 text-green-400 border-green-500/30 text-xs">
+                                                                                    Published
+                                                                                </span>
+                                                                            ) : (
+                                                                                <span className="badge bg-gray-500/20 text-gray-400 border-gray-500/30 text-xs">
+                                                                                    Draft
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
                                                             </div>
                                                         </div>
                                                     ))}

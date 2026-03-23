@@ -24,8 +24,10 @@ import { NotificationService } from '../common/notification.service';
 import { CollegeFilterService } from '../common/college-filter.service';
 import { CreateCourseDto, UpdateCourseDto, AssignCourseDto } from './courses.dto';
 import { CourseModule } from '../entities/module.entity';
+import { Chapter } from '../entities/chapter.entity';
 import { Lesson } from '../entities/lesson.entity';
 import { Resource } from '../entities/resource.entity';
+
 
 @Controller('courses')
 export class CoursesController {
@@ -36,6 +38,8 @@ export class CoursesController {
     private userRepo: Repository<User>,
     @InjectRepository(CourseModule)
     private moduleRepo: Repository<CourseModule>,
+    @InjectRepository(Chapter)
+    private chapterRepo: Repository<Chapter>,
     @InjectRepository(Lesson)
     private lessonRepo: Repository<Lesson>,
     @InjectRepository(Resource)
@@ -43,6 +47,7 @@ export class CoursesController {
     private notificationService: NotificationService,
     private collegeFilterService: CollegeFilterService,
   ) {}
+
 
   @UseGuards(JwtAuthGuard)
   @Get()
@@ -195,9 +200,15 @@ export class CoursesController {
         const modules = await this.moduleRepo.find({
           where: { courseId: course.id },
         });
-        const lessonCount = await this.lessonRepo.count({
+        const chapters = await this.chapterRepo.find({
           where: { moduleId: In(modules.map((m) => m.id)) },
         });
+        const lessonCount = chapters.length > 0 
+          ? await this.lessonRepo.count({
+              where: { chapterId: In(chapters.map((c) => c.id)) },
+            })
+          : 0;
+
 
         return {
           ...course,
@@ -302,45 +313,60 @@ export class CoursesController {
   }
 
   private async getCourseWithStructure(course: Course) {
-    // Fetch modules with lessons and resources
+    // Fetch modules
     const modules = await this.moduleRepo.find({
       where: { courseId: course.id },
       order: { order: 'ASC' },
     });
 
-    const modulesWithLessons = await Promise.all(
+    const modulesWithChapters = await Promise.all(
       modules.map(async (module) => {
-        const lessons = await this.lessonRepo.find({
+        const chapters = await this.chapterRepo.find({
           where: { moduleId: module.id },
           order: { order: 'ASC' },
         });
 
-        const lessonsWithResources = await Promise.all(
-          lessons.map(async (lesson) => {
-            const resources = await this.resourceRepo.find({
-              where: { lessonId: lesson.id },
-              order: { createdAt: 'ASC' },
+        const chaptersWithLessons = await Promise.all(
+          chapters.map(async (chapter) => {
+            const lessons = await this.lessonRepo.find({
+              where: { chapterId: chapter.id },
+              order: { order: 'ASC' },
             });
 
+            const lessonsWithResources = await Promise.all(
+              lessons.map(async (lesson) => {
+                const resources = await this.resourceRepo.find({
+                  where: { lessonId: lesson.id },
+                  order: { createdAt: 'ASC' },
+                });
+
+                return {
+                  ...lesson,
+                  resources,
+                };
+              }),
+            );
+
             return {
-              ...lesson,
-              resources,
+              ...chapter,
+              lessons: lessonsWithResources,
             };
           }),
         );
 
         return {
           ...module,
-          lessons: lessonsWithResources,
+          chapters: chaptersWithLessons,
         };
       }),
     );
 
     return {
       ...course,
-      modules: modulesWithLessons,
+      modules: modulesWithChapters,
     };
   }
+
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN)
