@@ -195,9 +195,11 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
                         </div>
 
                         <div className="mt-4">
-                            <label className="text-gray-400 text-sm mb-2 block">Question Text *</label>
-                            <textarea value={form.questionText} onChange={e => set('questionText', e.target.value)}
-                                rows={5} placeholder="Enter the question..." className="input-field" />
+                            <label className="text-gray-400 text-sm mb-2 block">Question Title *</label>
+                            <textarea value={form.questionText} 
+                                onChange={e => set('questionText', e.target.value)}
+                                onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
+                                rows={5} placeholder="Enter the question title..." className="input-field" />
 
                         </div>
                     </div>
@@ -321,15 +323,17 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
                                 </div>
                             </div>
                             {[
-                                ['problemStatement', 'Problem Statement', 8],
+                                ['problemStatement', 'Problem Statement', 5],
                                 ['inputFormat', 'Input Format', 4],
                                 ['outputFormat', 'Output Format', 4],
-                                ['constraints', 'Constraints', 10],
+                                ['constraints', 'Constraints', 4],
                             ].map(([key, label, rows]: any) => (
 
                                 <div key={key}>
                                     <label className="text-gray-400 text-sm mb-2 block">{label}</label>
-                                    <textarea value={form[key]} onChange={e => set(key, e.target.value)}
+                                    <textarea value={form[key]} 
+                                        onChange={e => set(key, e.target.value)}
+                                        onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
                                         rows={rows} placeholder={label} className="input-field font-mono text-sm" />
 
                                 </div>
@@ -342,9 +346,13 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
                                             <p className="text-gray-400 text-xs">Test Case {i + 1}</p>
                                         </div>
                                         <div className="grid grid-cols-2 gap-3">
-                                            <textarea value={tc.input} onChange={e => { const tcs = [...form.testCases]; tcs[i].input = e.target.value; set('testCases', tcs) }}
+                                            <textarea value={tc.input} 
+                                                onChange={e => { const tcs = [...form.testCases]; tcs[i].input = e.target.value; set('testCases', tcs) }}
+                                                onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
                                                 rows={4} placeholder="Input" className="input-field font-mono text-sm" />
-                                            <textarea value={tc.output} onChange={e => { const tcs = [...form.testCases]; tcs[i].output = e.target.value; set('testCases', tcs) }}
+                                            <textarea value={tc.output} 
+                                                onChange={e => { const tcs = [...form.testCases]; tcs[i].output = e.target.value; set('testCases', tcs) }}
+                                                onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
                                                 rows={4} placeholder="Expected Output" className="input-field font-mono text-sm" />
 
                                         </div>
@@ -378,8 +386,10 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
                                 <div className="space-y-4">
                                     <div>
                                         <label className="text-gray-400 text-sm mb-2 block">Code Snippet / Pseudocode *</label>
-                                        <textarea value={form.codeSnippet} onChange={e => set('codeSnippet', e.target.value)}
-                                            rows={8} placeholder="Enter the code snippet here..." className="input-field resize-none font-mono text-sm" />
+                                        <textarea value={form.codeSnippet} 
+                                            onChange={e => set('codeSnippet', e.target.value)}
+                                            onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
+                                            rows={5} placeholder="Enter the code snippet here..." className="input-field font-mono text-sm" />
                                     </div>
 
                                     {(form.opMode || (form.options && form.options.some((o: any) => o) ? 'mcq' : 'typing')) !== 'mcq' && (

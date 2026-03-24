@@ -252,6 +252,12 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
 
                 {/* Modal Body */}
                 <div className="p-8 overflow-y-auto flex-1 min-h-0">
+                    <div className="mb-8 pb-6 border-b border-gray-100">
+                        <p className="text-[10px] text-primary-500 font-bold uppercase tracking-[0.2em] mb-2">Question Title</p>
+                        <h1 className="text-2xl font-black text-slate-900 leading-tight">
+                            {form.questionText || "Untitled Question"}
+                        </h1>
+                    </div>
                     {renderContent()}
                 </div>
 
