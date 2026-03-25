@@ -24,6 +24,7 @@ export interface ParsedQuestionRow {
   questionText: string;
   difficulty?: string;
   topic: string;
+  domain?: string;
   marks?: number;
   programmingLanguage?: string;
   companiesAppeared?: string;
@@ -98,6 +99,7 @@ export interface ValidatedQuestion {
   programmingLanguage?: string;
   recentYearAppearing?: number;
   bestPracticeFor?: string;
+  domain?: string;
   questionText: string;
   options?: string[];
   correctAnswer?: string;

@@ -29,6 +29,8 @@ import { College } from './entities/college.entity';
 import { Organization } from './entities/organization.entity';
 import { OrganizationModule } from './organization/organization.module';
 import { Chapter } from './entities/chapter.entity';
+import { Domain } from './entities/domain.entity';
+import { Topic } from './entities/topic.entity';
 import { ChaptersModule } from './chapters/chapters.module';
 
 @Module({
@@ -54,6 +56,8 @@ import { ChaptersModule } from './chapters/chapters.module';
         DailyStreak,
         College,
         Organization,
+        Domain,
+        Topic,
       ],
 
       // Set to true temporarily to update schema for new fields

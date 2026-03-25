@@ -21,6 +21,8 @@ export default function QuestionBankPage() {
     const [loading, setLoading] = useState(true)
     const [filterType, setFilterType] = useState('ALL')
     const [filterDiff, setFilterDiff] = useState('ALL')
+    const [filterDomain, setFilterDomain] = useState('ALL')
+    const [domains, setDomains] = useState<any[]>([])
     const [search, setSearch] = useState('')
     const [selectedQuestion, setSelectedQuestion] = useState<any>(null)
     const [showPreview, setShowPreview] = useState(false)
@@ -34,9 +36,11 @@ export default function QuestionBankPage() {
         Promise.all([
             fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/question-bank`, { credentials: 'include' }).then(r => r.json()),
             fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/question-bank/stats`, { credentials: 'include' }).then(r => r.json()),
-        ]).then(([qs, s]) => {
+            fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/domains`, { credentials: 'include' }).then(r => r.json()),
+        ]).then(([qs, s, d]) => {
             if (Array.isArray(qs)) setQuestions(qs)
             setStats(s)
+            if (Array.isArray(d)) setDomains(d)
         }).catch(() => { }).finally(() => setLoading(false))
     }, [])
 
@@ -54,10 +58,11 @@ export default function QuestionBankPage() {
     const filtered = questions.filter(q => {
         const matchType = filterType === 'ALL' || q.type === filterType
         const matchDiff = filterDiff === 'ALL' || q.difficulty === filterDiff
+        const matchDomain = filterDomain === 'ALL' || (q.domain || 'Programming Domain') === filterDomain
         const matchSearch = !search || q.questionText?.toLowerCase().includes(search.toLowerCase()) ||
             q.topicNames?.toLowerCase().includes(search.toLowerCase())
         // Ensure the question has at least a type and text to be considered "valid" for the list
-        return matchType && matchDiff && matchSearch && q.questionText && q.type
+        return matchType && matchDiff && matchDomain && matchSearch && q.questionText && q.type
     })
 
     return (
@@ -118,12 +123,22 @@ export default function QuestionBankPage() {
                             </button>
                         ))}
                     </div>
-                    <div className="flex-1 relative">
-                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-secondary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                        <input type="text" placeholder="Search by topic or question title..." value={search}
-                            onChange={e => setSearch(e.target.value)} className="input-field pl-10" />
+                    <div className="flex-1 flex gap-3">
+                        <select value={filterDomain} onChange={e => setFilterDomain(e.target.value)} 
+                            className="bg-[rgba(255,255,255,0.06)] border border-white/10 rounded-xl px-4 py-2 text-xs text-white outline-none focus:border-primary-500 transition-all min-w-[150px]">
+                            <option value="ALL">All Domains</option>
+                            <option value="Programming Domain">Programming Domain</option>
+                            {domains.filter(d => d.name !== 'Programming Domain').map(d => (
+                                <option key={d.id} value={d.name}>{d.name}</option>
+                            ))}
+                        </select>
+                        <div className="flex-1 relative">
+                            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-secondary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                            <input type="text" placeholder="Search by topic or question title..." value={search}
+                                onChange={e => setSearch(e.target.value)} className="input-field pl-10 h-full" />
+                        </div>
                     </div>
                 </div>
 
@@ -144,7 +159,7 @@ export default function QuestionBankPage() {
                             <table className="w-full">
                                 <thead>
                                     <tr className="border-b" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
-                                        {['#', 'Q. Number', 'Type', 'Topic', 'Difficulty', 'Question Title', 'Actions'].map(h => (
+                                        {['#', 'Q. Number', 'Domain', 'Type', 'Topic', 'Difficulty', 'Question Title', 'Actions'].map(h => (
                                             <th key={h} className="text-left text-xs font-semibold text-gray-400 pb-3 pr-4">{h}</th>
                                         ))}
                                     </tr>
@@ -158,6 +173,9 @@ export default function QuestionBankPage() {
                                                 <td className="py-4 pr-4 text-[var(--text-secondary)] text-sm">{i + 1}</td>
                                                 <td className="py-4 pr-4">
                                                     <span className="text-xs font-mono font-semibold text-primary-400">{q.questionNumber}</span>
+                                                </td>
+                                                <td className="py-4 pr-4">
+                                                    <span className="text-xs font-semibold text-gray-300">{q.domain || 'Programming Domain'}</span>
                                                 </td>
                                                 <td className="py-4 pr-4">
                                                     <span className="px-2 py-1 rounded-lg text-xs font-semibold"

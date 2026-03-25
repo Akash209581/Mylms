@@ -5,7 +5,6 @@ import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
 import QuestionPreview from '@/components/question-bank/QuestionPreview'
 
-const TOPICS = ['Arrays', 'Strings', 'Linked List', 'Trees', 'Graphs', 'Dynamic Programming', 'Sorting', 'Searching', 'Recursion', 'OOP', 'DBMS', 'OS', 'CN', 'Other']
 const COMPANIES = ['Accenture', 'CapGemini', 'Infosys', 'TCS', 'Wipro', 'Amazon', 'Google', 'Microsoft', 'Adobe', 'Flipkart', 'Other']
 const LANGUAGES = ['Python', 'Java', 'C', 'C++', 'JavaScript', 'Any']
 const DIFFICULTIES = ['VERY_EASY', 'EASY', 'MEDIUM', 'HARD', 'VERY_HARD']
@@ -38,17 +37,90 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
         allowedLanguages: ['Python'],
         explanation: '',
         correctCode: '',
+        domain: 'Programming Domain',
     })
+    const [domains, setDomains] = useState<any[]>([])
+    const [topics, setTopics] = useState<any[]>([])
+    const [newDomain, setNewDomain] = useState('')
+    const [newTopic, setNewTopic] = useState('')
+    const [showAddDomain, setShowAddDomain] = useState(false)
+    const [showAddTopic, setShowAddTopic] = useState(false)
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [showPreview, setShowPreview] = useState(false)
     const [error, setError] = useState('')
 
     useEffect(() => {
+        if (form.domain) fetchTopics(form.domain)
+    }, [form.domain])
+
+    const fetchTopics = async (domainName: string) => {
+        try {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/topics?domainName=${encodeURIComponent(domainName)}`, { credentials: 'include' });
+            const data = await res.json();
+            if (Array.isArray(data)) setTopics(data);
+        } catch (e) { console.error(e) }
+    }
+
+    const fetchDomains = async () => {
+        try {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/domains`, { credentials: 'include' });
+            const data = await res.json();
+            if (Array.isArray(data)) setDomains(data);
+        } catch (e) { console.error(e) }
+    }
+
+    const handleAddDomain = async () => {
+        if (!newDomain.trim()) return;
+        try {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/domains`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ name: newDomain }),
+            });
+            if (res.ok) {
+                setNewDomain('');
+                setShowAddDomain(false);
+                fetchDomains();
+            } else {
+                const e = await res.json();
+                alert(e.message || 'Error adding domain');
+            }
+        } catch (e) { console.error(e) }
+    }
+
+    const handleAddTopic = async () => {
+        if (!newTopic.trim()) return;
+        const domain = domains.find(d => d.name === form.domain);
+        if (!domain) return;
+        try {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/topics`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ name: newTopic, domainId: domain.id }),
+            });
+            if (res.ok) {
+                const created = await res.json();
+                setNewTopic('');
+                setShowAddTopic(false);
+                fetchTopics(form.domain);
+                set('topicNames', created.name);
+            } else {
+                const e = await res.json();
+                alert(e.message || 'Error adding topic');
+            }
+        } catch (e) { console.error(e) }
+    }
+
+    useEffect(() => {
         const stored = localStorage.getItem('user')
         if (!stored) { router.push('/login'); return }
         const u = JSON.parse(stored)
         if (u.role !== 'SUPERADMIN' && u.role !== 'ADMIN') { router.push('/login'); return }
+        
+        fetchDomains()
 
         // Fetch question data
         fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/question-bank/${id}`, { credentials: 'include' })
@@ -164,11 +236,30 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
                         </h2>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
+                                <label className="text-gray-400 text-sm mb-2 block">Domain Name *</label>
+                                <div className="flex gap-2">
+                                    <select value={form.domain || 'Programming Domain'} onChange={e => set('domain', e.target.value)} className="input-field flex-1">
+                                        <option value="Programming Domain">Programming Domain</option>
+                                        {domains.filter(d => d.name !== 'Programming Domain').map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+                                    </select>
+                                    <button onClick={() => setShowAddDomain(true)} className="p-2 bg-primary-500/10 border border-primary-500/30 text-primary-400 rounded-xl hover:bg-primary-500 hover:text-white transition-all">
+                                        +
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="sm:hidden" /> {/* Spacer for desktop grid */}
+
+                            <div>
                                 <label className="text-gray-400 text-sm mb-2 block">Topic Name *</label>
-                                <select value={form.topicNames} onChange={e => set('topicNames', e.target.value)} className="input-field">
-                                    <option value="">Select Topic</option>
-                                    {TOPICS.map(t => <option key={t}>{t}</option>)}
-                                </select>
+                                <div className="flex gap-2">
+                                    <select value={form.topicNames} onChange={e => set('topicNames', e.target.value)} className="input-field flex-1">
+                                        <option value="">Select Topic</option>
+                                        {topics.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+                                    </select>
+                                    <button onClick={() => setShowAddTopic(true)} className="p-2 bg-primary-500/10 border border-primary-500/30 text-primary-400 rounded-xl hover:bg-primary-500 hover:text-white transition-all">
+                                        +
+                                    </button>
+                                </div>
                             </div>
                             <div>
                                 <label className="text-gray-400 text-sm mb-2 block">Difficulty Level *</label>
@@ -592,6 +683,52 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
 
             {showPreview && (
                 <QuestionPreview form={form} onClose={() => setShowPreview(false)} />
+            )}
+
+            {/* Add Domain Modal */}
+            {showAddDomain && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <div className="glass-card p-8 w-full max-w-md border-primary-500/30">
+                        <h3 className="text-xl font-bold text-white mb-2">➕ Add New Domain</h3>
+                        <p className="text-gray-400 text-sm mb-6">Create a new category for the question bank.</p>
+                        
+                        <div className="space-y-4">
+                            <div>
+                                <label className="text-gray-400 text-xs font-bold uppercase mb-2 block">Domain Name</label>
+                                <input value={newDomain} onChange={e => setNewDomain(e.target.value)}
+                                    placeholder="e.g. Data Science, Machine Learning" className="input-field" autoFocus />
+                            </div>
+                            <div className="flex gap-3 pt-4">
+                                <button onClick={() => setShowAddDomain(false)} className="btn-secondary flex-1 py-3">Cancel</button>
+                                <button onClick={handleAddDomain} disabled={!newDomain.trim()}
+                                    className="btn-primary flex-1 py-3 disabled:opacity-50">Create Domain</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Add Topic Modal */}
+            {showAddTopic && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <div className="glass-card p-8 w-full max-w-md border-primary-500/30">
+                        <h3 className="text-xl font-bold text-white mb-2">➕ Add New Topic</h3>
+                        <p className="text-gray-400 text-sm mb-6">Add a new topic to <span className="text-primary-400">{form.domain}</span>.</p>
+                        
+                        <div className="space-y-4">
+                            <div>
+                                <label className="text-gray-400 text-xs font-bold uppercase mb-2 block">Topic Name</label>
+                                <input value={newTopic} onChange={e => setNewTopic(e.target.value)}
+                                    placeholder="e.g. LangGraph, SciPy" className="input-field" autoFocus />
+                            </div>
+                            <div className="flex gap-3 pt-4">
+                                <button onClick={() => setShowAddTopic(false)} className="btn-secondary flex-1 py-3">Cancel</button>
+                                <button onClick={handleAddTopic} disabled={!newTopic.trim()}
+                                    className="btn-primary flex-1 py-3 disabled:opacity-50">Create Topic</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     )

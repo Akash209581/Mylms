@@ -105,6 +105,7 @@ export class QuestionValidatorService {
       programmingLanguage: row.programmingLanguage,
       recentYearAppearing: row.recentYear,
       bestPracticeFor: row.bestPracticeFor,
+      domain: row.domain || 'Programming Domain',
     };
 
     return { valid: true, question };
@@ -157,6 +158,7 @@ export class QuestionValidatorService {
       programmingLanguage: row.programmingLanguage,
       recentYearAppearing: row.recentYear,
       bestPracticeFor: row.bestPracticeFor,
+      domain: row.domain || 'Programming Domain',
     };
 
     return { valid: true, question };
@@ -202,6 +204,7 @@ export class QuestionValidatorService {
       programmingLanguage: row.programmingLanguage,
       recentYearAppearing: row.recentYear,
       bestPracticeFor: row.bestPracticeFor,
+      domain: row.domain || 'Programming Domain',
     };
 
     return { valid: true, question };
@@ -237,6 +240,7 @@ export class QuestionValidatorService {
       programmingLanguage: row.programmingLanguage,
       recentYearAppearing: row.recentYear,
       bestPracticeFor: row.bestPracticeFor,
+      domain: row.domain || 'Programming Domain',
     };
 
     return { valid: true, question };
@@ -294,6 +298,7 @@ export class QuestionValidatorService {
       programmingLanguage: row.programmingLanguage,
       recentYearAppearing: row.recentYear,
       bestPracticeFor: row.bestPracticeFor,
+      domain: row.domain || 'Programming Domain',
     };
 
     return { valid: true, question };
@@ -328,6 +333,7 @@ export class QuestionValidatorService {
       programmingLanguage: row.programmingLanguage,
       recentYearAppearing: row.recentYear,
       bestPracticeFor: row.bestPracticeFor,
+      domain: row.domain || 'Programming Domain',
     };
 
     return { valid: true, question };

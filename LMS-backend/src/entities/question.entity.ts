@@ -44,6 +44,9 @@ export class Question {
   @Column({ type: 'enum', enum: Difficulty, default: Difficulty.MEDIUM })
   difficulty: Difficulty;
 
+  @Column({ default: 'Programming Domain' })
+  domain: string;
+
   @Column({ nullable: true })
   companiesAppeared: string; // Accenture, CapGemini...
 

@@ -19,7 +19,9 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "migrate:organization": "ts-node -r tsconfig-paths/register src/migrate-organization.ts"
+    "migrate:organization": "ts-node -r tsconfig-paths/register src/migrate-organization.ts",
+    "seed:domains": "ts-node -r tsconfig-paths/register src/seed-domains-topics.ts",
+    "db:check": "ts-node -r tsconfig-paths/register src/db-check.ts"
   },
   "dependencies": {
     "@nestjs/cli": "^11.0.0",

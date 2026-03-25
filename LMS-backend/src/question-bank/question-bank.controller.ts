@@ -67,6 +67,7 @@ class CreateQuestionDto {
   @IsString() @IsOptional() expectedOutput?: string;
   @IsString() @IsOptional() explanation?: string;
   @IsString() @IsOptional() correctCode?: string;
+  @IsString() @IsOptional() domain?: string;
   @IsNumber() @IsOptional() collegeId?: number; // SUPERADMIN can specify organization
 }
 
@@ -98,6 +99,7 @@ export class QuestionBankController {
     @Query('type') type?: string,
     @Query('difficulty') difficulty?: string,
     @Query('topic') topic?: string,
+    @Query('domain') domain?: string,
     @Request() req?: any,
   ) {
     const userRole = req?.user?.role;
@@ -120,6 +122,7 @@ export class QuestionBankController {
     
     if (type) qb.andWhere('q.type = :type', { type });
     if (difficulty) qb.andWhere('q.difficulty = :difficulty', { difficulty });
+    if (domain) qb.andWhere('q.domain = :domain', { domain });
     if (topic)
       qb.andWhere('q.topicNames ILIKE :topic', { topic: `%${topic}%` });
     return qb.orderBy('q.createdAt', 'DESC').getMany();
