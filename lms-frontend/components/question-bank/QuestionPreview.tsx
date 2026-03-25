@@ -14,7 +14,7 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                     <div className="space-y-6">
                         {form.problemStatement && (
                             <div className="bg-slate-50 p-6 rounded-2xl border border-gray-100 mb-6">
-                                <h4 className="text-primary-600 text-[10px] font-bold uppercase mb-2 tracking-wider">Question Context</h4>
+                                <h4 className="text-primary-600 text-[10px] font-bold uppercase mb-2 tracking-wider">Problem Statement</h4>
                                 <div className="text-slate-700 font-mono text-sm whitespace-pre-wrap leading-relaxed">{form.problemStatement}</div>
                             </div>
                         )}
@@ -51,7 +51,7 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                     <div className="space-y-6">
                         {form.problemStatement && (
                             <div className="bg-slate-50 p-6 rounded-2xl border border-gray-100">
-                                <h4 className="text-primary-600 text-[10px] font-bold uppercase mb-2 tracking-wider">Question Context</h4>
+                                <h4 className="text-primary-600 text-[10px] font-bold uppercase mb-2 tracking-wider">Problem Statement</h4>
                                 <div className="text-slate-700 font-mono text-sm whitespace-pre-wrap leading-relaxed">{form.problemStatement}</div>
                             </div>
                         )}
@@ -109,7 +109,7 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                     <div className="space-y-6">
                         {form.problemStatement && (
                             <div className="bg-slate-50 p-6 rounded-2xl border border-gray-100">
-                                <h4 className="text-primary-600 text-[10px] font-bold uppercase mb-2 tracking-wider">Question Context</h4>
+                                <h4 className="text-primary-600 text-[10px] font-bold uppercase mb-2 tracking-wider">Problem Statement</h4>
                                 <p className="text-slate-600 text-sm whitespace-pre-wrap leading-relaxed">{form.problemStatement}</p>
                             </div>
                         )}
@@ -149,7 +149,7 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                     <div className="space-y-6">
                         {form.problemStatement && (
                             <div className="bg-slate-50 p-6 rounded-2xl border border-gray-100">
-                                <h4 className="text-primary-600 text-[10px] font-bold uppercase mb-2 tracking-wider">Question Context</h4>
+                                <h4 className="text-primary-600 text-[10px] font-bold uppercase mb-2 tracking-wider">Problem Statement</h4>
                                 <p className="text-slate-600 text-sm whitespace-pre-wrap leading-relaxed">{form.problemStatement}</p>
                             </div>
                         )}
@@ -254,7 +254,7 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                     <div className="space-y-6">
                         {form.problemStatement && (
                             <div className="bg-slate-50 p-6 rounded-2xl border border-gray-100">
-                                <h4 className="text-primary-600 text-[10px] font-bold uppercase mb-2 tracking-wider">Question Context</h4>
+                                <h4 className="text-primary-600 text-[10px] font-bold uppercase mb-2 tracking-wider">Problem Statement</h4>
                                 <p className="text-slate-600 text-sm whitespace-pre-wrap leading-relaxed">{form.problemStatement}</p>
                             </div>
                         )}

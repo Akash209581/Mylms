@@ -56,13 +56,7 @@ export default function CreateQuestionPage() {
         
         // Frontend Validation
         if (!form.questionText?.trim()) { setError('Question Title is required'); setSaving(false); return }
-        
-        const compulsoryProblemStatementTypes = ['JC', 'MQ', 'OP'];
-        if (compulsoryProblemStatementTypes.includes(form.type) && !form.problemStatement?.trim()) {
-            setError(`Problem Statement is compulsory for ${form.type === 'JC' ? 'Jumbled Code' : form.type === 'MQ' ? 'Matching Questions' : 'Output Prediction'}`);
-            setSaving(false);
-            return;
-        }
+        if (!form.problemStatement?.trim()) { setError('Problem Statement is compulsory for all question types'); setSaving(false); return }
 
         try {
             const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/question-bank`, {
@@ -175,7 +169,7 @@ export default function CreateQuestionPage() {
                         {form.type === 'MCQ' && (
                             <div className="glass-card p-6 space-y-6">
                                 <div>
-                                    <h3 className="text-white font-semibold mb-2">📄 Question Content / Problem Statement *</h3>
+                                    <h3 className="text-white font-semibold mb-2">📄 Problem Statement *</h3>
                                     <textarea value={form.problemStatement} 
                                         onChange={e => set('problemStatement', e.target.value)}
                                         onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
@@ -216,7 +210,7 @@ export default function CreateQuestionPage() {
                         {form.type === 'FIB' && (
                             <div className="glass-card p-6 space-y-6">
                                 <div>
-                                    <h3 className="text-white font-semibold mb-2">📄 Question Content</h3>
+                                    <h3 className="text-white font-semibold mb-2">📄 Problem Statement *</h3>
                                     <p className="text-gray-400 text-xs mb-4">Provide the problem statement or code snippet. Use <span className="text-primary-400 font-mono font-bold">[BLANK]</span> where you want students to fill in the answers.</p>
                                     <textarea value={form.problemStatement} 
                                         onChange={e => set('problemStatement', e.target.value)}
@@ -232,6 +226,12 @@ export default function CreateQuestionPage() {
                                                 <span className="text-gray-400 text-sm w-16">Blank {i + 1}:</span>
                                                 <input value={b} onChange={e => { const bl = [...form.blanks]; bl[i] = e.target.value; set('blanks', bl) }}
                                                     placeholder={`Answer for [BLANK] #${i+1}`} className="input-field flex-1" />
+                                                {form.blanks.length > 1 && (
+                                                    <button onClick={() => set('blanks', form.blanks.filter((_: any, idx: number) => idx !== i))}
+                                                        className="text-red-400 hover:text-red-500 transition-colors p-1" title="Delete Blank">
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                                    </button>
+                                                )}
                                             </div>
                                         ))}
                                     </div>
@@ -254,7 +254,7 @@ export default function CreateQuestionPage() {
                         {form.type === 'MQ' && (
                             <div className="glass-card p-6 space-y-6">
                                 <div>
-                                    <h3 className="text-white font-semibold mb-2">📄 Question Content / Problem Statement *</h3>
+                                    <h3 className="text-white font-semibold mb-2">📄 Problem Statement *</h3>
                                     <textarea value={form.problemStatement} 
                                         onChange={e => set('problemStatement', e.target.value)}
                                         onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
@@ -328,7 +328,7 @@ export default function CreateQuestionPage() {
 
                             <div className="glass-card p-6 space-y-6">
                                 <div>
-                                    <h3 className="text-white font-semibold mb-2">📄 Question Content / Problem Statement *</h3>
+                                    <h3 className="text-white font-semibold mb-2">📄 Problem Statement *</h3>
                                     <textarea value={form.problemStatement} 
                                         onChange={e => set('problemStatement', e.target.value)}
                                         onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
@@ -395,7 +395,7 @@ export default function CreateQuestionPage() {
                                     </div>
                                 </div>
                                 {[
-                                    ['problemStatement', 'Problem Statement', 5],
+                                    ['problemStatement', 'Problem Statement *', 5],
                                     ['inputFormat', 'Input Format', 4],
                                     ['outputFormat', 'Output Format', 4],
                                     ['constraints', 'Constraints', 4],
@@ -454,7 +454,7 @@ export default function CreateQuestionPage() {
 
                                     <div className="space-y-6">
                                         <div>
-                                            <h3 className="text-white font-semibold mb-2">📄 Question Content / Problem Statement *</h3>
+                                            <h3 className="text-white font-semibold mb-2">📄 Problem Statement *</h3>
                                             <textarea value={form.problemStatement} 
                                                 onChange={e => set('problemStatement', e.target.value)}
                                                 onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
