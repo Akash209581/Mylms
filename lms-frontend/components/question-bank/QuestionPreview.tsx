@@ -236,7 +236,7 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                                                     </div>
                                                 </div>
                                                 {tc.explanation && (
-                                                    <p className="text-xs text-gray-500 italic mt-1 pb-1 border-b border-gray-100">Note: {tc.explanation}</p>
+                                                    <p className="text-xs text-gray-500 italic mt-1 pb-1 border-b border-gray-100">Explanation: {tc.explanation}</p>
                                                 )}
                                             </div>
                                         ))}

@@ -475,8 +475,9 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
                                                 rows={4} placeholder="Expected Output" className="input-field font-mono text-sm" />
 
                                         </div>
+                                        <p className="text-[10px] text-gray-400 font-bold uppercase mt-3 mb-1">Explanation (Optional)</p>
                                         <input value={tc.explanation} onChange={e => { const tcs = [...form.testCases]; tcs[i].explanation = e.target.value; set('testCases', tcs) }}
-                                            placeholder="Explanation (optional)" className="input-field mt-2 text-sm" />
+                                            placeholder="Why this input gives this output..." className="input-field text-sm" />
                                     </div>
                                 ))}
                                 <button onClick={() => set('testCases', [...form.testCases, { input: '', output: '', explanation: '' }])}
