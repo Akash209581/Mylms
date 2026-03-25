@@ -23,7 +23,7 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
     const router = useRouter()
     const [step, setStep] = useState(2)
     const [form, setForm] = useState<any>({
-        type: '', topicNames: '', difficulty: 'MEDIUM', companiesAppeared: '',
+        type: '', topicNames: [], difficulty: 'MEDIUM', companiesAppeared: '',
         programmingLanguage: '', recentYearAppearing: new Date().getFullYear(),
         bestPracticeFor: '', questionText: '',
         options: ['', '', '', ''], correctAnswer: '',
@@ -106,7 +106,7 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
                 setNewTopic('');
                 setShowAddTopic(false);
                 fetchTopics(form.domain);
-                set('topicNames', created.name);
+                set('topicNames', [...form.topicNames, created.name]);
             } else {
                 const e = await res.json();
                 alert(e.message || 'Error adding topic');
@@ -130,11 +130,12 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
             })
             .then(data => {
                 // Merge data into form, ensuring arrays are properly handled
-                setForm((prev: any) => {
-                    const merged = {
-                        ...prev,
-                        ...data,
-                        options: data.options || prev.options,
+                    setForm((prev: any) => {
+                        const merged = {
+                            ...prev,
+                            ...data,
+                            topicNames: data.topicNames ? data.topicNames.split(',').map((t: string) => t.trim()).filter((t: string) => t) : [],
+                            options: data.options || prev.options,
                         blanks: data.blanks || prev.blanks,
                         matchingPairs: data.matchingPairs || prev.matchingPairs,
                         extraRightMatches: data.extraRightMatches || prev.extraRightMatches || [''],
@@ -163,8 +164,10 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
     const handleSubmit = async () => {
         setSaving(true); setError('')
         try {
-            // Only send fields that the API expects - exclude system fields and UI-only state like opMode
-            const { id: _, questionNumber, createdAt, updatedAt, isActive, opMode, question_number, created_at, updated_at, ...submitData } = form;
+            const submitData = {
+                ...form,
+                topicNames: Array.isArray(form.topicNames) ? form.topicNames.join(', ') : form.topicNames
+            }
 
             // Normalize Matching Pairs
             if (submitData.type === 'MQ' && submitData.matchingPairs) {
@@ -185,15 +188,13 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
                 delete (submitData as any).expectedOutput;
             }
 
-            // Frontend Validation
-            if (!form.questionText?.trim()) { setError('Question Title is required'); setSaving(false); return }
-            if (!form.problemStatement?.trim()) { setError('Problem Statement is compulsory for all question types'); setSaving(false); return }
+            const { id: _, questionNumber, createdAt, updatedAt, isActive, opMode, question_number, created_at, updated_at, ...cleanedData } = submitData;
 
             const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/question-bank/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify(submitData),
+                body: JSON.stringify(cleanedData),
             })
             if (!res.ok) { const e = await res.json(); setError(e.message || 'Error saving'); return }
             router.push('/dashboard/superadmin/question-bank')
@@ -250,10 +251,23 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
                             <div className="sm:hidden" /> {/* Spacer for desktop grid */}
 
                             <div>
-                                <label className="text-gray-400 text-sm mb-2 block">Topic Name *</label>
+                                <label className="text-gray-400 text-sm mb-2 block">Topic Name(s) *</label>
+                                <div className="flex flex-wrap gap-2 mb-3">
+                                    {form.topicNames.map((t: string) => (
+                                        <span key={t} className="px-3 py-1 bg-primary-500/20 border border-primary-500/30 text-primary-400 rounded-full text-xs flex items-center gap-2">
+                                            {t}
+                                            <button onClick={() => set('topicNames', form.topicNames.filter((x: string) => x !== t))}
+                                                className="hover:text-white transition-colors">×</button>
+                                        </span>
+                                    ))}
+                                </div>
                                 <div className="flex gap-2">
-                                    <select value={form.topicNames} onChange={e => set('topicNames', e.target.value)} className="input-field flex-1">
-                                        <option value="">Select Topic</option>
+                                    <select value="" onChange={e => {
+                                        if (e.target.value && !form.topicNames.includes(e.target.value)) {
+                                            set('topicNames', [...form.topicNames, e.target.value])
+                                        }
+                                    }} className="input-field flex-1">
+                                        <option value="">Add Topic</option>
                                         {topics.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
                                     </select>
                                     <button onClick={() => setShowAddTopic(true)} className="p-2 bg-primary-500/10 border border-primary-500/30 text-primary-400 rounded-xl hover:bg-primary-500 hover:text-white transition-all">

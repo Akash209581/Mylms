@@ -22,7 +22,7 @@ export default function CreateQuestionPage() {
     const router = useRouter()
     const [step, setStep] = useState(1)
     const [form, setForm] = useState<any>({
-        type: '', topicNames: '', difficulty: 'MEDIUM', companiesAppeared: '',
+        type: '', topicNames: [], difficulty: 'MEDIUM', companiesAppeared: '',
         programmingLanguage: '', recentYearAppearing: new Date().getFullYear(),
         bestPracticeFor: '', questionText: '',
         options: ['', '', '', ''], correctAnswer: '',
@@ -112,7 +112,7 @@ export default function CreateQuestionPage() {
                 setNewTopic('');
                 setShowAddTopic(false);
                 fetchTopics(form.domain);
-                set('topicNames', created.name);
+                set('topicNames', [...form.topicNames, created.name]);
             } else {
                 const e = await res.json();
                 alert(e.message || 'Error adding topic');
@@ -130,11 +130,15 @@ export default function CreateQuestionPage() {
         if (!form.problemStatement?.trim()) { setError('Problem Statement is compulsory for all question types'); setSaving(false); return }
 
         try {
+            const submitData = {
+                ...form,
+                topicNames: Array.isArray(form.topicNames) ? form.topicNames.join(', ') : form.topicNames
+            }
             const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/question-bank`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify(form),
+                body: JSON.stringify(submitData),
             })
             if (!res.ok) { const e = await res.json(); setError(e.message || 'Error saving'); return }
             router.push('/dashboard/superadmin/question-bank')
@@ -205,10 +209,23 @@ export default function CreateQuestionPage() {
                                 <div className="sm:hidden" /> {/* Spacer for desktop grid */}
 
                                 <div>
-                                    <label className="text-gray-400 text-sm mb-2 block">Topic Name *</label>
+                                    <label className="text-gray-400 text-sm mb-2 block">Topic Name(s) *</label>
+                                    <div className="flex flex-wrap gap-2 mb-3">
+                                        {form.topicNames.map((t: string) => (
+                                            <span key={t} className="px-3 py-1 bg-primary-500/20 border border-primary-500/30 text-primary-400 rounded-full text-xs flex items-center gap-2">
+                                                {t}
+                                                <button onClick={() => set('topicNames', form.topicNames.filter((x: string) => x !== t))}
+                                                    className="hover:text-white transition-colors">×</button>
+                                            </span>
+                                        ))}
+                                    </div>
                                     <div className="flex gap-2">
-                                        <select value={form.topicNames} onChange={e => set('topicNames', e.target.value)} className="input-field flex-1">
-                                            <option value="">Select Topic</option>
+                                        <select value="" onChange={e => {
+                                            if (e.target.value && !form.topicNames.includes(e.target.value)) {
+                                                set('topicNames', [...form.topicNames, e.target.value])
+                                            }
+                                        }} className="input-field flex-1">
+                                            <option value="">Add Topic</option>
                                             {topics.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
                                         </select>
                                         <button onClick={() => setShowAddTopic(true)} className="p-2 bg-primary-500/10 border border-primary-500/30 text-primary-400 rounded-xl hover:bg-primary-500 hover:text-white transition-all">
