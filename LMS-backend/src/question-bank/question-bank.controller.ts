@@ -88,7 +88,7 @@ export class QuestionBankController {
   ): Promise<string> {
     const prefix = type; // MCQ, FIB, MQ, JC, PQ, OP
     const count = await this.questionRepo.count({ 
-      where: { type, collegeId } 
+      where: { type } // Use global count to ensure unique questionNumber across all collegeIds
     });
     const num = String(count + 1).padStart(4, '0');
     return `${prefix}${num}`;
@@ -273,10 +273,10 @@ export class QuestionBankController {
       throw new Error('User must belong to an organization to create questions');
     }
 
-    // Set collegeId: SUPERADMIN can specify, others use their own org
-    const collegeId = userRole === UserRole.SUPERADMIN && dto.collegeId
+    // Set collegeId: SUPERADMIN can specify, others use their own org or fallback to 1
+    const collegeId = (userRole === UserRole.SUPERADMIN && dto.collegeId)
       ? dto.collegeId
-      : userCollegeId;
+      : (userCollegeId || 1);
 
     const questionNumber = await this.generateQuestionNumber(dto.type, collegeId);
     const q = this.questionRepo.create({ 
