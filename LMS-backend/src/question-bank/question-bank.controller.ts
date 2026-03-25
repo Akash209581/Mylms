@@ -84,14 +84,40 @@ export class QuestionBankController {
 
   private async generateQuestionNumber(
     type: QuestionType,
-    collegeId: number,
   ): Promise<string> {
     const prefix = type; // MCQ, FIB, MQ, JC, PQ, OP
-    const count = await this.questionRepo.count({ 
-      where: { type } // Use global count to ensure unique questionNumber across all collegeIds
+    
+    // Find the last question created of this type to get its number
+    const lastQuestion = await this.questionRepo.findOne({
+      where: { type },
+      order: { id: 'DESC' } // Most recent ID
     });
-    const num = String(count + 1).padStart(4, '0');
-    return `${prefix}${num}`;
+
+    let nextNum = 1;
+    if (lastQuestion && lastQuestion.questionNumber) {
+      // Extract numeric part. e.g. MCQ0010 -> 0010 -> 10
+      const numericPart = lastQuestion.questionNumber.replace(prefix, '');
+      const lastNum = parseInt(numericPart, 10);
+      if (!isNaN(lastNum)) {
+        nextNum = lastNum + 1;
+      }
+    }
+
+    // Ensure we don't accidentally conflict if someone manualy edited numbers
+    // We pad with 4 digits as before
+    let numStr = String(nextNum).padStart(4, '0');
+    let finalCode = `${prefix}${numStr}`;
+
+    // Extra safety: double check if this number exists (unlikely given DESC order but good for robustness)
+    let exists = await this.questionRepo.findOne({ where: { questionNumber: finalCode } });
+    while (exists) {
+      nextNum++;
+      numStr = String(nextNum).padStart(4, '0');
+      finalCode = `${prefix}${numStr}`;
+      exists = await this.questionRepo.findOne({ where: { questionNumber: finalCode } });
+    }
+
+    return finalCode;
   }
 
   @Get()
@@ -278,7 +304,7 @@ export class QuestionBankController {
       ? dto.collegeId
       : (userCollegeId || 1);
 
-    const questionNumber = await this.generateQuestionNumber(dto.type, collegeId);
+    const questionNumber = await this.generateQuestionNumber(dto.type);
     const q = this.questionRepo.create({ 
       ...dto, 
       questionNumber,
