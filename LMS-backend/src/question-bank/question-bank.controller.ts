@@ -65,6 +65,8 @@ class CreateQuestionDto {
   }[];
   @IsString() @IsOptional() codeSnippet?: string;
   @IsString() @IsOptional() expectedOutput?: string;
+  @IsString() @IsOptional() explanation?: string;
+  @IsString() @IsOptional() correctCode?: string;
   @IsNumber() @IsOptional() collegeId?: number; // SUPERADMIN can specify organization
 }
 

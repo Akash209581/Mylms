@@ -35,6 +35,8 @@ export default function CreateQuestionPage() {
         codeSnippet: '', expectedOutput: '',
         allowedLanguages: ['Python'],
         extraRightMatches: [''],
+        explanation: '',
+        correctCode: '',
     })
     const [saving, setSaving] = useState(false)
     const [showPreview, setShowPreview] = useState(false)
@@ -51,6 +53,17 @@ export default function CreateQuestionPage() {
 
     const handleSubmit = async () => {
         setSaving(true); setError('')
+        
+        // Frontend Validation
+        if (!form.questionText?.trim()) { setError('Question Title is required'); setSaving(false); return }
+        
+        const compulsoryProblemStatementTypes = ['JC', 'MQ', 'OP'];
+        if (compulsoryProblemStatementTypes.includes(form.type) && !form.problemStatement?.trim()) {
+            setError(`Problem Statement is compulsory for ${form.type === 'JC' ? 'Jumbled Code' : form.type === 'MQ' ? 'Matching Questions' : 'Output Prediction'}`);
+            setSaving(false);
+            return;
+        }
+
         try {
             const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/question-bank`, {
                 method: 'POST',
@@ -153,68 +166,133 @@ export default function CreateQuestionPage() {
                                 <label className="text-gray-400 text-sm mb-2 block">Question Title *</label>
                                 <textarea value={form.questionText} 
                                     onChange={e => set('questionText', e.target.value)}
-                                    onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
-                                    rows={5} placeholder="Enter the question title..." className="input-field" />
+                                    rows={2} placeholder="Enter the question title..." className="input-field" />
                             </div>
+
                         </div>
 
                         {/* MCQ */}
                         {form.type === 'MCQ' && (
-                            <div className="glass-card p-6">
-                                <h3 className="text-white font-semibold mb-4">🔘 MCQ Options</h3>
-                                <div className="space-y-3 mb-4">
-                                    {form.options.map((opt: string, i: number) => (
-                                        <div key={i} className="flex gap-3 items-center">
-                                            <span className="text-gray-400 text-sm w-6">{String.fromCharCode(65 + i)}.</span>
-                                            <input value={opt} onChange={e => { const o = [...form.options]; o[i] = e.target.value; set('options', o) }}
-                                                placeholder={`Option ${String.fromCharCode(65 + i)}`} className="input-field flex-1" />
-                                        </div>
-                                    ))}
-                                </div>
+                            <div className="glass-card p-6 space-y-6">
                                 <div>
-                                    <label className="text-gray-400 text-sm mb-2 block">Correct Answer</label>
-                                    <select value={form.correctAnswer} onChange={e => set('correctAnswer', e.target.value)} className="input-field max-w-xs">
-                                        <option value="">Select correct option</option>
-                                        {form.options.map((o: string, i: number) => o && <option key={i} value={o}>{String.fromCharCode(65 + i)}. {o}</option>)}
-                                    </select>
+                                    <h3 className="text-white font-semibold mb-2">📄 Question Content / Problem Statement *</h3>
+                                    <textarea value={form.problemStatement} 
+                                        onChange={e => set('problemStatement', e.target.value)}
+                                        onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
+                                        rows={3} placeholder="Add context or a code snippet..." className="input-field font-mono text-sm" />
+                                </div>
+
+                                <div className="pt-6 border-t border-white/5">
+                                    <h3 className="text-white font-semibold mb-4">🔘 Options</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                                        {(form.options || ['', '', '', '']).map((opt: string, i: number) => (
+                                            <div key={i} className="flex gap-2 items-center">
+                                                <span className="text-gray-400 text-sm w-6">{String.fromCharCode(65 + i)}.</span>
+                                                <input value={opt} onChange={e => { const o = [...form.options]; o[i] = e.target.value; set('options', o) }}
+                                                    placeholder={`Option ${String.fromCharCode(65 + i)}`} className="input-field flex-1" />
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div>
+                                        <label className="text-gray-400 text-sm mb-2 block">Correct Answer</label>
+                                        <select value={form.correctAnswer} onChange={e => set('correctAnswer', e.target.value)} className="input-field max-w-xs">
+                                            <option value="">Select correct option</option>
+                                            {form.options.map((o: string, i: number) => o && <option key={i} value={o}>{String.fromCharCode(65 + i)}. {o}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="pt-6 border-t border-white/5">
+                                    <label className="text-gray-400 text-sm mb-2 block font-semibold">Explanation (Optional)</label>
+                                    <textarea value={form.explanation} 
+                                        onChange={e => set('explanation', e.target.value)}
+                                        onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
+                                        rows={3} placeholder="Explain why this answer is correct..." className="input-field text-sm" />
                                 </div>
                             </div>
                         )}
 
                         {/* FIB */}
                         {form.type === 'FIB' && (
-                            <div className="glass-card p-6">
-                                <h3 className="text-white font-semibold mb-4">✏️ Blank Answers</h3>
-                                <p className="text-gray-400 text-xs mb-4">Use [BLANK] in question text to mark blank positions</p>
-                                {form.blanks.map((b: string, i: number) => (
-                                    <div key={i} className="flex gap-3 mb-3">
-                                        <span className="text-gray-400 text-sm w-16">Blank {i + 1}:</span>
-                                        <input value={b} onChange={e => { const bl = [...form.blanks]; bl[i] = e.target.value; set('blanks', bl) }}
-                                            placeholder="Answer for this blank" className="input-field flex-1" />
+                            <div className="glass-card p-6 space-y-6">
+                                <div>
+                                    <h3 className="text-white font-semibold mb-2">📄 Question Content</h3>
+                                    <p className="text-gray-400 text-xs mb-4">Provide the problem statement or code snippet. Use <span className="text-primary-400 font-mono font-bold">[BLANK]</span> where you want students to fill in the answers.</p>
+                                    <textarea value={form.problemStatement} 
+                                        onChange={e => set('problemStatement', e.target.value)}
+                                        onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
+                                        rows={5} placeholder="e.g. For(int i=0; i < [BLANK]; i++)" className="input-field font-mono text-sm" />
+                                </div>
+
+                                <div className="pt-6 border-t border-white/5">
+                                    <h3 className="text-white font-semibold mb-4">✏️ Blank Answers</h3>
+                                    <div className="space-y-4">
+                                        {form.blanks.map((b: string, i: number) => (
+                                            <div key={i} className="flex gap-3 mb-3 items-center">
+                                                <span className="text-gray-400 text-sm w-16">Blank {i + 1}:</span>
+                                                <input value={b} onChange={e => { const bl = [...form.blanks]; bl[i] = e.target.value; set('blanks', bl) }}
+                                                    placeholder={`Answer for [BLANK] #${i+1}`} className="input-field flex-1" />
+                                            </div>
+                                        ))}
                                     </div>
-                                ))}
-                                <button onClick={() => set('blanks', [...form.blanks, ''])}
-                                    className="btn-secondary px-4 py-2 text-sm mt-2">+ Add Blank</button>
+                                    <button onClick={() => set('blanks', [...form.blanks, ''])}
+                                        className="btn-secondary px-4 py-2 text-sm mt-4">+ Add Blank</button>
+                                </div>
+
+                                <div className="pt-6 border-t border-white/5">
+                                    <label className="text-gray-400 text-sm mb-2 block font-semibold">Explanation (Optional)</label>
+                                    <textarea value={form.explanation} 
+                                        onChange={e => set('explanation', e.target.value)}
+                                        onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
+                                        rows={3} placeholder="Explain the logic behind the blanks..." className="input-field text-sm" />
+                                </div>
                             </div>
                         )}
 
+
                         {/* MQ */}
                         {form.type === 'MQ' && (
-                            <div className="glass-card p-6">
-                                <h3 className="text-white font-semibold mb-4">🔗 Matching Pairs</h3>
-                                {form.matchingPairs.map((p: any, i: number) => (
-                                    <div key={i} className="flex gap-3 mb-3 items-center">
-                                        <input value={p.left} onChange={e => { const mp = [...form.matchingPairs]; mp[i].left = e.target.value; set('matchingPairs', mp) }}
-                                            placeholder="Left item" className="input-field flex-1" />
-                                        <span className="text-primary-400">↔️</span>
-                                        <input value={p.right} onChange={e => { const mp = [...form.matchingPairs]; mp[i].right = e.target.value; set('matchingPairs', mp) }}
-                                            placeholder="Right match" className="input-field flex-1" />
-                                    </div>
-                                ))}
-                                <button onClick={() => set('matchingPairs', [...form.matchingPairs, { left: '', right: '' }])}
-                                    className="btn-secondary px-4 py-2 text-sm">+ Add Pair</button>
+                            <div className="glass-card p-6 space-y-6">
+                                <div>
+                                    <h3 className="text-white font-semibold mb-2">📄 Question Content / Problem Statement *</h3>
+                                    <textarea value={form.problemStatement} 
+                                        onChange={e => set('problemStatement', e.target.value)}
+                                        onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
+                                        rows={3} placeholder="Add context for the matching pairs..." className="input-field text-sm" />
+                                </div>
 
-                                <div className="mt-8 pt-6 border-t border-white/10">
+                                <div className="pt-6 border-t border-white/5">
+                                    <h3 className="text-white font-semibold mb-4">🔗 Matching Pairs</h3>
+                                    <div className="space-y-4">
+                                        {form.matchingPairs.map((p: any, i: number) => (
+                                            <div key={i} className="flex gap-4 items-start relative group">
+                                                <div className="flex-1 space-y-2">
+                                                    <textarea value={p.left} onChange={e => { const pairs = [...form.matchingPairs]; pairs[i].left = e.target.value; set('matchingPairs', pairs) }}
+                                                        onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
+                                                        placeholder="Left match" className="input-field text-sm pt-3" rows={1} />
+                                                </div>
+                                                <div className="mt-3 flex-shrink-0 text-primary-400">
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+                                                </div>
+                                                <div className="flex-1 space-y-2">
+                                                    <textarea value={p.right} onChange={e => { const pairs = [...form.matchingPairs]; pairs[i].right = e.target.value; set('matchingPairs', pairs) }}
+                                                        onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
+                                                        placeholder="Right match" className="input-field text-sm pt-3" rows={1} />
+                                                </div>
+                                                {form.matchingPairs.length > 1 && (
+                                                    <button onClick={() => set('matchingPairs', form.matchingPairs.filter((_: any, idx: number) => idx !== i))}
+                                                        className="mt-2 text-red-400 hover:text-red-500 transition-colors p-1" title="Delete Pair">
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                                    </button>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <button onClick={() => set('matchingPairs', [...form.matchingPairs, { left: '', right: '' }])}
+                                        className="btn-secondary px-4 py-2 text-sm mt-4">+ Add Pair</button>
+                                </div>
+
+                                <div className="pt-6 border-t border-white/5">
                                     <h4 className="text-white/60 text-xs font-bold uppercase tracking-widest mb-4">Extra Right Matches (Distractors)</h4>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
                                         {(form.extraRightMatches || []).map((m: string, i: number) => (
@@ -234,25 +312,63 @@ export default function CreateQuestionPage() {
                                         + Add Right Match (Distractor)
                                     </button>
                                 </div>
+
+                                <div className="pt-6 border-t border-white/5">
+                                    <label className="text-gray-400 text-sm mb-2 block font-semibold">Explanation (Optional)</label>
+                                    <textarea value={form.explanation} 
+                                        onChange={e => set('explanation', e.target.value)}
+                                        onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
+                                        rows={3} placeholder="Explain the matching logic..." className="input-field text-sm" />
+                                </div>
                             </div>
                         )}
 
-                        {/* JC */}
+
                         {form.type === 'JC' && (
-                            <div className="glass-card p-6">
-                                <h3 className="text-white font-semibold mb-2">🔀 Jumbled Statements</h3>
-                                <p className="text-gray-400 text-xs mb-4">Enter statements in the CORRECT order — they will be displayed jumbled to students</p>
-                                {form.jumbledStatements.map((s: string, i: number) => (
-                                    <div key={i} className="flex gap-3 mb-3">
-                                        <span className="text-gray-400 text-sm w-6">{i + 1}.</span>
-                                        <input value={s} onChange={e => { const js = [...form.jumbledStatements]; js[i] = e.target.value; set('jumbledStatements', js) }}
-                                            placeholder={`Statement ${i + 1}`} className="input-field flex-1 font-mono text-sm" />
+
+                            <div className="glass-card p-6 space-y-6">
+                                <div>
+                                    <h3 className="text-white font-semibold mb-2">📄 Question Content / Problem Statement *</h3>
+                                    <textarea value={form.problemStatement} 
+                                        onChange={e => set('problemStatement', e.target.value)}
+                                        onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
+                                        rows={3} placeholder="Provide context and instructions for the jumbled code..." className="input-field text-sm" />
+                                </div>
+
+                                <div className="pt-6 border-t border-white/5">
+                                    <h3 className="text-white font-semibold mb-4">🔀 Jumbled Statements (One per line)</h3>
+                                    <p className="text-gray-400 text-xs mb-4 text-primary-400/80">Enter statements in the CORRECT order — they will be automatically shuffled for students</p>
+                                    <div className="space-y-4">
+                                        {form.jumbledStatements.map((s: string, i: number) => (
+                                            <div key={i} className="flex gap-3 mb-3 items-center">
+                                                <span className="text-gray-400 text-sm w-6">{i + 1}.</span>
+                                                <input value={s} onChange={e => { const js = [...form.jumbledStatements]; js[i] = e.target.value; set('jumbledStatements', js) }}
+                                                    placeholder={`Code line ${i + 1}`} className="input-field flex-1 font-mono text-sm" />
+                                            </div>
+                                        ))}
                                     </div>
-                                ))}
-                                <button onClick={() => set('jumbledStatements', [...form.jumbledStatements, ''])}
-                                    className="btn-secondary px-4 py-2 text-sm">+ Add Statement</button>
+                                    <button onClick={() => set('jumbledStatements', [...form.jumbledStatements, ''])}
+                                        className="btn-secondary px-4 py-2 text-sm mt-4">+ Add Statement</button>
+                                </div>
+
+                                <div className="pt-6 border-t border-white/5">
+                                    <label className="text-gray-400 text-sm mb-2 block font-semibold">Correct Code (expected sequence)</label>
+                                    <textarea value={form.correctCode} 
+                                        onChange={e => set('correctCode', e.target.value)}
+                                        onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
+                                        rows={5} placeholder="Full correct code snippet..." className="input-field font-mono text-sm" />
+                                </div>
+
+                                <div className="pt-6 border-t border-white/5">
+                                    <label className="text-gray-400 text-sm mb-2 block font-semibold">Explanation (Optional)</label>
+                                    <textarea value={form.explanation} 
+                                        onChange={e => set('explanation', e.target.value)}
+                                        onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
+                                        rows={3} placeholder="Explain the logic..." className="input-field text-sm" />
+                                </div>
                             </div>
                         )}
+
 
                         {form.type === 'PQ' && (
                             <div className="glass-card p-6 space-y-4">
@@ -336,24 +452,43 @@ export default function CreateQuestionPage() {
                                         </div>
                                     </div>
 
-                                    <div className="space-y-4">
+                                    <div className="space-y-6">
                                         <div>
-                                            <label className="text-gray-400 text-sm mb-2 block">Code Snippet / Pseudocode *</label>
-                                            <textarea value={form.codeSnippet} 
-                                                onChange={e => set('codeSnippet', e.target.value)}
+                                            <h3 className="text-white font-semibold mb-2">📄 Question Content / Problem Statement *</h3>
+                                            <textarea value={form.problemStatement} 
+                                                onChange={e => set('problemStatement', e.target.value)}
                                                 onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
-                                                rows={5} placeholder="Enter the code snippet here..." className="input-field font-mono text-sm" />
+                                                rows={3} placeholder="Provide context and instructions for the output prediction..." className="input-field text-sm" />
                                         </div>
 
-                                        {(form.opMode || (form.options && form.options.some((o: any) => o) ? 'mcq' : 'typing')) !== 'mcq' && (
+                                        <div className="pt-6 border-t border-white/5 space-y-4">
                                             <div>
-                                                <label className="text-gray-400 text-sm mb-2 block">Expected Output *</label>
-                                                <input value={form.expectedOutput} onChange={e => set('expectedOutput', e.target.value)}
-                                                    placeholder="What should the student predict?" className="input-field font-mono" />
+                                                <label className="text-gray-400 text-sm mb-2 block">Code Snippet / Pseudocode *</label>
+                                                <textarea value={form.codeSnippet} 
+                                                    onChange={e => set('codeSnippet', e.target.value)}
+                                                    onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
+                                                    rows={5} placeholder="Enter the code snippet here..." className="input-field font-mono text-sm" />
                                             </div>
-                                        )}
+
+                                            {(form.opMode || (form.options && form.options.some((o: any) => o) ? 'mcq' : 'typing')) !== 'mcq' && (
+                                                <div>
+                                                    <label className="text-gray-400 text-sm mb-2 block">Expected Output *</label>
+                                                    <input value={form.expectedOutput} onChange={e => set('expectedOutput', e.target.value)}
+                                                        placeholder="What should the student predict?" className="input-field font-mono" />
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="pt-6 border-t border-white/5 font-semibold">
+                                            <label className="text-gray-400 text-sm mb-2 block">Explanation (Optional)</label>
+                                            <textarea value={form.explanation} 
+                                                onChange={e => set('explanation', e.target.value)}
+                                                onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
+                                                rows={3} placeholder="Explain the prediction logic..." className="input-field text-sm" />
+                                        </div>
                                     </div>
                                 </div>
+
 
                                 {(form.opMode || (form.options && form.options.some((o: any) => o) ? 'mcq' : 'typing')) === 'mcq' && (
                                     <div className="glass-card p-6 border-t-0 rounded-t-none -mt-6 bg-primary-500/5">

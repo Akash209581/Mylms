@@ -56,9 +56,10 @@ import { ChaptersModule } from './chapters/chapters.module';
         Organization,
       ],
 
-      // Set to false to prevent accidental data loss in dev
-      synchronize: false,
+      // Set to true temporarily to update schema for new fields
+      synchronize: true,
       logging: false,
+
 
     }),
     AuthModule,

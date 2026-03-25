@@ -101,22 +101,27 @@ export class Question {
   @Column({ type: 'jsonb', nullable: true })
   testCases: { input: string; output: string; explanation?: string }[];
 
-  // OP: pseudocode/program for output prediction
   @Column({ type: 'text', nullable: true })
   codeSnippet: string;
 
   @Column({ nullable: true })
   expectedOutput: string;
 
+  @Column({ type: 'text', nullable: true })
+  explanation: string;
+
+  @Column({ type: 'text', nullable: true })
+  correctCode: string;
+
   @Column({ default: true })
   isActive: boolean;
 
   // College/University - Multi-tenant support
-  @Column({ name: 'college_id' })
+  @Column({ name: 'college_id', nullable: true })
   collegeId: number;
 
   // Organization - Multi-tenant support
-  @Column({ name: 'organization_id' })
+  @Column({ name: 'organization_id', nullable: true })
   organizationId: number;
 
   @ManyToOne(() => Organization, (organization) => organization.questions, {
