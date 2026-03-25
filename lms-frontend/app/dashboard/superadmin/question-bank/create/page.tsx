@@ -344,6 +344,12 @@ export default function CreateQuestionPage() {
                                                 <span className="text-gray-400 text-sm w-6">{i + 1}.</span>
                                                 <input value={s} onChange={e => { const js = [...form.jumbledStatements]; js[i] = e.target.value; set('jumbledStatements', js) }}
                                                     placeholder={`Code line ${i + 1}`} className="input-field flex-1 font-mono text-sm" />
+                                                {form.jumbledStatements.length > 1 && (
+                                                    <button onClick={() => set('jumbledStatements', form.jumbledStatements.filter((_: any, idx: number) => idx !== i))}
+                                                        className="text-red-400 hover:text-red-500 transition-colors p-1" title="Delete Statement">
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                                    </button>
+                                                )}
                                             </div>
                                         ))}
                                     </div>
