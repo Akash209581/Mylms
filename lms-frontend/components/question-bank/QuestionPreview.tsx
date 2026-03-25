@@ -58,16 +58,20 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
 
                         <div className="p-8 bg-gray-50 rounded-3xl border border-gray-100 shadow-inner">
                             <p className="text-slate-800 text-xl leading-relaxed whitespace-pre-wrap">
-                                {((form.problemStatement || form.questionText) || '').split('[BLANK]').map((part: string, i: number, arr: any[]) => (
-                                    <React.Fragment key={i}>
-                                        {part}
-                                        {i < arr.length - 1 && (
-                                            <span className="inline-block min-w-[140px] border-b-3 border-primary-500 mx-2 text-primary-600 text-center font-black bg-white/50 px-2">
-                                                {form.blanks?.[i] || '__________'}
-                                            </span>
-                                        )}
-                                    </React.Fragment>
-                                ))}
+                                {((form.problemStatement || form.questionText) || '').split('[BLANK]').map((part: string, i: number, arr: any[]) => {
+                                    // Remove trailing underscores from text before blank
+                                    const cleanText = part.replace(/_+$/, '');
+                                    return (
+                                        <React.Fragment key={i}>
+                                            {cleanText}
+                                            {i < arr.length - 1 && (
+                                                <span className="inline-block min-w-[120px] border-b-2 border-primary-500 mx-1 text-primary-600 px-2 font-black text-center whitespace-nowrap align-baseline">
+                                                    {form.blanks?.[i] || ' ' }
+                                                </span>
+                                            )}
+                                        </React.Fragment>
+                                    );
+                                })}
                             </p>
                         </div>
 
