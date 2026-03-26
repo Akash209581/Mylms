@@ -106,26 +106,33 @@ export default function EditLessonPage() {
       const stored = localStorage.getItem('user')
       const u = stored ? JSON.parse(stored) : null
       
+      let readOnlyFlag = false
       if (u && u.role !== 'SUPERADMIN') {
         // If course created by SUPERADMIN, it's view-only for everyone else
         if (courseData.instructor?.role === 'SUPERADMIN') {
-          setIsReadOnly(true)
+          readOnlyFlag = true
         }
-        // If course created by another instructor, it's view-only (or forbidden, but view-only is safer for UI)
-        else if (courseData.instructorId !== u.id) {
-           setIsReadOnly(true)
+        // If course created by another instructor, it's view-only
+        else if (Number(courseData.instructorId) !== Number(u.id)) {
+           readOnlyFlag = true
         }
       }
+      setIsReadOnly(readOnlyFlag)
 
-      // 2. See if there is a module and lesson
-      let targetLesson: Lesson | null = courseData.modules?.[0]?.lessons?.[0]
+      // 2. See if there is a module, chapter and lesson
+      let targetLesson: Lesson | null = courseData.modules?.[0]?.chapters?.[0]?.lessons?.[0]
 
-      // 3. If no lesson exists, auto-create one!
+      // 3. If no lesson exists, auto-create the necessary structure!
       if (!targetLesson) {
-        let targetModuleId = courseData.modules?.[0]?.id
+        if (readOnlyFlag) {
+          throw new Error('This course has no content to display yet.')
+        }
 
+        let firstModule = courseData.modules?.[0]
+        let targetModuleId = firstModule?.id
+
+        // Ensure Module exists
         if (!targetModuleId) {
-          // Create a module
           const modRes = await fetch(`${API}/modules`, {
             method: 'POST',
             credentials: 'include',
@@ -135,14 +142,35 @@ export default function EditLessonPage() {
           if (!modRes.ok) throw new Error('Failed to create default module')
           const newModule = await modRes.json()
           targetModuleId = newModule.id
+          firstModule = newModule
         }
 
-        // Create a lesson
+        // Ensure Chapter exists within the module
+        let targetChapterId = firstModule?.chapters?.[0]?.id
+        if (!targetChapterId) {
+          const chapRes = await fetch(`${API}/chapters`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+            body: JSON.stringify({ moduleId: targetModuleId, title: 'Introduction', order: 1 })
+          })
+          if (!chapRes.ok) throw new Error('Failed to create default chapter')
+          const newChapter = await chapRes.json()
+          targetChapterId = newChapter.id
+        }
+
+        // Create the lesson within the chapter
         const lessRes = await fetch(`${API}/lessons`, {
           method: 'POST',
           credentials: 'include',
           headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-          body: JSON.stringify({ moduleId: targetModuleId, title: 'Course Content', type: 'article', order: 1, published: true })
+          body: JSON.stringify({ 
+            chapterId: targetChapterId, 
+            title: 'Course Content', 
+            type: 'article', 
+            order: 1, 
+            published: true 
+          })
         })
         if (!lessRes.ok) throw new Error('Failed to create default lesson')
         targetLesson = await lessRes.json()

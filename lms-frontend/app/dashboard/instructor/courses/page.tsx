@@ -259,7 +259,7 @@ export default function InstructorCoursesPage() {
                                     {/* Actions */}
                                     <div className="flex flex-col gap-2">
                                         <div className="flex gap-2">
-                                            {course.instructorId === user?.id && course.instructor?.role !== 'SUPERADMIN' ? (
+                                            {Number(course.instructorId) === Number(user?.id) && course.instructor?.role !== 'SUPERADMIN' ? (
                                                 <button
                                                     onClick={() => router.push(`/dashboard/instructor/edit-lesson/${course.id}`)}
                                                     className="flex-1 btn-secondary text-sm"
