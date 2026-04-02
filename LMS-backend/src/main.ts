@@ -24,6 +24,7 @@ async function bootstrap() {
 
   app.enableCors({
     origin: (origin, callback) => {
+      console.log(`📡 Incoming request from origin: ${origin}`);
       if (
         !origin ||
         allowedOrigins.some((ao) => origin.startsWith(ao as string)) ||
@@ -32,6 +33,7 @@ async function bootstrap() {
       ) {
         callback(null, true);
       } else {
+        console.error(`❌ Origin NOT allowed: ${origin}`);
         callback(new Error('Not allowed by CORS'));
       }
     },

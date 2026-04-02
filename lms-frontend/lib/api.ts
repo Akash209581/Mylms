@@ -1,6 +1,10 @@
 import axios from 'axios';
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+export const API_URL = 
+  process.env.NEXT_PUBLIC_API_URL || 
+  (typeof window !== 'undefined' && window.location.hostname.includes('onrender.com') 
+    ? `https://${window.location.hostname.replace('lms-', 'lms-backend-')}` 
+    : 'http://localhost:3001');
 
 // Create axios instance with default config
 export const api = axios.create({
