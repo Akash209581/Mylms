@@ -2,7 +2,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { api } from '@/lib/api'
+import { api, API_URL } from '@/lib/api'
+import { getAuthHeaders } from '@/lib/authHeaders'
 
 const INDIAN_STATES = [
     'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
@@ -73,7 +74,7 @@ export default function SignupPage() {
         setLoadingColleges(true)
         setCollegesFetchError(false)
         try {
-            const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/auth/colleges`
+            const apiUrl = `${API_URL}/auth/colleges`
             console.log('Fetching colleges from:', apiUrl)
             const response = await fetch(apiUrl, {
                 method: 'GET',
@@ -217,7 +218,7 @@ export default function SignupPage() {
         setLoading(true)
         setError('')
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/auth/signup`, {
+            const res = await fetch(`${API_URL}/auth/signup`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',

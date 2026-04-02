@@ -1,6 +1,8 @@
 'use client'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { API_URL } from '@/lib/api'
+import { getAuthHeaders } from '@/lib/authHeaders'
 
 type NavItem = { label: string; href: string; icon: React.ReactNode }
 
@@ -53,7 +55,11 @@ export default function Sidebar({ role }: { role?: string }) {
                     role === 'SUPERADMIN' ? '#ef4444' : '#6366f1'
 
     const handleLogout = async () => {
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/auth/logout`, { method: 'POST', credentials: 'include' })
+        await fetch(`${API_URL}/auth/logout`, { 
+            method: 'POST', 
+            credentials: 'include',
+            headers: getAuthHeaders() 
+        })
         localStorage.removeItem('user')
         localStorage.removeItem('access_token')
         router.push('/login')

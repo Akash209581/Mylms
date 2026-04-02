@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
+import { API_URL } from '@/lib/api'
+import { getAuthHeaders } from '@/lib/authHeaders'
 
 export default function SuperAdminDashboard() {
     const router = useRouter()
@@ -17,7 +19,7 @@ export default function SuperAdminDashboard() {
         if (u.role !== 'SUPERADMIN') { router.push(`/dashboard/${u.role.toLowerCase()}`); return }
         setUser(u)
 
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/superadmin/dashboard`, { credentials: 'include' })
+        fetch(`${API_URL}/superadmin/dashboard`, { credentials: 'include', headers: getAuthHeaders() })
             .then(r => r.json())
             .then(data => setStats(data))
             .catch(() => { })
@@ -35,9 +37,9 @@ export default function SuperAdminDashboard() {
     ]
 
     const handleRoleChange = async (userId: number, newRole: string) => {
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/superadmin/users/${userId}/role`, {
+        await fetch(`${API_URL}/superadmin/users/${userId}/role`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getAuthHeaders(),
             credentials: 'include',
             body: JSON.stringify({ role: newRole }),
         })
