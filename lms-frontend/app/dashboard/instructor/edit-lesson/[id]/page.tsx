@@ -13,6 +13,7 @@ type LessonEditorProps = {
   initialContent?: Record<string, any> | null
   lessonTitle?: string
   onSave: (content: Record<string, any>) => Promise<void>
+  onAddTopic?: () => void
   readOnly?: boolean
 }
 const LessonEditor = dynamic<LessonEditorProps>(
@@ -34,6 +35,7 @@ interface Lesson {
   version?: number
   lastEditedBy?: string
   updatedAt?: string
+  chapterId?: number
   module?: {
     id: number
     title: string
@@ -81,6 +83,11 @@ export default function EditLessonPage() {
 
     fetchLessonData()
   }, [courseId])
+
+  const getDashboardPath = () => {
+    if (!user) return '/dashboard/instructor'
+    return `/dashboard/${user.role.toLowerCase()}`
+  }
 
   const fetchLessonData = async () => {
     setLoading(true)
@@ -232,6 +239,36 @@ export default function EditLessonPage() {
     }
   }
 
+  const handleAddTopic = async () => {
+    if (!lesson?.chapterId) return
+    const title = prompt('Enter topic title:', 'New Topic')
+    if (!title) return
+
+    try {
+      setLoading(true)
+      const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+      const res = await fetch(`${API}/lessons`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          chapterId: lesson.chapterId, 
+          title, 
+          type: 'article', 
+          order: 100, // backend usually handles ordering or we append
+          published: true 
+        })
+      })
+      if (!res.ok) throw new Error('Failed to create topic')
+      
+      // Reload to see the new topic (or we could just set it as active)
+      fetchLessonData()
+    } catch (e: any) {
+      alert(e.message)
+      setLoading(false)
+    }
+  }
+
   /* ── Breadcrumb navigation ── */
   const displayCourseId = courseId
   const displayCourseTitle = courseTitle || lesson?.module?.course?.title || `Course #${courseId}`
@@ -252,7 +289,7 @@ export default function EditLessonPage() {
           {/* Breadcrumb */}
           <nav className="flex items-center gap-2 text-sm font-medium" aria-label="Breadcrumb">
             <button
-              onClick={() => router.push('/dashboard/instructor/courses')}
+              onClick={() => router.push(`${getDashboardPath()}/courses`)}
               className="text-indigo-600 hover:text-indigo-800 transition-colors"
             >
               My Courses
@@ -261,7 +298,7 @@ export default function EditLessonPage() {
               <>
                 <span className="text-slate-400">/</span>
                 <button
-                  onClick={() => router.push(`/dashboard/instructor/courses`)}
+                  onClick={() => router.push(`${getDashboardPath()}/courses`)}
                   className="text-indigo-600 hover:text-indigo-800 transition-colors"
                 >
                   {displayCourseTitle}
@@ -380,6 +417,7 @@ export default function EditLessonPage() {
               initialContent={lesson.content ?? null}
               lessonTitle={lesson.title}
               onSave={handleSave}
+              onAddTopic={handleAddTopic}
               readOnly={isReadOnly}
             />
           )}

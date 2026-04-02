@@ -4,13 +4,8 @@ import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
 import { getAuthHeaders } from '@/lib/authHeaders'
-
-const STAT_CONFIG = [
-    { label: 'Enrolled Courses', icon: '📚', gradient: 'linear-gradient(135deg, #6366f1, #8b5cf6)', key: 'enrollments' },
-    { label: 'Completed Lessons', icon: '✅', gradient: 'linear-gradient(135deg, #10b981, #059669)', key: 'completed' },
-    { label: 'In Progress', icon: '⏱️', gradient: 'linear-gradient(135deg, #f59e0b, #d97706)', key: 'inProgress' },
-    { label: 'Certificates', icon: '🏆', gradient: 'linear-gradient(135deg, #ef4444, #dc2626)', key: 'certs' },
-]
+import SkillRadar from '@/components/student/SkillRadar'
+import ActivityHeatmap from '@/components/student/ActivityHeatmap'
 
 function DailyStreakDisplay() {
     const [streak, setStreak] = useState<any>(null)
@@ -27,203 +22,193 @@ function DailyStreakDisplay() {
             .finally(() => setLoading(false))
     }, [])
 
-    if (loading) return <div className="h-24 bg-gray-50 animate-pulse rounded-xl" />
+    if (loading) return <div className="h-32 bg-[var(--bg-raised)] animate-pulse rounded-2xl" />
     if (!streak) return (
-        <div className="bg-amber-50 p-4 rounded-xl border border-amber-100">
-            <p className="text-amber-800 text-sm italic">No coding streak question set for today. Check back later!</p>
+        <div className="bg-amber-500/10 p-5 rounded-2xl border border-amber-500/20">
+            <p className="text-amber-500 text-sm font-medium italic">No coding streak question set for today. Check back later!</p>
         </div>
     )
 
     return (
-        <div className="bg-[var(--bg-surface)] p-5 rounded-2xl border border-amber-100 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-                <span className="px-2 py-1 bg-amber-100 text-amber-700 text-[10px] font-bold rounded uppercase">Daily Challenge</span>
-                <span className="text-gray-400 text-xs font-mono">Q#{streak.question?.questionNumber}</span>
+        <div className="glass-card p-6 rounded-2xl shadow-xl">
+            <div className="flex items-center justify-between mb-4">
+                <span className="px-2 py-1 bg-amber-500/20 text-amber-500 text-[10px] font-bold rounded uppercase tracking-wider">Daily Challenge</span>
+                <span className="text-gray-500 text-xs font-mono">Q#{streak.question?.questionNumber}</span>
             </div>
-            <p className="text-[var(--text-primary)] font-bold text-base mb-2 line-clamp-2">{streak.question?.questionText}</p>
-            <div className="flex items-center gap-3 mt-4">
-                <button
-                    className="btn-primary py-2 px-6 text-sm flex-1"
-                    onClick={() => window.location.href = '/dashboard/student/streak'}
-                >
-                    Solve Now
-                </button>
-            </div>
+            <h4 className="text-white font-bold text-lg mb-3 line-clamp-2 leading-snug">{streak.question?.questionText}</h4>
+            <button
+                className="w-full mt-2 py-3 px-6 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-bold rounded-xl transition-all shadow-lg shadow-amber-500/20"
+                onClick={() => window.location.href = '/dashboard/student/streak'}
+            >
+                Solve Coding Challenge
+            </button>
         </div>
     )
 }
 
 export default function StudentDashboard() {
-
     const router = useRouter()
     const [user, setUser] = useState<any>(null)
+    const [stats, setStats] = useState<any>(null)
+    const [skills, setSkills] = useState<any[]>([])
+    const [activity, setActivity] = useState<any[]>([])
     const [enrollments, setEnrollments] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
-        // Initial state from localStorage
         const stored = localStorage.getItem('user')
         if (!stored) { router.push('/login'); return }
         const u = JSON.parse(stored)
         if (u.role !== 'STUDENT') { router.push(`/dashboard/${u.role.toLowerCase()}`); return }
         setUser(u)
 
-        // Refresh user profile to get latest college logo
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/auth/me`, {
-            headers: getAuthHeaders(),
-        })
-            .then(r => r.json())
-            .then(updatedUser => {
-                if (updatedUser && !updatedUser.message) {
-                    setUser(updatedUser)
-                    localStorage.setItem('user', JSON.stringify(updatedUser))
-                }
-            })
-            .catch(() => { })
+        const headers = getAuthHeaders()
+        const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
 
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/enrollments/my`, {
-            credentials: 'include',
-            headers: getAuthHeaders(),
+        Promise.all([
+            fetch(`${apiBase}/student/stats`, { headers }).then(r => r.json()),
+            fetch(`${apiBase}/student/skills`, { headers }).then(r => r.json()),
+            fetch(`${apiBase}/student/activity`, { headers }).then(r => r.json()),
+            fetch(`${apiBase}/enrollments/my`, { headers }).then(r => r.json())
+        ]).then(([statsData, skillsData, activityData, enrollmentData]) => {
+            if (statsData && !statsData.message) setStats(statsData)
+            if (Array.isArray(skillsData)) setSkills(skillsData)
+            if (Array.isArray(activityData)) setActivity(activityData)
+            if (Array.isArray(enrollmentData)) setEnrollments(enrollmentData)
+            setLoading(false)
+        }).catch(err => {
+            console.error('Failed to fetch dashboard data', err)
+            setLoading(false)
         })
-            .then(r => r.json())
-            .then(data => { if (Array.isArray(data)) setEnrollments(data) })
-            .catch(() => { })
-            .finally(() => setLoading(false))
     }, [])
 
-    const stats = [
-        enrollments.length,
-        0,
-        enrollments.length,
-        0,
-    ]
-
     return (
-        <div className="min-h-screen bg-mesh">
+        <div className="min-h-screen bg-[var(--bg-base)] text-[var(--text-primary)] transition-colors">
             <Sidebar role="STUDENT" />
-            <Navbar title="Student Dashboard" />
-            <main className="page-content">
-                {/* Hero */}
-                <div className="hero-section mb-8 animate-fade-in bg-[var(--bg-surface)] border border-[var(--border)] shadow-sm relative overflow-hidden">
-                    <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                        <div>
-                            <p className="text-[var(--text-secondary)] text-sm font-medium mb-1">Welcome back 👋</p>
-                            <h1 className="text-3xl md:text-4xl font-extrabold text-[var(--text-primary)] mb-3">{user?.name || 'Student'}</h1>
-                            {user?.collegeName && (
-                                <div className="flex items-center gap-2 mb-3">
-                                    <span className="text-primary-400 font-semibold">🎓 {user.collegeName}</span>
-                                </div>
-                            )}
-                            <p className="text-[var(--text-secondary)] mb-6 max-w-lg">Continue your learning journey. Keep up the great work!</p>
-                            <a href="/dashboard/student/courses">
-                                <button className="btn-primary px-8 py-3.5 text-sm">
-                                    Browse Courses →
+            <Navbar title="Learning Dashboard" />
+            
+            <main className="page-content pt-24">
+                {/* Hero / Quick Stats */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
+                    <div className="lg:col-span-8 bg-[var(--accent)] text-white rounded-3xl p-8 relative overflow-hidden shadow-xl shadow-indigo-200">
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-20 -mt-20 blur-3xl" />
+                        <div className="relative z-10">
+                            <p className="text-indigo-100 text-sm font-semibold mb-2 opacity-80 uppercase tracking-widest">Dashboard Overview</p>
+                            <h2 className="text-4xl font-black mb-4">Hello, {user?.name?.split(' ')[0]}! 👋</h2>
+                            <p className="text-indigo-100/80 max-w-md text-lg leading-relaxed mb-6">
+                                You have <b>{stats?.enrolledCourses || 0}</b> active courses and a <b>{stats?.streak || 0} day</b> coding streak. Keep the momentum going!
+                            </p>
+                            <div className="flex flex-wrap gap-4">
+                                <button 
+                                    onClick={() => router.push('/dashboard/student/courses')}
+                                    className="px-6 py-3 bg-white text-indigo-600 font-bold rounded-xl hover:bg-indigo-50 transition-all shadow-lg"
+                                >
+                                    Resume Learning
                                 </button>
-                            </a>
+                                <button 
+                                    onClick={() => router.push('/dashboard/student/profile')}
+                                    className="px-6 py-3 bg-indigo-500/30 text-white font-bold rounded-xl border border-white/20 hover:bg-indigo-500/50 transition-all"
+                                >
+                                    View Profile
+                                </button>
+                            </div>
                         </div>
-
-                        {/* College Logo */}
-                        <div className="flex-shrink-0 bg-[var(--bg-raised)]/70 p-4 rounded-3xl border border-[var(--border)] shadow-sm hidden md:block">
-                            {user?.collegeLogo ? (
-                                <div className="relative w-32 h-32 flex items-center justify-center overflow-hidden rounded-2xl bg-[var(--bg-surface)] shadow-inner">
-                                    <img
-                                        src={user.collegeLogo}
-                                        alt={user.collegeName || 'College Logo'}
-                                        className="max-w-full max-h-full object-contain p-2"
-                                        onError={(e) => {
-                                            (e.target as HTMLImageElement).src = 'https://cdn-icons-png.flaticon.com/512/5322/5322033.png';
-                                        }}
-                                    />
-                                </div>
-                            ) : (
-                                <div className="w-32 h-32 flex items-center justify-center text-7xl bg-[var(--bg-surface)] rounded-2xl shadow-inner animate-float">
-                                    🎓
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Stat Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                    {STAT_CONFIG.map((card, i) => (
-                        <div key={card.key} className="stat-card animate-slide-up" style={{ animationDelay: `${i * 0.1}s` }}>
-                            <div className="flex items-start justify-between mb-4">
-                                <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl" style={{ background: card.gradient }}>
-                                    {card.icon}
-                                </div>
-                            </div>
-                            <p className="text-3xl font-bold text-white mb-1">{loading ? '—' : stats[i]}</p>
-                            <p className="text-gray-400 text-sm">{card.label}</p>
-                        </div>
-                    ))}
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Daily Streak */}
-                    <div className="glass-card p-6 border border-amber-500/20 shadow-amber-500/5 relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-2 opacity-10 text-5xl">🔥</div>
-                        <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-5 flex items-center gap-2">
-                            <span className="w-2 h-5 rounded-full bg-amber-500" />
-                            Today's Coding Streak
-                        </h3>
-                        <DailyStreakDisplay />
-                    </div>
-
-                    {/* Enrolled Courses */}
-                    <div className="glass-card p-6">
-
-                        <h3 className="text-lg font-semibold text-white mb-5 flex items-center gap-2">
-                            <span className="w-2 h-5 rounded-full" style={{ background: 'linear-gradient(#6366f1,#a855f7)' }} />
-                            My Enrolled Courses
-                        </h3>
-                        {loading ? (
-                            <div className="flex justify-center py-10">
-                                <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
-                            </div>
-                        ) : enrollments.length === 0 ? (
-                            <div className="text-center py-12">
-                                <div className="text-4xl mb-3">📚</div>
-                                <p className="text-gray-400 text-sm">You haven't enrolled in any courses yet.</p>
-                                <a href="/dashboard/student/courses">
-                                    <button className="btn-primary mt-4 px-5 py-2 text-sm">Browse Courses</button>
-                                </a>
-                            </div>
-                        ) : (
-                            <div className="space-y-3">
-                                {enrollments.map((e: any) => (
-                                    <div key={e.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-[var(--bg-surface)]/5 transition-colors">
-                                        <div className="w-10 h-10 rounded-lg flex items-center justify-center text-xl"
-                                            style={{ background: 'linear-gradient(135deg,#6366f1,#a855f7)' }}>📚</div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-white text-sm font-medium truncate">{e.course?.title || 'Course'}</p>
-                                            <p className="text-[var(--text-secondary)] text-xs mt-0.5">
-                                                Enrolled {new Date(e.enrolledAt).toISOString().slice(0, 10)}
-                                            </p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
+                        {/* College Logo Overlay */}
+                        {user?.collegeLogo && (
+                            <img 
+                                src={user.collegeLogo} 
+                                alt="College Logo" 
+                                className="absolute bottom-6 right-8 h-20 opacity-20 grayscale brightness-200 pointer-events-none"
+                            />
                         )}
                     </div>
 
-                    {/* Profile Summary */}
-                    <div className="glass-card p-6">
-                        <h3 className="text-lg font-semibold text-white mb-5 flex items-center gap-2">
-                            <span className="w-2 h-5 rounded-full" style={{ background: 'linear-gradient(#10b981,#059669)' }} />
-                            Profile Summary
+                    <div className="lg:col-span-4 grid grid-cols-2 gap-4">
+                        <div className="stat-card flex flex-col justify-center items-center text-center backdrop-blur-sm">
+                            <div className="text-4xl mb-2">🔥</div>
+                            <div className="text-2xl font-black">{stats?.streak || 0}</div>
+                            <div className="text-xs text-gray-500 font-bold uppercase tracking-tighter">Current Streak</div>
+                        </div>
+                        <div className="stat-card flex flex-col justify-center items-center text-center backdrop-blur-sm">
+                            <div className="text-4xl mb-2">💎</div>
+                            <div className="text-2xl font-black">{stats?.points || 0}</div>
+                            <div className="text-xs text-gray-500 font-bold uppercase tracking-tighter">ByteXL Score</div>
+                        </div>
+                        <div className="stat-card flex flex-col justify-center items-center text-center backdrop-blur-sm">
+                            <div className="text-4xl mb-2">🏆</div>
+                            <div className="text-2xl font-black">{stats?.rank || '—'}</div>
+                            <div className="text-xs text-gray-500 font-bold uppercase tracking-tighter">Global Rank</div>
+                        </div>
+                        <div className="stat-card flex flex-col justify-center items-center text-center">
+                            <div className="text-4xl mb-2">🏅</div>
+                            <div className="text-2xl font-black">{stats?.badges || 0}</div>
+                            <div className="text-xs text-gray-500 font-bold uppercase tracking-tighter">Badges Won</div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Activity Heatmap */}
+                <div className="glass-card p-8 mb-8">
+                    <div className="flex items-center justify-between mb-6">
+                        <h3 className="text-xl font-black flex items-center gap-3">
+                            <span className="w-2 h-6 bg-indigo-500 rounded-full" />
+                            Learning Activity
                         </h3>
-                        <div className="flex flex-col items-center py-4">
-                            <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-3xl font-bold text-white mb-4"
-                                style={{ background: 'linear-gradient(135deg,#6366f1,#a855f7)' }}>
-                                {user?.name?.charAt(0).toUpperCase() || 'S'}
+                        <span className="text-xs text-gray-500 font-mono italic">Consistency is key</span>
+                    </div>
+                    <ActivityHeatmap data={activity} />
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    {/* Skill Analysis */}
+                    <div className="glass-card p-8">
+                        <h3 className="text-xl font-black mb-8 flex items-center gap-3">
+                            <span className="w-2 h-6 bg-purple-500 rounded-full" />
+                            Skill Proficiency
+                        </h3>
+                        <SkillRadar data={skills} />
+                    </div>
+
+                    {/* Courses & Streaks */}
+                    <div className="space-y-6">
+                        <DailyStreakDisplay />
+                        
+                        <div className="glass-card p-8">
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="text-xl font-black flex items-center gap-3">
+                                    <span className="w-2 h-6 bg-emerald-500 rounded-full" />
+                                    Current Courses
+                                </h3>
+                                <a href="/dashboard/student/courses" className="text-sm text-indigo-400 hover:text-indigo-300 transition-colors">View All</a>
                             </div>
-                            <p className="text-white font-semibold text-lg">{user?.name}</p>
-                            <p className="text-gray-400 text-sm">{user?.email}</p>
-                            <span className="badge badge-student mt-3">Student</span>
-                            <a href="/dashboard/student/profile" className="mt-5">
-                                <button className="btn-secondary px-5 py-2 text-sm">Edit Profile</button>
-                            </a>
+                            
+                            {loading ? (
+                                <div className="space-y-4">
+                                    {[1, 2].map(i => <div key={i} className="h-16 bg-white/5 animate-pulse rounded-2xl" />)}
+                                </div>
+                            ) : enrollments.length === 0 ? (
+                                <div className="text-center py-8">
+                                    <div className="text-4xl mb-3 opacity-20">📚</div>
+                                    <p className="text-gray-500 text-sm italic">Not enrolled in any courses yet.</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    {enrollments.slice(0, 3).map((e: any) => (
+                                        <div key={e.id} className="group flex items-center gap-4 p-4 rounded-2xl bg-[var(--bg-raised)] hover:bg-[var(--bg-hover)] transition-all border border-transparent hover:border-[var(--border)] shadow-sm">
+                                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-2xl shadow-lg">📚</div>
+                                            <div className="flex-1 min-w-0">
+                                                <h5 className="font-bold text-gray-200 truncate group-hover:text-white transition-colors">{e.course?.title}</h5>
+                                                <div className="flex items-center gap-4 mt-1">
+                                                    <div className="h-1.5 flex-1 bg-[var(--border)] rounded-full overflow-hidden">
+                                                        <div className="h-full bg-indigo-500 rounded-full w-[45%] shadow-[0_0_8px_rgba(99,102,241,0.5)]" />
+                                                    </div>
+                                                    <span className="text-[10px] font-black text-gray-500">45%</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

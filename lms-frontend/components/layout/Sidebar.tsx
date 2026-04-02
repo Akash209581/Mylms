@@ -5,8 +5,11 @@ import { usePathname, useRouter } from 'next/navigation'
 type NavItem = { label: string; href: string; icon: React.ReactNode }
 
 const studentNav: NavItem[] = [
+    { label: 'Course Catalog', href: '/dashboard/student/catalog', icon: <BookIcon /> },
     { label: 'Dashboard', href: '/dashboard/student', icon: <GridIcon /> },
-    { label: 'My Courses', href: '/dashboard/student/courses', icon: <BookIcon /> },
+    { label: 'My Courses', href: '/dashboard/student/courses', icon: <GraduationCapIcon /> },
+    { label: 'Coding Problems', href: '/dashboard/student/coding', icon: <CodeIcon /> },
+    { label: 'Forums', href: '/dashboard/student/forums', icon: <ForumIcon /> },
     { label: 'Profile', href: '/dashboard/student/profile', icon: <UserIcon /> },
 ]
 const instructorNav: NavItem[] = [
@@ -25,6 +28,7 @@ const superadminNav: NavItem[] = [
     { label: 'Dashboard', href: '/dashboard/superadmin', icon: <GridIcon /> },
     { label: 'All Users', href: '/dashboard/superadmin/users', icon: <UsersIcon /> },
     { label: 'All Courses', href: '/dashboard/superadmin/courses', icon: <BookIcon /> },
+    { label: 'Content Creation', href: '/dashboard/superadmin/content', icon: <EditorIcon /> },
     { label: 'Create Course', href: '/dashboard/superadmin/courses/create', icon: <PlusIcon /> },
     { label: 'Question Bank', href: '/dashboard/superadmin/question-bank', icon: <QuizIcon /> },
     { label: 'Add Question', href: '/dashboard/superadmin/question-bank/create', icon: <PlusIcon /> },
@@ -201,4 +205,26 @@ function EditorIcon() {
         </svg>
     )
 }
-
+function CodeIcon() {
+    return (
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-5 h-5">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+        </svg>
+    )
+}
+function ForumIcon() {
+    return (
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-5 h-5">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+        </svg>
+    )
+}
+function GraduationCapIcon() {
+    return (
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-5 h-5">
+            <path d="M12 14l9-5-9-5-9 5 9 5z" />
+            <path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222" />
+        </svg>
+    )
+}

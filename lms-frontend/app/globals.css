@@ -1859,6 +1859,72 @@ table .text-gray-500 {
 .nb-split {
   display: flex;
   min-height: 500px;
+  background: #f1f5f9; /* Light gray background for the split area to show pages */
+}
+
+/* ── A4 Page Container ── */
+.nb-a4-page {
+  width: 210mm; /* A4 width */
+  min-height: auto; /* Grows with content, no automatic jump */
+  background: #ffffff;
+  margin: 10px auto 30px;
+  padding: 15mm;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e2e8f0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.2s ease;
+}
+
+/* When in editor pane, make it even less restrictive */
+.nb-write-pane .nb-a4-page {
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  margin-top: 0;
+  padding: 10mm;
+}
+
+/* When in split-pane mode, we might need to adjust width or scale */
+.nb-write-pane .nb-a4-page,
+.nb-preview-pane .nb-a4-page {
+  width: 100%;
+  max-width: 210mm;
+  padding: 10mm; /* Slightly smaller padding for editor view */
+  min-height: auto; /* Allow growth in editor, min-height handles the A4 look */
+  margin-bottom: 40px;
+}
+
+.nb-page-break-divider {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  margin: 10px 0;
+  user-select: none;
+}
+
+.nb-page-break-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  border-top: 2px dashed #cbd5e1;
+  z-index: 1;
+}
+
+.nb-page-break-label {
+  position: relative;
+  z-index: 2;
+  background: #f1f5f9;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  border: 1px solid #e2e8f0;
 }
 
 .nb-write-pane,
@@ -1869,8 +1935,10 @@ table .text-gray-500 {
 }
 
 .nb-write-pane {
-  background: #ffffff;
+  background: #f1f5f9; /* Match split background */
   border-right: 1px solid #e2e8f0;
+  overflow-y: auto;
+  max-height: calc(100vh - 180px); /* Ensure it scrolls within the editor */
 }
 
 .nb-preview-pane {

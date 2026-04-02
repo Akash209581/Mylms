@@ -235,11 +235,33 @@ export default function LessonViewer({ content }: LessonViewerProps) {
   }
   return (
     <div className="nb-viewer">
-      {cells.map(cell => (
-        <div key={cell.id} className="nb-viewer-cell">
-          <RenderCell cell={cell} />
-        </div>
-      ))}
+      {(() => {
+        const pages: { id: string; cells: Cell[] }[] = [];
+        let currentCells: Cell[] = [];
+        
+        cells.forEach((cell) => {
+          if (cell.type === 'page-break') {
+            pages.push({ id: cell.id, cells: currentCells });
+            currentCells = [];
+          } else {
+            currentCells.push(cell);
+          }
+        });
+        pages.push({ id: 'last-page', cells: currentCells });
+
+        return pages.map((page, pIdx) => (
+          <div key={page.id} className="nb-viewer-page-group">
+            <div className="nb-a4-page shadow-md">
+                <div className="text-[10px] text-slate-300 absolute top-2 right-4 font-mono select-none">PAGE {pIdx + 1}</div>
+              {page.cells.map(cell => (
+                <div key={cell.id} className="nb-viewer-cell">
+                  <RenderCell cell={cell} />
+                </div>
+              ))}
+            </div>
+          </div>
+        ));
+      })()}
     </div>
   )
 }

@@ -91,6 +91,8 @@ export default function StudentCourseDetailsPage() {
     const [loading, setLoading] = useState(true)
     const [expandedModules, setExpandedModules] = useState<Set<number>>(new Set())
     const [error, setError] = useState<string>('')
+    const [completedLessons, setCompletedLessons] = useState<number[]>([])
+    const [completing, setCompleting] = useState<number | null>(null)
 
     useEffect(() => {
         const stored = localStorage.getItem('user')
@@ -102,8 +104,23 @@ export default function StudentCourseDetailsPage() {
         if (courseId) {
             fetchCourseDetails()
             checkEnrollment()
+            fetchCompletedLessons()
         }
     }, [courseId])
+
+    const fetchCompletedLessons = async () => {
+        try {
+            const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
+            const res = await fetch(`${apiBase}/student/completed-lessons`, {
+                headers: getAuthHeaders(),
+                // Use query param for GET instead of body if it's a GET request
+            })
+            const data = await res.json()
+            if (Array.isArray(data)) setCompletedLessons(data)
+        } catch (error) {
+            console.error('Error fetching completed lessons:', error)
+        }
+    }
 
     const fetchCourseDetails = async () => {
         setLoading(true)
@@ -154,6 +171,29 @@ export default function StudentCourseDetailsPage() {
             console.error('Error enrolling:', error)
         }
         setEnrolling(false)
+    }
+
+    const handleComplete = async (lessonId: number) => {
+        setCompleting(lessonId)
+        try {
+            const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
+            await fetch(`${apiBase}/student/lessons/${lessonId}/complete`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+            })
+            setCompletedLessons(prev => [...prev, lessonId])
+            // Refresh stats in navbar/sidebar by refreshing user
+            const refreshRes = await fetch(`${apiBase}/auth/me`, { headers: getAuthHeaders() })
+            const updatedUser = await refreshRes.json()
+            if (updatedUser && !updatedUser.message) {
+                localStorage.setItem('user', JSON.stringify(updatedUser))
+                window.dispatchEvent(new Event('storage')) // Trigger storage event for navbar to sync
+            }
+        } catch (error) {
+            console.error('Error completing lesson:', error)
+        } finally {
+            setCompleting(null)
+        }
     }
 
     const toggleModule = (moduleId: number) => {
@@ -515,42 +555,49 @@ export default function StudentCourseDetailsPage() {
                                                                                 </div>
                                                                             )}
                                                                         </div>
-
-                                                                        {/* Lesson Type Badge */}
-                                                                        <div className="mt-2 flex gap-2">
-                                                                            <span className="badge bg-blue-500/20 text-blue-400 border-blue-500/30 text-xs">
-                                                                                {lesson.type}
-                                                                            </span>
-                                                                            {lesson.published ? (
-                                                                                <span className="badge bg-green-500/20 text-green-400 border-green-500/30 text-xs">
-                                                                                    Published
-                                                                                </span>
-                                                                            ) : (
-                                                                                <span className="badge bg-gray-500/20 text-gray-400 border-gray-500/30 text-xs">
-                                                                                    Draft
-                                                                                </span>
+                                                                            {/* Mark as Complete Button */}
+                                                                            {isEnrolled && (
+                                                                                <div className="mt-4 flex items-center justify-between border-t border-white/5 pt-3">
+                                                                                    {completedLessons.includes(lesson.id) ? (
+                                                                                        <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/20">
+                                                                                            <span>✨</span> Completed
+                                                                                        </div>
+                                                                                    ) : (
+                                                                                        <button
+                                                                                            onClick={() => handleComplete(lesson.id)}
+                                                                                            disabled={completing === lesson.id}
+                                                                                            className="text-xs font-black uppercase tracking-widest px-4 py-2 bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 rounded-lg hover:bg-indigo-500 hover:text-white transition-all disabled:opacity-50"
+                                                                                        >
+                                                                                            {completing === lesson.id ? 'Processing...' : 'Mark as Done'}
+                                                                                        </button>
+                                                                                    )}
+                                                                                    <div className="flex gap-2">
+                                                                                        <span className="badge bg-blue-500/20 text-blue-400 border-blue-500/30 text-[10px] py-0.5">
+                                                                                            {lesson.type}
+                                                                                        </span>
+                                                                                    </div>
+                                                                                </div>
                                                                             )}
                                                                         </div>
-                                                                    </div>
-                                                                ))}
+                                                                    ))}
+                                                                </div>
                                                             </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="text-center py-12 text-gray-400">
-                                    <p className="text-4xl mb-2">📭</p>
-                                    <p>No curriculum has been added to this course yet.</p>
-                                </div>
-                            )}
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-12 text-gray-400">
+                                        <p className="text-4xl mb-2">📭</p>
+                                        <p>No curriculum has been added to this course yet.</p>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
-                </div>
-            </main>
+                </main>
         </div>
     )
 }

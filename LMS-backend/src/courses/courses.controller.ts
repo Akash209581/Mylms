@@ -11,6 +11,7 @@ import {
   Query,
   HttpException,
   HttpStatus,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/jwt.guard';
 import { OptionalJwtAuthGuard } from '../common/optional-jwt.guard';
@@ -233,7 +234,7 @@ export class CoursesController {
 
   @UseGuards(OptionalJwtAuthGuard)
   @Get(':id')
-  async findOne(@Param('id') id: number, @Request() req: any) {
+  async findOne(@Param('id', ParseIntPipe) id: number, @Request() req: any) {
     console.log(`📖 Fetching course ${id} for user:`, req.user);
 
     const course = await this.courseRepo.findOne({

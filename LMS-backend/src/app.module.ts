@@ -32,6 +32,12 @@ import { Chapter } from './entities/chapter.entity';
 import { Domain } from './entities/domain.entity';
 import { Topic } from './entities/topic.entity';
 import { ChaptersModule } from './chapters/chapters.module';
+import { StudentModule } from './student/student.module';
+import { Badge } from './entities/badge.entity';
+import { UserBadge } from './entities/user-badge.entity';
+import { ForumModule } from './forum/forum.module';
+import { ForumPost } from './entities/forum-post.entity';
+import { ForumReply } from './entities/forum-reply.entity';
 
 @Module({
   imports: [
@@ -58,6 +64,10 @@ import { ChaptersModule } from './chapters/chapters.module';
         Organization,
         Domain,
         Topic,
+        Badge,
+        UserBadge,
+        ForumPost,
+        ForumReply,
       ],
 
       // Set to true temporarily to update schema for new fields
@@ -81,6 +91,8 @@ import { ChaptersModule } from './chapters/chapters.module';
     ChaptersModule,
     LessonsModule,
     OrganizationModule,
+    StudentModule,
+    ForumModule,
   ],
 
 

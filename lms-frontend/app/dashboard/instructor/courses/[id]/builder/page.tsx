@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
+import Sidebar from '@/components/layout/Sidebar';
+import Navbar from '@/components/layout/Navbar';
 
 interface Course {
     id: number;
@@ -60,6 +62,7 @@ export default function CourseBuilderPage() {
     const [lessons, setLessons] = useState<{ [chapterId: number]: Lesson[] }>({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [user, setUser] = useState<any>(null);
 
     // Modal states
     const [showCourseOverviewModal, setShowCourseOverviewModal] = useState(false);
@@ -107,8 +110,17 @@ export default function CourseBuilderPage() {
 
 
     useEffect(() => {
+        const stored = localStorage.getItem('user');
+        if (stored) {
+            setUser(JSON.parse(stored));
+        }
         fetchCourseData();
     }, [courseId]);
+
+    const getDashboardPath = () => {
+        if (!user) return '/dashboard/instructor';
+        return `/dashboard/${user.role.toLowerCase()}`;
+    };
 
     const fetchCourseData = async () => {
         try {
@@ -343,30 +355,38 @@ export default function CourseBuilderPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="text-white text-xl">Loading...</div>
+            <div className="min-h-screen bg-mesh flex items-center justify-center">
+                <div className="w-10 h-10 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
             </div>
         );
     }
 
     if (error || !course) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="text-red-400 text-xl">{error || 'Course not found'}</div>
+            <div className="min-h-screen bg-mesh flex items-center justify-center">
+                <div className="glass-card p-8 text-center max-w-md">
+                    <div className="text-5xl mb-4">⚠️</div>
+                    <h2 className="text-xl font-bold text-white mb-2">Error</h2>
+                    <p className="text-gray-400 mb-6">{error || 'Course not found'}</p>
+                    <button onClick={() => router.back()} className="btn-primary w-full">Go Back</button>
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen p-6">
-            {/* Header */}
-            <div className="max-w-7xl mx-auto mb-8">
-                <button
-                    onClick={() => router.back()}
-                    className="text-purple-400 hover:text-purple-300 mb-4 flex items-center gap-2"
-                >
-                    ← Back to Courses
-                </button>
+        <div className="min-h-screen bg-mesh">
+            <Sidebar role={user?.role || 'INSTRUCTOR'} />
+            <Navbar title="Course Builder" />
+            
+            <main className="page-content">
+                <div className="max-w-7xl mx-auto mb-8">
+                    <button
+                        onClick={() => router.push(`${getDashboardPath()}/courses`)}
+                        className="text-purple-400 hover:text-purple-300 mb-4 flex items-center gap-2 group transition-all"
+                    >
+                        <span className="group-hover:-translate-x-1 transition-transform">←</span> Back to Courses
+                    </button>
                 
                 <div className="flex justify-between items-start">
                     <div>
@@ -536,9 +556,9 @@ export default function CourseBuilderPage() {
                                                                             <span className="text-[10px] px-1.5 py-0.5 bg-blue-500/10 text-blue-400 rounded uppercase">{lesson.type}</span>
                                                                         </div>
                                                                         <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                                            <button onClick={() => router.push(`/dashboard/instructor/edit-lesson/${lesson.id}`)} className="text-xs text-purple-400 hover:underline">Content</button>
-                                                                            <button onClick={() => openEditLessonModal(lesson)} className="text-gray-400 hover:text-white">✏️</button>
-                                                                            <button onClick={() => handleDeleteLesson(lesson.id)} className="text-gray-400 hover:text-red-400">🗑️</button>
+                                                                            <button onClick={() => router.push(`${getDashboardPath()}/edit-lesson/${courseId}`)} className="text-xs text-purple-400 hover:underline font-semibold">Content</button>
+                                                                            <button onClick={() => openEditLessonModal(lesson)} className="p-1 hover:text-purple-400 transition-colors">✏️</button>
+                                                                            <button onClick={() => handleDeleteLesson(lesson.id)} className="p-1 hover:text-red-400 transition-colors">🗑️</button>
                                                                         </div>
                                                                     </div>
                                                                 ))
@@ -874,6 +894,7 @@ export default function CourseBuilderPage() {
                     </div>
                 </div>
             )}
+            </main>
         </div>
     );
 }

@@ -287,7 +287,7 @@ export default function SuperAdminCoursesPage() {
                                         </p>
                                         <div className="flex gap-2">
                                             <button
-                                                onClick={() => router.push(`/dashboard/instructor/courses/${course.id}/builder`)}
+                                                onClick={() => router.push(`/dashboard/superadmin/courses/${course.id}/builder`)}
 
                                                 className="flex-1 py-2 rounded-xl text-xs font-semibold transition-all hover:scale-105 cursor-pointer"
                                                 style={{ background: 'rgba(79,70,229,0.15)', color: '#818cf8', border: '1px solid rgba(79,70,229,0.3)' }}

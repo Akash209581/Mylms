@@ -89,6 +89,33 @@ export class User {
   @Column({ name: 'is_active', default: true })
   isActive: boolean;
 
+  @Column({ type: 'text', nullable: true })
+  bio?: string;
+
+  @Column({ name: 'profile_picture', nullable: true })
+  profilePicture?: string;
+
+  @Column({ name: 'github_url', nullable: true })
+  githubUrl?: string;
+
+  @Column({ name: 'linkedin_url', nullable: true })
+  linkedInUrl?: string;
+
+  @Column({ name: 'portfolio_url', nullable: true })
+  portfolioUrl?: string;
+
+  @Column({ name: 'twitter_url', nullable: true })
+  twitterUrl?: string;
+
+  @Column({ default: 0 })
+  points: number;
+
+  @Column({ name: 'streak_count', default: 0 })
+  streakCount: number;
+
+  @Column({ name: 'last_streak_update', nullable: true })
+  lastStreakUpdate?: Date;
+
   @Column({ name: 'last_login_at', nullable: true })
   lastLoginAt?: Date;
 
