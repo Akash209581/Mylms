@@ -102,8 +102,8 @@ export default function CreateCoursePage() {
             const courseId = data.id ?? data.courseId
             setCreatedCourseId(courseId)
             setCreatedCourseTitle(formData.title.trim())
-            // Route perfectly to the lesson editor where user can edit the content
-            router.push(`/dashboard/instructor/edit-lesson/${courseId}`)
+            // Route to the canonical course builder
+            router.push(`/dashboard/instructor/courses/${courseId}/builder`)
         } catch {
             setErrors({ general: 'Network error. Please check if the backend is running.' })
         } finally {

@@ -261,7 +261,7 @@ export default function InstructorCoursesPage() {
                                         <div className="flex gap-2">
                                             {Number(course.instructorId) === Number(user?.id) && course.instructor?.role !== 'SUPERADMIN' ? (
                                                 <button
-                                                    onClick={() => router.push(`/dashboard/instructor/edit-lesson/${course.id}`)}
+                                                    onClick={() => router.push(`/dashboard/instructor/courses/${course.id}/builder`)}
                                                     className="flex-1 btn-secondary text-sm"
                                                 >
                                                     Edit Content

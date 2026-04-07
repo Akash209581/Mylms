@@ -11,7 +11,7 @@ import 'katex/dist/katex.min.css'
 export type CellType =
   | 'heading' | 'subheading' | 'h3'
   | 'text' | 'code' | 'divider' | 'image' | 'video'
-  | 'note' | 'info' | 'tip' | 'important' | 'caution' | 'warning'
+  | 'note' | 'info' | 'tip' | 'important' | 'caution' | 'warning' | 'suggestion'
   | 'page-break'
 
 export interface Cell {
@@ -35,7 +35,11 @@ export interface LessonEditorProps {
   lessonTitle?: string
   onSave: (content: Record<string, any>) => Promise<void>
   onAddTopic?: () => void
+  onBack?: () => void  // Navigate back to course outline
   readOnly?: boolean
+  showPreviewByDefault?: boolean  // Default preview visibility
+  fullPreviewTitle?: string
+  plainCodePreview?: boolean
 }
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
@@ -43,7 +47,7 @@ type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 /* ═══════════════════════════════════════════════════════
    CALLOUT CONFIG
 ═══════════════════════════════════════════════════════ */
-const CALLOUT_TYPES = ['note', 'info', 'tip', 'important', 'caution', 'warning'] as const
+const CALLOUT_TYPES = ['note', 'info', 'tip', 'important', 'caution', 'warning', 'suggestion'] as const
 type CalloutType = typeof CALLOUT_TYPES[number]
 const isCalloutType = (t: CellType): t is CalloutType =>
   (CALLOUT_TYPES as readonly string[]).includes(t)
@@ -55,6 +59,7 @@ const CALLOUT_CONFIG: Record<CalloutType, { icon: string; label: string }> = {
   important: { icon: '⚡', label: 'Important' },
   caution: { icon: '⚠️', label: 'Caution' },
   warning: { icon: '🔴', label: 'Warning' },
+  suggestion: { icon: '🧠', label: 'Suggestion' },
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -203,10 +208,10 @@ function renderMarkdown(md: string): string {
     }
 
     // Ordered list
-    if (/^\d+\. /.test(t)) {
+    if (/^\d+\.(?:\s|$)/.test(t)) {
       const items: string[] = []
-      while (i < lines.length && /^\d+\. /.test(lines[i].trim())) { items.push(lines[i].trim()); i++ }
-      const lis = items.map(x => `<li>${inlineHTML(x.replace(/^\d+\. /, ''))}</li>`).join('')
+      while (i < lines.length && /^\d+\.(?:\s|$)/.test(lines[i].trim())) { items.push(lines[i].trim()); i++ }
+      const lis = items.map(x => `<li>${inlineHTML(x.replace(/^\d+\.\s*/, ''))}</li>`).join('')
       out.push(`<ol class="nb-ol">${lis}</ol>`)
       continue
     }
@@ -227,7 +232,7 @@ function renderMarkdown(md: string): string {
 /* ═══════════════════════════════════════════════════════
    CELL PREVIEW  (used in read-only right pane)
 ═══════════════════════════════════════════════════════ */
-function CellPreview({ cell }: { cell: Cell }) {
+function CellPreview({ cell, calloutOrder, plainCodePreview = false }: { cell: Cell; calloutOrder?: number; plainCodePreview?: boolean }) {
   if (cell.type === 'divider' || cell.type === 'page-break') return <hr className="nb-divider" />
 
   if (cell.type === 'image') {
@@ -291,11 +296,13 @@ function CellPreview({ cell }: { cell: Cell }) {
     return (
       <div className="nb-code-wrap">
         <div className="nb-code-titlebar flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <span className="nb-code-dot nb-dot-red" />
-            <span className="nb-code-dot nb-dot-yellow" />
-            <span className="nb-code-dot nb-dot-green" />
-          </div>
+          {plainCodePreview ? <div /> : (
+            <div className="flex items-center gap-1.5">
+              <span className="nb-code-dot nb-dot-red" />
+              <span className="nb-code-dot nb-dot-yellow" />
+              <span className="nb-code-dot nb-dot-green" />
+            </div>
+          )}
           {snippets.length > 1 ? (
             <div className="flex bg-[#2d3148] rounded-md p-0.5 gap-0.5">
               {snippets.map((s, i) => (
@@ -349,7 +356,7 @@ function CellPreview({ cell }: { cell: Cell }) {
       <div className={`nb-callout nb-callout-${cell.type}`}>
         <div className="nb-callout-header">
           <span className="nb-callout-icon">{cfg.icon}</span>
-          <strong className="nb-callout-label">{cfg.label}</strong>
+          <strong className="nb-callout-label">{cfg.label}{calloutOrder ? ` ${calloutOrder}` : ''}</strong>
         </div>
         <div
           className="nb-callout-body"
@@ -397,21 +404,21 @@ function CellPreview({ cell }: { cell: Cell }) {
 ═══════════════════════════════════════════════════════ */
 const ALL_INSERTABLE: CellType[] = [
   'heading', 'subheading', 'h3', 'text', 'code', 'divider', 'image', 'video',
-  'note', 'info', 'tip', 'important', 'caution', 'warning', 'page-break',
+  'note', 'info', 'tip', 'important', 'caution', 'warning', 'suggestion', 'page-break',
 ]
 
 const CELL_LABELS: Record<CellType, string> = {
   heading: 'H1 Heading', subheading: 'H2 Subheading', h3: 'H3 Section',
   text: 'Text', code: 'Code Block', divider: '── Divider', image: 'Image', video: 'Video',
   note: '💡 Note', info: 'ℹ️ Info', tip: '✅ Tip',
-  important: '⚡ Important', caution: '⚠️ Caution', warning: '🔴 Warning',
+  important: '⚡ Important', caution: '⚠️ Caution', warning: '🔴 Warning', suggestion: '🧠 Suggestion',
   'page-break': '📄 New Page',
 }
 
 const CELL_BADGE: Record<CellType, string> = {
   heading: 'H1', subheading: 'H2', h3: 'H3', text: 'T',
   code: '</>', divider: '—', image: '📷', video: '📹',
-  note: '💡', info: 'ℹ️', tip: '✅', important: '⚡', caution: '⚠️', warning: '🔴',
+  note: '💡', info: 'ℹ️', tip: '✅', important: '⚡', caution: '⚠️', warning: '🔴', suggestion: '🧠',
   'page-break': '📄',
 }
 
@@ -429,14 +436,14 @@ function AddCellMenu({ onAdd }: { onAdd: (t: CellType) => void }) {
   }, [open])
 
   return (
-    <div ref={ref} className="nb-add-row group" onClick={e => e.stopPropagation()}>
-      <div className="nb-add-line opacity-0 group-hover:opacity-100 transition-opacity" />
+    <div ref={ref} className="nb-add-row" onClick={e => e.stopPropagation()}>
+      <div className="nb-add-line" />
       <button
-        className="nb-add-btn opacity-0 group-hover:opacity-100 transition-opacity"
+        className="nb-add-btn"
         title="Add cell"
         onClick={() => setOpen(v => !v)}
       >+</button>
-      <div className="nb-add-line opacity-0 group-hover:opacity-100 transition-opacity" />
+      <div className="nb-add-line" />
       {open && (
         <div className="nb-add-menu" onClick={e => e.stopPropagation()}>
           {ALL_INSERTABLE.map(t => (
@@ -461,6 +468,7 @@ const CALLOUT_ITEMS: { type: CalloutType; icon: string; label: string; cls: stri
   { type: 'important', icon: '⚡', label: 'Important', cls: 'text-yellow-700' },
   { type: 'caution', icon: '⚠️', label: 'Caution', cls: 'text-orange-700' },
   { type: 'warning', icon: '🔴', label: 'Warning', cls: 'text-red-700' },
+  { type: 'suggestion', icon: '🧠', label: 'Suggestion', cls: 'text-violet-700' },
 ]
 
 function CalloutDropdown({ onAdd }: { onAdd: (t: CalloutType) => void }) {
@@ -706,7 +714,7 @@ const TEXT_SIZES: { name: string; px: number | null }[] = [
   { name: 'Large', px: 20 },
   { name: 'XL', px: 24 },
 ]
-const FORMATTABLE_TYPES: CellType[] = ['text', 'note', 'info', 'tip', 'important', 'caution', 'warning']
+const FORMATTABLE_TYPES: CellType[] = ['text', 'note', 'info', 'tip', 'important', 'caution', 'warning', 'suggestion']
 
 /* ── Color Picker ── */
 interface ColorPickerProps { activeColor: string | null; disabled: boolean; onApply: (c: string | null) => void }
@@ -825,19 +833,90 @@ function PageBreakIndicator({ idx, onRemove }: { idx: number, onRemove: () => vo
 
 
 /* ═══════════════════════════════════════════════════════
+   MULTI-LANGUAGE CODE HELPERS
+═══════════════════════════════════════════════════════ */
+
+/** Parse code cell content to extract language snippets */
+function parseCodeSnippets(content: string): { lang: string; code: string }[] {
+  if (!content.trim()) return []
+  if (content.trim().startsWith('[') && content.trim().endsWith(']')) {
+    try {
+      const parsed = JSON.parse(content)
+      if (Array.isArray(parsed) && parsed.every(p => typeof p.lang === 'string' && typeof p.code === 'string')) {
+        return parsed
+      }
+    } catch { /* invalid JSON */ }
+  }
+  return []
+}
+
+/** Update a specific language snippet in code cell */
+function updateCodeSnippet(
+  currentContent: string,
+  languageIndex: number,
+  newCode: string
+): string {
+  let snippets = parseCodeSnippets(currentContent)
+  if (snippets.length === 0) {
+    // Single language mode, convert to multi-language
+    snippets = [{ lang: 'code', code: currentContent }]
+  }
+  if (languageIndex >= 0 && languageIndex < snippets.length) {
+    snippets[languageIndex].code = newCode
+  }
+  return JSON.stringify(snippets)
+}
+
+/** Add a new language snippet to code cell */
+function addCodeSnippet(currentContent: string, language: string): string {
+  let snippets = parseCodeSnippets(currentContent)
+  if (snippets.length === 0) {
+    snippets = [{ lang: 'code', code: currentContent }]
+  }
+  // Avoid duplicates
+  if (!snippets.find(s => s.lang === language)) {
+    snippets.push({ lang: language, code: '' })
+  }
+  return JSON.stringify(snippets)
+}
+
+/** Remove a language snippet from code cell */
+function removeCodeSnippet(currentContent: string, languageIndex: number): string {
+  let snippets = parseCodeSnippets(currentContent)
+  if (snippets.length > 1) {
+    snippets.splice(languageIndex, 1)
+    return JSON.stringify(snippets)
+  }
+  // Keep at least one snippet
+  return currentContent
+}
+
+const COMMON_LANGUAGES = [
+  'JavaScript', 'Python', 'Java', 'C++', 'C#', 'PHP', 'Ruby', 'Go',
+  'Rust', 'TypeScript', 'HTML', 'CSS', 'SQL', 'Bash', 'Shell', 'JSON',
+  'XML', 'Kotlin', 'Swift', 'R', 'Scala', 'Groovy', 'Perl', 'Dart'
+]
+
+/* ═══════════════════════════════════════════════════════
    MAIN EDITOR COMPONENT
 ═══════════════════════════════════════════════════════ */
 export default function LessonEditor({
   initialContent,
   onSave,
   onAddTopic,
+  onBack,
   readOnly = false,
+  showPreviewByDefault = false,
+  fullPreviewTitle = 'Full Course Preview',
+  plainCodePreview = false,
 }: LessonEditorProps) {
   const [cells, setCells] = useState<Cell[]>(() => parseCells(initialContent))
   const [activeId, setActiveId] = useState<string | null>(null)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
   const [imgTarget, setImgTarget] = useState<string | null>(null)
   const [fullPreview, setFullPreview] = useState(false)
+  const [showPreview, setShowPreview] = useState(showPreviewByDefault)  // Toggle preview visibility
+  const [currentPageIdx, setCurrentPageIdx] = useState(0)  // Track current page for navigation
   const [lastColor, setLastColor] = useState<string | null>(null)
   const [lastSizePx, setLastSizePx] = useState<number | null>(null)
   const [activeCodeTabs, setActiveCodeTabs] = useState<Record<string, number>>({})
@@ -913,14 +992,20 @@ export default function LessonEditor({
 
   const insertCell = (afterId: string | null, type: CellType = 'text') => {
     const fresh = defaultCell(type)
+    const trailingText = type === 'page-break' ? defaultCell('text') : null
     setCells(prev => {
       const next = [...prev]
       const idx = afterId ? next.findIndex(c => c.id === afterId) : next.length - 1
-      next.splice(idx + 1, 0, fresh)
+      if (trailingText) {
+        next.splice(idx + 1, 0, fresh, trailingText)
+      } else {
+        next.splice(idx + 1, 0, fresh)
+      }
       triggerSave(next)
       return next
     })
-    setTimeout(() => { setActiveId(fresh.id); taRefs.current[fresh.id]?.focus() }, 40)
+    const focusId = trailingText ? trailingText.id : fresh.id
+    setTimeout(() => { setActiveId(focusId); taRefs.current[focusId]?.focus() }, 40)
   }
 
   const deleteCell = (id: string) => {
@@ -1006,6 +1091,123 @@ export default function LessonEditor({
     insertCell(targetId, type)
   }
 
+  /* ── get all pages (split by page-break) ── */
+  const getAllPages = () => {
+    const pages: { id: string; cells: Cell[] }[] = []
+    let current: Cell[] = []
+    cells.forEach(c => {
+      if (c.type === 'page-break') {
+        pages.push({ id: c.id, cells: current })
+        current = []
+      } else {
+        current.push(c)
+      }
+    })
+    pages.push({ id: 'last', cells: current })
+    return pages
+  }
+
+  const getIndexedPages = () => {
+    const pages: { id: string; cells: { cell: Cell; originalIdx: number }[] }[] = []
+    let current: { cell: Cell; originalIdx: number }[] = []
+
+    cells.forEach((cell, i) => {
+      if (cell.type === 'page-break') {
+        pages.push({ id: cell.id, cells: current })
+        current = []
+      } else {
+        current.push({ cell, originalIdx: i })
+      }
+    })
+
+    pages.push({ id: 'last-page', cells: current })
+    return pages
+  }
+
+  /* ── navigate to next page ── */
+  const goToNextPage = () => {
+    const totalPages = getAllPages().length
+    if (currentPageIdx < totalPages - 1) {
+      setCurrentPageIdx(currentPageIdx + 1)
+    }
+  }
+
+  /* ── navigate to previous page ── */
+  const goToPrevPage = () => {
+    if (currentPageIdx > 0) {
+      setCurrentPageIdx(currentPageIdx - 1)
+    }
+  }
+
+  const addPageAfterCurrent = () => {
+    const pages = getIndexedPages()
+    const page = pages[currentPageIdx]
+    if (!page) return
+
+    // Insert a page break after the current page boundary.
+    let anchorId: string | null = null
+    if (page.cells.length > 0) {
+      anchorId = page.cells[page.cells.length - 1].cell.id
+    } else if (page.id !== 'last-page') {
+      anchorId = page.id
+    } else {
+      anchorId = cells[cells.length - 1]?.id ?? null
+    }
+
+    insertCell(anchorId, 'page-break')
+    setCurrentPageIdx(currentPageIdx + 1)
+  }
+
+  const deleteCurrentPage = () => {
+    const pages = getIndexedPages()
+    const totalPages = pages.length
+    if (!totalPages) return
+
+    // Keep at least one editable page in the document.
+    if (totalPages === 1) {
+      const next = [defaultCell('text')]
+      setCells(next)
+      triggerSave(next)
+      setActiveId(next[0].id)
+      setCurrentPageIdx(0)
+      return
+    }
+
+    const idx = Math.min(currentPageIdx, totalPages - 1)
+    const page = pages[idx]
+    if (!page) return
+
+    const idsToRemove = new Set<string>()
+    page.cells.forEach(({ cell }) => idsToRemove.add(cell.id))
+
+    // If deleting a non-last page, remove its trailing break.
+    if (page.id !== 'last-page') {
+      idsToRemove.add(page.id)
+    } else {
+      // If deleting the last page, remove previous page's break to merge correctly.
+      const prev = pages[idx - 1]
+      if (prev && prev.id !== 'last-page') idsToRemove.add(prev.id)
+    }
+
+    setCells(prev => {
+      const filtered = prev.filter(c => !idsToRemove.has(c.id))
+      const next = filtered.length ? filtered : [defaultCell('text')]
+      triggerSave(next)
+      return next
+    })
+
+    const nextIdx = idx >= totalPages - 1 ? Math.max(0, idx - 1) : idx
+    setCurrentPageIdx(nextIdx)
+    setActiveId(null)
+  }
+
+  useEffect(() => {
+    const totalPages = getAllPages().length
+    if (currentPageIdx > totalPages - 1) {
+      setCurrentPageIdx(Math.max(0, totalPages - 1))
+    }
+  }, [cells, currentPageIdx])
+
   /* ── apply colour to active formattable cell (stored in metadata) ── */
   const applyColor = (color: string | null) => {
     setLastColor(color)
@@ -1065,29 +1267,17 @@ export default function LessonEditor({
     setImgTarget(null)
   }
 
-  /* ════════════════════════════════════════
-     READ-ONLY VIEWER (used by students)
-     ════════════════════════════════════════ */
-  if (readOnly) {
-    const pages: { id: string; cells: Cell[] }[] = [];
-    let cur: Cell[] = [];
+  const calloutOrderByCellId = (() => {
+    const counters: Partial<Record<CalloutType, number>> = {}
+    const map: Record<string, number> = {}
     cells.forEach(c => {
-      if (c.type === 'page-break') { pages.push({ id: c.id, cells: cur }); cur = []; }
-      else cur.push(c);
-    });
-    pages.push({ id: 'last', cells: cur });
-
-    return (
-      <div className="nb-viewer">
-        {pages.map((p, i) => (
-          <div key={p.id} className="nb-a4-page shadow-md mb-8 mx-auto">
-             <div className="text-[10px] text-slate-300 absolute top-2 right-4 font-mono select-none">PAGE {i + 1}</div>
-             {p.cells.map(c => <div key={c.id} className="nb-viewer-cell"><CellPreview cell={c} /></div>)}
-          </div>
-        ))}
-      </div>
-    )
-  }
+      if (isCalloutType(c.type)) {
+        counters[c.type] = (counters[c.type] ?? 0) + 1
+        map[c.id] = counters[c.type] as number
+      }
+    })
+    return map
+  })()
 
   /* ════════════════════════════════════════
      FULL SPLIT-PANE EDITOR
@@ -1129,16 +1319,42 @@ export default function LessonEditor({
               Save
             </button>
             <button
-              title="Full-screen preview — see how the course looks to students"
-              onClick={() => setFullPreview(true)}
-              className="nb-tbtn flex items-center gap-1.5 text-indigo-600 border border-indigo-200 hover:bg-indigo-50 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all"
+              title="Toggle preview pane visibility"
+              onClick={() => setShowPreview(!showPreview)}
+              className={`nb-tbtn flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                showPreview 
+                  ? 'text-indigo-600 border border-indigo-200 bg-indigo-50' 
+                  : 'text-slate-600 border border-slate-200 hover:bg-slate-50'
+              }`}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                 <circle cx="12" cy="12" r="3" />
               </svg>
-              Preview
+              {showPreview ? 'Hide' : 'Show'} Preview
             </button>
+            <button
+              title="Full-screen preview — see how the entire course looks to students"
+              onClick={() => setFullPreview(true)}
+              className="nb-tbtn flex items-center gap-1.5 text-emerald-600 border border-emerald-200 hover:bg-emerald-50 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <rect x="3" y="3" width="18" height="18" rx="2" /><path d="M9 11h6M12 9v6" strokeWidth="2" />
+              </svg>
+              Full Course
+            </button>
+            {onBack && (
+              <button
+                title="Go back to course outline"
+                onClick={onBack}
+                className="nb-tbtn flex items-center gap-1.5 text-slate-600 border border-slate-200 hover:bg-slate-50 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                Back
+              </button>
+            )}
           </div>
         </div>
 
@@ -1300,7 +1516,7 @@ export default function LessonEditor({
                   title="Add New A4 Page"
                   onClick={(e) => {
                     e.stopPropagation();
-                    insertCell(cells[cells.length - 1]?.id ?? null, 'page-break');
+                    addPageAfterCurrent();
                   }}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="indigo" strokeWidth="2.5">
@@ -1329,42 +1545,51 @@ export default function LessonEditor({
       </div>{/* end nb-sticky-header */}
 
       {/* ── Split pane ── */}
-      <div className="nb-split" onClick={e => e.stopPropagation()}>
+      <div className={`nb-split ${!showPreview ? 'nb-split-no-preview' : ''}`} onClick={e => e.stopPropagation()}>
 
         {/* LEFT — writing pane */}
         <div className="nb-write-pane">
           <div className="nb-pane-label">WRITE</div>
           <div className="nb-cells-list">
             {(() => {
-              const pages: { id: string; cells: { cell: Cell; originalIdx: number }[] }[] = [];
-              let currentCells: { cell: Cell; originalIdx: number }[] = [];
-              
-              cells.forEach((cell, i) => {
-                if (cell.type === 'page-break') {
-                  pages.push({ id: cell.id, cells: currentCells });
-                  currentCells = [];
-                } else {
-                  currentCells.push({ cell, originalIdx: i });
-                }
-              });
-              pages.push({ id: 'last-page', cells: currentCells });
+              const pages = getIndexedPages();
+              const totalPages = pages.length;
+              const activePageIdx = Math.min(currentPageIdx, Math.max(0, totalPages - 1));
+              const page = pages[activePageIdx];
 
-              return pages.map((page, pIdx) => (
+              if (!page) return null;
+
+              return (
                 <div key={page.id} className="nb-page-group group/group">
                   <div className="nb-a4-page shadow-xl">
-                    <div className="text-[10px] text-slate-300 absolute top-2 right-4 font-mono select-none">PAGE {pIdx + 1}</div>
+                    <div className="absolute top-2 right-4 flex items-center gap-2">
+                      <div className="text-[10px] text-slate-300 font-mono select-none">PAGE {activePageIdx + 1}</div>
+                      {!readOnly && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            deleteCurrentPage()
+                          }}
+                          title="Delete current page"
+                          className="text-[10px] font-semibold px-2 py-0.5 rounded border border-rose-200 text-rose-600 bg-rose-50 hover:bg-rose-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                          disabled={totalPages === 1}
+                        >
+                          Delete Page
+                        </button>
+                      )}
+                    </div>
                     {page.cells.map(({ cell, originalIdx }) => {
                       // ... (existing cell mapping code) ...
                       const idx = originalIdx;
                       const isActive = activeId === cell.id
                       const isCallout = isCalloutType(cell.type)
                       const calloutCfg = isCallout ? CALLOUT_CONFIG[cell.type as CalloutType] : null
+                      const calloutOrder = isCallout ? calloutOrderByCellId[cell.id] : undefined
 
                       /* ── Divider cell ── */
                       if (cell.type === 'divider') {
                         return (
                           <div key={cell.id}>
-                            {!readOnly && <AddCellMenu onAdd={t => insertCell(idx > 0 ? cells[idx - 1].id : null, t)} />}
                             <div className="nb-divider-row group">
                               <hr className="nb-divider" />
                               <div className="nb-cell-actions opacity-0 group-hover:opacity-100">
@@ -1373,6 +1598,7 @@ export default function LessonEditor({
                                 <button className="nb-action-btn nb-action-delete" title="Delete" onClick={() => deleteCell(cell.id)}>✕</button>
                               </div>
                             </div>
+                            {!readOnly && <AddCellMenu onAdd={t => insertCell(cell.id, t)} />}
                           </div>
                         )
                       }
@@ -1380,8 +1606,6 @@ export default function LessonEditor({
                       /* ── Normal / callout cell ── */
                       return (
                         <div key={cell.id}>
-                          {!readOnly && <AddCellMenu onAdd={t => insertCell(idx > 0 ? cells[idx - 1].id : null, t)} />}
-
                           <div
                             className={[
                               'nb-cell-v2 group/cell',
@@ -1398,7 +1622,7 @@ export default function LessonEditor({
                             <div className="nb-cell-header">
                               <span className={`nb-indicator-v2 nb-ind-${cell.type}`}>
                                 {calloutCfg
-                                  ? `${calloutCfg.icon} ${calloutCfg.label}`
+                                  ? `${calloutCfg.icon} ${calloutCfg.label}${calloutOrder ? ` ${calloutOrder}` : ''}`
                                   : CELL_BADGE[cell.type]}
                               </span>
 
@@ -1411,7 +1635,7 @@ export default function LessonEditor({
                                   onClick={e => e.stopPropagation()}
                                 >
                                   {(Object.entries(CELL_LABELS) as [CellType, string][])
-                                    .filter(([t]) => !(['divider', 'note', 'info', 'tip', 'important', 'caution', 'warning', 'page-break'] as CellType[]).includes(t))
+                                    .filter(([t]) => !(['divider', 'note', 'info', 'tip', 'important', 'caution', 'warning', 'suggestion', 'page-break'] as CellType[]).includes(t))
                                     .map(([t, l]) => <option key={t} value={t}>{l}</option>)}
                                 </select>
                               )}
@@ -1434,31 +1658,114 @@ export default function LessonEditor({
                             {/* Textarea — simplified */}
                             {cell.type === 'code' ? (
                                <div className="nb-code-write-wrap">
-                                  {/* Code tab rendering here (existing code was long, I'll keep it as is in my replacement) */}
-                                   <div className="nb-code-write-body relative">
-                                        <div className="nb-code-write-gutter" aria-hidden>
-                                          {(cell.content || '').split('\n').map((_, i) => (
-                                            <span key={i} className="nb-code-ln">{i + 1}</span>
-                                          ))}
-                                          {!cell.content && <span className="nb-code-ln">1</span>}
+                                  {/* Multi-language code block UI */}
+                                  {(() => {
+                                    const snippets = parseCodeSnippets(cell.content)
+                                    const hasMultiple = snippets.length > 1
+                                    const activeTab = activeCodeTabs[cell.id] ?? 0
+                                    const currentSnippet = snippets[activeTab] || { lang: 'code', code: cell.content || '' }
+                                    
+                                    return (
+                                      <div className="w-full">
+                                        {/* Language tabs header (right side) */}
+                                        <div className="flex items-center justify-between px-3 py-2 border-b border-slate-200 bg-slate-50 rounded-t-lg">
+                                          <span className="text-xs font-semibold text-slate-600">Languages</span>
+                                          <div className="flex items-center gap-1">
+                                            {/* Language tabs */}
+                                            <div className="flex gap-1">
+                                              {snippets.map((snip, idx) => (
+                                                <button
+                                                  key={idx}
+                                                  onClick={() => setActiveCodeTabs({ ...activeCodeTabs, [cell.id]: idx })}
+                                                  className={`px-2.5 py-1 text-xs font-medium rounded transition-all ${
+                                                    activeTab === idx
+                                                      ? 'bg-indigo-500 text-white'
+                                                      : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                                                  }`}
+                                                >
+                                                  {snip.lang}
+                                                </button>
+                                              ))}
+                                            </div>
+                                            
+                                            {/* Add language button */}
+                                            {!readOnly && (
+                                              <div className="relative group/addlang">
+                                                <button
+                                                  className="ml-1 px-2.5 py-1 text-xs font-medium rounded bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-all"
+                                                  title="Add language"
+                                                >
+                                                  +
+                                                </button>
+                                                {/* Language dropdown menu */}
+                                                <div className="absolute right-0 mt-1 w-48 bg-white border border-slate-300 rounded-lg shadow-lg opacity-0 invisible group-hover/addlang:opacity-100 group-hover/addlang:visible transition-all z-50 max-h-64 overflow-y-auto">
+                                                  {COMMON_LANGUAGES.map(lang => (
+                                                    <button
+                                                      key={lang}
+                                                      onClick={() => {
+                                                        updateCell(cell.id, {
+                                                          content: addCodeSnippet(cell.content, lang)
+                                                        })
+                                                      }}
+                                                      disabled={snippets.some(s => s.lang === lang)}
+                                                      className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    >
+                                                      {lang}
+                                                    </button>
+                                                  ))}
+                                                </div>
+                                              </div>
+                                            )}
+                                            
+                                            {/* Remove language button (only if multiple languages) */}
+                                            {!readOnly && hasMultiple && (
+                                              <button
+                                                onClick={() => {
+                                                  const newContent = removeCodeSnippet(cell.content, activeTab)
+                                                  updateCell(cell.id, { content: newContent })
+                                                  // Auto-switch to previous tab if current was removed
+                                                  if (activeTab > 0) {
+                                                    setActiveCodeTabs({ ...activeCodeTabs, [cell.id]: activeTab - 1 })
+                                                  }
+                                                }}
+                                                className="ml-1 px-2.5 py-1 text-xs font-medium rounded bg-red-100 text-red-700 hover:bg-red-200 transition-all"
+                                                title="Remove language"
+                                              >
+                                                ✕
+                                              </button>
+                                            )}
+                                          </div>
                                         </div>
-                                        <textarea
-                                          ref={el => { taRefs.current[cell.id] = el }}
-                                          value={cell.content || ''}
-                                          placeholder={`// Write code here…`}
-                                          className="nb-code-write-ta"
-                                          spellCheck={false}
-                                          readOnly={readOnly}
-                                          onChange={e => {
-                                            if (!isUndoRedo.current) pushHistory(cell.id, cell.content)
-                                            isUndoRedo.current = false
-                                            updateCell(cell.id, { content: e.target.value })
-                                            autoGrow(e.target)
-                                          }}
-                                          onFocus={e => { setActiveId(cell.id); autoGrow(e.target) }}
-                                          onKeyDown={e => handleKeyDown(e, cell)}
-                                        />
-                                   </div>
+                                        
+                                        {/* Code editor textarea */}
+                                        <div className="nb-code-write-body relative">
+                                          <div className="nb-code-write-gutter" aria-hidden>
+                                            {(currentSnippet.code || '').split('\n').map((_, i) => (
+                                              <span key={i} className="nb-code-ln">{i + 1}</span>
+                                            ))}
+                                            {!currentSnippet.code && <span className="nb-code-ln">1</span>}
+                                          </div>
+                                          <textarea
+                                            ref={el => { taRefs.current[cell.id] = el }}
+                                            value={currentSnippet.code || ''}
+                                            placeholder={`// Write ${currentSnippet.lang} code here…`}
+                                            className="nb-code-write-ta"
+                                            spellCheck={false}
+                                            readOnly={readOnly}
+                                            onChange={e => {
+                                              if (!isUndoRedo.current) pushHistory(cell.id, cell.content)
+                                              isUndoRedo.current = false
+                                              const newContent = updateCodeSnippet(cell.content, activeTab, e.target.value)
+                                              updateCell(cell.id, { content: newContent })
+                                              autoGrow(e.target)
+                                            }}
+                                            onFocus={e => { setActiveId(cell.id); autoGrow(e.target) }}
+                                            onKeyDown={e => handleKeyDown(e, cell)}
+                                          />
+                                        </div>
+                                      </div>
+                                    )
+                                  })()}
                                </div>
                             ) : cell.type === 'image' ? (
                               <textarea
@@ -1502,59 +1809,99 @@ export default function LessonEditor({
                               />
                             )}
                           </div>
+                          {!readOnly && <AddCellMenu onAdd={t => insertCell(cell.id, t)} />}
                         </div>
                       )
                     })}
 
-                    {/* Choose to continue here (add cell) or new page is already in toolbar */}
-                    {!readOnly && page.cells.length > 0 && (
-                       <div className="flex justify-center py-4 border-t border-slate-50 mt-4 opacity-0 group-hover/group:opacity-100 transition-opacity">
-                          <button 
-                            className="text-xs font-bold text-slate-400 hover:text-indigo-600 flex items-center gap-1.5 px-3 py-1 bg-slate-50 hover:bg-indigo-50 rounded-full transition-colors"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                const lastCellId = page.cells[page.cells.length - 1].cell.id;
-                                insertCell(lastCellId, 'text');
-                            }}
-                          >
-                             <span>➕</span> Continue Writing Here
-                          </button>
-                       </div>
+                    {/* Page navigation at bottom center */}
+                    {totalPages > 1 && (
+                      <div className="flex justify-center items-center gap-3 mt-8 pt-6 border-t border-slate-100">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            goToPrevPage()
+                          }}
+                          disabled={activePageIdx === 0}
+                          className="px-3 py-2 text-xs font-semibold bg-slate-100 hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed text-slate-700 rounded-lg transition-all flex items-center gap-1.5"
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+                          Prev
+                        </button>
+                        <span className="text-[10px] text-slate-500 font-mono px-3 py-2 bg-slate-50 rounded-lg border border-slate-200">
+                          Page {activePageIdx + 1} / {totalPages}
+                        </span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            goToNextPage()
+                          }}
+                          disabled={activePageIdx === totalPages - 1}
+                          className="px-3 py-2 text-xs font-semibold bg-indigo-100 hover:bg-indigo-200 disabled:opacity-30 disabled:cursor-not-allowed text-indigo-700 rounded-lg transition-all flex items-center gap-1.5"
+                        >
+                          Next
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+                        </button>
+                      </div>
                     )}
                   </div>
-                  
-                  {/* Page break separator */}
-                  {page.id !== 'last-page' && (
-                     <PageBreakIndicator idx={pIdx} onRemove={() => deleteCell(page.id)} />
-                  )}
                 </div>
-              ));
+              );
             })()}
           </div>
         </div>
 
         {/* RIGHT — preview pane */}
-        <div className="nb-preview-pane">
-          <div className="nb-pane-label">PREVIEW</div>
-          <div className="nb-cells-preview">
-            {(() => {
-              const pages: { id: string; cells: Cell[] }[] = [];
-              let cur: Cell[] = [];
-              cells.forEach(c => {
-                if (c.type === 'page-break') { pages.push({ id: c.id, cells: cur }); cur = []; }
-                else cur.push(c);
-              });
-              pages.push({ id: 'last', cells: cur });
-
-              return pages.map((p, i) => (
-                <div key={p.id} className="nb-a4-page shadow-md mb-4 mx-auto scale-[0.9] origin-top">
-                   <div className="text-[10px] text-slate-300 absolute top-2 right-4 font-mono select-none">PAGE {i + 1}</div>
-                   {p.cells.map(c => <div key={c.id} className="nb-preview-cell"><CellPreview cell={c} /></div>)}
-                </div>
-              ));
-            })()}
+        {showPreview && (
+          <div className="nb-preview-pane">
+            <div className="nb-pane-label flex items-center justify-between">
+              <span>PREVIEW</span>
+              <span className="text-[10px] font-mono text-slate-400">Page Navigation</span>
+            </div>
+            <div className="nb-cells-preview">
+              {(() => {
+                const pages = getAllPages()
+                const currentPage = pages[currentPageIdx] || pages[0]
+                const totalPages = pages.length
+                
+                return (
+                  <>
+                    {/* Display current page only in preview pane */}
+                    <div className="nb-a4-page shadow-md mb-4 mx-auto scale-[0.85] origin-top">
+                      <div className="text-[10px] text-slate-300 absolute top-2 right-4 font-mono select-none">PAGE {currentPageIdx + 1}/{totalPages}</div>
+                        {currentPage.cells.map(c => <div key={c.id} className="nb-preview-cell"><CellPreview cell={c} calloutOrder={calloutOrderByCellId[c.id]} plainCodePreview={plainCodePreview} /></div>)}
+                    </div>
+                    
+                    {/* Page navigation controls */}
+                    {totalPages > 1 && (
+                      <div className="flex gap-2 justify-center items-center mt-6 px-4 py-4 border-t border-slate-200">
+                        <button
+                          onClick={goToPrevPage}
+                          disabled={currentPageIdx === 0}
+                          className="px-3 py-1.5 text-xs font-semibold bg-slate-100 hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg transition-all flex items-center gap-1"
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+                          Prev
+                        </button>
+                        <span className="text-[10px] text-slate-500 font-mono px-2 py-1 bg-slate-50 rounded">
+                          {currentPageIdx + 1} / {totalPages}
+                        </span>
+                        <button
+                          onClick={goToNextPage}
+                          disabled={currentPageIdx === totalPages - 1}
+                          className="px-3 py-1.5 text-xs font-semibold bg-indigo-100 hover:bg-indigo-200 disabled:opacity-30 disabled:cursor-not-allowed text-indigo-700 rounded-lg transition-all flex items-center gap-1"
+                        >
+                          Next
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )
+              })()}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Image dialog */}
@@ -1569,12 +1916,12 @@ export default function LessonEditor({
       {fullPreview && (
         <div className="fixed inset-0 z-50 bg-[#f1f5f9] overflow-auto" style={{ animation: 'fadeIn 0.15s ease' }}>
           <div className="sticky top-0 z-50 flex items-center justify-between px-8 py-3 bg-white/95 backdrop-blur-sm border-b border-[var(--border)] shadow-sm">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-indigo-600">
                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" />
               </svg>
-              <span className="font-bold text-[var(--text-primary)] text-base">Course Preview</span>
-              <span className="text-xs text-slate-400 ml-2">How students will see your content</span>
+              <span className="font-bold text-[var(--text-primary)] text-base">{fullPreviewTitle}</span>
+              <span className="text-xs text-slate-400">How students will see your content</span>
             </div>
             <button
               onClick={() => setFullPreview(false)}
@@ -1586,20 +1933,13 @@ export default function LessonEditor({
               Close Preview
             </button>
           </div>
-          <div className="max-w-5xl mx-auto px-8 py-10 bg-[#f1f5f9]">
+          <div className="w-full px-8 py-10 bg-[#f1f5f9]">
             {(() => {
-              const pages: { id: string; cells: Cell[] }[] = [];
-              let cur: Cell[] = [];
-              cells.forEach(c => {
-                if (c.type === 'page-break') { pages.push({ id: c.id, cells: cur }); cur = []; }
-                else cur.push(c);
-              });
-              pages.push({ id: 'last', cells: cur });
-
+              const pages = getAllPages()
               return pages.map((p, i) => (
                 <div key={p.id} className="nb-a4-page shadow-2xl mb-12 mx-auto">
-                    <div className="text-[10px] text-slate-300 absolute top-2 right-4 font-mono select-none">PAGE {i + 1}</div>
-                    {p.cells.map(c => <div key={c.id} className="nb-viewer-cell mb-1"><CellPreview cell={c} /></div>)}
+                  <div className="text-[10px] text-slate-300 absolute top-2 right-4 font-mono select-none">PAGE {i + 1}</div>
+                    {p.cells.map(c => <div key={c.id} className="nb-viewer-cell mb-1"><CellPreview cell={c} calloutOrder={calloutOrderByCellId[c.id]} plainCodePreview={plainCodePreview} /></div>)}
                 </div>
               ));
             })()}

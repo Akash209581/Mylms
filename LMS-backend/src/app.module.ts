@@ -69,12 +69,8 @@ import { ForumReply } from './entities/forum-reply.entity';
         ForumPost,
         ForumReply,
       ],
-
-      // Set to true temporarily to update schema for new fields
+      autoLoadEntities: true,
       synchronize: true,
-      logging: false,
-
-
     }),
     AuthModule,
     UsersModule,

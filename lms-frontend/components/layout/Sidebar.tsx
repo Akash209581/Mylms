@@ -18,12 +18,16 @@ const instructorNav: NavItem[] = [
     { label: 'Dashboard', href: '/dashboard/instructor', icon: <GridIcon /> },
     { label: 'My Courses', href: '/dashboard/instructor/courses', icon: <BookIcon /> },
     { label: 'Create Course', href: '/dashboard/instructor/create-course', icon: <PlusIcon /> },
+    { label: 'Question Bank', href: '/dashboard/instructor/question-bank', icon: <QuizIcon /> },
+    { label: 'Add Question', href: '/dashboard/instructor/question-bank/create', icon: <PlusIcon /> },
     { label: 'My Students', href: '/dashboard/instructor/students', icon: <UsersIcon /> },
 ]
 const adminNav: NavItem[] = [
     { label: 'Dashboard', href: '/dashboard/admin', icon: <GridIcon /> },
     { label: 'Users', href: '/dashboard/admin/users', icon: <UsersIcon /> },
     { label: 'Courses', href: '/dashboard/admin/courses', icon: <BookIcon /> },
+    { label: 'Question Bank', href: '/dashboard/admin/question-bank', icon: <QuizIcon /> },
+    { label: 'Add Question', href: '/dashboard/admin/question-bank/create', icon: <PlusIcon /> },
     { label: 'Approvals', href: '/dashboard/admin/approvals', icon: <CheckIcon /> },
 ]
 const superadminNav: NavItem[] = [

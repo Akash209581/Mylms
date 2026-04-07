@@ -204,7 +204,7 @@ export default function InstructorCoursePreviewPage() {
                     </div>
                     <div className="flex gap-2">
                         <button
-                            onClick={() => router.push(`/dashboard/instructor/edit-lesson/${course.id}`)}
+                            onClick={() => router.push(`/dashboard/instructor/courses/${course.id}/builder`)}
                             className="btn-primary px-4 py-2 text-sm"
                         >
                             ✏️ Edit Content

@@ -73,7 +73,7 @@ class CreateQuestionDto {
 
 @Controller('question-bank')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
+@Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.INSTRUCTOR)
 export class QuestionBankController {
   constructor(
     @InjectRepository(Question)

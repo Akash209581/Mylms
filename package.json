@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "@tiptap/extension-code-block-lowlight": "^3.21.0",
+    "@tiptap/extension-table-cell": "^3.21.0",
+    "@tiptap/extension-table-header": "^3.21.0",
+    "@tiptap/extension-table-row": "^3.21.0",
+    "lowlight": "^3.3.0"
+  }
+}
