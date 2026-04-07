@@ -146,10 +146,98 @@ export class LessonsController {
       }
     }
 
+    this.validateContentPayload(dto.content);
+
     lesson.content = dto.content;
     lesson.version = (lesson.version || 1) + 1;
     lesson.lastEditedBy = req.user.name || req.user.email || String(req.user.sub);
 
     return await this.lessonRepository.save(lesson);
+  }
+
+  private isNotebookLike(value: any): boolean {
+    return !!value && typeof value === 'object' && value.type === 'notebook' && Array.isArray(value.cells);
+  }
+
+  private validateContentPayload(content: Record<string, any>) {
+    const type = content?.type;
+
+    // Regular course lesson editor content
+    if (type === 'notebook' && Array.isArray(content.cells)) {
+      return;
+    }
+
+    // Quiz builder payload
+    if (type === 'quiz-builder') {
+      if (!Array.isArray(content.questionIds) || content.questionIds.some((id: any) => typeof id !== 'number')) {
+        throw new HttpException('Invalid quiz content: questionIds must be number[]', HttpStatus.BAD_REQUEST);
+      }
+      const settings = content.settings;
+      if (!settings || typeof settings !== 'object') {
+        throw new HttpException('Invalid quiz content: settings are required', HttpStatus.BAD_REQUEST);
+      }
+      const numericFields = ['timeLimitMinutes', 'passPercentage', 'maxAttempts'];
+      for (const field of numericFields) {
+        if (typeof settings[field] !== 'number' || Number.isNaN(settings[field])) {
+          throw new HttpException(`Invalid quiz content: settings.${field} must be a number`, HttpStatus.BAD_REQUEST);
+        }
+      }
+      const booleanFields = ['shuffleQuestions', 'shuffleOptions'];
+      for (const field of booleanFields) {
+        if (typeof settings[field] !== 'boolean') {
+          throw new HttpException(`Invalid quiz content: settings.${field} must be boolean`, HttpStatus.BAD_REQUEST);
+        }
+      }
+      return;
+    }
+
+    // Assignment builder payload
+    if (type === 'assignment-builder') {
+      if (typeof content.instructions !== 'string' || !content.instructions.trim()) {
+        throw new HttpException('Invalid assignment content: instructions are required', HttpStatus.BAD_REQUEST);
+      }
+      if (!['text', 'file', 'both'].includes(content.submissionType)) {
+        throw new HttpException('Invalid assignment content: submissionType must be text|file|both', HttpStatus.BAD_REQUEST);
+      }
+      if (typeof content.maxMarks !== 'number' || Number.isNaN(content.maxMarks) || content.maxMarks <= 0) {
+        throw new HttpException('Invalid assignment content: maxMarks must be a positive number', HttpStatus.BAD_REQUEST);
+      }
+      if (typeof content.dueInDays !== 'number' || Number.isNaN(content.dueInDays) || content.dueInDays <= 0) {
+        throw new HttpException('Invalid assignment content: dueInDays must be a positive number', HttpStatus.BAD_REQUEST);
+      }
+      if (content.checklist !== undefined && (!Array.isArray(content.checklist) || content.checklist.some((item: any) => typeof item !== 'string'))) {
+        throw new HttpException('Invalid assignment content: checklist must be string[]', HttpStatus.BAD_REQUEST);
+      }
+      return;
+    }
+
+    // Programming builder payload
+    if (type === 'programming-builder') {
+      const problemStatement = content.problemStatement;
+      const validProblemStatement = this.isNotebookLike(problemStatement)
+        || (problemStatement && typeof problemStatement === 'object' && problemStatement.type === 'markdown' && typeof problemStatement.source === 'string');
+      if (!validProblemStatement) {
+        throw new HttpException('Invalid programming content: problemStatement must be notebook/markdown content', HttpStatus.BAD_REQUEST);
+      }
+      if (!Array.isArray(content.allowedLanguages) || content.allowedLanguages.length === 0 || content.allowedLanguages.some((lang: any) => typeof lang !== 'string')) {
+        throw new HttpException('Invalid programming content: allowedLanguages must be non-empty string[]', HttpStatus.BAD_REQUEST);
+      }
+      if (!Array.isArray(content.testCases) || content.testCases.length === 0) {
+        throw new HttpException('Invalid programming content: testCases must be non-empty', HttpStatus.BAD_REQUEST);
+      }
+      for (const tc of content.testCases) {
+        if (!tc || typeof tc !== 'object' || typeof tc.input !== 'string' || typeof tc.output !== 'string') {
+          throw new HttpException('Invalid programming content: each test case requires string input/output', HttpStatus.BAD_REQUEST);
+        }
+      }
+      return;
+    }
+
+    // Backward compatibility: allow legacy markdown payloads.
+    if (type === 'markdown' && typeof content.source === 'string') {
+      return;
+    }
+
+    throw new HttpException('Unsupported content format', HttpStatus.BAD_REQUEST);
   }
 }
