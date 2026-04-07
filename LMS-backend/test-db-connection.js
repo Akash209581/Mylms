@@ -3,6 +3,18 @@ require('dotenv').config();
 const { Client } = require('pg');
 
 async function testConnections() {
+  const formatError = (err) => {
+    const code = err?.code ? `code=${err.code}` : 'code=unknown';
+    const msg = err?.message?.trim() ? err.message : '(no message)';
+    if (err instanceof AggregateError && Array.isArray(err.errors)) {
+      const nested = err.errors
+        .map((e) => `${e.code || 'unknown'} ${e.address || ''}:${e.port || ''}`.trim())
+        .join(' | ');
+      return `${code}, message=${msg}, nested=[${nested}]`;
+    }
+    return `${code}, message=${msg}`;
+  };
+
   // Test 1: Original pooler connection
   console.log('Test 1: Pooler connection');
   const poolerUrl = process.env.DATABASE_URL;
@@ -17,7 +29,7 @@ async function testConnections() {
     console.log('✅ Pooler connection successful\n');
     await client1.end();
   } catch (err) {
-    console.log('❌ Pooler connection failed:', err.message, '\n');
+    console.log('❌ Pooler connection failed:', formatError(err), '\n');
   }
 
   // Test 2: Direct connection (without pooler)
@@ -34,7 +46,7 @@ async function testConnections() {
     console.log('✅ Direct connection successful\n');
     await client2.end();
   } catch (err) {
-    console.log('❌ Direct connection failed:', err.message, '\n');
+    console.log('❌ Direct connection failed:', formatError(err), '\n');
   }
 
   // Test 3: Without channel_binding
@@ -51,7 +63,7 @@ async function testConnections() {
     console.log('✅ Connection without channel_binding successful\n');
     await client3.end();
   } catch (err) {
-    console.log('❌ Connection without channel_binding failed:', err.message, '\n');
+    console.log('❌ Connection without channel_binding failed:', formatError(err), '\n');
   }
 }
 

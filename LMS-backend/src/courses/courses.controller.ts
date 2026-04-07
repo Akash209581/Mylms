@@ -394,11 +394,11 @@ export class CoursesController {
         );
       }
 
-      // SUPERADMIN courses are auto-approved, INSTRUCTOR courses need approval
+      // SUPERADMIN courses are auto-approved. Other roles must explicitly submit later.
       const isSuperAdmin = user.role === UserRole.SUPERADMIN;
       const courseStatus = isSuperAdmin 
         ? CourseStatus.APPROVED 
-        : CourseStatus.PENDING_APPROVAL;
+        : CourseStatus.DRAFT;
 
       // Set collegeId: SUPERADMIN can specify, others use their own org
       const collegeId = isSuperAdmin && dto.collegeId 
@@ -425,22 +425,11 @@ export class CoursesController {
       const savedCourse = await this.courseRepo.save(course);
       console.log('✅ Course saved to database with ID:', savedCourse.id);
 
-      // Only notify admins if course is created by INSTRUCTOR and needs approval
+      // Draft-first workflow: no admin notification on create.
       if (!isSuperAdmin) {
-        try {
-          await this.notificationService.notifyAdminsOfPendingCourse(
-            savedCourse.title,
-            user.name,
-            savedCourse.id,
-          );
-          console.log('📧 Admin notification sent');
-        } catch (notifError) {
-          console.error('⚠️ Failed to send notification:', notifError.message);
-        }
-
         return {
           ...savedCourse,
-          message: 'Course created successfully. Awaiting admin approval.',
+          message: 'Course saved as draft. Submit when you are ready for admin approval.',
         };
       }
 
@@ -463,7 +452,17 @@ export class CoursesController {
       return { message: 'Course not found or unauthorized' };
     }
 
+    if (course.status === CourseStatus.PENDING_APPROVAL) {
+      return { message: 'Course is already submitted for approval.' };
+    }
+
+    if (course.status === CourseStatus.APPROVED) {
+      return { message: 'Approved courses cannot be submitted again.' };
+    }
+
     course.status = CourseStatus.PENDING_APPROVAL;
+    course.published = false;
+    course.rejectionReason = null;
     await this.courseRepo.save(course);
 
     try {

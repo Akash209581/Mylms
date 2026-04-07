@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
 import QuestionPreview from '@/components/question-bank/QuestionPreview'
@@ -20,6 +20,8 @@ const QUESTION_TYPES = [
 
 export default function CreateQuestionPage() {
     const router = useRouter()
+    const searchParams = useSearchParams()
+    const [currentRole, setCurrentRole] = useState<'SUPERADMIN' | 'ADMIN' | 'INSTRUCTOR'>('SUPERADMIN')
     const [step, setStep] = useState(1)
     const [form, setForm] = useState<any>({
         type: '', topicNames: [], difficulty: 'MEDIUM', companiesAppeared: '',
@@ -52,9 +54,13 @@ export default function CreateQuestionPage() {
         const stored = localStorage.getItem('user')
         if (!stored) { router.push('/login'); return }
         const u = JSON.parse(stored)
-        if (u.role !== 'SUPERADMIN' && u.role !== 'ADMIN') { router.push('/login'); return }
+        if (u.role !== 'SUPERADMIN' && u.role !== 'ADMIN' && u.role !== 'INSTRUCTOR') { router.push('/login'); return }
+        setCurrentRole(u.role)
         fetchDomains()
     }, [])
+
+    const dashboardBase = `/dashboard/${currentRole.toLowerCase()}`
+    const returnTo = searchParams.get('returnTo')
 
     useEffect(() => {
         if (form.domain) fetchTopics(form.domain)
@@ -141,18 +147,18 @@ export default function CreateQuestionPage() {
                 body: JSON.stringify(submitData),
             })
             if (!res.ok) { const e = await res.json(); setError(e.message || 'Error saving'); return }
-            router.push('/dashboard/superadmin/question-bank')
+            router.push(returnTo || `${dashboardBase}/question-bank`)
         } catch (e: any) { setError(e.message) }
         finally { setSaving(false) }
     }
 
     return (
         <div className="min-h-screen bg-mesh">
-            <Sidebar role="SUPERADMIN" />
+            <Sidebar role={currentRole} />
             <Navbar title="Create Question" />
             <main className="page-content">
                 <div className="flex items-center gap-3 mb-8">
-                    <button onClick={() => router.push('/dashboard/superadmin/question-bank')}
+                    <button onClick={() => router.push(returnTo || `${dashboardBase}/question-bank`)}
                         className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-[var(--bg-surface)]/10 transition-all">
                         ← Back
                     </button>

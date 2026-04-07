@@ -63,6 +63,7 @@ export default function CourseBuilderPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [user, setUser] = useState<any>(null);
+    const [submittingForApproval, setSubmittingForApproval] = useState(false);
 
     // Modal states
     const [showCourseOverviewModal, setShowCourseOverviewModal] = useState(false);
@@ -300,6 +301,27 @@ export default function CourseBuilderPage() {
         }
     };
 
+    const handleSubmitForApproval = async () => {
+        if (!course) return;
+        if (!(course.status === 'DRAFT' || course.status === 'REJECTED')) {
+            alert('Only draft or rejected courses can be submitted.');
+            return;
+        }
+
+        if (!confirm('Submit this course for admin approval?')) return;
+
+        try {
+            setSubmittingForApproval(true);
+            await api.post(`/courses/${courseId}/submit`);
+            alert('Course submitted for approval successfully.');
+            await fetchCourseData();
+        } catch (err: any) {
+            alert('Failed to submit: ' + (err.response?.data?.message || err.message));
+        } finally {
+            setSubmittingForApproval(false);
+        }
+    };
+
     const openEditModuleModal = (module: Module) => {
         setEditingModule(module);
         setModuleForm({
@@ -350,6 +372,24 @@ export default function CourseBuilderPage() {
             newExpanded.add(chapterId);
         }
         setExpandedChapters(newExpanded);
+    };
+
+    const getTopicEditorPath = (lesson: Lesson) => {
+        const base = getDashboardPath();
+        const normalizedType = (lesson.type || '').toLowerCase();
+
+        if (normalizedType === 'quiz') return `${base}/edit-quiz/${lesson.id}`;
+        if (normalizedType === 'assignment') return `${base}/edit-assignment/${lesson.id}`;
+        if (normalizedType === 'programming') return `${base}/edit-programming/${lesson.id}`;
+        return `${base}/edit-lesson/${courseId}`;
+    };
+
+    const getTopicEditorLabel = (lesson: Lesson) => {
+        const normalizedType = (lesson.type || '').toLowerCase();
+        if (normalizedType === 'quiz') return 'Quiz Builder';
+        if (normalizedType === 'assignment') return 'Assignment Editor';
+        if (normalizedType === 'programming') return 'Programming Builder';
+        return 'Content Editor';
     };
 
 
@@ -407,13 +447,24 @@ export default function CourseBuilderPage() {
                             </span>
                         </div>
                     </div>
-                    
-                    <button
-                        onClick={() => setShowCourseOverviewModal(true)}
-                        className="btn-success px-6 py-3"
-                    >
-                        📝 Edit Course Overview
-                    </button>
+
+                    <div className="flex gap-3">
+                        {(course.status === 'DRAFT' || course.status === 'REJECTED') && (
+                            <button
+                                onClick={handleSubmitForApproval}
+                                disabled={submittingForApproval}
+                                className="btn-primary px-6 py-3 disabled:opacity-60"
+                            >
+                                {submittingForApproval ? 'Submitting...' : '🚀 Submit For Approval'}
+                            </button>
+                        )}
+                        <button
+                            onClick={() => setShowCourseOverviewModal(true)}
+                            className="btn-success px-6 py-3"
+                        >
+                            📝 Edit Course Overview
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -556,7 +607,12 @@ export default function CourseBuilderPage() {
                                                                             <span className="text-[10px] px-1.5 py-0.5 bg-blue-500/10 text-blue-400 rounded uppercase">{lesson.type}</span>
                                                                         </div>
                                                                         <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                                            <button onClick={() => router.push(`${getDashboardPath()}/edit-lesson/${courseId}`)} className="text-xs text-purple-400 hover:underline font-semibold">Content</button>
+                                                                            <button
+                                                                                onClick={() => router.push(getTopicEditorPath(lesson))}
+                                                                                className="text-xs text-purple-400 hover:underline font-semibold"
+                                                                            >
+                                                                                {getTopicEditorLabel(lesson)}
+                                                                            </button>
                                                                             <button onClick={() => openEditLessonModal(lesson)} className="p-1 hover:text-purple-400 transition-colors">✏️</button>
                                                                             <button onClick={() => handleDeleteLesson(lesson.id)} className="p-1 hover:text-red-400 transition-colors">🗑️</button>
                                                                         </div>
@@ -827,6 +883,7 @@ export default function CourseBuilderPage() {
                                         <option value="article">Article</option>
                                         <option value="quiz">Quiz</option>
                                         <option value="assignment">Assignment</option>
+                                        <option value="programming">Programming</option>
                                     </select>
                                 </div>
 
@@ -854,7 +911,13 @@ export default function CourseBuilderPage() {
                                     onChange={(e) => setLessonForm({ ...lessonForm, videoUrl: e.target.value })}
                                     className="input-field w-full"
                                     placeholder="https://www.youtube.com/watch?v=..."
+                                    disabled={lessonForm.type !== 'video'}
                                 />
+                                {lessonForm.type !== 'video' && (
+                                    <p className="text-xs text-gray-400 mt-1">
+                                        Video URL is only used for Video topics.
+                                    </p>
+                                )}
                             </div>
 
                             <div className="flex items-center gap-3">

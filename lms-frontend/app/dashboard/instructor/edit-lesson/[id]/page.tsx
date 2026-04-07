@@ -261,8 +261,10 @@ export default function EditLessonPage() {
       })
       if (!res.ok) throw new Error('Failed to create topic')
       
-      // Reload to see the new topic (or we could just set it as active)
-      fetchLessonData()
+      const newLesson = await res.json()
+      // Load the newly created lesson instead of reloading everything
+      setLesson(newLesson)
+      setLoading(false)
     } catch (e: any) {
       alert(e.message)
       setLoading(false)
@@ -273,6 +275,10 @@ export default function EditLessonPage() {
   const displayCourseId = courseId
   const displayCourseTitle = courseTitle || lesson?.module?.course?.title || `Course #${courseId}`
   const moduleTitle = lesson?.module?.title
+
+  const handleBackToCourse = () => {
+    router.push(`${getDashboardPath()}/courses`)
+  }
 
   /* ── Render states ── */
   if (loading) return <LoadingState user={user} />
@@ -418,6 +424,7 @@ export default function EditLessonPage() {
               lessonTitle={lesson.title}
               onSave={handleSave}
               onAddTopic={handleAddTopic}
+              onBack={handleBackToCourse}
               readOnly={isReadOnly}
             />
           )}

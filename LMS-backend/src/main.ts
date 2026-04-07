@@ -5,6 +5,19 @@ import { ValidationPipe } from '@nestjs/common';
 const cookieParser = require('cookie-parser');
 
 async function bootstrap() {
+  const dbUrl = process.env.DATABASE_URL;
+  if (!dbUrl) {
+    throw new Error('DATABASE_URL is missing. Add it in .env before starting LMS-backend.');
+  }
+
+  try {
+    const host = new URL(dbUrl).host;
+    const mode = dbUrl.includes('-pooler') ? 'neon-pooler' : 'direct-or-local';
+    console.log(`[DB] Startup target host=${host}, mode=${mode}`);
+  } catch {
+    console.warn('[DB] DATABASE_URL is not a valid URL. Connection may fail at startup.');
+  }
+
   const app = await NestFactory.create(AppModule);
 
   app.use(cookieParser());

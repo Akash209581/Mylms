@@ -1574,8 +1574,9 @@ table .text-gray-500 {
   display: grid;
   grid-template-columns: 1fr;
   gap: 24px;
-  max-width: 860px;
-  margin: 0 auto;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
 }
 
 /* ---- TABLE CONTROLS ---- */
@@ -1862,6 +1863,27 @@ table .text-gray-500 {
   background: #f1f5f9; /* Light gray background for the split area to show pages */
 }
 
+/* When preview is hidden, make write pane full width */
+.nb-split.nb-split-no-preview {
+  display: block;
+}
+
+.nb-split.nb-split-no-preview .nb-write-pane {
+  max-width: 100%;
+  width: 100%;
+  border-right: none;
+  padding-left: 24px;
+  padding-right: 24px;
+}
+
+/* In no-preview mode, use the full editor width instead of A4 constraints. */
+.nb-split.nb-split-no-preview .nb-write-pane .nb-a4-page {
+  width: 100%;
+  max-width: none;
+  margin: 8px 0 28px;
+  padding: 14mm 16mm;
+}
+
 /* ── A4 Page Container ── */
 .nb-a4-page {
   width: 210mm; /* A4 width */
@@ -1932,6 +1954,14 @@ table .text-gray-500 {
   flex: 1;
   padding: 14px 16px;
   min-width: 0;
+}
+
+.nb-write-pane {
+  flex: 1.45;
+}
+
+.nb-preview-pane {
+  flex: 1;
 }
 
 .nb-write-pane {
@@ -2025,6 +2055,11 @@ table .text-gray-500 {
 .nb-cell-callout.nb-callout-warning {
   border-left-color: #ef4444;
   background: #fef2f2;
+}
+
+.nb-cell-callout.nb-callout-suggestion {
+  border-left-color: #8b5cf6;
+  background: #f5f3ff;
 }
 
 /* ── Cell header ── */
@@ -2899,4 +2934,24 @@ table .text-gray-500 {
   background: rgba(0, 0, 0, 0.75);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-}
+}
+
+/* ============================================================
+   MULTI-LANGUAGE CODE BLOCK STYLES
+   ============================================================ */
+
+/* Language dropdown menu smooth scrolling */
+.group-hover\/addlang:visible {
+  animation: slideDown 0.2s ease-out forwards;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
