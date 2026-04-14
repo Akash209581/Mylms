@@ -33,21 +33,29 @@ async function bootstrap() {
     'http://localhost:3000',
     'http://localhost:3001',
     'http://localhost:3002',
+    'https://lms-frontend-ashy.vercel.app', // Adding common Vercel/Render patterns
   ].filter(Boolean);
 
   app.enableCors({
     origin: (origin, callback) => {
-      console.log(`📡 Incoming request from origin: ${origin}`);
-      if (
-        !origin ||
-        allowedOrigins.some((ao) => origin.startsWith(ao as string)) ||
+      // In development, allow no origin (like Postman or local curl)
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      const isAllowed = 
+        allowedOrigins.some((ao) => origin === ao || origin.startsWith(ao as string)) ||
         /^http:\/\/localhost:\d+$/.test(origin) ||
-        origin.includes('.onrender.com')
-      ) {
+        origin.includes('.onrender.com') ||
+        origin.includes('vercel.app');
+
+      if (isAllowed) {
+        console.log(`✅ CORS: Allowed origin -> ${origin}`);
         callback(null, true);
       } else {
-        console.error(`❌ Origin NOT allowed: ${origin}`);
-        callback(new Error('Not allowed by CORS'));
+        console.warn(`❌ CORS: Blocked origin -> ${origin}`);
+        // Return false to block at browser level, but DON'T throw an Error (prevents 500)
+        callback(null, false);
       }
     },
     credentials: true,

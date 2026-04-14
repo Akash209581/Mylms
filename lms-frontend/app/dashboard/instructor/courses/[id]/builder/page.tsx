@@ -381,7 +381,7 @@ export default function CourseBuilderPage() {
         if (normalizedType === 'quiz') return `${base}/edit-quiz/${lesson.id}`;
         if (normalizedType === 'assignment') return `${base}/edit-assignment/${lesson.id}`;
         if (normalizedType === 'programming') return `${base}/edit-programming/${lesson.id}`;
-        return `${base}/edit-lesson/${courseId}`;
+        return `${base}/edit-lesson/${courseId}?lessonId=${lesson.id}`;
     };
 
     const getTopicEditorLabel = (lesson: Lesson) => {

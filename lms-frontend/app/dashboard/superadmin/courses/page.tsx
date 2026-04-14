@@ -16,6 +16,7 @@ const gradients = [
 
 export default function SuperAdminCoursesPage() {
     const router = useRouter()
+    const [userRole, setUserRole] = useState<'SUPERADMIN' | 'ADMIN'>('SUPERADMIN')
     const [courses, setCourses] = useState<any[]>([])
     const [colleges, setColleges] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
@@ -30,7 +31,8 @@ export default function SuperAdminCoursesPage() {
         const stored = localStorage.getItem('user')
         if (!stored) { router.push('/login'); return }
         const u = JSON.parse(stored)
-        if (u.role !== 'SUPERADMIN') { router.push('/login'); return }
+        if (u.role !== 'SUPERADMIN' && u.role !== 'ADMIN') { router.push('/login'); return }
+        setUserRole(u.role)
 
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
         Promise.all([
@@ -162,7 +164,7 @@ export default function SuperAdminCoursesPage() {
 
     return (
         <div className="min-h-screen bg-mesh">
-            <Sidebar role="SUPERADMIN" />
+            <Sidebar role={userRole} />
             <Navbar title="All Courses" />
             <main className="page-content">
                 {/* Header */}
@@ -172,7 +174,7 @@ export default function SuperAdminCoursesPage() {
                         <p className="text-gray-400">View and manage all courses on the platform</p>
                     </div>
                     <button
-                        onClick={() => router.push('/dashboard/superadmin/courses/create')}
+                        onClick={() => router.push(`/dashboard/${userRole.toLowerCase()}/courses/create`)}
                         className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl font-semibold hover:shadow-lg hover:scale-105 transition-all"
                     >
                         ➕ Create New Course
@@ -278,7 +280,7 @@ export default function SuperAdminCoursesPage() {
 
                                     {/* Content */}
                                     <div className="p-5">
-                                        <h3 className={`font-semibold mb-1 line-clamp-1 ${isRejected ? 'text-gray-400' : 'text-white'}`}>
+                        <h3 className={`font-semibold mb-1 line-clamp-1 ${isRejected ? 'text-gray-400' : 'text-white'}`}>
                                             {course.title}
                                         </h3>
                                         <p className="text-gray-400 text-sm mb-3 line-clamp-2">{course.description || 'No description'}</p>
@@ -287,8 +289,7 @@ export default function SuperAdminCoursesPage() {
                                         </p>
                                         <div className="flex gap-2">
                                             <button
-                                                onClick={() => router.push(`/dashboard/superadmin/courses/${course.id}/builder`)}
-
+                                                onClick={() => router.push(`/dashboard/${userRole.toLowerCase()}/courses/${course.id}/builder`)}
                                                 className="flex-1 py-2 rounded-xl text-xs font-semibold transition-all hover:scale-105 cursor-pointer"
                                                 style={{ background: 'rgba(79,70,229,0.15)', color: '#818cf8', border: '1px solid rgba(79,70,229,0.3)' }}
                                             >

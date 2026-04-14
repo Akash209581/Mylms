@@ -16,6 +16,7 @@ const QUESTION_TYPES = [
 
 export default function QuestionBankPage() {
     const router = useRouter()
+    const [userRole, setUserRole] = useState<'SUPERADMIN' | 'ADMIN' | 'INSTRUCTOR'>('SUPERADMIN')
     const [questions, setQuestions] = useState<any[]>([])
     const [stats, setStats] = useState<any>(null)
     const [loading, setLoading] = useState(true)
@@ -31,7 +32,8 @@ export default function QuestionBankPage() {
         const stored = localStorage.getItem('user')
         if (!stored) { router.push('/login'); return }
         const u = JSON.parse(stored)
-        if (u.role !== 'SUPERADMIN' && u.role !== 'ADMIN') { router.push('/login'); return }
+        if (u.role !== 'SUPERADMIN' && u.role !== 'ADMIN' && u.role !== 'INSTRUCTOR') { router.push('/login'); return }
+        setUserRole(u.role)
 
         Promise.all([
             fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/question-bank`, { credentials: 'include' }).then(r => r.json()),
@@ -67,7 +69,7 @@ export default function QuestionBankPage() {
 
     return (
         <div className="min-h-screen bg-mesh">
-            <Sidebar role="SUPERADMIN" />
+            <Sidebar role={userRole} />
             <Navbar title="Question Bank" />
             <main className="page-content">
                 {/* Header */}
@@ -77,11 +79,11 @@ export default function QuestionBankPage() {
                         <p className="text-gray-400">Create and manage all question types for assessments</p>
                     </div>
                     <div className="flex gap-3">
-                        <button onClick={() => router.push('/dashboard/superadmin/question-bank/bulk-import')}
+                        <button onClick={() => router.push(`/dashboard/${userRole.toLowerCase()}/question-bank/bulk-import`)}
                             className="px-5 py-2.5 text-sm flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors">
                             <span>📊</span> Bulk Import
                         </button>
-                        <button onClick={() => router.push('/dashboard/superadmin/question-bank/create')}
+                        <button onClick={() => router.push(`/dashboard/${userRole.toLowerCase()}/question-bank/create`)}
                             className="btn-primary px-5 py-2.5 text-sm flex items-center gap-2">
                             <span>+</span> Add Question
                         </button>
@@ -197,7 +199,7 @@ export default function QuestionBankPage() {
                                                             className="px-2.5 py-1 rounded-lg text-xs font-medium bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500 hover:text-white transition-all">
                                                             Preview
                                                         </button>
-                                                        <button onClick={() => router.push(`/dashboard/superadmin/question-bank/${q.id}/edit`)}
+                                                        <button onClick={() => router.push(`/dashboard/${userRole.toLowerCase()}/question-bank/${q.id}/edit`)}
                                                             className="px-2.5 py-1 rounded-lg text-xs font-medium"
                                                             style={{ background: 'rgba(99,102,241,0.15)', color: '#a5b4fc', border: '1px solid rgba(99,102,241,0.3)' }}>
                                                             Edit

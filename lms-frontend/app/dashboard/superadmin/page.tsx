@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
-import { API_URL } from '@/lib/api'
+import { api, API_URL } from '@/lib/api'
 import { getAuthHeaders } from '@/lib/authHeaders'
 
 export default function SuperAdminDashboard() {
@@ -19,9 +19,8 @@ export default function SuperAdminDashboard() {
         if (u.role !== 'SUPERADMIN') { router.push(`/dashboard/${u.role.toLowerCase()}`); return }
         setUser(u)
 
-        fetch(`${API_URL}/superadmin/dashboard`, { credentials: 'include', headers: getAuthHeaders() })
-            .then(r => r.json())
-            .then(data => setStats(data))
+        api.get('/superadmin/dashboard')
+            .then(res => setStats(res.data))
             .catch(() => { })
             .finally(() => setLoading(false))
     }, [])

@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState, useRef } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
@@ -53,7 +53,9 @@ interface Lesson {
 export default function EditLessonPage() {
   const router = useRouter()
   const params = useParams()
+  const searchParams = useSearchParams()
   const courseId = Number(params.id)
+  const targetLessonId = searchParams.get('lessonId') ? Number(searchParams.get('lessonId')) : null
 
   const [user, setUser] = useState<any>(null)
   const [lesson, setLesson] = useState<Lesson | null>(null)
@@ -112,7 +114,7 @@ export default function EditLessonPage() {
       // Ownership and Role Check
       const stored = localStorage.getItem('user')
       const u = stored ? JSON.parse(stored) : null
-      
+
       let readOnlyFlag = false
       if (u && u.role !== 'SUPERADMIN') {
         // If course created by SUPERADMIN, it's view-only for everyone else
@@ -121,13 +123,32 @@ export default function EditLessonPage() {
         }
         // If course created by another instructor, it's view-only
         else if (Number(courseData.instructorId) !== Number(u.id)) {
-           readOnlyFlag = true
+          readOnlyFlag = true
         }
       }
       setIsReadOnly(readOnlyFlag)
 
       // 2. See if there is a module, chapter and lesson
-      let targetLesson: Lesson | null = courseData.modules?.[0]?.chapters?.[0]?.lessons?.[0]
+      let targetLesson: Lesson | null = null;
+      
+      if (targetLessonId) {
+        // Find specific lesson by ID in the course tree
+        for (const mod of (courseData.modules || [])) {
+          for (const chap of (mod.chapters || [])) {
+            const found = chap.lessons?.find((l: any) => l.id === targetLessonId);
+            if (found) {
+              targetLesson = found;
+              break;
+            }
+          }
+          if (targetLesson) break;
+        }
+      }
+
+      // Fallback to first lesson if not found OR no ID provided
+      if (!targetLesson) {
+        targetLesson = courseData.modules?.[0]?.chapters?.[0]?.lessons?.[0] || null;
+      }
 
       // 3. If no lesson exists, auto-create the necessary structure!
       if (!targetLesson) {
@@ -171,12 +192,12 @@ export default function EditLessonPage() {
           method: 'POST',
           credentials: 'include',
           headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            chapterId: targetChapterId, 
-            title: 'Course Content', 
-            type: 'article', 
-            order: 1, 
-            published: true 
+          body: JSON.stringify({
+            chapterId: targetChapterId,
+            title: 'Course Content',
+            type: 'article',
+            order: 1,
+            published: true
           })
         })
         if (!lessRes.ok) throw new Error('Failed to create default lesson')
@@ -251,16 +272,15 @@ export default function EditLessonPage() {
         method: 'POST',
         credentials: 'include',
         headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          chapterId: lesson.chapterId, 
-          title, 
-          type: 'article', 
+        body: JSON.stringify({
+          chapterId: lesson.chapterId,
+          title,
+          type: 'article',
           order: 100, // backend usually handles ordering or we append
-          published: true 
+          published: true
         })
       })
       if (!res.ok) throw new Error('Failed to create topic')
-      
       const newLesson = await res.json()
       // Load the newly created lesson instead of reloading everything
       setLesson(newLesson)
@@ -386,9 +406,9 @@ export default function EditLessonPage() {
                 )}
 
                 {isReadOnly && (
-                    <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 flex items-center gap-1">
-                        🔒 View Only Mode
-                    </span>
+                  <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 flex items-center gap-1">
+                    🔒 View Only Mode
+                  </span>
                 )}
 
                 {courseStatus === 'PENDING_APPROVAL' && (
@@ -419,6 +439,7 @@ export default function EditLessonPage() {
           {/* ── Markdown Editor ── */}
           {lesson?.id && (
             <LessonEditor
+              key={lesson.id}
               lessonId={lesson.id}
               initialContent={lesson.content ?? null}
               lessonTitle={lesson.title}
@@ -493,3 +514,4 @@ function ErrorState({
     </div>
   )
 }
+

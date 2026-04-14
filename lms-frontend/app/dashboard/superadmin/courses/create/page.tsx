@@ -3,8 +3,10 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
+import MarkdownToolbar from '@/components/editor/MarkdownToolbar'
+import { useRef } from 'react'
 
-export default function SuperAdminCreateCoursePage() {
+export default function GlobalCreateCoursePage() {
     const router = useRouter()
     const [form, setForm] = useState({
         title: '',
@@ -16,15 +18,21 @@ export default function SuperAdminCreateCoursePage() {
         prerequisites: '',
         published: false
     })
+    const [userRole, setUserRole] = useState<'STUDENT' | 'INSTRUCTOR' | 'ADMIN' | 'SUPERADMIN'>('SUPERADMIN')
     const [saving, setSaving] = useState(false)
     const [success, setSuccess] = useState(false)
     const [error, setError] = useState('')
+
+    const descriptionRef = useRef<HTMLTextAreaElement>(null)
+    const objectivesRef = useRef<HTMLTextAreaElement>(null)
+    const prerequisitesRef = useRef<HTMLTextAreaElement>(null)
 
     useEffect(() => {
         const stored = localStorage.getItem('user')
         if (!stored) { router.push('/login'); return }
         const u = JSON.parse(stored)
-        if (u.role !== 'SUPERADMIN') { router.push('/login'); return }
+        if (!['SUPERADMIN', 'ADMIN', 'INSTRUCTOR'].includes(u.role)) { router.push('/login'); return }
+        setUserRole(u.role)
     }, [])
 
     const handleSubmit = async () => {
@@ -57,7 +65,7 @@ export default function SuperAdminCreateCoursePage() {
             const result = await res.json()
             console.log('Course created:', result)
             setSuccess(true)
-            setTimeout(() => router.push('/dashboard/superadmin/courses'), 2000)
+            setTimeout(() => router.push(`/dashboard/${userRole.toLowerCase()}/courses`), 2000)
         } catch (e: any) {
             setError(e.message || 'Network error')
         } finally {
@@ -67,15 +75,15 @@ export default function SuperAdminCreateCoursePage() {
 
     return (
         <div className="min-h-screen bg-mesh">
-            <Sidebar role="SUPERADMIN" />
+            <Sidebar role={userRole} />
             <Navbar title="Create Course" />
             <main className="page-content">
                 <div className="flex items-center gap-3 mb-8">
-                    <button onClick={() => router.push('/dashboard/superadmin/courses')}
+                    <button onClick={() => router.push(`/dashboard/${userRole.toLowerCase()}/courses`)}
                         className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-[var(--bg-surface)]/10 transition-all">← Back</button>
                     <div>
                         <h1 className="text-2xl font-bold text-white">Create New Course</h1>
-                        <p className="text-gray-400 text-sm">Courses created by SUPER ADMIN are automatically approved</p>
+                        <p className="text-gray-400 text-sm">Courses created by {userRole.replace('_', ' ')} are automatically approved</p>
                     </div>
                 </div>
 
@@ -115,13 +123,16 @@ export default function SuperAdminCreateCoursePage() {
                                     </div>
 
                                     <div>
-                                        <label className="text-gray-400 text-sm mb-2 block">Description *</label>
+                                        <label className="text-gray-400 text-sm mb-2 block font-semibold">Description *</label>
+                                        <MarkdownToolbar textareaRef={descriptionRef} onChange={val => setForm(p => ({ ...p, description: val }))} />
                                         <textarea
+                                            ref={descriptionRef}
                                             value={form.description}
                                             onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
+                                            onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
                                             rows={4}
                                             placeholder="Provide a detailed description of what students will learn..."
-                                            className="input-field resize-none"
+                                            className="input-field resize-none rounded-t-none"
                                         />
                                         <p className="text-[var(--text-secondary)] text-xs mt-1">{form.description.length} characters (min 20)</p>
                                     </div>
@@ -187,24 +198,30 @@ export default function SuperAdminCreateCoursePage() {
                                 </h3>
                                 <div className="space-y-4">
                                     <div>
-                                        <label className="text-gray-400 text-sm mb-2 block">Learning Objectives</label>
+                                        <label className="text-gray-400 text-sm mb-2 block font-semibold">Learning Objectives</label>
+                                        <MarkdownToolbar textareaRef={objectivesRef} onChange={val => setForm(p => ({ ...p, objectives: val }))} />
                                         <textarea
+                                            ref={objectivesRef}
                                             value={form.objectives}
                                             onChange={e => setForm(p => ({ ...p, objectives: e.target.value }))}
+                                            onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
                                             rows={3}
                                             placeholder="What will students be able to do after completing this course?"
-                                            className="input-field resize-none"
+                                            className="input-field resize-none rounded-t-none"
                                         />
                                     </div>
 
                                     <div>
-                                        <label className="text-gray-400 text-sm mb-2 block">Prerequisites</label>
+                                        <label className="text-gray-400 text-sm mb-2 block font-semibold">Prerequisites</label>
+                                        <MarkdownToolbar textareaRef={prerequisitesRef} onChange={val => setForm(p => ({ ...p, prerequisites: val }))} />
                                         <textarea
+                                            ref={prerequisitesRef}
                                             value={form.prerequisites}
                                             onChange={e => setForm(p => ({ ...p, prerequisites: e.target.value }))}
+                                            onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
                                             rows={3}
                                             placeholder="What knowledge or skills should students have before taking this course?"
-                                            className="input-field resize-none"
+                                            className="input-field resize-none rounded-t-none"
                                         />
                                     </div>
                                 </div>
@@ -246,7 +263,7 @@ export default function SuperAdminCreateCoursePage() {
                             </button>
 
                             <p className="text-center text-[var(--text-secondary)] text-xs">
-                                💡 As a SUPER ADMIN, your course will be automatically approved and ready to build content
+                                💡 As a {userRole.replace('_', ' ')}, your course will be automatically approved and ready to build content
                             </p>
                         </div>
                     </div>

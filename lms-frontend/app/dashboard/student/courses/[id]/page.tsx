@@ -4,6 +4,9 @@ import { useRouter, useParams } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
 import { api } from '@/lib/api'
+import { getAuthHeaders } from '@/lib/authHeaders'
+import { CheckCircle2, ChevronRight } from 'lucide-react'
+import MarkdownRenderer from '@/components/editor/MarkdownRenderer'
 
 interface Resource {
     id: number
@@ -333,9 +336,13 @@ export default function StudentCourseDetailsPage() {
                             <h1 className="text-4xl font-bold text-white mb-4">{course.title}</h1>
 
                             {/* Description */}
-                            <p className="text-gray-300 text-lg mb-4 leading-relaxed">
-                                {course.description || 'No description available'}
-                            </p>
+                            <div className="text-gray-300 text-lg mb-4 leading-relaxed prose prose-invert max-w-none">
+                                {course.description ? (
+                                    <MarkdownRenderer content={course.description} />
+                                ) : (
+                                    'No description available'
+                                )}
+                            </div>
 
                             {/* Instructor */}
                             <div className="flex items-center gap-3 mb-4">
@@ -384,20 +391,32 @@ export default function StudentCourseDetailsPage() {
                                 </div>
                             </div>
 
-                            {/* Enroll Button */}
+                            {/* Enroll / Start Learning Button */}
                             {!isEnrolled && (
                                 <button
                                     onClick={handleEnroll}
                                     disabled={enrolling}
-                                    className="btn-primary px-8 py-3 text-lg"
+                                    className="btn-primary px-8 py-3 text-lg shadow-xl shadow-indigo-500/20 hover:scale-105 transition-all"
                                 >
                                     {enrolling ? 'Enrolling...' : '🎓 Enroll Now'}
                                 </button>
                             )}
                             {isEnrolled && (
-                                <div className="flex items-center gap-2 text-green-400">
-                                    <span className="text-2xl">✓</span>
-                                    <span className="font-semibold">You are enrolled in this course</span>
+                                <div className="space-y-4">
+                                    <button
+                                        onClick={() => router.push(`/dashboard/student/courses/${courseId}/learn`)}
+                                        className="btn-primary px-10 py-4 text-xl font-black rounded-2xl shadow-2xl shadow-indigo-500/40 hover:scale-105 transition-all flex items-center gap-3 group"
+                                    >
+                                        <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 -translate-x-full group-hover:animate-shimmer" />
+                                        <span>{completedLessons.length > 0 ? '▶ Resume Learning' : '🚀 Start Learning'}</span>
+                                        <ChevronRight size={24} />
+                                    </button>
+                                    <div className="flex items-center gap-2 text-emerald-400 font-bold px-1">
+                                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-400/20 ring-1 ring-emerald-400/30">
+                                            <CheckCircle2 size={14} />
+                                        </div>
+                                        <span className="text-sm">Enrolled & Ready to learn</span>
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -414,7 +433,9 @@ export default function StudentCourseDetailsPage() {
                                 <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
                                     <span>🎯</span> Learning Objectives
                                 </h3>
-                                <p className="text-gray-300 whitespace-pre-line">{course.objectives}</p>
+                                <div className="text-gray-300 prose prose-invert max-w-none">
+                                    <MarkdownRenderer content={course.objectives} />
+                                </div>
                             </div>
                         )}
 
@@ -424,7 +445,9 @@ export default function StudentCourseDetailsPage() {
                                 <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
                                     <span>📋</span> Prerequisites
                                 </h3>
-                                <p className="text-gray-300 whitespace-pre-line">{course.prerequisites}</p>
+                                <div className="text-gray-300 prose prose-invert max-w-none">
+                                    <MarkdownRenderer content={course.prerequisites} />
+                                </div>
                             </div>
                         )}
 
@@ -434,7 +457,9 @@ export default function StudentCourseDetailsPage() {
                                 <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
                                     <span>👥</span> Target Audience
                                 </h3>
-                                <p className="text-gray-300 whitespace-pre-line">{course.targetAudience}</p>
+                                <div className="text-gray-300 prose prose-invert max-w-none">
+                                    <MarkdownRenderer content={course.targetAudience} />
+                                </div>
                             </div>
                         )}
                     </div>

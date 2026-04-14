@@ -8,10 +8,13 @@ import { Enrollment } from '../entities/enrollment.entity';
 import { UserBadge } from '../entities/user-badge.entity';
 import { Badge } from '../entities/badge.entity';
 import { Lesson } from '../entities/lesson.entity';
+import { Course } from '../entities/course.entity';
+import { CourseModule } from '../entities/module.entity';
+import { Chapter } from '../entities/chapter.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, Progress, Enrollment, UserBadge, Badge, Lesson]),
+    TypeOrmModule.forFeature([User, Progress, Enrollment, UserBadge, Badge, Lesson, Course, CourseModule, Chapter]),
   ],
   controllers: [StudentController],
   providers: [StudentService],

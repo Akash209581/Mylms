@@ -45,9 +45,11 @@ import { ForumReply } from './entities/forum-reply.entity';
     TypeOrmModule.forRoot({
       type: 'postgres',
       url: process.env.DATABASE_URL,
-      ssl: process.env.DATABASE_URL?.includes('localhost')
-        ? false
-        : { rejectUnauthorized: false },
+      ssl: 
+        process.env.NODE_ENV === 'production' || 
+        (process.env.DATABASE_URL && !process.env.DATABASE_URL.includes('localhost'))
+          ? { rejectUnauthorized: false }
+          : false,
       entities: [
         User,
         Course,
