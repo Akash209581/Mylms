@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
@@ -19,7 +19,7 @@ const QUESTION_TYPES = [
     { key: 'OP', label: 'Output Prediction', icon: '🎯', desc: 'Given code snippet, predict the output' },
 ]
 
-export default function CreateQuestionPage() {
+function CreateQuestionForm() {
     const router = useRouter()
     const searchParams = useSearchParams()
     const [currentRole, setCurrentRole] = useState<'SUPERADMIN' | 'ADMIN' | 'INSTRUCTOR'>('SUPERADMIN')
@@ -770,5 +770,18 @@ export default function CreateQuestionPage() {
                 </div>
             )}
         </div>
+    )
+}
+
+export default function CreateQuestionPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-mesh flex flex-col items-center justify-center">
+                <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4" />
+                <p className="text-gray-400 font-semibold animation-pulse">Loading Editor...</p>
+            </div>
+        }>
+            <CreateQuestionForm />
+        </Suspense>
     )
 }
