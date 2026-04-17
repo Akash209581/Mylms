@@ -182,6 +182,49 @@ export class StudentService {
     }
   }
 
+
+  async getLeaderboard(userId: number, scope?: string) {
+    const requestingUser = await this.userRepository.findOne({ where: { id: userId } });
+
+    const qb = this.userRepository
+      .createQueryBuilder('u')
+      .select(['u.id', 'u.name', 'u.email', 'u.points', 'u.streakCount', 'u.collegeName'])
+      .where('u.role = :role', { role: 'STUDENT' })
+      .orderBy('u.points', 'DESC')
+      .addOrderBy('u.streakCount', 'DESC')
+      .take(100);
+
+    if (scope === 'college' && requestingUser?.collegeName) {
+      qb.andWhere(
+        '(LOWER(TRIM(u.college_name)) = LOWER(TRIM(:cname)))',
+        { cname: requestingUser.collegeName },
+      );
+    }
+
+    const users = await qb.getMany();
+
+    const userBadgeCounts = await this.userBadgeRepository
+      .createQueryBuilder('ub')
+      .select('ub.user_id', 'userId')
+      .addSelect('COUNT(ub.id)', 'count')
+      .groupBy('ub.user_id')
+      .getRawMany();
+
+    const badgeMap = new Map<number, number>();
+    userBadgeCounts.forEach((b) => badgeMap.set(Number(b.userId), Number(b.count)));
+
+    return users.map((u, idx) => ({
+      rank: idx + 1,
+      userId: u.id,
+      name: u.name,
+      email: u.email,
+      collegeName: u.collegeName,
+      points: u.points || 0,
+      streak: u.streakCount || 0,
+      badges: badgeMap.get(u.id) || 0,
+    }));
+  }
+
   async getLearningPath(userId: number, courseId: number) {
     // 1. Load the course with full hierarchy (modules → chapters → lessons with content)
     const course = await this.courseRepository.findOne({
@@ -258,4 +301,5 @@ export class StudentService {
     };
   }
 }
+
 

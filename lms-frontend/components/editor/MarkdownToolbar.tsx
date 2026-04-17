@@ -6,6 +6,8 @@ interface MarkdownToolbarProps {
 }
 
 export default function MarkdownToolbar({ textareaRef, onChange }: MarkdownToolbarProps) {
+  const fileInputRef = React.useRef<HTMLInputElement>(null)
+  
   const insertText = (before: string, after: string = '', placeholder: string = '') => {
     const el = textareaRef.current
     if (!el) return
@@ -25,6 +27,22 @@ export default function MarkdownToolbar({ textareaRef, onChange }: MarkdownToolb
     }, 0)
   }
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = (evt) => {
+      const base64 = evt.target?.result as string
+      // Insert at current cursor position
+      insertText(`![${file.name}](${base64})`, '', '')
+    }
+    reader.readAsDataURL(file)
+    
+    // Reset input
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
   const insertBlock = (prefix: string, placeholder: string) => {
     const el = textareaRef.current
     if (!el) return
@@ -37,6 +55,14 @@ export default function MarkdownToolbar({ textareaRef, onChange }: MarkdownToolb
 
   return (
     <div className="flex flex-wrap items-center gap-2 p-3 bg-[var(--bg-surface)] border border-[var(--border)] border-b-0 rounded-t-xl overflow-x-auto shadow-sm">
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        className="hidden" 
+        accept="image/*" 
+        onChange={handleImageUpload} 
+      />
+      
       {/* Headings */}
       <button type="button" onClick={() => insertBlock('# ', 'Heading 1')} className="tb-btn" title="H1">H1</button>
       <button type="button" onClick={() => insertBlock('## ', 'Heading 2')} className="tb-btn" title="H2">H2</button>
@@ -60,22 +86,23 @@ export default function MarkdownToolbar({ textareaRef, onChange }: MarkdownToolb
       <div className="w-px h-6 bg-[var(--border)] mx-1 self-center" />
 
       {/* Blocks */}
-      <button type="button" onClick={() => insertBlock('```\n', '\n```')} className="tb-btn" title="Code Block">{'<>'}</button>
+      <button type="button" onClick={() => insertText('```\n', '\n```', 'code here')} className="tb-btn" title="Code Block">{'<>'}</button>
       <button type="button" onClick={() => insertBlock('| Col 1 | Col 2 |\n|-------|-------|\n| ', 'Data  | Data  |')} className="tb-btn" title="Table">⊞</button>
-      <button type="button" onClick={() => insertBlock('$$ ', ' $$')} className="tb-btn" title="Math System">∑</button>
+      <button type="button" onClick={() => insertText('$$ ', ' $$', 'formula')} className="tb-btn" title="Math System">∑</button>
       
       <div className="w-px h-6 bg-[var(--border)] mx-1 self-center" />
 
       {/* Media */}
       <button type="button" onClick={() => insertText('[', '](https://)', 'Link Text')} className="tb-btn text-[14px]" title="Add Link">🔗</button>
-      <button type="button" onClick={() => insertText('![', '](https://)', 'Image Alt')} className="tb-btn text-[14px]" title="Add Image">🖼️</button>
+      <button type="button" onClick={() => fileInputRef.current?.click()} className="tb-btn text-[14px] bg-indigo-50 text-indigo-600 border-indigo-200" title="Upload Image">🖼️</button>
 
       <div className="w-px h-6 bg-[var(--border)] mx-1 self-center" />
 
       {/* Callouts */}
-      <button type="button" onClick={() => insertBlock(':::info\n', '\n:::')} className="tb-btn text-blue-400" title="Info Block">ℹ</button>
-      <button type="button" onClick={() => insertBlock(':::note\n', '\n:::')} className="tb-btn text-yellow-400" title="Note Block">💡</button>
-      <button type="button" onClick={() => insertBlock(':::warning\n', '\n:::')} className="tb-btn text-red-400" title="Warning Block">⚠</button>
+      <button type="button" onClick={() => insertText(':::info\n', '\n:::', 'Info content')} className="tb-btn text-blue-500" title="Info Block">ℹ</button>
+      <button type="button" onClick={() => insertText(':::note\n', '\n:::', 'Note content')} className="tb-btn text-yellow-500" title="Note Block">💡</button>
+      <button type="button" onClick={() => insertText(':::warning\n', '\n:::', 'Warning content')} className="tb-btn text-red-500" title="Warning Block">⚠</button>
+
       
       <style jsx>{`
         .tb-btn {

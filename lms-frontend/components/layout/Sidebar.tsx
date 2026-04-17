@@ -7,10 +7,11 @@ import { getAuthHeaders } from '@/lib/authHeaders'
 type NavItem = { label: string; href: string; icon: React.ReactNode }
 
 const studentNav: NavItem[] = [
-    { label: 'Course Catalog', href: '/dashboard/student/catalog', icon: <BookIcon /> },
     { label: 'Dashboard', href: '/dashboard/student', icon: <GridIcon /> },
     { label: 'My Courses', href: '/dashboard/student/courses', icon: <GraduationCapIcon /> },
-    { label: 'Coding Problems', href: '/dashboard/student/coding', icon: <CodeIcon /> },
+    { label: 'My Progress', href: '/dashboard/student/progress', icon: <ProgressIcon /> },
+    { label: 'Leaderboard', href: '/dashboard/student/leaderboard', icon: <TrophyIcon /> },
+    { label: 'Daily Challenge', href: '/dashboard/student/streak', icon: <FireIcon /> },
     { label: 'Forums', href: '/dashboard/student/forums', icon: <ForumIcon /> },
     { label: 'Profile', href: '/dashboard/student/profile', icon: <UserIcon /> },
 ]
@@ -30,6 +31,7 @@ const adminNav: NavItem[] = [
     { label: 'Question Bank', href: '/dashboard/admin/question-bank', icon: <QuizIcon /> },
     { label: 'Add Question', href: '/dashboard/admin/question-bank/create', icon: <PlusIcon /> },
     { label: 'Approvals', href: '/dashboard/admin/approvals', icon: <CheckIcon /> },
+    { label: 'Reports', href: '/dashboard/admin/reports', icon: <ChartIcon /> },
 ]
 const superadminNav: NavItem[] = [
     { label: 'Dashboard', href: '/dashboard/superadmin', icon: <GridIcon /> },
@@ -39,9 +41,12 @@ const superadminNav: NavItem[] = [
     { label: 'Create Course', href: '/dashboard/superadmin/courses/create', icon: <PlusIcon /> },
     { label: 'Question Bank', href: '/dashboard/superadmin/question-bank', icon: <QuizIcon /> },
     { label: 'Add Question', href: '/dashboard/superadmin/question-bank/create', icon: <PlusIcon /> },
+    { label: 'Colleges', href: '/dashboard/superadmin/colleges', icon: <CollegeIcon /> },
     { label: 'Contests', href: '/dashboard/superadmin/contests', icon: <TrophyIcon /> },
     { label: 'Daily Streak', href: '/dashboard/superadmin/daily-streak', icon: <FireIcon /> },
     { label: 'Reports', href: '/dashboard/superadmin/reports', icon: <ChartIcon /> },
+    { label: 'Audit Log', href: '/dashboard/superadmin/audit-log', icon: <AuditIcon /> },
+    { label: 'Settings', href: '/dashboard/superadmin/settings', icon: <SettingsIcon /> },
 ]
 
 export default function Sidebar({ role }: { role?: string }) {
@@ -236,6 +241,35 @@ function GraduationCapIcon() {
             <path d="M12 14l9-5-9-5-9 5 9 5z" />
             <path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222" />
+        </svg>
+    )
+}
+function ProgressIcon() {
+    return (
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-5 h-5">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+    )
+}
+function CollegeIcon() {
+    return (
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-5 h-5">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+        </svg>
+    )
+}
+function AuditIcon() {
+    return (
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-5 h-5">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+        </svg>
+    )
+}
+function SettingsIcon() {
+    return (
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-5 h-5">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
     )
 }

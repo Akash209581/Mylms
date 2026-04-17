@@ -210,11 +210,7 @@ function CodeBlock({ snippets }: { snippets: { lang: string, code: string }[] })
   return (
     <div className="my-6 glass-card overflow-hidden border-none shadow-xl">
       <div className="flex items-center justify-between px-4 py-2 bg-black/40 border-b border-white/5">
-        <div className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-full bg-red-400/80" />
-          <span className="w-3 h-3 rounded-full bg-amber-400/80" />
-          <span className="w-3 h-3 rounded-full bg-emerald-400/80" />
-        </div>
+        <div />
         {snippets.length > 1 ? (
           <div className="flex bg-black/20 rounded-lg p-0.5 gap-0.5 ml-4">
             {snippets.map((s, i) => (

@@ -16,7 +16,7 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                         {form.problemStatement && (
                             <div className="bg-slate-50 p-6 rounded-2xl border border-gray-100 mb-6">
                                 <h4 className="text-primary-600 text-[10px] font-bold uppercase mb-2 tracking-wider">Problem Statement</h4>
-                                <div className="text-slate-700 font-mono text-sm whitespace-pre-wrap leading-relaxed">{form.problemStatement}</div>
+                                <MarkdownRenderer content={form.problemStatement} className="text-slate-700 text-sm" />
                             </div>
                         )}
                         <div className="grid gap-4">
@@ -205,7 +205,6 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                             <MarkdownRenderer content={form.problemStatement} className="text-slate-600 text-lg" />
                         </div>
 
-
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-6">
                                 <div>
@@ -220,16 +219,15 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                                         <MarkdownRenderer content={form.outputFormat} className="text-slate-700 text-sm" />
                                     </div>
                                 </div>
-                            </div>
-
-                            <div className="space-y-4">
                                 <div>
                                     <h4 className="text-primary-600 text-xs font-bold uppercase mb-2">Constraints</h4>
                                     <div className="p-5 bg-blue-50/50 rounded-2xl border border-blue-100 min-h-[220px] shadow-inner">
                                         <MarkdownRenderer content={form.constraints} className="text-slate-700 text-sm" />
                                     </div>
                                 </div>
+                            </div>
 
+                            <div className="space-y-4">
                                 <div>
                                     <h4 className="text-primary-600 text-xs font-bold uppercase mb-2">Sample Test Cases</h4>
                                     <div className="space-y-4">
@@ -253,7 +251,6 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                                         ))}
                                     </div>
                                 </div>
-
                             </div>
                         </div>
                     </div>

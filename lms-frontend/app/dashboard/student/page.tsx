@@ -1,11 +1,16 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, memo } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
 import { getAuthHeaders } from '@/lib/authHeaders'
 import SkillRadar from '@/components/student/SkillRadar'
 import ActivityHeatmap from '@/components/student/ActivityHeatmap'
+
+// Skeleton loader component for consistent placeholder UI
+const SkeletonCard = ({ className = '' }: { className?: string }) => (
+    <div className={`bg-[var(--bg-raised)] animate-pulse rounded-2xl ${className}`} />
+)
 
 function DailyStreakDisplay() {
     const [streak, setStreak] = useState<any>(null)

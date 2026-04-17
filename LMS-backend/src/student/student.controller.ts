@@ -76,4 +76,12 @@ export class StudentController {
   ) {
     return this.studentService.getLearningPath(req.user.sub, courseId);
   }
+
+  @Get('leaderboard')
+  async getLeaderboard(
+    @Request() req: any,
+    @Query('scope') scope?: string,
+  ) {
+    return this.studentService.getLeaderboard(req.user.sub, scope);
+  }
 }

@@ -296,13 +296,7 @@ function CellPreview({ cell, calloutOrder, plainCodePreview = false }: { cell: C
     return (
       <div className="nb-code-wrap">
         <div className="nb-code-titlebar flex items-center justify-between">
-          {plainCodePreview ? <div /> : (
-            <div className="flex items-center gap-1.5">
-              <span className="nb-code-dot nb-dot-red" />
-              <span className="nb-code-dot nb-dot-yellow" />
-              <span className="nb-code-dot nb-dot-green" />
-            </div>
-          )}
+          <div />
           {snippets.length > 1 ? (
             <div className="flex bg-[#2d3148] rounded-md p-0.5 gap-0.5">
               {snippets.map((s, i) => (
@@ -901,7 +895,9 @@ const COMMON_LANGUAGES = [
    MAIN EDITOR COMPONENT
 ═══════════════════════════════════════════════════════ */
 export default function LessonEditor({
+  lessonId: _lessonId,
   initialContent,
+  lessonTitle: _lessonTitle,
   onSave,
   onAddTopic,
   onBack,
