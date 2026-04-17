@@ -40,6 +40,7 @@ export interface LessonEditorProps {
   showPreviewByDefault?: boolean  // Default preview visibility
   fullPreviewTitle?: string
   plainCodePreview?: boolean
+  isModal?: boolean
 }
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
@@ -905,6 +906,7 @@ export default function LessonEditor({
   showPreviewByDefault = false,
   fullPreviewTitle = 'Full Course Preview',
   plainCodePreview = false,
+  isModal = false,
 }: LessonEditorProps) {
   const [cells, setCells] = useState<Cell[]>(() => parseCells(initialContent))
   const [activeId, setActiveId] = useState<string | null>(null)
@@ -1279,7 +1281,11 @@ export default function LessonEditor({
      FULL SPLIT-PANE EDITOR
      ════════════════════════════════════════ */
   return (
-    <div className="nb-editor-v2" onClick={() => setActiveId(null)}>
+    <div 
+      className="nb-editor-v2" 
+      onClick={() => setActiveId(null)}
+      style={{ '--nb-sticky-top': (isModal || readOnly) ? '0px' : '64px' } as React.CSSProperties}
+    >
 
       {/* ── Sticky header: topbar + toolbar ── */}
       <div className="nb-sticky-header" onClick={e => e.stopPropagation()}>
@@ -1575,12 +1581,22 @@ export default function LessonEditor({
                       )}
                     </div>
                     {page.cells.map(({ cell, originalIdx }) => {
-                      // ... (existing cell mapping code) ...
                       const idx = originalIdx;
                       const isActive = activeId === cell.id
                       const isCallout = isCalloutType(cell.type)
                       const calloutCfg = isCallout ? CALLOUT_CONFIG[cell.type as CalloutType] : null
                       const calloutOrder = isCallout ? calloutOrderByCellId[cell.id] : undefined
+
+                      /* ── Read-only mode: Render clean preview ── */
+                      if (readOnly) {
+                        if (cell.type === 'page-break') return null;
+                        if (cell.type === 'divider') return <div key={cell.id} className="py-4"><hr className="nb-divider" /></div>;
+                        return (
+                          <div key={cell.id} className="mb-4">
+                            <CellPreview cell={cell} calloutOrder={calloutOrder} plainCodePreview={plainCodePreview} />
+                          </div>
+                        );
+                      }
 
                       /* ── Divider cell ── */
                       if (cell.type === 'divider') {
@@ -1807,9 +1823,8 @@ export default function LessonEditor({
                           </div>
                           {!readOnly && <AddCellMenu onAdd={t => insertCell(cell.id, t)} />}
                         </div>
-                      )
+                      );
                     })}
-
                     {/* Page navigation at bottom center */}
                     {totalPages > 1 && (
                       <div className="flex justify-center items-center gap-3 mt-8 pt-6 border-t border-slate-100">
