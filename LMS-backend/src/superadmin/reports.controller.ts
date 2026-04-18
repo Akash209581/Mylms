@@ -35,11 +35,33 @@ export class ReportsController {
     const roles = await this.userRepo
       .createQueryBuilder('user')
       .select('user.role', 'role')
-      .addSelect('COUNT(*)', 'count')
+      .addSelect('CAST(COUNT(*) AS INTEGER)', 'count')
       .groupBy('user.role')
       .getRawMany();
 
-    // Recent Enrollments (last 30 days or just last 10)
+    // Monthly enrollment trend — last 6 months
+    const enrollmentsByMonth = await this.enrollRepo
+      .createQueryBuilder('e')
+      .select("TO_CHAR(e.enrolled_at, 'Mon')", 'month')
+      .addSelect("TO_CHAR(e.enrolled_at, 'YYYY-MM')", 'monthKey')
+      .addSelect('CAST(COUNT(*) AS INTEGER)', 'count')
+      .where("e.enrolled_at >= NOW() - INTERVAL '6 months'")
+      .groupBy("TO_CHAR(e.enrolled_at, 'Mon'), TO_CHAR(e.enrolled_at, 'YYYY-MM')")
+      .orderBy("TO_CHAR(e.enrolled_at, 'YYYY-MM')", 'ASC')
+      .getRawMany();
+
+    // Top courses by enrollment
+    const topCourses = await this.courseRepo
+      .createQueryBuilder('course')
+      .leftJoin('course.enrollments', 'enrollment')
+      .select(['course.id', 'course.title', 'course.category'])
+      .addSelect('CAST(COUNT(enrollment.id) AS INTEGER)', 'enrollmentCount')
+      .groupBy('course.id')
+      .orderBy('"enrollmentCount"', 'DESC')
+      .take(10)
+      .getRawMany();
+
+    // Recent Enrollments with correct relation name
     const recentEnrollments = await this.enrollRepo.find({
       relations: ['student', 'course'],
       order: { enrolledAt: 'DESC' },
@@ -49,7 +71,19 @@ export class ReportsController {
     return {
       stats: { totalUsers, totalCourses, totalEnrollments, totalQuestions },
       roles,
-      recentEnrollments,
+      enrollmentsByMonth: enrollmentsByMonth.map(e => ({ month: e.month, count: e.count })),
+      topCourses: topCourses.map(c => ({
+        id: c.course_id,
+        title: c.course_title,
+        category: c.course_category,
+        enrollmentCount: c.enrollmentCount,
+      })),
+      recentEnrollments: recentEnrollments.map(e => ({
+        id: e.id,
+        enrolledAt: e.enrolledAt,
+        user: e.student ? { name: e.student.name } : null,
+        course: e.course ? { title: e.course.title } : null,
+      })),
     };
   }
 

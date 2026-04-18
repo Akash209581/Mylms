@@ -148,6 +148,7 @@ export default function CoursePreviewModal({ courseId, isOpen, onClose }: Course
                                         initialContent={lessonData.content}
                                         onSave={async () => { }}
                                         readOnly={true}
+                                        isModal={true}
                                     />
                                 </div>
                             </div>

@@ -281,4 +281,29 @@ export class SuperadminController {
     await this.courseRepo.delete(id);
     return { message: 'Course deleted' };
   }
+
+  @Get('audit-log')
+  async getAuditLog() {
+    // Returns audit log entries — will be populated once audit_log entity is added
+    // For now returns empty array gracefully
+    return [];
+  }
+
+  @Get('settings')
+  async getSettings() {
+    return {
+      platformName: 'EduVerse LMS',
+      supportEmail: 'support@eduverse.in',
+      maintenanceMode: false,
+      allowRegistrations: true,
+      maxCoursesPerInstructor: 20,
+      defaultEnrollmentApproval: 'AUTO',
+    };
+  }
+
+  @Put('settings')
+  async updateSettings(@Body() body: any) {
+    // Settings persistence can be added with a Settings entity later
+    return { message: 'Settings saved', data: body };
+  }
 }

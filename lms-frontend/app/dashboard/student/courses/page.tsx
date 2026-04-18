@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
 import { api } from '@/lib/api'
-import CoursePreviewModal from '@/components/course/CoursePreviewModal'
 
 const gradients = [
     'linear-gradient(135deg, #667eea, #764ba2)',
@@ -54,7 +53,6 @@ export default function StudentCoursesPage() {
     const [search, setSearch] = useState('')
     const [loading, setLoading] = useState(true)
     const [enrolling, setEnrolling] = useState<number | null>(null)
-    const [previewCourseId, setPreviewCourseId] = useState<number | null>(null)
     const [pagination, setPagination] = useState({
         page: 1,
         limit: 12,
@@ -263,7 +261,7 @@ export default function StudentCoursesPage() {
                                 return (
                                     <div key={course.id} className="course-card group animate-fade-in cursor-pointer"
                                         style={{ animationDelay: `${i * 0.08}s` }}
-                                        onClick={() => setPreviewCourseId(course.id)}>
+                                        onClick={() => router.push(`/dashboard/student/courses/${course.id}`)}>
                                         {/* Course Image/Gradient */}
                                         <div className="h-44 relative overflow-hidden"
                                             style={{
@@ -429,12 +427,7 @@ export default function StudentCoursesPage() {
                     </>
                 )}
 
-                {/* Full-Screen Course Preview Modal */}
-                <CoursePreviewModal
-                    isOpen={previewCourseId !== null}
-                    courseId={previewCourseId}
-                    onClose={() => setPreviewCourseId(null)}
-                />
+
             </main>
         </div>
     )

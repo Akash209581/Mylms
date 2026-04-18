@@ -1,9 +1,10 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
 import QuestionPreview from '@/components/question-bank/QuestionPreview'
+import MarkdownToolbar from '@/components/editor/MarkdownToolbar'
 
 const COMPANIES = ['Accenture', 'CapGemini', 'Infosys', 'TCS', 'Wipro', 'Amazon', 'Google', 'Microsoft', 'Adobe', 'Flipkart', 'Other']
 const LANGUAGES = ['Python', 'Java', 'C', 'C++', 'JavaScript', 'Any']
@@ -18,7 +19,7 @@ const QUESTION_TYPES = [
     { key: 'OP', label: 'Output Prediction', icon: '🎯', desc: 'Given code snippet, predict the output' },
 ]
 
-export default function CreateQuestionPage() {
+function CreateQuestionForm() {
     const router = useRouter()
     const searchParams = useSearchParams()
     const [currentRole, setCurrentRole] = useState<'SUPERADMIN' | 'ADMIN' | 'INSTRUCTOR'>('SUPERADMIN')
@@ -49,6 +50,12 @@ export default function CreateQuestionPage() {
     const [saving, setSaving] = useState(false)
     const [showPreview, setShowPreview] = useState(false)
     const [error, setError] = useState('')
+
+    const problemStatementRef = useRef<HTMLTextAreaElement>(null)
+    const explanationRef = useRef<HTMLTextAreaElement>(null)
+    const constraintsRef = useRef<HTMLTextAreaElement>(null)
+    const inputFormatRef = useRef<HTMLTextAreaElement>(null)
+    const outputFormatRef = useRef<HTMLTextAreaElement>(null)
 
     useEffect(() => {
         const stored = localStorage.getItem('user')
@@ -283,10 +290,13 @@ export default function CreateQuestionPage() {
                             <div className="glass-card p-6 space-y-6">
                                 <div>
                                     <h3 className="text-white font-semibold mb-2">📄 Problem Statement *</h3>
-                                    <textarea value={form.problemStatement} 
+                                    <MarkdownToolbar textareaRef={problemStatementRef} onChange={(val) => set('problemStatement', val)} />
+                                    <textarea 
+                                        ref={problemStatementRef}
+                                        value={form.problemStatement} 
                                         onChange={e => set('problemStatement', e.target.value)}
                                         onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
-                                        rows={3} placeholder="Add context or a code snippet..." className="input-field font-mono text-sm" />
+                                        rows={3} placeholder="Add context or a code snippet..." className="input-field font-mono text-sm rounded-t-none" />
                                 </div>
 
                                 <div className="pt-6 border-t border-white/5">
@@ -311,10 +321,13 @@ export default function CreateQuestionPage() {
 
                                 <div className="pt-6 border-t border-white/5">
                                     <label className="text-gray-400 text-sm mb-2 block font-semibold">Explanation (Optional)</label>
-                                    <textarea value={form.explanation} 
+                                    <MarkdownToolbar textareaRef={explanationRef} onChange={(val) => set('explanation', val)} />
+                                    <textarea 
+                                        ref={explanationRef}
+                                        value={form.explanation} 
                                         onChange={e => set('explanation', e.target.value)}
                                         onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
-                                        rows={3} placeholder="Explain why this answer is correct..." className="input-field text-sm" />
+                                        rows={3} placeholder="Explain why this answer is correct..." className="input-field text-sm rounded-t-none" />
                                 </div>
                             </div>
                         )}
@@ -325,10 +338,13 @@ export default function CreateQuestionPage() {
                                 <div>
                                     <h3 className="text-white font-semibold mb-2">📄 Problem Statement *</h3>
                                     <p className="text-gray-400 text-xs mb-4">Provide the problem statement or code snippet. Use <span className="text-primary-400 font-mono font-bold">[BLANK]</span> where you want students to fill in the answers.</p>
-                                    <textarea value={form.problemStatement} 
+                                    <MarkdownToolbar textareaRef={problemStatementRef} onChange={(val) => set('problemStatement', val)} />
+                                    <textarea 
+                                        ref={problemStatementRef}
+                                        value={form.problemStatement} 
                                         onChange={e => set('problemStatement', e.target.value)}
                                         onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
-                                        rows={5} placeholder="e.g. For(int i=0; i < [BLANK]; i++)" className="input-field font-mono text-sm" />
+                                        rows={5} placeholder="e.g. For(int i=0; i < [BLANK]; i++)" className="input-field font-mono text-sm rounded-t-none" />
                                 </div>
 
                                 <div className="pt-6 border-t border-white/5">
@@ -354,10 +370,13 @@ export default function CreateQuestionPage() {
 
                                 <div className="pt-6 border-t border-white/5">
                                     <label className="text-gray-400 text-sm mb-2 block font-semibold">Explanation (Optional)</label>
-                                    <textarea value={form.explanation} 
+                                    <MarkdownToolbar textareaRef={explanationRef} onChange={(val) => set('explanation', val)} />
+                                    <textarea 
+                                        ref={explanationRef}
+                                        value={form.explanation} 
                                         onChange={e => set('explanation', e.target.value)}
                                         onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
-                                        rows={3} placeholder="Explain the logic behind the blanks..." className="input-field text-sm" />
+                                        rows={3} placeholder="Explain the logic behind the blanks..." className="input-field text-sm rounded-t-none" />
                                 </div>
                             </div>
                         )}
@@ -367,11 +386,14 @@ export default function CreateQuestionPage() {
                         {form.type === 'MQ' && (
                             <div className="glass-card p-6 space-y-6">
                                 <div>
-                                    <h3 className="text-white font-semibold mb-2">📄 Problem Statement *</h3>
-                                    <textarea value={form.problemStatement} 
+                                    <h3 className="text-white font-semibold mb-2 flex items-center gap-2">📄 Problem Statement *</h3>
+                                    <MarkdownToolbar textareaRef={problemStatementRef} onChange={(val) => set('problemStatement', val)} />
+                                    <textarea 
+                                        ref={problemStatementRef}
+                                        value={form.problemStatement} 
                                         onChange={e => set('problemStatement', e.target.value)}
                                         onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
-                                        rows={3} placeholder="Add context for the matching pairs..." className="input-field text-sm" />
+                                        rows={3} placeholder="Add context for the matching pairs..." className="input-field text-sm rounded-t-none" />
                                 </div>
 
                                 <div className="pt-6 border-t border-white/5">
@@ -428,10 +450,13 @@ export default function CreateQuestionPage() {
 
                                 <div className="pt-6 border-t border-white/5">
                                     <label className="text-gray-400 text-sm mb-2 block font-semibold">Explanation (Optional)</label>
-                                    <textarea value={form.explanation} 
+                                    <MarkdownToolbar textareaRef={explanationRef} onChange={(val) => set('explanation', val)} />
+                                    <textarea 
+                                        ref={explanationRef}
+                                        value={form.explanation} 
                                         onChange={e => set('explanation', e.target.value)}
                                         onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
-                                        rows={3} placeholder="Explain the matching logic..." className="input-field text-sm" />
+                                        rows={3} placeholder="Explain the matching logic..." className="input-field text-sm rounded-t-none" />
                                 </div>
                             </div>
                         )}
@@ -441,11 +466,14 @@ export default function CreateQuestionPage() {
 
                             <div className="glass-card p-6 space-y-6">
                                 <div>
-                                    <h3 className="text-white font-semibold mb-2">📄 Problem Statement *</h3>
-                                    <textarea value={form.problemStatement} 
+                                    <h3 className="text-white font-semibold mb-2 flex items-center gap-2">📄 Problem Statement *</h3>
+                                    <MarkdownToolbar textareaRef={problemStatementRef} onChange={(val) => set('problemStatement', val)} />
+                                    <textarea 
+                                        ref={problemStatementRef}
+                                        value={form.problemStatement} 
                                         onChange={e => set('problemStatement', e.target.value)}
                                         onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
-                                        rows={3} placeholder="Provide context and instructions for the jumbled code..." className="input-field text-sm" />
+                                        rows={3} placeholder="Provide context and instructions for the jumbled code..." className="input-field text-sm rounded-t-none" />
                                 </div>
 
                                 <div className="pt-6 border-t border-white/5">
@@ -480,10 +508,13 @@ export default function CreateQuestionPage() {
 
                                 <div className="pt-6 border-t border-white/5">
                                     <label className="text-gray-400 text-sm mb-2 block font-semibold">Explanation (Optional)</label>
-                                    <textarea value={form.explanation} 
+                                    <MarkdownToolbar textareaRef={explanationRef} onChange={(val) => set('explanation', val)} />
+                                    <textarea 
+                                        ref={explanationRef}
+                                        value={form.explanation} 
                                         onChange={e => set('explanation', e.target.value)}
                                         onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
-                                        rows={3} placeholder="Explain the logic..." className="input-field text-sm" />
+                                        rows={3} placeholder="Explain the logic..." className="input-field text-sm rounded-t-none" />
                                 </div>
                             </div>
                         )}
@@ -513,20 +544,46 @@ export default function CreateQuestionPage() {
                                         ))}
                                     </div>
                                 </div>
-                                {[
-                                    ['problemStatement', 'Problem Statement *', 5],
-                                    ['inputFormat', 'Input Format', 4],
-                                    ['outputFormat', 'Output Format', 4],
-                                    ['constraints', 'Constraints', 4],
-                                ].map(([key, label, rows]: any) => (
-                                    <div key={key}>
-                                        <label className="text-gray-400 text-sm mb-2 block">{label}</label>
-                                        <textarea value={form[key]} 
-                                            onChange={e => set(key, e.target.value)}
-                                            onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
-                                            rows={rows} placeholder={label} className="input-field font-mono text-sm" />
-                                    </div>
-                                ))}
+                                <div>
+                                    <label className="text-gray-400 text-sm mb-2 block">Problem Statement *</label>
+                                    <MarkdownToolbar textareaRef={problemStatementRef} onChange={(val) => set('problemStatement', val)} />
+                                    <textarea 
+                                        ref={problemStatementRef}
+                                        value={form.problemStatement} 
+                                        onChange={e => set('problemStatement', e.target.value)}
+                                        onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
+                                        rows={5} placeholder="Problem Statement" className="input-field font-mono text-sm rounded-t-none" />
+                                </div>
+                                <div>
+                                    <label className="text-gray-400 text-sm mb-2 block">Input Format</label>
+                                    <MarkdownToolbar textareaRef={inputFormatRef} onChange={(val) => set('inputFormat', val)} />
+                                    <textarea 
+                                        ref={inputFormatRef}
+                                        value={form.inputFormat} 
+                                        onChange={e => set('inputFormat', e.target.value)}
+                                        onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
+                                        rows={4} placeholder="Input Format" className="input-field font-mono text-sm rounded-t-none" />
+                                </div>
+                                <div>
+                                    <label className="text-gray-400 text-sm mb-2 block">Output Format</label>
+                                    <MarkdownToolbar textareaRef={outputFormatRef} onChange={(val) => set('outputFormat', val)} />
+                                    <textarea 
+                                        ref={outputFormatRef}
+                                        value={form.outputFormat} 
+                                        onChange={e => set('outputFormat', e.target.value)}
+                                        onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
+                                        rows={4} placeholder="Output Format" className="input-field font-mono text-sm rounded-t-none" />
+                                </div>
+                                <div>
+                                    <label className="text-gray-400 text-sm mb-2 block">Constraints</label>
+                                    <MarkdownToolbar textareaRef={constraintsRef} onChange={(val) => set('constraints', val)} />
+                                    <textarea 
+                                        ref={constraintsRef}
+                                        value={form.constraints} 
+                                        onChange={e => set('constraints', e.target.value)}
+                                        onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
+                                        rows={4} placeholder="Constraints" className="input-field font-mono text-sm rounded-t-none" />
+                                </div>
 
                                 <div>
                                     <label className="text-gray-400 text-sm mb-3 block">Test Cases</label>
@@ -574,11 +631,14 @@ export default function CreateQuestionPage() {
 
                                     <div className="space-y-6">
                                         <div>
-                                            <h3 className="text-white font-semibold mb-2">📄 Problem Statement *</h3>
-                                            <textarea value={form.problemStatement} 
+                                            <h3 className="text-white font-semibold mb-2 flex items-center gap-2">📄 Problem Statement *</h3>
+                                            <MarkdownToolbar textareaRef={problemStatementRef} onChange={(val) => set('problemStatement', val)} />
+                                            <textarea 
+                                                ref={problemStatementRef}
+                                                value={form.problemStatement} 
                                                 onChange={e => set('problemStatement', e.target.value)}
                                                 onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
-                                                rows={3} placeholder="Provide context and instructions for the output prediction..." className="input-field text-sm" />
+                                                rows={3} placeholder="Provide context and instructions for the output prediction..." className="input-field text-sm rounded-t-none" />
                                         </div>
 
                                         <div className="pt-6 border-t border-white/5 space-y-4">
@@ -601,10 +661,13 @@ export default function CreateQuestionPage() {
 
                                         <div className="pt-6 border-t border-white/5 font-semibold">
                                             <label className="text-gray-400 text-sm mb-2 block">Explanation (Optional)</label>
-                                            <textarea value={form.explanation} 
+                                            <MarkdownToolbar textareaRef={explanationRef} onChange={(val) => set('explanation', val)} />
+                                            <textarea 
+                                                ref={explanationRef}
+                                                value={form.explanation} 
                                                 onChange={e => set('explanation', e.target.value)}
                                                 onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
-                                                rows={3} placeholder="Explain the prediction logic..." className="input-field text-sm" />
+                                                rows={3} placeholder="Explain the prediction logic..." className="input-field text-sm rounded-t-none" />
                                         </div>
                                     </div>
                                 </div>
@@ -707,5 +770,18 @@ export default function CreateQuestionPage() {
                 </div>
             )}
         </div>
+    )
+}
+
+export default function CreateQuestionPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-mesh flex flex-col items-center justify-center">
+                <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4" />
+                <p className="text-gray-400 font-semibold animation-pulse">Loading Editor...</p>
+            </div>
+        }>
+            <CreateQuestionForm />
+        </Suspense>
     )
 }

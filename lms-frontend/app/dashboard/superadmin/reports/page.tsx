@@ -3,6 +3,48 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
+import { getAuthHeaders } from '@/lib/authHeaders'
+
+const Skeleton = ({ className = '' }: { className?: string }) => (
+    <div className={`bg-[var(--bg-raised)] animate-pulse rounded-2xl ${className}`} />
+)
+
+function BarChart({ data, height = 160 }: {
+    data: { label: string; value: number; color?: string }[]; height?: number
+}) {
+    const max = Math.max(...data.map(d => d.value), 1)
+    return (
+        <div className="flex items-end gap-2" style={{ height }}>
+            {data.map((d, i) => (
+                <div key={i} className="flex flex-col items-center flex-1 gap-1.5">
+                    <span className="text-[9px] font-black text-[var(--text-muted)]">{d.value}</span>
+                    <div
+                        className="w-full rounded-t-lg transition-all duration-700"
+                        style={{
+                            height: `${Math.max((d.value / max) * (height - 36), d.value > 0 ? 6 : 2)}px`,
+                            background: d.color || 'linear-gradient(180deg, #6366f1, #a855f7)',
+                        }}
+                    />
+                    <span className="text-[9px] text-[var(--text-muted)] text-center leading-tight w-full truncate px-0.5">{d.label}</span>
+                </div>
+            ))}
+        </div>
+    )
+}
+
+function exportCSV(data: any[], filename: string) {
+    if (!data.length) return
+    const headers = Object.keys(data[0]).join(',')
+    const rows = data.map((row: any) => Object.values(row).map(v => `"${v}"`).join(','))
+    const csv = [headers, ...rows].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(url)
+}
 
 export default function ReportsPage() {
     const router = useRouter()
@@ -15,98 +57,168 @@ export default function ReportsPage() {
         const u = JSON.parse(stored)
         if (u.role !== 'SUPERADMIN') { router.push('/login'); return }
 
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/superadmin/reports/overview`, { credentials: 'include' })
+        const headers = getAuthHeaders()
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/superadmin/reports/overview`, { headers })
             .then(r => r.json())
             .then(res => setData(res))
-            .catch(err => console.error(err))
+            .catch(() => {})
             .finally(() => setLoading(false))
     }, [])
 
-    if (loading) return (
-        <div className="flex items-center justify-center min-h-screen">
-            <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-        </div>
-    )
+    const stats = data?.stats || {}
+    const roles = data?.roles || []
+    const enrollmentsByMonth = data?.enrollmentsByMonth || []
+    const topCourses = data?.topCourses || []
+    const recentEnrollments = data?.recentEnrollments || []
 
     return (
         <div className="min-h-screen bg-mesh">
             <Sidebar role="SUPERADMIN" />
             <Navbar title="Platform Reports" />
             <main className="page-content">
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-2">Platform Analytics</h1>
-                    <p className="text-[var(--text-secondary)]">Comprehensive overview of platform activity and growth.</p>
+                <div className="flex items-center justify-between mb-8">
+                    <div>
+                        <h1 className="text-3xl font-bold text-white mb-2">Platform Analytics</h1>
+                        <p className="text-gray-400">Comprehensive overview of platform activity and growth.</p>
+                    </div>
+                    <button
+                        onClick={() => exportCSV(recentEnrollments, 'enrollments.csv')}
+                        className="btn-secondary px-5 py-2.5 flex items-center gap-2 text-sm"
+                    >
+                        ⬇ Export CSV
+                    </button>
                 </div>
 
                 {/* Stats Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                    {[
-                        { label: 'Total Users', value: data?.stats?.totalUsers || 0, icon: '👥', badgeClass: 'bg-indigo-100 text-indigo-700' },
-                        { label: 'Total Courses', value: data?.stats?.totalCourses || 0, icon: '📚', badgeClass: 'bg-emerald-100 text-emerald-700' },
-                        { label: 'Total Enrollments', value: data?.stats?.totalEnrollments || 0, icon: '📝', badgeClass: 'bg-orange-100 text-orange-700' },
-                        { label: 'Questions in Bank', value: data?.stats?.totalQuestions || 0, icon: '❓', badgeClass: 'bg-pink-100 text-pink-700' },
+                    {loading ? [1,2,3,4].map(i => <Skeleton key={i} className="h-32" />) :
+                    [
+                        { label: 'Total Users', value: stats?.totalUsers || 0, icon: '👥', color: 'from-indigo-500 to-purple-500', sub: 'Across all colleges' },
+                        { label: 'Total Courses', value: stats?.totalCourses || 0, icon: '📚', color: 'from-emerald-500 to-teal-500', sub: 'All published courses' },
+                        { label: 'Total Enrollments', value: stats?.totalEnrollments || 0, icon: '📝', color: 'from-amber-500 to-orange-500', sub: 'Lifetime enrollments' },
+                        { label: 'Questions in Bank', value: stats?.totalQuestions || 0, icon: '❓', color: 'from-pink-500 to-rose-500', sub: 'Across all domains' },
                     ].map((s, i) => (
-                        <div key={i} className="stat-card">
-                            <div className="flex items-center justify-between mb-4">
-                                <span className="text-2xl">{s.icon}</span>
-                                <span className={`px-2 py-1 rounded-lg text-xs font-bold ${s.badgeClass}`}>
-                                    Live
-                                </span>
-                            </div>
-                            <p className="text-[var(--text-secondary)] text-sm font-medium">{s.label}</p>
-                            <p className="text-3xl font-bold text-[var(--text-primary)]">{s.value}</p>
+                        <div key={i} className="glass-card p-6">
+                            <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${s.color} flex items-center justify-center text-2xl mb-4 shadow-lg`}>{s.icon}</div>
+                            <p className="text-3xl font-black text-white mb-0.5">{Number(s.value).toLocaleString()}</p>
+                            <p className="text-gray-400 text-sm font-semibold">{s.label}</p>
+                            <p className="text-[10px] text-gray-500 mt-1">{s.sub}</p>
                         </div>
                     ))}
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    {/* Enrollment Trend Chart */}
+                    <div className="glass-card p-6">
+                        <h3 className="text-lg font-black text-white mb-6 flex items-center gap-3">
+                            <span className="w-2 h-5 bg-indigo-500 rounded-full" />
+                            Monthly Enrollment Trend
+                        </h3>
+                        {loading ? <Skeleton className="h-44" /> : enrollmentsByMonth.length > 0 ? (
+                            <BarChart
+                                data={enrollmentsByMonth.map((m: any) => ({
+                                    label: m.month,
+                                    value: m.count,
+                                    color: 'linear-gradient(180deg, #6366f1, #a855f7)',
+                                }))}
+                                height={160}
+                            />
+                        ) : (
+                            <div className="h-40 flex items-center justify-center">
+                                <p className="text-gray-500 italic text-sm">No monthly data yet</p>
+                            </div>
+                        )}
+                    </div>
+
                     {/* User Distribution */}
                     <div className="glass-card p-6">
-                        <h3 className="text-lg font-bold text-[var(--text-primary)] mb-6">User Distribution by Role</h3>
-                        <div className="space-y-4">
-                            {data?.roles?.map((r: any) => (
-                                <div key={r.role} className="flex items-center gap-4">
-                                    <div className="w-24 text-sm font-medium text-[var(--text-secondary)]">{r.role}</div>
-                                    <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-                                        <div
-                                            className="h-full bg-indigo-500"
-                                            style={{ width: `${data?.stats?.totalUsers ? (r.count / data.stats.totalUsers) * 100 : 0}%` }}
-                                        ></div>
+                        <h3 className="text-lg font-black text-white mb-6 flex items-center gap-3">
+                            <span className="w-2 h-5 bg-purple-500 rounded-full" />
+                            User Distribution by Role
+                        </h3>
+                        {loading ? <Skeleton className="h-44" /> : (
+                            <div className="space-y-5">
+                                {roles.length > 0 ? roles.map((r: any, i: number) => {
+                                    const total = roles.reduce((s: number, x: any) => s + (x.count || 0), 0)
+                                    const pct = total ? Math.round((r.count / total) * 100) : 0
+                                    const barColors = ['#6366f1', '#10b981', '#f59e0b', '#ef4444']
+                                    return (
+                                        <div key={r.role}>
+                                            <div className="flex justify-between text-sm font-semibold mb-2">
+                                                <span className="text-gray-300">{r.role}</span>
+                                                <span className="text-gray-400">{r.count} ({pct}%)</span>
+                                            </div>
+                                            <div className="h-3 bg-[var(--border)] rounded-full overflow-hidden">
+                                                <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: barColors[i % barColors.length] }} />
+                                            </div>
+                                        </div>
+                                    )
+                                }) : <p className="text-gray-500 text-sm italic mt-8 text-center">No role data available</p>}
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Top Courses */}
+                    <div className="glass-card p-6">
+                        <h3 className="text-lg font-black text-white mb-5 flex items-center gap-3">
+                            <span className="w-2 h-5 bg-emerald-500 rounded-full" />
+                            Most Enrolled Courses
+                        </h3>
+                        {loading ? (
+                            <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-12" />)}</div>
+                        ) : topCourses.length === 0 ? (
+                            <p className="text-gray-500 text-sm italic text-center py-8">No course data yet</p>
+                        ) : (
+                            <div className="space-y-3">
+                                {topCourses.slice(0, 6).map((c: any, i: number) => (
+                                    <div key={c.id} className="flex items-center gap-3">
+                                        <span className="w-7 h-7 rounded-xl bg-indigo-500/20 text-indigo-400 text-xs font-black flex items-center justify-center flex-shrink-0">{i + 1}</span>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm text-white font-semibold truncate">{c.title}</p>
+                                            <p className="text-[10px] text-gray-500">{c.category}</p>
+                                        </div>
+                                        <span className="text-sm font-black text-indigo-400 flex-shrink-0">{c.enrollmentCount || 0} enrolled</span>
                                     </div>
-                                    <div className="w-12 text-right text-sm font-bold text-[var(--text-primary)]">{r.count}</div>
-                                </div>
-                            ))}
-                        </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     {/* Recent Enrollments */}
                     <div className="glass-card p-6">
-                        <h3 className="text-lg font-bold text-[var(--text-primary)] mb-6">Recent Platform Activity</h3>
-                        <div className="overflow-x-auto">
-                            <table className="w-full">
-                                <thead>
-                                    <tr className="text-left border-b border-[var(--border)]">
-                                        <th className="pb-3 text-xs font-bold text-gray-400 uppercase tracking-wider">User</th>
-                                        <th className="pb-3 text-xs font-bold text-gray-400 uppercase tracking-wider">Course</th>
-                                        <th className="pb-3 text-xs font-bold text-gray-400 uppercase tracking-wider">Date</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-50">
-                                    {data?.recentEnrollments?.map((e: any) => (
-                                        <tr key={e.id}>
-                                            <td className="py-3 text-sm font-medium text-[var(--text-primary)]">{e.user?.name}</td>
-                                            <td className="py-3 text-sm text-[var(--text-secondary)]">{e.course?.title}</td>
-                                            <td className="py-3 text-sm text-gray-400">{new Date(e.enrolledAt).toLocaleDateString()}</td>
+                        <h3 className="text-lg font-black text-white mb-5 flex items-center gap-3">
+                            <span className="w-2 h-5 bg-amber-500 rounded-full" />
+                            Recent Enrollments
+                        </h3>
+                        {loading ? (
+                            <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-12" />)}</div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full">
+                                    <thead>
+                                        <tr className="border-b" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+                                            {['User', 'Course', 'Date'].map(h => (
+                                                <th key={h} className="pb-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-wider">{h}</th>
+                                            ))}
                                         </tr>
-                                    ))}
-                                    {(!data?.recentEnrollments || data.recentEnrollments.length === 0) && (
-                                        <tr>
-                                            <td colSpan={3} className="py-8 text-center text-gray-400 text-sm italic">No recent activity found.</td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
+                                    </thead>
+                                    <tbody>
+                                        {recentEnrollments.slice(0, 8).map((e: any) => (
+                                            <tr key={e.id} className="border-b hover:bg-white/5 transition-colors" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
+                                                <td className="py-2.5 text-sm text-white font-medium">{e.user?.name || '—'}</td>
+                                                <td className="py-2.5 text-sm text-gray-400 max-w-[120px] truncate">{e.course?.title || '—'}</td>
+                                                <td className="py-2.5 text-xs text-gray-500">{e.enrolledAt ? new Date(e.enrolledAt).toLocaleDateString('en-IN') : '—'}</td>
+                                            </tr>
+                                        ))}
+                                        {recentEnrollments.length === 0 && (
+                                            <tr><td colSpan={3} className="py-8 text-center text-gray-500 text-sm italic">No enrollment records found</td></tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </div>
                 </div>
             </main>

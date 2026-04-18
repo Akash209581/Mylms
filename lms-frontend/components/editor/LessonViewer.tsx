@@ -148,9 +148,7 @@ function RenderCell({ cell }: { cell: Cell }) {
     return (
       <div className="nb-code-wrap">
         <div className="nb-code-titlebar">
-          <span className="nb-code-dot nb-dot-red" />
-          <span className="nb-code-dot nb-dot-yellow" />
-          <span className="nb-code-dot nb-dot-green" />
+
           <span className="nb-code-lang">{lang}</span>
         </div>
         <div className="nb-code-body">

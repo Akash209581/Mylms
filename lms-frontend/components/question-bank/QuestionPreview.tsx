@@ -1,5 +1,6 @@
 'use client'
 import React from 'react'
+import MarkdownRenderer from '@/components/editor/MarkdownRenderer'
 
 interface QuestionPreviewProps {
     form: any
@@ -15,7 +16,7 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                         {form.problemStatement && (
                             <div className="bg-slate-50 p-6 rounded-2xl border border-gray-100 mb-6">
                                 <h4 className="text-primary-600 text-[10px] font-bold uppercase mb-2 tracking-wider">Problem Statement</h4>
-                                <div className="text-slate-700 font-mono text-sm whitespace-pre-wrap leading-relaxed">{form.problemStatement}</div>
+                                <MarkdownRenderer content={form.problemStatement} className="text-slate-700 text-sm" />
                             </div>
                         )}
                         <div className="grid gap-4">
@@ -39,7 +40,7 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                         {form.explanation && (
                             <div className="bg-emerald-50/50 p-6 rounded-2xl border border-emerald-100">
                                 <h4 className="text-emerald-700 text-[10px] font-bold uppercase mb-2 tracking-wider">Explanation</h4>
-                                <p className="text-slate-600 text-sm leading-relaxed">{form.explanation}</p>
+                                <MarkdownRenderer content={form.explanation} className="text-slate-600 text-sm" />
                             </div>
                         )}
                     </div>
@@ -52,7 +53,7 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                         {form.problemStatement && (
                             <div className="bg-slate-50 p-6 rounded-2xl border border-gray-100">
                                 <h4 className="text-primary-600 text-[10px] font-bold uppercase mb-2 tracking-wider">Problem Statement</h4>
-                                <div className="text-slate-700 font-mono text-sm whitespace-pre-wrap leading-relaxed">{form.problemStatement}</div>
+                                <MarkdownRenderer content={form.problemStatement} className="text-slate-700 text-sm" />
                             </div>
                         )}
 
@@ -89,7 +90,7 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                         {form.explanation && (
                             <div className="bg-emerald-50/50 p-6 rounded-2xl border border-emerald-100">
                                 <h4 className="text-emerald-700 text-[10px] font-bold uppercase mb-2 tracking-wider">Explanation</h4>
-                                <p className="text-slate-600 text-sm leading-relaxed">{form.explanation}</p>
+                                <MarkdownRenderer content={form.explanation} className="text-slate-600 text-sm" />
                             </div>
                         )}
                     </div>
@@ -114,7 +115,7 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                         {form.problemStatement && (
                             <div className="bg-slate-50 p-6 rounded-2xl border border-gray-100">
                                 <h4 className="text-primary-600 text-[10px] font-bold uppercase mb-2 tracking-wider">Problem Statement</h4>
-                                <p className="text-slate-600 text-sm whitespace-pre-wrap leading-relaxed">{form.problemStatement}</p>
+                                <MarkdownRenderer content={form.problemStatement} className="text-slate-700 text-sm" />
                             </div>
                         )}
 
@@ -142,7 +143,7 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                         {form.explanation && (
                             <div className="bg-emerald-50/50 p-6 rounded-2xl border border-emerald-100">
                                 <h4 className="text-emerald-700 text-[10px] font-bold uppercase mb-2 tracking-wider">Explanation</h4>
-                                <p className="text-slate-600 text-sm leading-relaxed">{form.explanation}</p>
+                                <MarkdownRenderer content={form.explanation} className="text-slate-600 text-sm" />
                             </div>
                         )}
                     </div>
@@ -154,7 +155,7 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                         {form.problemStatement && (
                             <div className="bg-slate-50 p-6 rounded-2xl border border-gray-100">
                                 <h4 className="text-primary-600 text-[10px] font-bold uppercase mb-2 tracking-wider">Problem Statement</h4>
-                                <p className="text-slate-600 text-sm whitespace-pre-wrap leading-relaxed">{form.problemStatement}</p>
+                                <MarkdownRenderer content={form.problemStatement} className="text-slate-700 text-sm" />
                             </div>
                         )}
 
@@ -180,7 +181,7 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                         {form.explanation && (
                             <div className="bg-emerald-50/50 p-6 rounded-2xl border border-emerald-100">
                                 <h4 className="text-emerald-700 text-[10px] font-bold uppercase mb-2 tracking-wider">Explanation</h4>
-                                <p className="text-slate-600 text-sm leading-relaxed">{form.explanation}</p>
+                                <MarkdownRenderer content={form.explanation} className="text-slate-600 text-sm" />
                             </div>
                         )}
                     </div>
@@ -201,28 +202,32 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                                     ))}
                                 </div>
                             </div>
-                            <p className="text-slate-600 whitespace-pre-wrap leading-relaxed text-lg">{form.problemStatement}</p>
+                            <MarkdownRenderer content={form.problemStatement} className="text-slate-600 text-lg" />
                         </div>
-
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-6">
                                 <div>
                                     <h4 className="text-primary-600 text-xs font-bold uppercase mb-2">Input Format</h4>
-                                    <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 text-slate-700 text-sm font-mono whitespace-pre-wrap">{form.inputFormat}</div>
+                                    <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                                        <MarkdownRenderer content={form.inputFormat} className="text-slate-700 text-sm" />
+                                    </div>
                                 </div>
                                 <div>
                                     <h4 className="text-primary-600 text-xs font-bold uppercase mb-2">Output Format</h4>
-                                    <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 text-slate-700 text-sm font-mono whitespace-pre-wrap">{form.outputFormat}</div>
+                                    <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                                        <MarkdownRenderer content={form.outputFormat} className="text-slate-700 text-sm" />
+                                    </div>
+                                </div>
+                                <div>
+                                    <h4 className="text-primary-600 text-xs font-bold uppercase mb-2">Constraints</h4>
+                                    <div className="p-5 bg-blue-50/50 rounded-2xl border border-blue-100 min-h-[220px] shadow-inner">
+                                        <MarkdownRenderer content={form.constraints} className="text-slate-700 text-sm" />
+                                    </div>
                                 </div>
                             </div>
 
                             <div className="space-y-4">
-                                <div>
-                                    <h4 className="text-primary-600 text-xs font-bold uppercase mb-2">Constraints</h4>
-                                    <div className="p-5 bg-blue-50/50 rounded-2xl border border-blue-100 text-slate-700 text-sm font-mono whitespace-pre-wrap min-h-[220px] shadow-inner leading-relaxed">{form.constraints}</div>
-                                </div>
-
                                 <div>
                                     <h4 className="text-primary-600 text-xs font-bold uppercase mb-2">Sample Test Cases</h4>
                                     <div className="space-y-4">
@@ -246,7 +251,6 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                                         ))}
                                     </div>
                                 </div>
-
                             </div>
                         </div>
                     </div>
@@ -259,7 +263,7 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                         {form.problemStatement && (
                             <div className="bg-slate-50 p-6 rounded-2xl border border-gray-100">
                                 <h4 className="text-primary-600 text-[10px] font-bold uppercase mb-2 tracking-wider">Problem Statement</h4>
-                                <p className="text-slate-600 text-sm whitespace-pre-wrap leading-relaxed">{form.problemStatement}</p>
+                                <MarkdownRenderer content={form.problemStatement} className="text-slate-700 text-sm" />
                             </div>
                         )}
 
@@ -301,7 +305,7 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                         {form.explanation && (
                             <div className="bg-emerald-50/50 p-6 rounded-2xl border border-emerald-100">
                                 <h4 className="text-emerald-700 text-[10px] font-bold uppercase mb-2 tracking-wider">Explanation</h4>
-                                <p className="text-slate-600 text-sm leading-relaxed">{form.explanation}</p>
+                                <MarkdownRenderer content={form.explanation} className="text-slate-600 text-sm" />
                             </div>
                         )}
 

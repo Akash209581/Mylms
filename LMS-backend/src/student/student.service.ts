@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../entities/user.entity';
@@ -6,6 +6,8 @@ import { Progress } from '../entities/progress.entity';
 import { Enrollment } from '../entities/enrollment.entity';
 import { UserBadge } from '../entities/user-badge.entity';
 import { Course } from '../entities/course.entity';
+import { CourseModule } from '../entities/module.entity';
+import { Chapter } from '../entities/chapter.entity';
 import { Lesson } from '../entities/lesson.entity';
 import { Badge } from '../entities/badge.entity';
 
@@ -24,6 +26,12 @@ export class StudentService {
     private lessonRepository: Repository<Lesson>,
     @InjectRepository(Badge)
     private badgeRepository: Repository<Badge>,
+    @InjectRepository(Course)
+    private courseRepository: Repository<Course>,
+    @InjectRepository(CourseModule)
+    private courseModuleRepository: Repository<CourseModule>,
+    @InjectRepository(Chapter)
+    private chapterRepository: Repository<Chapter>,
   ) {}
 
   async getStats(userId: number) {
@@ -173,4 +181,125 @@ export class StudentService {
       }
     }
   }
+
+
+  async getLeaderboard(userId: number, scope?: string) {
+    const requestingUser = await this.userRepository.findOne({ where: { id: userId } });
+
+    const qb = this.userRepository
+      .createQueryBuilder('u')
+      .select(['u.id', 'u.name', 'u.email', 'u.points', 'u.streakCount', 'u.collegeName'])
+      .where('u.role = :role', { role: 'STUDENT' })
+      .orderBy('u.points', 'DESC')
+      .addOrderBy('u.streakCount', 'DESC')
+      .take(100);
+
+    if (scope === 'college' && requestingUser?.collegeName) {
+      qb.andWhere(
+        '(LOWER(TRIM(u.college_name)) = LOWER(TRIM(:cname)))',
+        { cname: requestingUser.collegeName },
+      );
+    }
+
+    const users = await qb.getMany();
+
+    const userBadgeCounts = await this.userBadgeRepository
+      .createQueryBuilder('ub')
+      .select('ub.user_id', 'userId')
+      .addSelect('COUNT(ub.id)', 'count')
+      .groupBy('ub.user_id')
+      .getRawMany();
+
+    const badgeMap = new Map<number, number>();
+    userBadgeCounts.forEach((b) => badgeMap.set(Number(b.userId), Number(b.count)));
+
+    return users.map((u, idx) => ({
+      rank: idx + 1,
+      userId: u.id,
+      name: u.name,
+      email: u.email,
+      collegeName: u.collegeName,
+      points: u.points || 0,
+      streak: u.streakCount || 0,
+      badges: badgeMap.get(u.id) || 0,
+    }));
+  }
+
+  async getLearningPath(userId: number, courseId: number) {
+    // 1. Load the course with full hierarchy (modules → chapters → lessons with content)
+    const course = await this.courseRepository.findOne({
+      where: { id: courseId },
+      relations: ['instructor'],
+    });
+
+    if (!course) {
+      throw new NotFoundException('Course not found');
+    }
+
+    // 2. Check enrollment
+    const enrollment = await this.enrollmentRepository.findOne({
+      where: { studentId: userId, courseId },
+    });
+    const isEnrolled = !!enrollment;
+
+    if (!isEnrolled) {
+      throw new ForbiddenException('You are not enrolled in this course');
+    }
+
+    // 3. Load modules with chapters and lessons (including rich content)
+    const modules = await this.courseModuleRepository
+      .createQueryBuilder('module')
+      .where('module.courseId = :courseId', { courseId })
+      .orderBy('module.order', 'ASC')
+      .getMany();
+
+    for (const mod of modules) {
+      const chapters = await this.chapterRepository
+        .createQueryBuilder('chapter')
+        .where('chapter.moduleId = :moduleId', { moduleId: mod.id })
+        .orderBy('chapter.order', 'ASC')
+        .getMany();
+
+      for (const ch of chapters) {
+        ch['lessons'] = await this.lessonRepository
+          .createQueryBuilder('lesson')
+          .select([
+            'lesson.id',
+            'lesson.title',
+            'lesson.description',
+            'lesson.type',
+            'lesson.videoUrl',
+            'lesson.contentUrl',
+            'lesson.duration',
+            'lesson.order',
+            'lesson.published',
+            'lesson.content',
+          ])
+          .where('lesson.chapterId = :chapterId', { chapterId: ch.id })
+          .orderBy('lesson.order', 'ASC')
+          .getMany();
+      }
+      (mod as any).chapters = chapters;
+    }
+
+    // 4. Get completed lesson IDs for this student in this course
+    const completedLessonIds = await this.getCompletedLessons(userId, courseId);
+
+    return {
+      course: {
+        id: course.id,
+        title: course.title,
+        description: course.description,
+        thumbnail: course.thumbnail,
+        category: course.category,
+        level: course.level,
+        instructor: course.instructor ? { name: course.instructor.name } : null,
+      },
+      isEnrolled,
+      completedLessonIds,
+      modules,
+    };
+  }
 }
+
+

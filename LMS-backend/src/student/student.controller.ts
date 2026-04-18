@@ -17,11 +17,17 @@ import { Roles } from '../common/roles.decorator';
 import { UserRole } from '../entities/user.entity';
 
 @Controller('student')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.STUDENT)
+@UseGuards(JwtAuthGuard)
 export class StudentController {
   constructor(private readonly studentService: StudentService) {}
 
+  @Get('ping')
+  async ping() {
+    return { status: 'ok', timestamp: new Date().toISOString() };
+  }
+
+  @Roles(UserRole.STUDENT)
+  @UseGuards(RolesGuard)
   @Get('stats')
   async getStats(@Request() req: any) {
     return this.studentService.getStats(req.user.sub);
@@ -61,5 +67,21 @@ export class StudentController {
     @Param('id', ParseIntPipe) lessonId: number,
   ) {
     return this.studentService.completeLesson(req.user.sub, lessonId);
+  }
+
+  @Get('courses/:courseId/learning-path')
+  async getLearningPath(
+    @Request() req: any,
+    @Param('courseId', ParseIntPipe) courseId: number,
+  ) {
+    return this.studentService.getLearningPath(req.user.sub, courseId);
+  }
+
+  @Get('leaderboard')
+  async getLeaderboard(
+    @Request() req: any,
+    @Query('scope') scope?: string,
+  ) {
+    return this.studentService.getLeaderboard(req.user.sub, scope);
   }
 }
