@@ -4,6 +4,21 @@
 import { ChangeEvent, useCallback, useEffect, useRef, useState } from 'react'
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
+import CodeMirror from '@uiw/react-codemirror'
+import { sublime } from '@uiw/codemirror-theme-sublime'
+import { javascript } from '@codemirror/lang-javascript'
+import { python } from '@codemirror/lang-python'
+import { java } from '@codemirror/lang-java'
+import { cpp } from '@codemirror/lang-cpp'
+import { rust } from '@codemirror/lang-rust'
+import { go } from '@codemirror/lang-go'
+import { sql } from '@codemirror/lang-sql'
+import { json } from '@codemirror/lang-json'
+import { html } from '@codemirror/lang-html'
+import { css } from '@codemirror/lang-css'
+import { EditorView } from '@codemirror/view'
+import { TooltipRenderer } from './TooltipRenderer'
+import type { Annotation } from './TooltipAnnotator'
 
 /* ═══════════════════════════════════════════════════════
    TYPES
@@ -41,6 +56,8 @@ export interface LessonEditorProps {
   fullPreviewTitle?: string
   plainCodePreview?: boolean
   isModal?: boolean
+  annotations?: Annotation[]  // Hover tooltips for words/phrases
+  stickyTopOffsetPx?: number
 }
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
@@ -233,7 +250,7 @@ function renderMarkdown(md: string): string {
 /* ═══════════════════════════════════════════════════════
    CELL PREVIEW  (used in read-only right pane)
 ═══════════════════════════════════════════════════════ */
-function CellPreview({ cell, calloutOrder, plainCodePreview = false }: { cell: Cell; calloutOrder?: number; plainCodePreview?: boolean }) {
+function CellPreview({ cell, calloutOrder, plainCodePreview = false, annotations }: { cell: Cell; calloutOrder?: number; plainCodePreview?: boolean; annotations?: Annotation[] }) {
   if (cell.type === 'divider' || cell.type === 'page-break') return <hr className="nb-divider" />
 
   if (cell.type === 'image') {
@@ -282,17 +299,8 @@ function CellPreview({ cell, calloutOrder, plainCodePreview = false }: { cell: C
     const activeSnippet = snippets[activeTab] || snippets[0]
     const lines = (activeSnippet?.code || '').split('\n')
 
-    const highlight = (line: string): string => {
-      let s = line
-        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      s = s.replace(/(^\/\/.*)/g, '<span class="tok-comment">$1</span>')
-      s = s.replace(/("[^"]*"|'[^']*'|`[^`]*`)/g, '<span class="tok-string">$1</span>')
-      s = s.replace(/\b(const|let|var|function|return|if|else|for|while|class|import|export|from|default|async|await|try|catch|throw|new|this|typeof|instanceof|void|null|undefined|true|false|def|print|in|not|and|or|elif|pass|lambda|yield|self|public|private|static|void|int|str|bool|float|double|type|interface|enum|extends|implements)\b/g,
-        '<span class="tok-kw">$1</span>')
-      s = s.replace(/\b(\d+\.?\d*)\b/g, '<span class="tok-num">$1</span>')
-      s = s.replace(/(\w+)(?=\()/g, '<span class="tok-fn">$1</span>')
-      return s
-    }
+    const escCode = (line: string): string =>
+      line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
     return (
       <div className="nb-code-wrap">
@@ -321,7 +329,7 @@ function CellPreview({ cell, calloutOrder, plainCodePreview = false }: { cell: C
           <pre className="nb-code-pre">
             {activeSnippet?.code
               ? lines.map((line, i) => (
-                <div key={i} className="nb-code-line" dangerouslySetInnerHTML={{ __html: highlight(line) || '\u00a0' }} />
+                <div key={i} className="nb-code-line" dangerouslySetInnerHTML={{ __html: escCode(line) || '\u00a0' }} />
               ))
               : <span className="nb-empty-hint" style={{ padding: '0 12px' }}>// empty code block…</span>
             }
@@ -372,11 +380,35 @@ function CellPreview({ cell, calloutOrder, plainCodePreview = false }: { cell: C
   const alignStyle = cell.align ? { textAlign: cell.align } as React.CSSProperties : undefined
 
   if (cell.type === 'heading')
-    return <h1 className="nb-h1" style={alignStyle} dangerouslySetInnerHTML={{ __html: inlineHTML(cell.content) }} />
+    return (
+      <h1 className="nb-h1" style={alignStyle}>
+        {annotations && annotations.length > 0 ? (
+          <TooltipRenderer content={cell.content} annotations={annotations} />
+        ) : (
+          <span dangerouslySetInnerHTML={{ __html: inlineHTML(cell.content) }} />
+        )}
+      </h1>
+    )
   if (cell.type === 'subheading')
-    return <h2 className="nb-h2" style={alignStyle} dangerouslySetInnerHTML={{ __html: inlineHTML(cell.content) }} />
+    return (
+      <h2 className="nb-h2" style={alignStyle}>
+        {annotations && annotations.length > 0 ? (
+          <TooltipRenderer content={cell.content} annotations={annotations} />
+        ) : (
+          <span dangerouslySetInnerHTML={{ __html: inlineHTML(cell.content) }} />
+        )}
+      </h2>
+    )
   if (cell.type === 'h3')
-    return <h3 className="nb-h3" style={alignStyle} dangerouslySetInnerHTML={{ __html: inlineHTML(cell.content) }} />
+    return (
+      <h3 className="nb-h3" style={alignStyle}>
+        {annotations && annotations.length > 0 ? (
+          <TooltipRenderer content={cell.content} annotations={annotations} />
+        ) : (
+          <span dangerouslySetInnerHTML={{ __html: inlineHTML(cell.content) }} />
+        )}
+      </h3>
+    )
 
   // 'text' and callouts — wrap with colour/size/align if set on the cell
   const cellStyle: React.CSSProperties = {
@@ -385,6 +417,22 @@ function CellPreview({ cell, calloutOrder, plainCodePreview = false }: { cell: C
     ...(cell.fontSize ? { fontSize: `${cell.fontSize}px` } : {}),
   }
   const hasCellStyle = cell.color || cell.fontSize || cell.align
+
+  if (cell.type === 'text') {
+    if (annotations && annotations.length > 0) {
+      return (
+        <div style={hasCellStyle ? cellStyle : undefined} className="nb-text-block">
+          <TooltipRenderer content={cell.content} annotations={annotations} />
+        </div>
+      )
+    }
+    return (
+      <div style={hasCellStyle ? cellStyle : undefined}
+        className="nb-text-block"
+        dangerouslySetInnerHTML={{ __html: renderMarkdown(cell.content) }}
+      />
+    )
+  }
 
   return (
     <div style={hasCellStyle ? cellStyle : undefined}
@@ -892,6 +940,23 @@ const COMMON_LANGUAGES = [
   'XML', 'Kotlin', 'Swift', 'R', 'Scala', 'Groovy', 'Perl', 'Dart'
 ]
 
+function getCodeExtensions(language?: string) {
+  const lang = (language || '').toLowerCase()
+  if (lang.includes('typescript')) return [javascript({ typescript: true }), EditorView.lineWrapping]
+  if (lang.includes('javascript')) return [javascript(), EditorView.lineWrapping]
+  if (lang.includes('python')) return [python(), EditorView.lineWrapping]
+  if (lang.includes('java')) return [java(), EditorView.lineWrapping]
+  if (lang.includes('c++') || lang === 'cpp') return [cpp(), EditorView.lineWrapping]
+  if (lang === 'c') return [cpp(), EditorView.lineWrapping]
+  if (lang.includes('rust')) return [rust(), EditorView.lineWrapping]
+  if (lang === 'go' || lang.includes('golang')) return [go(), EditorView.lineWrapping]
+  if (lang.includes('sql')) return [sql(), EditorView.lineWrapping]
+  if (lang.includes('json')) return [json(), EditorView.lineWrapping]
+  if (lang.includes('html') || lang.includes('xml')) return [html(), EditorView.lineWrapping]
+  if (lang.includes('css')) return [css(), EditorView.lineWrapping]
+  return [EditorView.lineWrapping]
+}
+
 /* ═══════════════════════════════════════════════════════
    MAIN EDITOR COMPONENT
 ═══════════════════════════════════════════════════════ */
@@ -907,6 +972,8 @@ export default function LessonEditor({
   fullPreviewTitle = 'Full Course Preview',
   plainCodePreview = false,
   isModal = false,
+  annotations = [],
+  stickyTopOffsetPx,
 }: LessonEditorProps) {
   const [cells, setCells] = useState<Cell[]>(() => parseCells(initialContent))
   const [activeId, setActiveId] = useState<string | null>(null)
@@ -1284,7 +1351,11 @@ export default function LessonEditor({
     <div 
       className="nb-editor-v2" 
       onClick={() => setActiveId(null)}
-      style={{ '--nb-sticky-top': (isModal || readOnly) ? '0px' : '64px' } as React.CSSProperties}
+      style={{
+        '--nb-sticky-top': typeof stickyTopOffsetPx === 'number'
+          ? `${stickyTopOffsetPx}px`
+          : (isModal ? '0px' : '64px')
+      } as React.CSSProperties}
     >
 
       {/* ── Sticky header: topbar + toolbar ── */}
@@ -1593,7 +1664,7 @@ export default function LessonEditor({
                         if (cell.type === 'divider') return <div key={cell.id} className="py-4"><hr className="nb-divider" /></div>;
                         return (
                           <div key={cell.id} className="mb-4">
-                            <CellPreview cell={cell} calloutOrder={calloutOrder} plainCodePreview={plainCodePreview} />
+                            <CellPreview cell={cell} calloutOrder={calloutOrder} plainCodePreview={plainCodePreview} annotations={annotations} />
                           </div>
                         );
                       }
@@ -1751,29 +1822,31 @@ export default function LessonEditor({
                                         
                                         {/* Code editor textarea */}
                                         <div className="nb-code-write-body relative">
-                                          <div className="nb-code-write-gutter" aria-hidden>
-                                            {(currentSnippet.code || '').split('\n').map((_, i) => (
-                                              <span key={i} className="nb-code-ln">{i + 1}</span>
-                                            ))}
-                                            {!currentSnippet.code && <span className="nb-code-ln">1</span>}
+                                          <div className="w-full overflow-hidden rounded-b-lg border border-t-0 border-slate-700">
+                                            <CodeMirror
+                                              value={currentSnippet.code || ''}
+                                              height="auto"
+                                              minHeight="180px"
+                                              maxHeight="460px"
+                                              theme={sublime}
+                                              basicSetup={{
+                                                lineNumbers: true,
+                                                foldGutter: true,
+                                                highlightActiveLine: false,
+                                                highlightActiveLineGutter: false,
+                                                autocompletion: true,
+                                              }}
+                                              extensions={getCodeExtensions(currentSnippet.lang)}
+                                              editable={!readOnly}
+                                              onFocus={() => setActiveId(cell.id)}
+                                              onChange={(value) => {
+                                                if (!isUndoRedo.current) pushHistory(cell.id, cell.content)
+                                                isUndoRedo.current = false
+                                                const newContent = updateCodeSnippet(cell.content, activeTab, value)
+                                                updateCell(cell.id, { content: newContent })
+                                              }}
+                                            />
                                           </div>
-                                          <textarea
-                                            ref={el => { taRefs.current[cell.id] = el }}
-                                            value={currentSnippet.code || ''}
-                                            placeholder={`// Write ${currentSnippet.lang} code here…`}
-                                            className="nb-code-write-ta"
-                                            spellCheck={false}
-                                            readOnly={readOnly}
-                                            onChange={e => {
-                                              if (!isUndoRedo.current) pushHistory(cell.id, cell.content)
-                                              isUndoRedo.current = false
-                                              const newContent = updateCodeSnippet(cell.content, activeTab, e.target.value)
-                                              updateCell(cell.id, { content: newContent })
-                                              autoGrow(e.target)
-                                            }}
-                                            onFocus={e => { setActiveId(cell.id); autoGrow(e.target) }}
-                                            onKeyDown={e => handleKeyDown(e, cell)}
-                                          />
                                         </div>
                                       </div>
                                     )
@@ -1880,7 +1953,7 @@ export default function LessonEditor({
                     {/* Display current page only in preview pane */}
                     <div className="nb-a4-page shadow-md mb-4 mx-auto scale-[0.85] origin-top">
                       <div className="text-[10px] text-slate-300 absolute top-2 right-4 font-mono select-none">PAGE {currentPageIdx + 1}/{totalPages}</div>
-                        {currentPage.cells.map(c => <div key={c.id} className="nb-preview-cell"><CellPreview cell={c} calloutOrder={calloutOrderByCellId[c.id]} plainCodePreview={plainCodePreview} /></div>)}
+                        {currentPage.cells.map(c => <div key={c.id} className="nb-preview-cell"><CellPreview cell={c} calloutOrder={calloutOrderByCellId[c.id]} plainCodePreview={plainCodePreview} annotations={annotations} /></div>)}
                     </div>
                     
                     {/* Page navigation controls */}
@@ -1950,7 +2023,7 @@ export default function LessonEditor({
               return pages.map((p, i) => (
                 <div key={p.id} className="nb-a4-page shadow-2xl mb-12 mx-auto">
                   <div className="text-[10px] text-slate-300 absolute top-2 right-4 font-mono select-none">PAGE {i + 1}</div>
-                    {p.cells.map(c => <div key={c.id} className="nb-viewer-cell mb-1"><CellPreview cell={c} calloutOrder={calloutOrderByCellId[c.id]} plainCodePreview={plainCodePreview} /></div>)}
+                    {p.cells.map(c => <div key={c.id} className="nb-viewer-cell mb-1"><CellPreview cell={c} calloutOrder={calloutOrderByCellId[c.id]} plainCodePreview={plainCodePreview} annotations={annotations} /></div>)}
                 </div>
               ));
             })()}

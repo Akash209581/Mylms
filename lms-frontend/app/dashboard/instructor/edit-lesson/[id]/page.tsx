@@ -15,6 +15,7 @@ type LessonEditorProps = {
   onSave: (content: Record<string, any>) => Promise<void>
   onAddTopic?: () => void
   readOnly?: boolean
+  stickyTopOffsetPx?: number
 }
 const LessonEditor = dynamic<LessonEditorProps>(
   () => import('../../../../../components/editor/LessonEditor'),
@@ -447,6 +448,7 @@ export default function EditLessonPage() {
               onAddTopic={handleAddTopic}
               onBack={handleBackToCourse}
               readOnly={isReadOnly}
+              stickyTopOffsetPx={64}
             />
           )}
 

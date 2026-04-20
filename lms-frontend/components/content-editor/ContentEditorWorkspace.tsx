@@ -301,6 +301,7 @@ export default function ContentEditorWorkspace({ role }: { role: string }) {
                   lessonId={0}
                   initialContent={{ type: 'notebook', cells: activeDoc.cells }}
                   onSave={handleSave}
+                  stickyTopOffsetPx={64}
                 />
               </div>
             )}

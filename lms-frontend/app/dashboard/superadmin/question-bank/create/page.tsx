@@ -602,8 +602,9 @@ function CreateQuestionForm() {
 
                                             </div>
                                             <p className="text-[10px] text-gray-400 font-bold uppercase mt-3 mb-1">Explanation (Optional)</p>
-                                            <input value={tc.explanation} onChange={e => { const tcs = [...form.testCases]; tcs[i].explanation = e.target.value; set('testCases', tcs) }}
-                                                placeholder="Why this input gives this output..." className="input-field text-sm" />
+                                            <textarea value={tc.explanation} onChange={e => { const tcs = [...form.testCases]; tcs[i].explanation = e.target.value; set('testCases', tcs) }}
+                                                onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
+                                                rows={4} placeholder="Why this input gives this output..." className="input-field font-mono text-sm resize-none" />
                                         </div>
                                     ))}
                                     <button onClick={() => set('testCases', [...form.testCases, { input: '', output: '', explanation: '' }])}
