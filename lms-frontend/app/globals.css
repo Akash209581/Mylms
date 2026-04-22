@@ -2433,6 +2433,46 @@ table .text-gray-500 {
   color: #3730a3;
 }
 
+.nb-tooltip-term {
+  position: relative;
+  cursor: help;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+  text-decoration-color: rgba(79, 70, 229, 0.45);
+}
+
+.nb-tooltip-term:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 10px);
+  z-index: 50;
+  min-width: 180px;
+  max-width: 280px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.96);
+  color: #fff;
+  font-size: 12px;
+  line-height: 1.45;
+  font-weight: 500;
+  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.24);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  white-space: normal;
+}
+
+.nb-tooltip-term:hover::before {
+  content: '';
+  position: absolute;
+  left: 12px;
+  bottom: calc(100% + 4px);
+  z-index: 51;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid rgba(15, 23, 42, 0.96);
+}
+
 /* Code block — VS Code IDE style */
 .nb-code-wrap {
   border-radius: 10px;

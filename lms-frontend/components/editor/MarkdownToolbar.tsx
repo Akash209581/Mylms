@@ -53,6 +53,26 @@ export default function MarkdownToolbar({ textareaRef, onChange }: MarkdownToolb
     insertText(before, '', placeholder)
   }
 
+  const insertTooltip = () => {
+    const el = textareaRef.current
+    if (!el) return
+
+    const start = el.selectionStart
+    const end = el.selectionEnd
+    const text = el.value
+    const selected = text.substring(start, end) || 'hover term'
+    const replacement = `[[${selected}|hover text]]`
+
+    const newVal = text.substring(0, start) + replacement + text.substring(end)
+    onChange(newVal)
+
+    setTimeout(() => {
+      el.focus()
+      const cursorStart = start + 2 + selected.length + 1
+      el.setSelectionRange(cursorStart, cursorStart + 10)
+    }, 0)
+  }
+
   return (
     <div className="flex flex-wrap items-center gap-2 p-3 bg-[var(--bg-surface)] border border-[var(--border)] border-b-0 rounded-t-xl overflow-x-auto shadow-sm">
       <input 
@@ -95,6 +115,7 @@ export default function MarkdownToolbar({ textareaRef, onChange }: MarkdownToolb
       {/* Media */}
       <button type="button" onClick={() => insertText('[', '](https://)', 'Link Text')} className="tb-btn text-[14px]" title="Add Link">🔗</button>
       <button type="button" onClick={() => fileInputRef.current?.click()} className="tb-btn text-[14px] bg-indigo-50 text-indigo-600 border-indigo-200" title="Upload Image">🖼️</button>
+      <button type="button" onClick={insertTooltip} className="tb-btn text-[14px] bg-cyan-50 text-cyan-700 border-cyan-200" title="Insert Hover Tooltip">ⓘ</button>
 
       <div className="w-px h-6 bg-[var(--border)] mx-1 self-center" />
 

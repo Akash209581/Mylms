@@ -227,10 +227,25 @@ function CreateQuestionForm() {
                                         {form.topicNames.map((t: string) => (
                                             <span key={t} className="px-3 py-1 bg-primary-500/20 border border-primary-500/30 text-primary-400 rounded-full text-xs flex items-center gap-2">
                                                 {t}
-                                                <button onClick={() => set('topicNames', form.topicNames.filter((x: string) => x !== t))}
-                                                    className="hover:text-white transition-colors">×</button>
+                                                <button
+                                                    onClick={() => set('topicNames', form.topicNames.filter((x: string) => x !== t))}
+                                                    className="w-4 h-4 rounded-full flex items-center justify-center bg-white/10 hover:bg-white/20 hover:text-white transition-colors"
+                                                    title={`Remove ${t}`}
+                                                >
+                                                    ×
+                                                </button>
                                             </span>
                                         ))}
+                                        {form.topicNames.length > 0 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => set('topicNames', [])}
+                                                className="px-3 py-1 rounded-full text-xs font-semibold bg-red-500/10 text-red-300 border border-red-500/20 hover:bg-red-500 hover:text-white transition-all"
+                                                title="Clear all selected topics"
+                                            >
+                                                Clear All
+                                            </button>
+                                        )}
                                     </div>
                                     <div className="flex gap-2">
                                         <select value="" onChange={e => {

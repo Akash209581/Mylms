@@ -16,6 +16,12 @@ export default function MarkdownRenderer({ content, className = '' }: MarkdownRe
 
   const inlineHTML = (text: string): string => {
     let s = esc(text)
+
+    // Hover tooltip syntax: [[term|hover text]]
+    s = s.replace(/\[\[([^\]|]+?)\|([^\]]+?)\]\]/g, (_match, term, tip) => {
+      const tooltip = esc(String(tip).trim())
+      return `<span class="nb-tooltip-term" data-tooltip="${tooltip}">${term}</span>`
+    })
     
     // Inline Math
     s = s.replace(/(^|[^\\$])\$([^$\n]+?)\$/g, (match, prefix, eq) => {
@@ -32,9 +38,9 @@ export default function MarkdownRenderer({ content, className = '' }: MarkdownRe
     s = s.replace(/\*(.*?)\*/g, '<em>$1</em>')
     s = s.replace(/~~(.*?)~~/g, '<del>$1</del>')
     s = s.replace(/`([^`]+?)`/g, '<code class="bg-slate-800 text-blue-300 px-1 rounded font-mono text-sm">$1</code>')
-    s = s.replace(/!\[(.*?)\]\s?\(?([^)]+?)\)?\s*$/gm, '<img src="$2" alt="$1" referrerPolicy="no-referrer" class="max-w-full h-auto rounded-lg my-2 shadow-sm" />')
-    s = s.replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1" referrerPolicy="no-referrer" class="max-w-full h-auto rounded-lg my-2 shadow-sm" />')
-    s = s.replace(/\[(.*?)\]\s?\(?([^)\s]+)\)?/g, '<a href="$2" target="_blank" class="text-primary-600 hover:text-primary-700 font-medium underline decoration-primary-500/30 underline-offset-4">$1</a>')
+    s = s.replace(/!\[([^\]]*?)\]\(\s*([^\)]+?)\s*\)/g, '<img src="$2" alt="$1" referrerPolicy="no-referrer" class="max-w-full h-auto rounded-lg my-2 shadow-sm" />')
+    s = s.replace(/!\[([^\]]*?)\]\s*(https?:\/\/[^\s)]+)(?=\s|$)/g, '<img src="$2" alt="$1" referrerPolicy="no-referrer" class="max-w-full h-auto rounded-lg my-2 shadow-sm" />')
+    s = s.replace(/\[([^\]]+?)\]\(([^)\s]+?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-primary-600 hover:text-primary-700 font-medium underline decoration-primary-500/30 underline-offset-4">$1</a>')
     return s
   }
 
