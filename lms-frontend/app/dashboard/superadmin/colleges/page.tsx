@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { api } from '@/lib/api'
 
 interface CollegeStats {
@@ -135,7 +136,14 @@ export default function CollegesPage() {
               <div className="bg-gradient-to-r from-indigo-500 to-purple-600 p-6 text-white relative h-32 flex flex-col justify-end">
                 {college.logoUrl && (
                   <div className="absolute top-4 right-4 w-16 h-16 bg-white rounded-xl shadow-lg border border-white/20 p-2 overflow-hidden flex items-center justify-center">
-                    <img src={college.logoUrl} alt={college.name} className="max-w-full max-h-full object-contain" />
+                    <Image 
+                      src={college.logoUrl} 
+                      alt={college.name} 
+                      width={64} 
+                      height={64} 
+                      className="object-contain" 
+                      loading="lazy"
+                    />
                   </div>
                 )}
                 <h3 className="text-xl font-bold mb-2 line-clamp-2 pr-20">{college.name}</h3>

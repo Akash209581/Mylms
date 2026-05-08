@@ -38,6 +38,7 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
         allowedLanguages: ['Python'],
         explanation: '',
         correctCode: '',
+        description: '',
         domain: 'Programming Domain',
     })
     const [domains, setDomains] = useState<any[]>([])
@@ -56,6 +57,7 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
     const constraintsRef = useRef<HTMLTextAreaElement>(null)
     const inputFormatRef = useRef<HTMLTextAreaElement>(null)
     const outputFormatRef = useRef<HTMLTextAreaElement>(null)
+    const descriptionRef = useRef<HTMLTextAreaElement>(null)
 
     useEffect(() => {
         if (form.domain) fetchTopics(form.domain)
@@ -313,12 +315,27 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
                         </div>
 
                         <div className="mt-4">
-                                <label className="text-gray-400 text-sm mb-2 block">Question Title *</label>
+                            <label className="text-gray-400 text-sm mb-2 block">Question Title *</label>
                             <textarea value={form.questionText} 
                                 onChange={e => set('questionText', e.target.value)}
                                 rows={2} placeholder="Enter the question title..." className="input-field" />
-
                         </div>
+
+                        {form.domain?.toLowerCase().includes('machine learning') && (
+                            <div className="mt-6 pt-6 border-t border-white/5">
+                                <label className="text-gray-400 text-sm mb-2 block font-semibold text-primary-400 flex items-center gap-2">
+                                    <span className="text-lg">🧠</span> Description *
+                                </label>
+                                <p className="text-gray-500 text-[10px] mb-3 uppercase font-bold tracking-wider">Topic's importance, real-time applications & step-by-step computation</p>
+                                <MarkdownToolbar textareaRef={descriptionRef} onChange={(val) => set('description', val)} />
+                                <textarea 
+                                    ref={descriptionRef}
+                                    value={form.description} 
+                                    onChange={e => set('description', e.target.value)}
+                                    onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
+                                    rows={4} placeholder="Importance in domain, real-time apps, computation steps..." className="input-field font-mono text-sm rounded-t-none border-primary-500/30 bg-primary-500/5 shadow-inner" />
+                            </div>
+                        )}
                     </div>
 
                     {/* Type specific inputs (MCQ, FIB, etc.) */}

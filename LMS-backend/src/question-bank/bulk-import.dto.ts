@@ -88,6 +88,7 @@ export interface ParsedQuestionRow {
   // OUTPUT_PREDICTION
   codeSnippet?: string;
   expectedOutput?: string;
+  description?: string;
 }
 
 // Validated question ready for insertion
@@ -113,4 +114,5 @@ export interface ValidatedQuestion {
   testCases?: { input: string; output: string; explanation?: string }[];
   codeSnippet?: string;
   expectedOutput?: string;
+  description?: string;
 }

@@ -3,6 +3,7 @@
 // LessonViewer — read-only student-facing renderer for notebook content.
 // Shares the same cell format: { type: 'notebook', cells: Cell[] }
 
+import './LessonEditor.css'
 import type { Cell, CellType } from './LessonEditor'
 
 /* ── Helpers ── */

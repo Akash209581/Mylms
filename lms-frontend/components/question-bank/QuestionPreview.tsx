@@ -50,12 +50,6 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
             case 'FIB':
                 return (
                     <div className="space-y-6">
-                        {form.problemStatement && (
-                            <div className="bg-slate-50 p-6 rounded-2xl border border-gray-100">
-                                <h4 className="text-primary-600 text-[10px] font-bold uppercase mb-2 tracking-wider">Problem Statement</h4>
-                                <MarkdownRenderer content={form.problemStatement} className="text-slate-700 text-sm" />
-                            </div>
-                        )}
 
                         <div className="p-8 bg-gray-50 rounded-3xl border border-gray-100 shadow-inner">
                             <p className="text-slate-800 text-xl leading-relaxed whitespace-pre-wrap">
@@ -345,6 +339,22 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                             {form.questionText || "Untitled Question"}
                         </h1>
                     </div>
+
+                    {form.description && (
+                        <div className="bg-indigo-50/30 p-8 rounded-3xl border border-indigo-100/50 shadow-sm mb-8 relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                                <span className="text-6xl text-indigo-500/20">🧠</span>
+                            </div>
+                            <h4 className="text-indigo-600 text-[10px] font-black uppercase mb-4 tracking-[0.2em] flex items-center gap-2">
+                                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                                Topic Intelligence & Applications
+                            </h4>
+                            <div className="prose prose-indigo max-w-none">
+                                <MarkdownRenderer content={form.description} className="text-slate-700 text-sm leading-relaxed" />
+                            </div>
+                        </div>
+                    )}
+
                     {renderContent()}
                 </div>
 

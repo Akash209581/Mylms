@@ -39,6 +39,7 @@ function CreateQuestionForm() {
         extraRightMatches: [''],
         explanation: '',
         correctCode: '',
+        description: '',
         domain: 'Programming Domain',
     })
     const [domains, setDomains] = useState<any[]>([])
@@ -56,6 +57,7 @@ function CreateQuestionForm() {
     const constraintsRef = useRef<HTMLTextAreaElement>(null)
     const inputFormatRef = useRef<HTMLTextAreaElement>(null)
     const outputFormatRef = useRef<HTMLTextAreaElement>(null)
+    const descriptionRef = useRef<HTMLTextAreaElement>(null)
 
     useEffect(() => {
         const stored = localStorage.getItem('user')
@@ -137,7 +139,7 @@ function CreateQuestionForm() {
 
     const handleSubmit = async () => {
         setSaving(true); setError('')
-        
+
         // Frontend Validation
         if (!form.questionText?.trim()) { setError('Question Title is required'); setSaving(false); return }
         if (!form.problemStatement?.trim()) { setError('Problem Statement is compulsory for all question types'); setSaving(false); return }
@@ -278,10 +280,26 @@ function CreateQuestionForm() {
 
                             <div className="mt-4">
                                 <label className="text-gray-400 text-sm mb-2 block">Question Title *</label>
-                                <textarea value={form.questionText} 
+                                <textarea value={form.questionText}
                                     onChange={e => set('questionText', e.target.value)}
                                     rows={2} placeholder="Enter the question title..." className="input-field" />
                             </div>
+
+                            {form.domain?.toLowerCase().includes('machine learning') && (
+                                <div className="mt-6 pt-6 border-t border-white/5">
+                                    <label className="text-gray-400 text-sm mb-2 block font-semibold text-primary-400 flex items-center gap-2">
+                                        <span className="text-lg">🧠</span>  Description *
+                                    </label>
+                                    <p className="text-gray-500 text-[10px] mb-3 uppercase font-bold tracking-wider">Topic's importance, real-time applications & step-by-step computation</p>
+                                    <MarkdownToolbar textareaRef={descriptionRef} onChange={(val) => set('description', val)} />
+                                    <textarea
+                                        ref={descriptionRef}
+                                        value={form.description}
+                                        onChange={e => set('description', e.target.value)}
+                                        onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
+                                        rows={4} placeholder="Importance in domain, real-time apps, computation steps..." className="input-field font-mono text-sm rounded-t-none border-primary-500/30 bg-primary-500/5 shadow-inner" />
+                                </div>
+                            )}
 
                         </div>
 
@@ -291,9 +309,9 @@ function CreateQuestionForm() {
                                 <div>
                                     <h3 className="text-white font-semibold mb-2">📄 Problem Statement *</h3>
                                     <MarkdownToolbar textareaRef={problemStatementRef} onChange={(val) => set('problemStatement', val)} />
-                                    <textarea 
+                                    <textarea
                                         ref={problemStatementRef}
-                                        value={form.problemStatement} 
+                                        value={form.problemStatement}
                                         onChange={e => set('problemStatement', e.target.value)}
                                         onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
                                         rows={3} placeholder="Add context or a code snippet..." className="input-field font-mono text-sm rounded-t-none" />
@@ -322,9 +340,9 @@ function CreateQuestionForm() {
                                 <div className="pt-6 border-t border-white/5">
                                     <label className="text-gray-400 text-sm mb-2 block font-semibold">Explanation (Optional)</label>
                                     <MarkdownToolbar textareaRef={explanationRef} onChange={(val) => set('explanation', val)} />
-                                    <textarea 
+                                    <textarea
                                         ref={explanationRef}
-                                        value={form.explanation} 
+                                        value={form.explanation}
                                         onChange={e => set('explanation', e.target.value)}
                                         onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
                                         rows={3} placeholder="Explain why this answer is correct..." className="input-field text-sm rounded-t-none" />
@@ -339,9 +357,9 @@ function CreateQuestionForm() {
                                     <h3 className="text-white font-semibold mb-2">📄 Problem Statement *</h3>
                                     <p className="text-gray-400 text-xs mb-4">Provide the problem statement or code snippet. Use <span className="text-primary-400 font-mono font-bold">[BLANK]</span> where you want students to fill in the answers.</p>
                                     <MarkdownToolbar textareaRef={problemStatementRef} onChange={(val) => set('problemStatement', val)} />
-                                    <textarea 
+                                    <textarea
                                         ref={problemStatementRef}
-                                        value={form.problemStatement} 
+                                        value={form.problemStatement}
                                         onChange={e => set('problemStatement', e.target.value)}
                                         onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
                                         rows={5} placeholder="e.g. For(int i=0; i < [BLANK]; i++)" className="input-field font-mono text-sm rounded-t-none" />
@@ -354,7 +372,7 @@ function CreateQuestionForm() {
                                             <div key={i} className="flex gap-3 mb-3 items-center">
                                                 <span className="text-gray-400 text-sm w-16">Blank {i + 1}:</span>
                                                 <input value={b} onChange={e => { const bl = [...form.blanks]; bl[i] = e.target.value; set('blanks', bl) }}
-                                                    placeholder={`Answer for [BLANK] #${i+1}`} className="input-field flex-1" />
+                                                    placeholder={`Answer for [BLANK] #${i + 1}`} className="input-field flex-1" />
                                                 {form.blanks.length > 1 && (
                                                     <button onClick={() => set('blanks', form.blanks.filter((_: any, idx: number) => idx !== i))}
                                                         className="text-red-400 hover:text-red-500 transition-colors p-1" title="Delete Blank">
@@ -371,9 +389,9 @@ function CreateQuestionForm() {
                                 <div className="pt-6 border-t border-white/5">
                                     <label className="text-gray-400 text-sm mb-2 block font-semibold">Explanation (Optional)</label>
                                     <MarkdownToolbar textareaRef={explanationRef} onChange={(val) => set('explanation', val)} />
-                                    <textarea 
+                                    <textarea
                                         ref={explanationRef}
-                                        value={form.explanation} 
+                                        value={form.explanation}
                                         onChange={e => set('explanation', e.target.value)}
                                         onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
                                         rows={3} placeholder="Explain the logic behind the blanks..." className="input-field text-sm rounded-t-none" />
@@ -388,9 +406,9 @@ function CreateQuestionForm() {
                                 <div>
                                     <h3 className="text-white font-semibold mb-2 flex items-center gap-2">📄 Problem Statement *</h3>
                                     <MarkdownToolbar textareaRef={problemStatementRef} onChange={(val) => set('problemStatement', val)} />
-                                    <textarea 
+                                    <textarea
                                         ref={problemStatementRef}
-                                        value={form.problemStatement} 
+                                        value={form.problemStatement}
                                         onChange={e => set('problemStatement', e.target.value)}
                                         onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
                                         rows={3} placeholder="Add context for the matching pairs..." className="input-field text-sm rounded-t-none" />
@@ -451,9 +469,9 @@ function CreateQuestionForm() {
                                 <div className="pt-6 border-t border-white/5">
                                     <label className="text-gray-400 text-sm mb-2 block font-semibold">Explanation (Optional)</label>
                                     <MarkdownToolbar textareaRef={explanationRef} onChange={(val) => set('explanation', val)} />
-                                    <textarea 
+                                    <textarea
                                         ref={explanationRef}
-                                        value={form.explanation} 
+                                        value={form.explanation}
                                         onChange={e => set('explanation', e.target.value)}
                                         onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
                                         rows={3} placeholder="Explain the matching logic..." className="input-field text-sm rounded-t-none" />
@@ -468,9 +486,9 @@ function CreateQuestionForm() {
                                 <div>
                                     <h3 className="text-white font-semibold mb-2 flex items-center gap-2">📄 Problem Statement *</h3>
                                     <MarkdownToolbar textareaRef={problemStatementRef} onChange={(val) => set('problemStatement', val)} />
-                                    <textarea 
+                                    <textarea
                                         ref={problemStatementRef}
-                                        value={form.problemStatement} 
+                                        value={form.problemStatement}
                                         onChange={e => set('problemStatement', e.target.value)}
                                         onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
                                         rows={3} placeholder="Provide context and instructions for the jumbled code..." className="input-field text-sm rounded-t-none" />
@@ -500,7 +518,7 @@ function CreateQuestionForm() {
 
                                 <div className="pt-6 border-t border-white/5">
                                     <label className="text-gray-400 text-sm mb-2 block font-semibold">Correct Code (expected sequence)</label>
-                                    <textarea value={form.correctCode} 
+                                    <textarea value={form.correctCode}
                                         onChange={e => set('correctCode', e.target.value)}
                                         onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
                                         rows={5} placeholder="Full correct code snippet..." className="input-field font-mono text-sm" />
@@ -509,9 +527,9 @@ function CreateQuestionForm() {
                                 <div className="pt-6 border-t border-white/5">
                                     <label className="text-gray-400 text-sm mb-2 block font-semibold">Explanation (Optional)</label>
                                     <MarkdownToolbar textareaRef={explanationRef} onChange={(val) => set('explanation', val)} />
-                                    <textarea 
+                                    <textarea
                                         ref={explanationRef}
-                                        value={form.explanation} 
+                                        value={form.explanation}
                                         onChange={e => set('explanation', e.target.value)}
                                         onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
                                         rows={3} placeholder="Explain the logic..." className="input-field text-sm rounded-t-none" />
@@ -547,9 +565,9 @@ function CreateQuestionForm() {
                                 <div>
                                     <label className="text-gray-400 text-sm mb-2 block">Problem Statement *</label>
                                     <MarkdownToolbar textareaRef={problemStatementRef} onChange={(val) => set('problemStatement', val)} />
-                                    <textarea 
+                                    <textarea
                                         ref={problemStatementRef}
-                                        value={form.problemStatement} 
+                                        value={form.problemStatement}
                                         onChange={e => set('problemStatement', e.target.value)}
                                         onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
                                         rows={5} placeholder="Problem Statement" className="input-field font-mono text-sm rounded-t-none" />
@@ -557,9 +575,9 @@ function CreateQuestionForm() {
                                 <div>
                                     <label className="text-gray-400 text-sm mb-2 block">Input Format</label>
                                     <MarkdownToolbar textareaRef={inputFormatRef} onChange={(val) => set('inputFormat', val)} />
-                                    <textarea 
+                                    <textarea
                                         ref={inputFormatRef}
-                                        value={form.inputFormat} 
+                                        value={form.inputFormat}
                                         onChange={e => set('inputFormat', e.target.value)}
                                         onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
                                         rows={4} placeholder="Input Format" className="input-field font-mono text-sm rounded-t-none" />
@@ -567,9 +585,9 @@ function CreateQuestionForm() {
                                 <div>
                                     <label className="text-gray-400 text-sm mb-2 block">Output Format</label>
                                     <MarkdownToolbar textareaRef={outputFormatRef} onChange={(val) => set('outputFormat', val)} />
-                                    <textarea 
+                                    <textarea
                                         ref={outputFormatRef}
-                                        value={form.outputFormat} 
+                                        value={form.outputFormat}
                                         onChange={e => set('outputFormat', e.target.value)}
                                         onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
                                         rows={4} placeholder="Output Format" className="input-field font-mono text-sm rounded-t-none" />
@@ -577,9 +595,9 @@ function CreateQuestionForm() {
                                 <div>
                                     <label className="text-gray-400 text-sm mb-2 block">Constraints</label>
                                     <MarkdownToolbar textareaRef={constraintsRef} onChange={(val) => set('constraints', val)} />
-                                    <textarea 
+                                    <textarea
                                         ref={constraintsRef}
-                                        value={form.constraints} 
+                                        value={form.constraints}
                                         onChange={e => set('constraints', e.target.value)}
                                         onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
                                         rows={4} placeholder="Constraints" className="input-field font-mono text-sm rounded-t-none" />
@@ -591,11 +609,11 @@ function CreateQuestionForm() {
                                         <div key={i} className="p-4 rounded-xl mb-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
                                             <p className="text-gray-400 text-xs mb-2">Test Case {i + 1}</p>
                                             <div className="grid grid-cols-2 gap-3">
-                                                <textarea value={tc.input} 
+                                                <textarea value={tc.input}
                                                     onChange={e => { const tcs = [...form.testCases]; tcs[i].input = e.target.value; set('testCases', tcs) }}
                                                     onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
                                                     rows={4} placeholder="Input" className="input-field font-mono text-sm" />
-                                                <textarea value={tc.output} 
+                                                <textarea value={tc.output}
                                                     onChange={e => { const tcs = [...form.testCases]; tcs[i].output = e.target.value; set('testCases', tcs) }}
                                                     onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
                                                     rows={4} placeholder="Expected Output" className="input-field font-mono text-sm" />
@@ -633,9 +651,9 @@ function CreateQuestionForm() {
                                         <div>
                                             <h3 className="text-white font-semibold mb-2 flex items-center gap-2">📄 Problem Statement *</h3>
                                             <MarkdownToolbar textareaRef={problemStatementRef} onChange={(val) => set('problemStatement', val)} />
-                                            <textarea 
+                                            <textarea
                                                 ref={problemStatementRef}
-                                                value={form.problemStatement} 
+                                                value={form.problemStatement}
                                                 onChange={e => set('problemStatement', e.target.value)}
                                                 onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
                                                 rows={3} placeholder="Provide context and instructions for the output prediction..." className="input-field text-sm rounded-t-none" />
@@ -644,7 +662,7 @@ function CreateQuestionForm() {
                                         <div className="pt-6 border-t border-white/5 space-y-4">
                                             <div>
                                                 <label className="text-gray-400 text-sm mb-2 block">Code Snippet / Pseudocode *</label>
-                                                <textarea value={form.codeSnippet} 
+                                                <textarea value={form.codeSnippet}
                                                     onChange={e => set('codeSnippet', e.target.value)}
                                                     onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
                                                     rows={5} placeholder="Enter the code snippet here..." className="input-field font-mono text-sm" />
@@ -662,9 +680,9 @@ function CreateQuestionForm() {
                                         <div className="pt-6 border-t border-white/5 font-semibold">
                                             <label className="text-gray-400 text-sm mb-2 block">Explanation (Optional)</label>
                                             <MarkdownToolbar textareaRef={explanationRef} onChange={(val) => set('explanation', val)} />
-                                            <textarea 
+                                            <textarea
                                                 ref={explanationRef}
-                                                value={form.explanation} 
+                                                value={form.explanation}
                                                 onChange={e => set('explanation', e.target.value)}
                                                 onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
                                                 rows={3} placeholder="Explain the prediction logic..." className="input-field text-sm rounded-t-none" />
@@ -730,7 +748,7 @@ function CreateQuestionForm() {
                     <div className="glass-card p-8 w-full max-w-md border-primary-500/30">
                         <h3 className="text-xl font-bold text-white mb-2">➕ Add New Domain</h3>
                         <p className="text-gray-400 text-sm mb-6">Create a new category for the question bank.</p>
-                        
+
                         <div className="space-y-4">
                             <div>
                                 <label className="text-gray-400 text-xs font-bold uppercase mb-2 block">Domain Name</label>
@@ -753,7 +771,7 @@ function CreateQuestionForm() {
                     <div className="glass-card p-8 w-full max-w-md border-primary-500/30">
                         <h3 className="text-xl font-bold text-white mb-2">➕ Add New Topic</h3>
                         <p className="text-gray-400 text-sm mb-6">Add a new topic to <span className="text-primary-400">{form.domain}</span>.</p>
-                        
+
                         <div className="space-y-4">
                             <div>
                                 <label className="text-gray-400 text-xs font-bold uppercase mb-2 block">Topic Name</label>

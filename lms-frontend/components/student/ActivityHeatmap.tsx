@@ -1,15 +1,30 @@
 'use client';
+import React, { useMemo } from 'react';
 
 interface Activity {
   date: string;
   count: number;
 }
 
-export default function ActivityHeatmap({ data }: { data: Activity[] }) {
-  const days = 365;
-  const today = new Date();
-  const startDate = new Date(today);
-  startDate.setDate(today.getDate() - days);
+const ActivityHeatmap = React.memo(function ActivityHeatmap({ data }: { data: Activity[] }) {
+  const cells = useMemo(() => {
+    const days = 365;
+    const today = new Date();
+    const startDate = new Date(today);
+    startDate.setDate(today.getDate() - days);
+
+    const activityMap = new Map((Array.isArray(data) ? data : []).map((d) => [d.date, Number(d.count)]));
+
+    const result = [];
+    for (let i = 0; i <= days; i++) {
+      const currentDate = new Date(startDate);
+      currentDate.setDate(startDate.getDate() + i);
+      const dateStr = currentDate.toISOString().split('T')[0];
+      const count = activityMap.get(dateStr) || 0;
+      result.push({ date: dateStr, count });
+    }
+    return result;
+  }, [data]);
 
   const getDayColor = (count: number) => {
     if (count === 0) return 'bg-[var(--bg-raised)]';
@@ -18,17 +33,6 @@ export default function ActivityHeatmap({ data }: { data: Activity[] }) {
     if (count < 10) return 'bg-indigo-500/70';
     return 'bg-indigo-500';
   };
-
-  const activityMap = new Map((Array.isArray(data) ? data : []).map((d) => [d.date, Number(d.count)]));
-
-  const cells = [];
-  for (let i = 0; i <= days; i++) {
-    const currentDate = new Date(startDate);
-    currentDate.setDate(startDate.getDate() + i);
-    const dateStr = currentDate.toISOString().split('T')[0];
-    const count = activityMap.get(dateStr) || 0;
-    cells.push({ date: dateStr, count });
-  }
 
   return (
     <div className="w-full overflow-x-auto pb-2">
@@ -52,4 +56,6 @@ export default function ActivityHeatmap({ data }: { data: Activity[] }) {
       </div>
     </div>
   );
-}
+});
+
+export default ActivityHeatmap;

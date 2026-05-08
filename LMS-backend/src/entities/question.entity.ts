@@ -116,6 +116,9 @@ export class Question {
   @Column({ type: 'text', nullable: true })
   correctCode: string;
 
+  @Column({ type: 'text', nullable: true })
+  description: string;
+
   @Column({ default: true })
   isActive: boolean;
 

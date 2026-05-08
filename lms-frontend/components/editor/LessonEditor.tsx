@@ -2,6 +2,7 @@
 'use client'
 
 import { ChangeEvent, useCallback, useEffect, useRef, useState } from 'react'
+import './LessonEditor.css'
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
 

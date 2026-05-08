@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
 import { getAuthHeaders } from '@/lib/authHeaders'
@@ -96,7 +97,13 @@ export default function StudentProfilePage() {
                             <div className="relative group">
                                 <div className="w-32 h-32 md:w-40 md:h-40 rounded-3xl bg-[var(--bg-surface)] border-4 border-[var(--bg-base)] flex items-center justify-center text-5xl font-black text-white shadow-2xl overflow-hidden relative">
                                     {user?.profilePicture ? (
-                                        <img src={user.profilePicture} alt={user.name} className="w-full h-full object-cover" />
+                                        <Image 
+                                            src={user.profilePicture} 
+                                            alt={user.name} 
+                                            fill 
+                                            className="object-cover" 
+                                            priority 
+                                        />
                                     ) : (
                                         <span className="bg-gradient-to-br from-indigo-500 to-purple-600 w-full h-full flex items-center justify-center">
                                             {initials}

@@ -106,6 +106,7 @@ export class QuestionValidatorService {
       recentYearAppearing: row.recentYear,
       bestPracticeFor: row.bestPracticeFor,
       domain: row.domain || 'Programming Domain',
+      description: row.description,
     };
 
     return { valid: true, question };
