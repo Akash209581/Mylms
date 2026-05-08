@@ -134,22 +134,12 @@ function RenderCell({ cell }: { cell: Cell }) {
     const lines = (cell.content || '').split('\n')
     const lang  = cell.meta?.trim() || 'code'
 
-    const highlight = (line: string): string => {
-      let s = line
-        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      s = s.replace(/(^\/\/.*)/g,          '<span class="tok-comment">$1</span>')
-      s = s.replace(/(\"[^\"]*\"|'[^']*'|`[^`]*`)/g, '<span class="tok-string">$1</span>')
-      s = s.replace(/\b(const|let|var|function|return|if|else|for|while|class|import|export|from|default|async|await|try|catch|throw|new|this|typeof|instanceof|void|null|undefined|true|false|def|print|in|not|and|or|elif|pass|lambda|yield|self|public|private|static|int|str|bool|float|double|type|interface|enum|extends|implements)\b/g,
-                    '<span class="tok-kw">$1</span>')
-      s = s.replace(/\b(\d+\.?\d*)\b/g,    '<span class="tok-num">$1</span>')
-      s = s.replace(/(\w+)(?=\()/g,        '<span class="tok-fn">$1</span>')
-      return s
-    }
+    const escCode = (value: string): string =>
+      value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
     return (
       <div className="nb-code-wrap">
         <div className="nb-code-titlebar">
-
           <span className="nb-code-lang">{lang}</span>
         </div>
         <div className="nb-code-body">
@@ -164,7 +154,7 @@ function RenderCell({ cell }: { cell: Cell }) {
                   <div
                     key={i}
                     className="nb-code-line"
-                    dangerouslySetInnerHTML={{ __html: highlight(line) || '\u00a0' }}
+                    dangerouslySetInnerHTML={{ __html: escCode(line) || '\u00a0' }}
                   />
                 ))
               : <span className="nb-empty-hint" style={{ padding: '0 12px' }}>// empty code block</span>

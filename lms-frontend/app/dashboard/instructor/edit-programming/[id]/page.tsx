@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import Sidebar from '@/components/layout/Sidebar';
 import Navbar from '@/components/layout/Navbar';
 import { api } from '@/lib/api';
+import { TooltipAnnotator, type Annotation } from '@/components/editor/TooltipAnnotator';
 
 type LessonEditorProps = {
   lessonId: number;
@@ -18,6 +19,7 @@ type LessonEditorProps = {
   showPreviewByDefault?: boolean;
   fullPreviewTitle?: string;
   plainCodePreview?: boolean;
+  stickyTopOffsetPx?: number;
 };
 
 const LessonEditor = dynamic<LessonEditorProps>(
@@ -117,6 +119,7 @@ export default function EditProgrammingPage() {
   const [saving, setSaving] = useState(false);
 
   const [problemStatementContent, setProblemStatementContent] = useState<Record<string, any> | null>(null);
+  const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [allowedLanguages, setAllowedLanguages] = useState<string[]>(['Python']);
   const [testCases, setTestCases] = useState<TestCase[]>([{ input: '', output: '', explanation: '' }]);
 
@@ -225,6 +228,7 @@ export default function EditProgrammingPage() {
         content: {
           type: 'programming-builder',
           problemStatement: problemStatementContent,
+          annotations: annotations.length > 0 ? annotations : undefined,
           inputFormat: null,
           outputFormat: null,
           constraints: null,
@@ -280,10 +284,25 @@ export default function EditProgrammingPage() {
                 showPreviewByDefault={true}
                 fullPreviewTitle="Full Preview"
                 plainCodePreview={true}
+                stickyTopOffsetPx={64}
+                annotations={annotations}
                 onSave={async (content) => {
                   setProblemStatementContent(content);
                 }}
               />
+              
+              {['ADMIN', 'SUPERADMIN'].includes(user?.role) && (
+                <div className="mt-4 pt-4 border-t border-slate-700">
+                  <label className="block text-sm text-gray-300 mb-3 font-semibold">🔍 Add Hover Tooltips</label>
+                  <p className="text-xs text-gray-400 mb-3">Select any word or phrase in the problem statement to add a hover definition that students will see</p>
+                  <TooltipAnnotator
+                    content={contentToPlainText(problemStatementContent)}
+                    annotations={annotations}
+                    onAnnotationsChange={setAnnotations}
+                    readOnly={false}
+                  />
+                </div>
+              )}
             </div>
 
             <div>

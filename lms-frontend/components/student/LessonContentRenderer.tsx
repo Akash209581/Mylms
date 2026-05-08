@@ -183,21 +183,13 @@ function renderMarkdown(md: string): string {
    ═══════════════════════════════════════════════════════ */
 
 function CodeRow({ line, index }: { line: string; index: number }) {
-  const highlight = (line: string): string => {
-    let s = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    s = s.replace(/(^\/\/.*)/g, '<span class="tok-comment">$1</span>')
-    s = s.replace(/("[^"]*"|'[^']*'|`[^`]*`)/g, '<span class="tok-string">$1</span>')
-    s = s.replace(/\b(const|let|var|function|return|if|else|for|while|class|import|export|from|default|async|await|try|catch|throw|new|this|typeof|instanceof|void|null|undefined|true|false|def|print|in|not|and|or|elif|pass|lambda|yield|self|public|private|static|void|int|str|bool|float|double|type|interface|enum|extends|implements)\b/g,
-      '<span class="tok-kw">$1</span>')
-    s = s.replace(/\b(\d+\.?\d*)\b/g, '<span class="tok-num">$1</span>')
-    s = s.replace(/(\w+)(?=\()/g, '<span class="tok-fn">$1</span>')
-    return s
-  }
+  const escCode = (value: string): string =>
+    value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
   return (
     <div className="flex gap-4 px-4 py-0.5 hover:bg-white/5 transition-colors">
       <span className="text-gray-600 font-mono text-xs w-6 text-right select-none">{index + 1}</span>
-      <div className="font-mono text-sm" dangerouslySetInnerHTML={{ __html: highlight(line) || '\u00a0' }} />
+      <div className="font-mono text-sm" dangerouslySetInnerHTML={{ __html: escCode(line) || '\u00a0' }} />
     </div>
   )
 }
@@ -210,7 +202,6 @@ function CodeBlock({ snippets }: { snippets: { lang: string, code: string }[] })
   return (
     <div className="my-6 glass-card overflow-hidden border-none shadow-xl">
       <div className="flex items-center justify-between px-4 py-2 bg-black/40 border-b border-white/5">
-        <div />
         {snippets.length > 1 ? (
           <div className="flex bg-black/20 rounded-lg p-0.5 gap-0.5 ml-4">
             {snippets.map((s, i) => (

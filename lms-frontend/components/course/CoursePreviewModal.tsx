@@ -95,7 +95,7 @@ export default function CoursePreviewModal({ courseId, isOpen, onClose }: Course
             <div className="bg-[var(--bg-surface)] w-full max-w-6xl h-full rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-scale-up border border-[var(--border-strong)]">
 
                 {/* Modal Header */}
-                <div className="h-16 border-b border-[var(--border)] flex items-center justify-between px-6 bg-[var(--bg-raised)] shrink-0">
+                <div className="h-16 border-b border-[var(--border)] flex items-center justify-between px-6 bg-[var(--bg-raised)] shrink-0 sticky top-0 z-40">
                     <div className="flex items-center gap-2">
                         <span className="text-xl">📺</span>
                         <h2 className="font-bold text-[var(--text-primary)] text-lg">Course Preview</h2>
@@ -149,6 +149,7 @@ export default function CoursePreviewModal({ courseId, isOpen, onClose }: Course
                                         onSave={async () => { }}
                                         readOnly={true}
                                         isModal={true}
+                                        stickyTopOffsetPx={64}
                                     />
                                 </div>
                             </div>
