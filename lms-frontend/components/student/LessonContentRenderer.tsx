@@ -3,6 +3,36 @@
 import React, { useState } from 'react'
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
+import CodeMirror from '@uiw/react-codemirror'
+import { sublime } from '@uiw/codemirror-theme-sublime'
+import { javascript } from '@codemirror/lang-javascript'
+import { python } from '@codemirror/lang-python'
+import { java } from '@codemirror/lang-java'
+import { cpp } from '@codemirror/lang-cpp'
+import { rust } from '@codemirror/lang-rust'
+import { go } from '@codemirror/lang-go'
+import { sql } from '@codemirror/lang-sql'
+import { json } from '@codemirror/lang-json'
+import { html } from '@codemirror/lang-html'
+import { css } from '@codemirror/lang-css'
+import { EditorView } from '@codemirror/view'
+
+function getCodeExtensions(language?: string) {
+  const lang = (language || '').toLowerCase()
+  if (lang.includes('typescript')) return [javascript({ typescript: true }), EditorView.lineWrapping]
+  if (lang.includes('javascript')) return [javascript(), EditorView.lineWrapping]
+  if (lang.includes('python')) return [python(), EditorView.lineWrapping]
+  if (lang.includes('java')) return [java(), EditorView.lineWrapping]
+  if (lang.includes('c++') || lang === 'cpp') return [cpp(), EditorView.lineWrapping]
+  if (lang === 'c') return [cpp(), EditorView.lineWrapping]
+  if (lang.includes('rust')) return [rust(), EditorView.lineWrapping]
+  if (lang === 'go' || lang.includes('golang')) return [go(), EditorView.lineWrapping]
+  if (lang.includes('sql')) return [sql(), EditorView.lineWrapping]
+  if (lang.includes('json')) return [json(), EditorView.lineWrapping]
+  if (lang.includes('html') || lang.includes('xml')) return [html(), EditorView.lineWrapping]
+  if (lang.includes('css')) return [css(), EditorView.lineWrapping]
+  return [EditorView.lineWrapping]
+}
 
 /* ═══════════════════════════════════════════════════════
    TYPES (Matches LessonEditor)
@@ -182,22 +212,9 @@ function renderMarkdown(md: string): string {
    SUB-COMPONENTS
    ═══════════════════════════════════════════════════════ */
 
-function CodeRow({ line, index }: { line: string; index: number }) {
-  const escCode = (value: string): string =>
-    value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-
-  return (
-    <div className="flex gap-4 px-4 py-0.5 hover:bg-white/5 transition-colors">
-      <span className="text-gray-600 font-mono text-xs w-6 text-right select-none">{index + 1}</span>
-      <div className="font-mono text-sm" dangerouslySetInnerHTML={{ __html: escCode(line) || '\u00a0' }} />
-    </div>
-  )
-}
-
 function CodeBlock({ snippets }: { snippets: { lang: string, code: string }[] }) {
   const [activeTab, setActiveTab] = useState(0)
   const activeSnippet = snippets[activeTab] || snippets[0]
-  const lines = (activeSnippet?.code || '').split('\n')
 
   return (
     <div className="my-6 glass-card overflow-hidden border-none shadow-xl">
@@ -218,10 +235,22 @@ function CodeBlock({ snippets }: { snippets: { lang: string, code: string }[] })
           <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{activeSnippet?.lang || 'code'}</span>
         )}
       </div>
-      <div className="bg-black/60 py-4 overflow-x-auto">
-        <pre className="text-gray-300 leading-relaxed">
-          {lines.map((line, i) => <CodeRow key={i} line={line} index={i} />)}
-        </pre>
+      <div className="w-full overflow-hidden border-t border-white/5">
+        <CodeMirror
+          value={activeSnippet?.code || ''}
+          height="auto"
+          theme={sublime}
+          basicSetup={{
+            lineNumbers: true,
+            foldGutter: false,
+            highlightActiveLine: false,
+            highlightActiveLineGutter: false,
+            autocompletion: false,
+          }}
+          extensions={getCodeExtensions(activeSnippet?.lang)}
+          editable={false}
+          readOnly={true}
+        />
       </div>
     </div>
   )
@@ -232,7 +261,228 @@ function CodeBlock({ snippets }: { snippets: { lang: string, code: string }[] })
    ═══════════════════════════════════════════════════════ */
 
 export default function LessonContentRenderer({ content }: { content: any }) {
+  const [activeTab, setActiveTab] = useState<'explanation' | 'problem' | 'testcases'>('explanation');
+
   if (!content) return null
+
+  if (content?.type === 'quiz-builder') {
+    const settings = content.settings || {};
+    const questionCount = Array.isArray(content.questionIds) ? content.questionIds.length : 0;
+
+    return (
+      <div className="space-y-6 pb-12 animate-in fade-in duration-300">
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-500/10 via-slate-900/60 to-purple-500/5 border border-white/10 p-8 shadow-2xl backdrop-blur-md">
+          {/* Decorative Glow */}
+          <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-full blur-3xl pointer-events-none" />
+          
+          <div className="flex items-center gap-4 mb-6">
+            <span className="text-4xl">📝</span>
+            <div>
+              <h3 className="text-2xl font-black text-white tracking-tight">Interactive Assessment</h3>
+              <p className="text-xs text-gray-400 font-medium">Verify your concept mastery and earn XP points</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <div className="p-4 rounded-2xl bg-white/5 border border-white/5 flex flex-col items-center justify-center text-center">
+              <span className="text-2xl mb-1">⏱️</span>
+              <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">Time Limit</span>
+              <span className="text-lg font-black text-indigo-300 mt-0.5">{settings.timeLimitMinutes || 20} Min</span>
+            </div>
+            <div className="p-4 rounded-2xl bg-white/5 border border-white/5 flex flex-col items-center justify-center text-center">
+              <span className="text-2xl mb-1">🎯</span>
+              <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">Pass Mark</span>
+              <span className="text-lg font-black text-emerald-300 mt-0.5">{settings.passPercentage || 40}%</span>
+            </div>
+            <div className="p-4 rounded-2xl bg-white/5 border border-white/5 flex flex-col items-center justify-center text-center">
+              <span className="text-2xl mb-1">🔁</span>
+              <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">Attempts</span>
+              <span className="text-lg font-black text-purple-300 mt-0.5">{settings.maxAttempts || 1} Max</span>
+            </div>
+            <div className="p-4 rounded-2xl bg-white/5 border border-white/5 flex flex-col items-center justify-center text-center">
+              <span className="text-2xl mb-1">❓</span>
+              <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">Questions</span>
+              <span className="text-lg font-black text-amber-300 mt-0.5">{questionCount} Total</span>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 flex gap-3 items-start">
+            <span className="text-lg mt-0.5">ℹ️</span>
+            <div className="text-xs text-indigo-300/90 leading-relaxed font-medium">
+              This assessment consists of <strong>{questionCount}</strong> customized questions. 
+              {settings.shuffleQuestions && " Questions will be presented in a randomized order."}
+              {settings.shuffleOptions && " Multiple choice options will be shuffled dynamically."}
+               Make sure you have a stable connection before initiating the session.
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (content?.type === 'assignment-builder') {
+    const checklist = Array.isArray(content.checklist) ? content.checklist : [];
+    
+    return (
+      <div className="space-y-6 pb-12 animate-in fade-in duration-300">
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-500/10 via-slate-900/60 to-purple-500/5 border border-white/10 p-8 shadow-2xl backdrop-blur-md">
+          {/* Decorative Glow */}
+          <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="flex items-center gap-4 mb-6">
+            <span className="text-4xl">🏆</span>
+            <div>
+              <h3 className="text-2xl font-black text-white tracking-tight">Assignment Tasks</h3>
+              <p className="text-xs text-gray-400 font-medium">Complete the deliverables and submit before deadline</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div className="p-4 rounded-2xl bg-white/5 border border-white/5 flex flex-col items-center justify-center text-center">
+              <span className="text-2xl mb-1">💯</span>
+              <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">Max Score</span>
+              <span className="text-lg font-black text-indigo-300 mt-0.5">{content.maxMarks || 100} Marks</span>
+            </div>
+            <div className="p-4 rounded-2xl bg-white/5 border border-white/5 flex flex-col items-center justify-center text-center">
+              <span className="text-2xl mb-1">📅</span>
+              <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">Due in</span>
+              <span className="text-lg font-black text-rose-300 mt-0.5">{content.dueInDays || 7} Days</span>
+            </div>
+            <div className="p-4 rounded-2xl bg-white/5 border border-white/5 flex flex-col items-center justify-center text-center">
+              <span className="text-2xl mb-1">⚙️</span>
+              <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">Submission Type</span>
+              <span className="text-lg font-black text-purple-300 mt-0.5 capitalize">{content.submissionType === 'both' ? 'File & Text' : content.submissionType}</span>
+            </div>
+          </div>
+
+          {/* Instructions section */}
+          <div className="space-y-3 mb-8">
+            <h4 className="text-indigo-400 text-xs font-black uppercase tracking-wider">Detailed Instructions</h4>
+            <div 
+              className="text-gray-300 leading-relaxed text-sm bg-black/35 p-6 rounded-2xl border border-white/5 prose prose-invert max-w-none" 
+              dangerouslySetInnerHTML={{ __html: renderMarkdown(content.instructions || '') }} 
+            />
+          </div>
+
+          {/* Checklist section */}
+          {checklist.length > 0 && (
+            <div className="space-y-4">
+              <h4 className="text-indigo-400 text-xs font-black uppercase tracking-wider">Student Submission Checklist</h4>
+              <div className="space-y-2.5">
+                {checklist.map((item: string, idx: number) => (
+                  <div key={idx} className="flex gap-3 items-center p-3 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
+                    <input type="checkbox" className="w-4 h-4 rounded text-indigo-500 bg-black border-white/10 focus:ring-indigo-500 pointer-events-none" disabled />
+                    <span className="text-xs text-gray-300 font-medium">{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (content?.type === 'programming-builder') {
+    return (
+      <div className="space-y-8 pb-12 animate-in fade-in duration-300">
+        {/* LeetCode-style Tab Navigation */}
+        <div className="flex border-b border-white/10 pb-3 gap-6 mb-6">
+          <button
+            type="button"
+            onClick={() => setActiveTab('explanation')}
+            className={`pb-2 text-sm font-semibold transition-all relative ${
+              activeTab === 'explanation' ? 'text-indigo-400 font-bold' : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            📖 Topic Explanation
+            {activeTab === 'explanation' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-400 rounded-full" />
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('problem')}
+            className={`pb-2 text-sm font-semibold transition-all relative ${
+              activeTab === 'problem' ? 'text-indigo-400 font-bold' : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            💻 Problem Statement
+            {activeTab === 'problem' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-400 rounded-full" />
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('testcases')}
+            className={`pb-2 text-sm font-semibold transition-all relative ${
+              activeTab === 'testcases' ? 'text-indigo-400 font-bold' : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            🧪 Sample Test Cases
+            {activeTab === 'testcases' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-400 rounded-full" />
+            )}
+          </button>
+        </div>
+
+        {activeTab === 'explanation' && (
+          <div className="animate-in fade-in duration-200">
+            {content.explanation ? (
+              <LessonContentRenderer content={content.explanation} />
+            ) : (
+              <p className="text-gray-400 italic">No explanation provided for this topic.</p>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'problem' && (
+          <div className="animate-in fade-in duration-200 space-y-6">
+            <div className="flex flex-wrap gap-2 items-center mb-4">
+              <span className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Supported Languages:</span>
+              {(content.allowedLanguages || []).map((lang: string) => (
+                <span key={lang} className="px-2.5 py-1 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[10px] font-bold uppercase tracking-wider">
+                  {lang}
+                </span>
+              ))}
+            </div>
+            
+            {content.problemStatement ? (
+              <LessonContentRenderer content={content.problemStatement} />
+            ) : (
+              <p className="text-gray-400 italic">No problem statement provided.</p>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'testcases' && (
+          <div className="animate-in fade-in duration-200 space-y-4">
+            <h4 className="text-indigo-400 text-xs font-bold uppercase mb-2">Sample Test Cases</h4>
+            <div className="space-y-4">
+              {(content.testCases || []).slice(0, 5).map((tc: any, i: number) => (
+                <div key={i} className="p-5 rounded-2xl bg-white/5 border border-white/10 space-y-3">
+                  <p className="text-[10px] text-gray-400 font-bold uppercase">Sample Case {i + 1}</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-[9px] text-gray-500 uppercase mb-1 font-semibold">Input</p>
+                      <pre className="text-xs text-indigo-300 bg-black/40 p-3 rounded-xl border border-white/5 overflow-x-auto font-mono">{tc.input || '(empty)'}</pre>
+                    </div>
+                    <div>
+                      <p className="text-[9px] text-gray-500 uppercase mb-1 font-semibold">Expected Output</p>
+                      <pre className="text-xs text-emerald-300 bg-black/40 p-3 rounded-xl border border-white/5 overflow-x-auto font-mono">{tc.output || '(empty)'}</pre>
+                    </div>
+                  </div>
+                  {tc.explanation && (
+                    <p className="text-xs text-gray-400 italic mt-1 pb-1 border-t border-white/5 pt-3">Explanation: {tc.explanation}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   const cells: Cell[] = Array.isArray(content) 
     ? content 

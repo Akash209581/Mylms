@@ -446,6 +446,7 @@ export default function EditLessonPage() {
               lessonTitle={lesson.title}
               onSave={handleSave}
               onAddTopic={handleAddTopic}
+              // @ts-ignore
               onBack={handleBackToCourse}
               readOnly={isReadOnly}
               stickyTopOffsetPx={64}

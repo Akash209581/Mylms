@@ -11,13 +11,35 @@ export default function DailyChallengePage() {
     const [answer, setAnswer] = useState('')
     const [submitted, setSubmitted] = useState(false)
     const [result, setResult] = useState<any>(null)
+    const [selectedLang, setSelectedLang] = useState<string>('')
 
     useEffect(() => {
         const today = new Date().toISOString().slice(0, 10)
         fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/daily-streak/today?date=${today}`, { credentials: 'include' })
             .then(r => r.json())
             .then(data => {
-                if (data && !data.message) setStreak(data)
+                if (data && !data.message) {
+                    setStreak(data)
+                    const q = data.question
+                    if (q && q.type === 'PQ') {
+                        const langs = q.allowedLanguages || ['Python']
+                        const firstLang = langs[0] || 'Python'
+                        setSelectedLang(firstLang)
+                        
+                        let snippetObj: Record<string, string> = {}
+                        try {
+                            if (q.codeSnippet) {
+                                const parsed = JSON.parse(q.codeSnippet)
+                                if (typeof parsed === 'object' && parsed !== null) {
+                                    snippetObj = parsed
+                                }
+                            }
+                        } catch (e) {
+                            snippetObj = { [firstLang]: q.codeSnippet || '' }
+                        }
+                        setAnswer(snippetObj[firstLang] || '')
+                    }
+                }
             })
             .catch(() => { })
             .finally(() => setLoading(false))
@@ -43,6 +65,23 @@ export default function DailyChallengePage() {
             message: correct ? 'Great job! You earned +10 Streak Points!' : 'Oops! That’s not quite right. Try again tomorrow!',
             explanation: q.type === 'MCQ' ? `The correct answer was: ${q.correctAnswer}` : ''
         })
+    }
+
+    const handleLanguageChange = (lang: string) => {
+        setSelectedLang(lang)
+        const q = streak.question
+        let snippetObj: Record<string, string> = {}
+        try {
+            if (q.codeSnippet) {
+                const parsed = JSON.parse(q.codeSnippet)
+                if (typeof parsed === 'object' && parsed !== null) {
+                    snippetObj = parsed
+                }
+            }
+        } catch (e) {
+            snippetObj = { [lang]: q.codeSnippet || '' }
+        }
+        setAnswer(snippetObj[lang] || '')
     }
 
     if (loading) return (
@@ -140,15 +179,45 @@ export default function DailyChallengePage() {
                                     </div>
                                 )}
 
-                                {q.type === 'PQ' && (
-                                    <div className="bg-gray-900 rounded-2xl p-6 mb-6">
-                                        <p className="text-gray-400 font-mono text-sm mb-4">// Solution here</p>
-                                        <textarea
-                                            className="w-full h-48 bg-transparent text-emerald-400 font-mono focus:outline-none resize-none"
-                                            placeholder="Implement your solution..."
-                                        />
-                                    </div>
-                                )}
+                                {q.type === 'PQ' && (() => {
+                                    const langs = q.allowedLanguages || ['Python']
+                                    return (
+                                        <div className="space-y-4 mb-6 animate-in fade-in duration-300">
+                                            {langs.length > 0 && (
+                                                <div className="flex items-center gap-3 bg-[var(--bg-surface)]/5 p-2 rounded-2xl border border-white/10 max-w-max">
+                                                    <span className="text-xs font-bold text-gray-400 pl-2">Language:</span>
+                                                    <div className="flex gap-2">
+                                                        {langs.map((l: string) => (
+                                                            <button
+                                                                key={l}
+                                                                type="button"
+                                                                onClick={() => handleLanguageChange(l)}
+                                                                className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
+                                                                    selectedLang === l
+                                                                        ? 'bg-indigo-500 border-indigo-500 text-white shadow-lg'
+                                                                        : 'bg-white/5 border-white/10 text-gray-300 hover:border-white/30'
+                                                                }`}
+                                                            >
+                                                                {l}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                            <div className="bg-gray-900 rounded-2xl p-6 border border-white/5">
+                                                <div className="flex justify-between items-center text-[10px] text-gray-500 uppercase tracking-wider font-bold border-b border-white/5 pb-2 mb-4">
+                                                    <span>{selectedLang} Solution Editor</span>
+                                                </div>
+                                                <textarea
+                                                    value={answer}
+                                                    onChange={e => setAnswer(e.target.value)}
+                                                    className="w-full h-64 bg-transparent text-emerald-400 font-mono focus:outline-none resize-none text-sm leading-relaxed"
+                                                    placeholder="Implement your solution here..."
+                                                />
+                                            </div>
+                                        </div>
+                                    )
+                                })()}
 
                                 <button
                                     onClick={handleSubmit}

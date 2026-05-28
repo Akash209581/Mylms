@@ -80,6 +80,8 @@ const typeIcons: Record<string, string> = {
     'video': '🎥',
     'article': '📄',
     'quiz': '📝',
+    'test': '📝',
+    'assessment': '🏆',
     'assignment': '📋',
 }
 

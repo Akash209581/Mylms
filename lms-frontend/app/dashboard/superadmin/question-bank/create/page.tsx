@@ -51,6 +51,14 @@ function CreateQuestionForm() {
     const [saving, setSaving] = useState(false)
     const [showPreview, setShowPreview] = useState(false)
     const [error, setError] = useState('')
+    const [pqTab, setPqTab] = useState<'explanation' | 'problem' | 'testcases' | 'predefined'>('explanation')
+    const [predefinedCodes, setPredefinedCodes] = useState<Record<string, string>>({
+        'Python': 'def solve():\n    # Write your Python code here\n    pass',
+        'Java': 'public class Solution {\n    public static void main(String[] args) {\n        // Write your Java code here\n    }\n}',
+        'C++': '#include <iostream>\nusing namespace std;\n\nint main() {\n    // Write your C++ code here\n    return 0;\n}',
+        'C': '#include <stdio.h>\n\nint main() {\n    // Write your C code here\n    return 0;\n}',
+        'JavaScript': 'function solve() {\n    // Write your JavaScript code here\n}',
+    })
 
     const problemStatementRef = useRef<HTMLTextAreaElement>(null)
     const explanationRef = useRef<HTMLTextAreaElement>(null)
@@ -148,6 +156,9 @@ function CreateQuestionForm() {
             const submitData = {
                 ...form,
                 topicNames: Array.isArray(form.topicNames) ? form.topicNames.join(', ') : form.topicNames
+            }
+            if (form.type === 'PQ') {
+                submitData.codeSnippet = JSON.stringify(predefinedCodes);
             }
             const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/question-bank`, {
                 method: 'POST',
@@ -554,95 +565,205 @@ function CreateQuestionForm() {
 
 
                         {form.type === 'PQ' && (
-                            <div className="glass-card p-6 space-y-4">
-                                <div className="flex justify-between items-center mb-4">
-                                    <div className="flex items-center gap-4">
-                                        <h3 className="text-white font-semibold">💻 Programming Problem</h3>
-                                        <div className="flex gap-2 border-l border-white/10 pl-4">
-                                            <button onClick={() => set('allowedLanguages', LANGUAGES.filter(l => l !== 'Any'))}
-                                                className="text-[9px] font-bold text-primary-400 hover:text-primary-300 uppercase tracking-wider">Select All</button>
-                                            <button onClick={() => set('allowedLanguages', [])}
-                                                className="text-[9px] font-bold text-[var(--text-secondary)] hover:text-gray-400 uppercase tracking-wider">Clear</button>
-                                        </div>
-                                    </div>
-                                    <div className="flex flex-wrap gap-2">
-                                        {LANGUAGES.filter(l => l !== 'Any').map(lang => (
-                                            <button key={lang} onClick={() => {
-                                                const current = form.allowedLanguages || [];
-                                                const next = current.includes(lang) ? current.filter((l: string) => l !== lang) : [...current, lang];
-                                                set('allowedLanguages', next);
-                                            }} className={`px-3 py-1.5 rounded-xl text-[10px] font-bold border transition-all ${form.allowedLanguages?.includes(lang) ? 'bg-primary-500 border-primary-500 text-white shadow-lg shadow-primary-500/20' : 'bg-[var(--bg-surface)]/5 border-white/10 text-gray-400 hover:border-white/30'}`}>
-                                                {lang}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="text-gray-400 text-sm mb-2 block">Problem Statement *</label>
-                                    <MarkdownToolbar textareaRef={problemStatementRef} onChange={(val) => set('problemStatement', val)} />
-                                    <textarea
-                                        ref={problemStatementRef}
-                                        value={form.problemStatement}
-                                        onChange={e => set('problemStatement', e.target.value)}
-                                        onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
-                                        rows={5} placeholder="Problem Statement" className="input-field font-mono text-sm rounded-t-none" />
-                                </div>
-                                <div>
-                                    <label className="text-gray-400 text-sm mb-2 block">Input Format</label>
-                                    <MarkdownToolbar textareaRef={inputFormatRef} onChange={(val) => set('inputFormat', val)} />
-                                    <textarea
-                                        ref={inputFormatRef}
-                                        value={form.inputFormat}
-                                        onChange={e => set('inputFormat', e.target.value)}
-                                        onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
-                                        rows={4} placeholder="Input Format" className="input-field font-mono text-sm rounded-t-none" />
-                                </div>
-                                <div>
-                                    <label className="text-gray-400 text-sm mb-2 block">Output Format</label>
-                                    <MarkdownToolbar textareaRef={outputFormatRef} onChange={(val) => set('outputFormat', val)} />
-                                    <textarea
-                                        ref={outputFormatRef}
-                                        value={form.outputFormat}
-                                        onChange={e => set('outputFormat', e.target.value)}
-                                        onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
-                                        rows={4} placeholder="Output Format" className="input-field font-mono text-sm rounded-t-none" />
-                                </div>
-                                <div>
-                                    <label className="text-gray-400 text-sm mb-2 block">Constraints</label>
-                                    <MarkdownToolbar textareaRef={constraintsRef} onChange={(val) => set('constraints', val)} />
-                                    <textarea
-                                        ref={constraintsRef}
-                                        value={form.constraints}
-                                        onChange={e => set('constraints', e.target.value)}
-                                        onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
-                                        rows={4} placeholder="Constraints" className="input-field font-mono text-sm rounded-t-none" />
+                            <div className="glass-card p-6 space-y-6">
+                                <div className="flex border-b border-white/10 pb-3 gap-6">
+                                    <button
+                                        type="button"
+                                        onClick={() => setPqTab('explanation')}
+                                        className={`pb-2 text-sm font-semibold transition-all relative ${
+                                            pqTab === 'explanation' ? 'text-primary-400' : 'text-gray-400 hover:text-white'
+                                        }`}
+                                    >
+                                        📖 Topic Explanation
+                                        {pqTab === 'explanation' && (
+                                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-400 rounded-full" />
+                                        )}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setPqTab('problem')}
+                                        className={`pb-2 text-sm font-semibold transition-all relative ${
+                                            pqTab === 'problem' ? 'text-primary-400' : 'text-gray-400 hover:text-white'
+                                        }`}
+                                    >
+                                        💻 Problem Statement
+                                        {pqTab === 'problem' && (
+                                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-400 rounded-full" />
+                                        )}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setPqTab('testcases')}
+                                        className={`pb-2 text-sm font-semibold transition-all relative ${
+                                            pqTab === 'testcases' ? 'text-primary-400' : 'text-gray-400 hover:text-white'
+                                        }`}
+                                    >
+                                        🧪 Test Cases
+                                        {pqTab === 'testcases' && (
+                                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-400 rounded-full" />
+                                        )}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setPqTab('predefined')}
+                                        className={`pb-2 text-sm font-semibold transition-all relative ${
+                                            pqTab === 'predefined' ? 'text-primary-400' : 'text-gray-400 hover:text-white'
+                                        }`}
+                                    >
+                                        💻 Predefined Code
+                                        {pqTab === 'predefined' && (
+                                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-400 rounded-full" />
+                                        )}
+                                    </button>
                                 </div>
 
-                                <div>
-                                    <label className="text-gray-400 text-sm mb-3 block">Test Cases</label>
-                                    {form.testCases.map((tc: any, i: number) => (
-                                        <div key={i} className="p-4 rounded-xl mb-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                                            <p className="text-gray-400 text-xs mb-2">Test Case {i + 1}</p>
-                                            <div className="grid grid-cols-2 gap-3">
-                                                <textarea value={tc.input}
-                                                    onChange={e => { const tcs = [...form.testCases]; tcs[i].input = e.target.value; set('testCases', tcs) }}
-                                                    onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
-                                                    rows={4} placeholder="Input" className="input-field font-mono text-sm" />
-                                                <textarea value={tc.output}
-                                                    onChange={e => { const tcs = [...form.testCases]; tcs[i].output = e.target.value; set('testCases', tcs) }}
-                                                    onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
-                                                    rows={4} placeholder="Expected Output" className="input-field font-mono text-sm" />
-
-                                            </div>
-                                            <p className="text-[10px] text-gray-400 font-bold uppercase mt-3 mb-1">Explanation (Optional)</p>
-                                            <textarea value={tc.explanation} onChange={e => { const tcs = [...form.testCases]; tcs[i].explanation = e.target.value; set('testCases', tcs) }}
+                                {pqTab === 'explanation' && (
+                                    <div className="space-y-4 animate-in fade-in duration-200">
+                                        <div>
+                                            <label className="text-gray-400 text-sm mb-2 block font-semibold">Topic Explanation *</label>
+                                            <p className="text-xs text-gray-500 mb-3">Provide background theory, tutorials, or deep concepts related to this coding topic.</p>
+                                            <MarkdownToolbar textareaRef={explanationRef} onChange={(val) => set('explanation', val)} />
+                                            <textarea
+                                                ref={explanationRef}
+                                                value={form.explanation}
+                                                onChange={e => set('explanation', e.target.value)}
                                                 onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
-                                                rows={4} placeholder="Why this input gives this output..." className="input-field font-mono text-sm resize-none" />
+                                                rows={8} placeholder="Enter Topic Explanation concept/theory in markdown format..." className="input-field font-mono text-sm rounded-t-none" />
                                         </div>
-                                    ))}
-                                    <button onClick={() => set('testCases', [...form.testCases, { input: '', output: '', explanation: '' }])}
-                                        className="btn-secondary px-4 py-2 text-sm">+ Add Test Case</button>
-                                </div>
+                                    </div>
+                                )}
+
+                                {pqTab === 'problem' && (
+                                    <div className="space-y-4 animate-in fade-in duration-200">
+                                        <div>
+                                            <label className="text-gray-400 text-sm mb-2 block font-semibold">Problem Statement *</label>
+                                            <MarkdownToolbar textareaRef={problemStatementRef} onChange={(val) => set('problemStatement', val)} />
+                                            <textarea
+                                                ref={problemStatementRef}
+                                                value={form.problemStatement}
+                                                onChange={e => set('problemStatement', e.target.value)}
+                                                onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
+                                                rows={5} placeholder="Problem Statement" className="input-field font-mono text-sm rounded-t-none" />
+                                        </div>
+                                        <div>
+                                            <label className="text-gray-400 text-sm mb-2 block">Input Format</label>
+                                            <MarkdownToolbar textareaRef={inputFormatRef} onChange={(val) => set('inputFormat', val)} />
+                                            <textarea
+                                                ref={inputFormatRef}
+                                                value={form.inputFormat}
+                                                onChange={e => set('inputFormat', e.target.value)}
+                                                onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
+                                                rows={4} placeholder="Input Format" className="input-field font-mono text-sm rounded-t-none" />
+                                        </div>
+                                        <div>
+                                            <label className="text-gray-400 text-sm mb-2 block">Output Format</label>
+                                            <MarkdownToolbar textareaRef={outputFormatRef} onChange={(val) => set('outputFormat', val)} />
+                                            <textarea
+                                                ref={outputFormatRef}
+                                                value={form.outputFormat}
+                                                onChange={e => set('outputFormat', e.target.value)}
+                                                onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
+                                                rows={4} placeholder="Output Format" className="input-field font-mono text-sm rounded-t-none" />
+                                        </div>
+                                        <div>
+                                            <label className="text-gray-400 text-sm mb-2 block">Constraints</label>
+                                            <MarkdownToolbar textareaRef={constraintsRef} onChange={(val) => set('constraints', val)} />
+                                            <textarea
+                                                ref={constraintsRef}
+                                                value={form.constraints}
+                                                onChange={e => set('constraints', e.target.value)}
+                                                onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
+                                                rows={4} placeholder="Constraints" className="input-field font-mono text-sm rounded-t-none" />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {pqTab === 'testcases' && (
+                                    <div className="space-y-4 animate-in fade-in duration-200">
+                                        <div className="flex justify-between items-center mb-2">
+                                            <div className="flex items-center gap-4">
+                                                <h4 className="text-white text-sm font-semibold">Allowed Languages</h4>
+                                                <div className="flex gap-2 border-l border-white/10 pl-4">
+                                                    <button type="button" onClick={() => set('allowedLanguages', LANGUAGES.filter(l => l !== 'Any'))}
+                                                        className="text-[9px] font-bold text-primary-400 hover:text-primary-300 uppercase tracking-wider">Select All</button>
+                                                    <button type="button" onClick={() => set('allowedLanguages', [])}
+                                                        className="text-[9px] font-bold text-[var(--text-secondary)] hover:text-gray-400 uppercase tracking-wider">Clear</button>
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-wrap gap-2">
+                                                {LANGUAGES.filter(l => l !== 'Any').map(lang => (
+                                                    <button type="button" key={lang} onClick={() => {
+                                                        const current = form.allowedLanguages || [];
+                                                        const next = current.includes(lang) ? current.filter((l: string) => l !== lang) : [...current, lang];
+                                                        set('allowedLanguages', next);
+                                                    }} className={`px-3 py-1.5 rounded-xl text-[10px] font-bold border transition-all ${form.allowedLanguages?.includes(lang) ? 'bg-primary-50 border-primary-500 text-white shadow-lg shadow-primary-500/20' : 'bg-[var(--bg-surface)]/5 border-white/10 text-gray-400 hover:border-white/30'}`}>
+                                                        {lang}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="text-gray-400 text-sm mb-3 block">Test Cases</label>
+                                            {form.testCases.map((tc: any, i: number) => (
+                                                <div key={i} className="p-4 rounded-xl mb-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                                                    <p className="text-gray-400 text-xs mb-2">Test Case {i + 1}</p>
+                                                    <div className="grid grid-cols-2 gap-3">
+                                                        <textarea value={tc.input}
+                                                            onChange={e => { const tcs = [...form.testCases]; tcs[i].input = e.target.value; set('testCases', tcs) }}
+                                                            onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
+                                                            rows={4} placeholder="Input" className="input-field font-mono text-sm" />
+                                                        <textarea value={tc.output}
+                                                            onChange={e => { const tcs = [...form.testCases]; tcs[i].output = e.target.value; set('testCases', tcs) }}
+                                                            onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
+                                                            rows={4} placeholder="Expected Output" className="input-field font-mono text-sm" />
+
+                                                    </div>
+                                                    <p className="text-[10px] text-gray-400 font-bold uppercase mt-3 mb-1">Explanation (Optional)</p>
+                                                    <textarea value={tc.explanation} onChange={e => { const tcs = [...form.testCases]; tcs[i].explanation = e.target.value; set('testCases', tcs) }}
+                                                        onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
+                                                        rows={4} placeholder="Why this input gives this output..." className="input-field font-mono text-sm resize-none" />
+                                                </div>
+                                            ))}
+                                            <button type="button" onClick={() => set('testCases', [...form.testCases, { input: '', output: '', explanation: '' }])}
+                                                className="btn-secondary px-4 py-2 text-sm">+ Add Test Case</button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {pqTab === 'predefined' && (
+                                    <div className="space-y-6 animate-in fade-in duration-200">
+                                        <div>
+                                            <h4 className="text-white text-sm font-semibold mb-2">Predefined Boilerplate Code</h4>
+                                            <p className="text-xs text-gray-500 mb-4">
+                                                Provide boilerplate/starter code for students. Only languages selected as "Allowed Languages" will be shown here.
+                                            </p>
+                                        </div>
+
+                                        {(form.allowedLanguages || []).length === 0 ? (
+                                            <div className="p-4 rounded-xl border border-yellow-500/30 bg-yellow-500/10 text-yellow-400 text-xs font-semibold">
+                                                ⚠️ Please select at least one Allowed Language in the "Test Cases" tab first.
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-5">
+                                                {(form.allowedLanguages || []).map((lang: string) => (
+                                                    <div key={lang} className="p-5 rounded-2xl bg-white/5 border border-white/10 space-y-3">
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-xs font-bold text-indigo-400 uppercase tracking-wider">{lang} Starter Code</span>
+                                                        </div>
+                                                        <textarea
+                                                            value={predefinedCodes[lang] || ''}
+                                                            onChange={e => setPredefinedCodes(prev => ({ ...prev, [lang]: e.target.value }))}
+                                                            rows={6}
+                                                            placeholder={`// Write starter code for ${lang} here...`}
+                                                            className="w-full input-field font-mono text-sm bg-black/40 border border-white/5 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 p-4 rounded-xl"
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         )}
 

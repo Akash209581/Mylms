@@ -378,7 +378,7 @@ export default function CourseBuilderPage() {
         const base = getDashboardPath();
         const normalizedType = (lesson.type || '').toLowerCase();
 
-        if (normalizedType === 'quiz') return `${base}/edit-quiz/${lesson.id}`;
+        if (['quiz', 'test', 'assessment'].includes(normalizedType)) return `${base}/edit-quiz/${lesson.id}`;
         if (normalizedType === 'assignment') return `${base}/edit-assignment/${lesson.id}`;
         if (normalizedType === 'programming') return `${base}/edit-programming/${lesson.id}`;
         return `${base}/edit-lesson/${courseId}?lessonId=${lesson.id}`;
@@ -387,6 +387,8 @@ export default function CourseBuilderPage() {
     const getTopicEditorLabel = (lesson: Lesson) => {
         const normalizedType = (lesson.type || '').toLowerCase();
         if (normalizedType === 'quiz') return 'Quiz Builder';
+        if (normalizedType === 'test') return 'Test Builder';
+        if (normalizedType === 'assessment') return 'Assessment Builder';
         if (normalizedType === 'assignment') return 'Assignment Editor';
         if (normalizedType === 'programming') return 'Programming Builder';
         return 'Content Editor';
@@ -882,6 +884,8 @@ export default function CourseBuilderPage() {
                                         <option value="video">Video</option>
                                         <option value="article">Article</option>
                                         <option value="quiz">Quiz</option>
+                                        <option value="test">Test</option>
+                                        <option value="assessment">Assessment</option>
                                         <option value="assignment">Assignment</option>
                                         <option value="programming">Programming</option>
                                     </select>

@@ -1,5 +1,5 @@
 'use client'
-import React from 'react'
+import React, { useState } from 'react'
 import MarkdownRenderer from '@/components/editor/MarkdownRenderer'
 
 interface QuestionPreviewProps {
@@ -8,6 +8,8 @@ interface QuestionPreviewProps {
 }
 
 export default function QuestionPreview({ form, onClose }: QuestionPreviewProps) {
+    const [previewTab, setPreviewTab] = useState<'explanation' | 'problem' | 'testcases' | 'predefined'>('explanation')
+    const [previewLang, setPreviewLang] = useState<string>('')
     const renderContent = () => {
         switch (form.type) {
             case 'MCQ':
@@ -184,69 +186,209 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
             case 'PQ':
                 return (
                     <div className="space-y-6">
-                        <div className="bg-white p-8 rounded-2xl border-l-4 border-primary-500 shadow-sm border-y border-r border-gray-100">
-                            <div className="flex justify-between items-start gap-4 mb-4">
-                                <h3 className="text-2xl font-bold text-slate-900 mb-2">Problem Statement</h3>
+                        {/* Tab Switcher */}
+                        <div className="flex border-b border-gray-200 pb-3 gap-6">
+                            <button
+                                type="button"
+                                onClick={() => setPreviewTab('explanation')}
+                                className={`pb-2 text-sm font-semibold transition-all relative ${
+                                    previewTab === 'explanation' ? 'text-primary-600' : 'text-gray-400 hover:text-gray-600'
+                                }`}
+                            >
+                                📖 Topic Explanation
+                                {previewTab === 'explanation' && (
+                                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600 rounded-full animate-in fade-in" />
+                                )}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setPreviewTab('problem')}
+                                className={`pb-2 text-sm font-semibold transition-all relative ${
+                                    previewTab === 'problem' ? 'text-primary-600' : 'text-gray-400 hover:text-gray-600'
+                                }`}
+                            >
+                                💻 Problem Statement
+                                {previewTab === 'problem' && (
+                                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600 rounded-full animate-in fade-in" />
+                                )}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setPreviewTab('testcases')}
+                                className={`pb-2 text-sm font-semibold transition-all relative ${
+                                    previewTab === 'testcases' ? 'text-primary-600' : 'text-gray-400 hover:text-gray-600'
+                                }`}
+                            >
+                                🧪 Test Cases
+                                {previewTab === 'testcases' && (
+                                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600 rounded-full animate-in fade-in" />
+                                )}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setPreviewTab('predefined')}
+                                className={`pb-2 text-sm font-semibold transition-all relative ${
+                                    previewTab === 'predefined' ? 'text-primary-600' : 'text-gray-400 hover:text-gray-600'
+                                }`}
+                            >
+                                💻 Predefined Code
+                                {previewTab === 'predefined' && (
+                                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600 rounded-full animate-in fade-in" />
+                                )}
+                            </button>
+                        </div>
 
-                                <div className="flex flex-wrap gap-1.5 justify-end">
-                                    {(form.allowedLanguages || []).map((lang: string) => (
-                                        <span key={lang} className="px-3 py-1 rounded-full bg-primary-50 text-primary-600 border border-primary-100 text-[10px] font-bold uppercase tracking-wider">
-                                            {lang}
-                                        </span>
+                        {previewTab === 'explanation' && (
+                            <div className="bg-white p-8 rounded-2xl border-l-4 border-emerald-500 shadow-sm border-y border-r border-gray-100 animate-in fade-in duration-200">
+                                <h3 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                    <span className="text-2xl">📖</span> Pedagogical Explanation
+                                </h3>
+                                {form.explanation ? (
+                                    <MarkdownRenderer content={form.explanation} className="text-slate-600 text-base leading-relaxed animate-in fade-in" />
+                                ) : (
+                                    <p className="text-gray-400 italic text-sm">No Topic Explanation provided yet.</p>
+                                )}
+                            </div>
+                        )}
+
+                        {previewTab === 'problem' && (
+                            <div className="space-y-6 animate-in fade-in duration-200">
+                                <div className="bg-white p-8 rounded-2xl border-l-4 border-primary-500 shadow-sm border-y border-r border-gray-100">
+                                    <div className="flex justify-between items-start gap-4 mb-4">
+                                        <h3 className="text-2xl font-bold text-slate-900 mb-2">Problem Statement</h3>
+                                        <div className="flex flex-wrap gap-1.5 justify-end">
+                                            {(form.allowedLanguages || []).map((lang: string) => (
+                                                <span key={lang} className="px-3 py-1 rounded-full bg-primary-50 text-primary-600 border border-primary-100 text-[10px] font-bold uppercase tracking-wider">
+                                                    {lang}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <MarkdownRenderer content={form.problemStatement} className="text-slate-600 text-lg" />
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-6">
+                                        {form.inputFormat && (
+                                            <div>
+                                                <h4 className="text-primary-600 text-xs font-bold uppercase mb-2">Input Format</h4>
+                                                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                                                    <MarkdownRenderer content={form.inputFormat} className="text-slate-700 text-sm" />
+                                                </div>
+                                            </div>
+                                        )}
+                                        {form.outputFormat && (
+                                            <div>
+                                                <h4 className="text-primary-600 text-xs font-bold uppercase mb-2">Output Format</h4>
+                                                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                                                    <MarkdownRenderer content={form.outputFormat} className="text-slate-700 text-sm" />
+                                                </div>
+                                            </div>
+                                        )}
+                                        {form.constraints && (
+                                            <div>
+                                                <h4 className="text-primary-600 text-xs font-bold uppercase mb-2">Constraints</h4>
+                                                <div className="p-5 bg-blue-50/50 rounded-2xl border border-blue-100 shadow-inner">
+                                                    <MarkdownRenderer content={form.constraints} className="text-slate-700 text-sm" />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {previewTab === 'testcases' && (
+                            <div className="space-y-4 animate-in fade-in duration-200">
+                                <h4 className="text-primary-600 text-xs font-bold uppercase mb-2">Sample Test Cases</h4>
+                                <div className="space-y-4">
+                                    {(form.testCases || []).slice(0, 5).map((tc: any, i: number) => (
+                                        <div key={i} className="p-4 bg-gray-50/50 rounded-xl border border-gray-100 space-y-3">
+                                            <p className="text-[10px] text-gray-500 font-bold uppercase">Sample Case {i + 1}</p>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div>
+                                                    <p className="text-[9px] text-gray-400 uppercase mb-1">Input</p>
+                                                    <pre className="text-xs text-indigo-600 bg-white p-2 rounded-lg border border-gray-100 overflow-x-auto font-mono">{tc.input || '(empty)'}</pre>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[9px] text-gray-400 uppercase mb-1">Output</p>
+                                                    <pre className="text-xs text-emerald-600 bg-white p-2 rounded-lg border border-gray-100 overflow-x-auto font-mono">{tc.output || '(empty)'}</pre>
+                                                </div>
+                                            </div>
+                                            {tc.explanation && (
+                                                <p className="text-xs text-gray-500 italic mt-1 pb-1 border-t border-gray-100 pt-2">Explanation: {tc.explanation}</p>
+                                            )}
+                                        </div>
                                     ))}
                                 </div>
                             </div>
-                            <MarkdownRenderer content={form.problemStatement} className="text-slate-600 text-lg" />
-                        </div>
+                        )}
+                        {previewTab === 'predefined' && (() => {
+                            let snippetObj: Record<string, string> = {};
+                            try {
+                                if (form.codeSnippet) {
+                                    const parsed = JSON.parse(form.codeSnippet);
+                                    if (typeof parsed === 'object' && parsed !== null) {
+                                        snippetObj = parsed;
+                                    }
+                                }
+                            } catch (e) {
+                                const mainLang = (form.allowedLanguages && form.allowedLanguages[0]) || 'Python';
+                                snippetObj = { [mainLang]: form.codeSnippet || '' };
+                            }
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-6">
-                                <div>
-                                    <h4 className="text-primary-600 text-xs font-bold uppercase mb-2">Input Format</h4>
-                                    <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                                        <MarkdownRenderer content={form.inputFormat} className="text-slate-700 text-sm" />
-                                    </div>
-                                </div>
-                                <div>
-                                    <h4 className="text-primary-600 text-xs font-bold uppercase mb-2">Output Format</h4>
-                                    <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                                        <MarkdownRenderer content={form.outputFormat} className="text-slate-700 text-sm" />
-                                    </div>
-                                </div>
-                                <div>
-                                    <h4 className="text-primary-600 text-xs font-bold uppercase mb-2">Constraints</h4>
-                                    <div className="p-5 bg-blue-50/50 rounded-2xl border border-blue-100 min-h-[220px] shadow-inner">
-                                        <MarkdownRenderer content={form.constraints} className="text-slate-700 text-sm" />
-                                    </div>
-                                </div>
-                            </div>
+                            const langs = form.allowedLanguages || [];
+                            const activeLang = previewLang || langs[0] || 'Python';
+                            const code = snippetObj[activeLang] || '';
 
-                            <div className="space-y-4">
-                                <div>
-                                    <h4 className="text-primary-600 text-xs font-bold uppercase mb-2">Sample Test Cases</h4>
-                                    <div className="space-y-4">
-                                        {(form.testCases || []).slice(0, 3).map((tc: any, i: number) => (
-                                            <div key={i} className="p-4 bg-gray-50/50 rounded-xl border border-gray-100 space-y-3">
-                                                <p className="text-[10px] text-gray-500 font-bold uppercase">Sample Case {i + 1}</p>
-                                                <div className="grid grid-cols-1 gap-2">
-                                                    <div>
-                                                        <p className="text-[9px] text-gray-400 uppercase mb-1">Input</p>
-                                                        <pre className="text-xs text-indigo-600 bg-white p-2 rounded-lg border border-gray-100 overflow-x-auto">{tc.input}</pre>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-[9px] text-gray-400 uppercase mb-1">Output</p>
-                                                        <pre className="text-xs text-emerald-600 bg-white p-2 rounded-lg border border-gray-100 overflow-x-auto">{tc.output}</pre>
-                                                    </div>
-                                                </div>
-                                                {tc.explanation && (
-                                                    <p className="text-xs text-gray-500 italic mt-1 pb-1 border-b border-gray-100">Explanation: {tc.explanation}</p>
-                                                )}
+                            return (
+                                <div className="space-y-4 animate-in fade-in duration-200">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <h4 className="text-primary-600 text-xs font-bold uppercase">Predefined Starter Code</h4>
+                                        {langs.length > 1 && (
+                                            <div className="flex gap-2">
+                                                {langs.map((l: string) => (
+                                                    <button
+                                                        key={l}
+                                                        type="button"
+                                                        onClick={() => setPreviewLang(l)}
+                                                        className={`px-3 py-1 rounded-xl text-[10px] font-bold border transition-all ${
+                                                            activeLang === l
+                                                                ? 'bg-primary-500 border-primary-500 text-white shadow-md'
+                                                                : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
+                                                        }`}
+                                                    >
+                                                        {l}
+                                                    </button>
+                                                ))}
                                             </div>
-                                        ))}
+                                        )}
                                     </div>
+
+                                    {langs.length === 0 ? (
+                                        <p className="text-gray-400 italic text-sm">No Allowed Languages specified.</p>
+                                    ) : code ? (
+                                        <div className="bg-gray-950 p-6 rounded-2xl border border-white/10 font-mono overflow-hidden relative shadow-2xl space-y-3">
+                                            <div className="flex justify-between items-center text-[10px] text-gray-500 uppercase tracking-wider font-bold border-b border-white/5 pb-2 font-sans">
+                                                <span>{activeLang} Boilerplate</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => navigator.clipboard.writeText(code)}
+                                                    className="hover:text-white transition-colors"
+                                                >
+                                                    📋 Copy
+                                                </button>
+                                            </div>
+                                            <pre className="text-emerald-400 text-sm whitespace-pre overflow-x-auto leading-relaxed">
+                                                {code}
+                                            </pre>
+                                        </div>
+                                    ) : (
+                                        <p className="text-gray-400 italic text-sm">No predefined boilerplate code configured for {activeLang}.</p>
+                                    )}
                                 </div>
-                            </div>
-                        </div>
+                            );
+                        })()}
                     </div>
                 )
 

@@ -3,8 +3,39 @@
 // LessonViewer — read-only student-facing renderer for notebook content.
 // Shares the same cell format: { type: 'notebook', cells: Cell[] }
 
+import { useState } from 'react'
 import './LessonEditor.css'
 import type { Cell, CellType } from './LessonEditor'
+import CodeMirror from '@uiw/react-codemirror'
+import { sublime } from '@uiw/codemirror-theme-sublime'
+import { javascript } from '@codemirror/lang-javascript'
+import { python } from '@codemirror/lang-python'
+import { java } from '@codemirror/lang-java'
+import { cpp } from '@codemirror/lang-cpp'
+import { rust } from '@codemirror/lang-rust'
+import { go } from '@codemirror/lang-go'
+import { sql } from '@codemirror/lang-sql'
+import { json } from '@codemirror/lang-json'
+import { html } from '@codemirror/lang-html'
+import { css } from '@codemirror/lang-css'
+import { EditorView } from '@codemirror/view'
+
+function getCodeExtensions(language?: string) {
+  const lang = (language || '').toLowerCase()
+  if (lang.includes('typescript')) return [javascript({ typescript: true }), EditorView.lineWrapping]
+  if (lang.includes('javascript')) return [javascript(), EditorView.lineWrapping]
+  if (lang.includes('python')) return [python(), EditorView.lineWrapping]
+  if (lang.includes('java')) return [java(), EditorView.lineWrapping]
+  if (lang.includes('c++') || lang === 'cpp') return [cpp(), EditorView.lineWrapping]
+  if (lang === 'c') return [cpp(), EditorView.lineWrapping]
+  if (lang.includes('rust')) return [rust(), EditorView.lineWrapping]
+  if (lang === 'go' || lang.includes('golang')) return [go(), EditorView.lineWrapping]
+  if (lang.includes('sql')) return [sql(), EditorView.lineWrapping]
+  if (lang.includes('json')) return [json(), EditorView.lineWrapping]
+  if (lang.includes('html') || lang.includes('xml')) return [html(), EditorView.lineWrapping]
+  if (lang.includes('css')) return [css(), EditorView.lineWrapping]
+  return [EditorView.lineWrapping]
+}
 
 /* ── Helpers ── */
 function normalizeSrc(src: string): string {
@@ -109,6 +140,51 @@ const CALLOUT_CONFIG: Record<string, { icon: string; label: string }> = {
 }
 const CALLOUT_TYPES = new Set(['note', 'info', 'tip', 'important', 'caution', 'warning'])
 
+function CodePreviewBlock({ snippets }: { snippets: { lang: string, code: string }[] }) {
+  const [activeTab, setActiveTab] = useState(0)
+  const activeSnippet = snippets[activeTab] || snippets[0]
+
+  return (
+    <div className="nb-code-wrap">
+      <div className="nb-code-titlebar flex items-center justify-between">
+        <div />
+        {snippets.length > 1 ? (
+          <div className="flex bg-[#2d3148] rounded-md p-0.5 gap-0.5">
+            {snippets.map((s, i) => (
+              <button
+                key={i}
+                className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${activeTab === i ? 'bg-[#3b4261] text-white shadow-sm' : 'text-slate-400 hover:text-slate-200 hover:bg-[#2d3148]'}`}
+                onClick={() => setActiveTab(i)}
+              >
+                {s.lang || 'code'}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <span className="nb-code-lang">{activeSnippet?.lang || 'code'}</span>
+        )}
+      </div>
+      <div className="w-full overflow-hidden rounded-b-lg border border-t-0 border-slate-700">
+        <CodeMirror
+          value={activeSnippet?.code || ''}
+          height="auto"
+          theme={sublime}
+          basicSetup={{
+            lineNumbers: true,
+            foldGutter: false,
+            highlightActiveLine: false,
+            highlightActiveLineGutter: false,
+            autocompletion: false,
+          }}
+          extensions={getCodeExtensions(activeSnippet?.lang)}
+          editable={false}
+          readOnly={true}
+        />
+      </div>
+    </div>
+  )
+}
+
 /* ── Cell renderer ── */
 function RenderCell({ cell }: { cell: Cell }) {
   if (cell.type === 'divider')
@@ -131,38 +207,17 @@ function RenderCell({ cell }: { cell: Cell }) {
   }
 
   if (cell.type === 'code') {
-    const lines = (cell.content || '').split('\n')
-    const lang  = cell.meta?.trim() || 'code'
-
-    const escCode = (value: string): string =>
-      value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-
-    return (
-      <div className="nb-code-wrap">
-        <div className="nb-code-titlebar">
-          <span className="nb-code-lang">{lang}</span>
-        </div>
-        <div className="nb-code-body">
-          <div className="nb-code-gutter">
-            {lines.map((_, i) => (
-              <span key={i} className="nb-code-ln">{i + 1}</span>
-            ))}
-          </div>
-          <pre className="nb-code-pre">
-            {cell.content
-              ? lines.map((line, i) => (
-                  <div
-                    key={i}
-                    className="nb-code-line"
-                    dangerouslySetInnerHTML={{ __html: escCode(line) || '\u00a0' }}
-                  />
-                ))
-              : <span className="nb-empty-hint" style={{ padding: '0 12px' }}>// empty code block</span>
-            }
-          </pre>
-        </div>
-      </div>
-    )
+    let snippets: { lang: string, code: string }[] = []
+    if (cell.content.trim().startsWith('[') && cell.content.trim().endsWith(']')) {
+      try {
+        const parsed = JSON.parse(cell.content)
+        if (Array.isArray(parsed) && parsed.every(p => typeof p.lang === 'string' && typeof p.code === 'string')) {
+          snippets = parsed
+        }
+      } catch { /* ignore */ }
+    }
+    if (snippets.length === 0) snippets = [{ lang: cell.meta?.trim() || 'code', code: cell.content }]
+    return <CodePreviewBlock snippets={snippets} />
   }
 
   if (CALLOUT_TYPES.has(cell.type)) {

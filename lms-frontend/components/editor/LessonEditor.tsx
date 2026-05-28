@@ -20,6 +20,7 @@ import { css } from '@codemirror/lang-css'
 import { EditorView } from '@codemirror/view'
 import { TooltipRenderer } from './TooltipRenderer'
 import type { Annotation } from './TooltipAnnotator'
+import MathInkModal from './MathInkModal'
 
 /* ═══════════════════════════════════════════════════════
    TYPES
@@ -298,10 +299,6 @@ function CellPreview({ cell, calloutOrder, plainCodePreview = false, annotations
   function CodePreviewBlock({ snippets }: { snippets: { lang: string, code: string }[] }) {
     const [activeTab, setActiveTab] = useState(0)
     const activeSnippet = snippets[activeTab] || snippets[0]
-    const lines = (activeSnippet?.code || '').split('\n')
-
-    const escCode = (line: string): string =>
-      line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
     return (
       <div className="nb-code-wrap">
@@ -323,18 +320,22 @@ function CellPreview({ cell, calloutOrder, plainCodePreview = false, annotations
             <span className="nb-code-lang">{activeSnippet?.lang || 'code'}</span>
           )}
         </div>
-        <div className="nb-code-body">
-          <div className="nb-code-gutter">
-            {lines.map((_, i) => <span key={i} className="nb-code-ln">{i + 1}</span>)}
-          </div>
-          <pre className="nb-code-pre">
-            {activeSnippet?.code
-              ? lines.map((line, i) => (
-                <div key={i} className="nb-code-line" dangerouslySetInnerHTML={{ __html: escCode(line) || '\u00a0' }} />
-              ))
-              : <span className="nb-empty-hint" style={{ padding: '0 12px' }}>// empty code block…</span>
-            }
-          </pre>
+        <div className="w-full overflow-hidden rounded-b-lg border border-t-0 border-slate-700">
+          <CodeMirror
+            value={activeSnippet?.code || ''}
+            height="auto"
+            theme={sublime}
+            basicSetup={{
+              lineNumbers: true,
+              foldGutter: false,
+              highlightActiveLine: false,
+              highlightActiveLineGutter: false,
+              autocompletion: false,
+            }}
+            extensions={getCodeExtensions(activeSnippet?.lang)}
+            editable={false}
+            readOnly={true}
+          />
         </div>
       </div>
     )
@@ -610,6 +611,7 @@ function MediaMenu({ onImage, onVideo }: { onImage: () => void, onVideo: () => v
 
 function MathDropdown({ onInsert }: { onInsert: (formula: string) => void }) {
   const [open, setOpen] = useState(false)
+  const [inkOpen, setInkOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -624,9 +626,10 @@ function MathDropdown({ onInsert }: { onInsert: (formula: string) => void }) {
   const prebuilt = [
     { label: 'Inline Math', value: '$ a^2 + b^2 = c^2 $' },
     { label: 'Block Math', value: '$$\n x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a} \n$$' },
-    { label: 'Fraction', value: '\\frac{a}{b}' },
-    { label: 'Integral', value: '\\int_{a}^{b} x^2 dx' },
-    { label: 'Matrix', value: '\\begin{bmatrix} a & b \\\\ c & d \\end{bmatrix}' },
+    { label: 'Fraction', value: '$ \\frac{a}{b} $' },
+    { label: 'Integral', value: '$ \\int_{a}^{b} x^2 dx $' },
+    { label: 'Partial Derivative', value: '$ \\frac{\\partial y}{\\partial x} $' },
+    { label: 'Matrix', value: '$ \\begin{bmatrix} a & b \\\\ c & d \\end{bmatrix} $' },
   ]
 
   return (
@@ -654,8 +657,25 @@ function MathDropdown({ onInsert }: { onInsert: (formula: string) => void }) {
               <span className="text-[10px] text-indigo-500 font-bold opacity-0 group-hover:opacity-100 transition-opacity">INSERT</span>
             </button>
           ))}
+          <div className="border-t border-[var(--border)] my-1" />
+          <button
+            type="button"
+            className="w-full text-left px-3 py-2 hover:bg-[var(--bg-raised)] flex items-center justify-between group"
+            onClick={() => { setInkOpen(true); setOpen(false) }}
+            title="Write to get formulas"
+          >
+            <span className="flex items-center gap-1.5 font-semibold text-indigo-500">
+              <span>✍️</span> Draw Formula
+            </span>
+            <span className="text-[9px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">INK</span>
+          </button>
         </div>
       )}
+      <MathInkModal
+        isOpen={inkOpen}
+        onClose={() => setInkOpen(false)}
+        onInsert={onInsert}
+      />
     </div>
   )
 }
