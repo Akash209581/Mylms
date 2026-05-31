@@ -104,6 +104,7 @@ interface TestCase {
   input: string;
   output: string;
   explanation?: string;
+  isHidden?: boolean;
 }
 
 const LANGUAGES = ['Python', 'Java', 'C', 'C++', 'JavaScript', 'Go', 'Rust'];
@@ -122,7 +123,7 @@ export default function EditProgrammingPage() {
   const [explanationContent, setExplanationContent] = useState<Record<string, any> | null>(null);
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [allowedLanguages, setAllowedLanguages] = useState<string[]>(['Python']);
-  const [testCases, setTestCases] = useState<TestCase[]>([{ input: '', output: '', explanation: '' }]);
+  const [testCases, setTestCases] = useState<TestCase[]>([{ input: '', output: '', explanation: '', isHidden: false }]);
   const [builderTab, setBuilderTab] = useState<'explanation' | 'problem' | 'testcases'>('explanation');
 
   useEffect(() => {
@@ -188,7 +189,11 @@ export default function EditProgrammingPage() {
       }
 
       setAllowedLanguages(Array.isArray(content.allowedLanguages) && content.allowedLanguages.length > 0 ? content.allowedLanguages : ['Python']);
-      setTestCases(Array.isArray(content.testCases) && content.testCases.length > 0 ? content.testCases : [{ input: '', output: '', explanation: '' }]);
+      setTestCases(
+        Array.isArray(content.testCases) && content.testCases.length > 0
+          ? content.testCases.map((tc: any) => ({ ...tc, isHidden: tc.isHidden ?? false }))
+          : [{ input: '', output: '', explanation: '', isHidden: false }]
+      );
     } catch (error) {
       console.error('Failed to load programming builder data', error);
       alert('Failed to load programming builder data.');
@@ -197,16 +202,16 @@ export default function EditProgrammingPage() {
     }
   };
 
-  const setTestCase = (index: number, key: keyof TestCase, value: string) => {
+  const setTestCase = (index: number, key: keyof TestCase, value: any) => {
     setTestCases((prev) => prev.map((tc, i) => (i === index ? { ...tc, [key]: value } : tc)));
   };
 
-  const addTestCase = () => setTestCases((prev) => [...prev, { input: '', output: '', explanation: '' }]);
+  const addTestCase = () => setTestCases((prev) => [...prev, { input: '', output: '', explanation: '', isHidden: false }]);
 
   const removeTestCase = (index: number) => {
     setTestCases((prev) => {
       const next = prev.filter((_, i) => i !== index);
-      return next.length > 0 ? next : [{ input: '', output: '', explanation: '' }];
+      return next.length > 0 ? next : [{ input: '', output: '', explanation: '', isHidden: false }];
     });
   };
 
@@ -228,6 +233,7 @@ export default function EditProgrammingPage() {
         input: tc.input?.trim() || '',
         output: tc.output?.trim() || '',
         explanation: tc.explanation?.trim() || undefined,
+        isHidden: !!tc.isHidden,
       }))
       .filter((tc) => tc.input && tc.output);
 
@@ -461,6 +467,28 @@ export default function EditProgrammingPage() {
                       className="input-field mt-3 resize-none font-mono text-sm"
                       placeholder="Explanation (optional)"
                     />
+
+                    <div className="flex items-center gap-6 mt-3 p-3 bg-white/5 rounded-xl border border-white/5">
+                      <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">Test Case Type:</span>
+                      <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-300 select-none">
+                        <input
+                          type="checkbox"
+                          checked={!tc.isHidden}
+                          onChange={() => setTestCase(index, 'isHidden', false)}
+                          className="w-4 h-4 rounded text-primary-500 bg-black border-white/10 focus:ring-primary-500"
+                        />
+                        <span>🟢 Normal (Visible in sample cases)</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-300 select-none">
+                        <input
+                          type="checkbox"
+                          checked={!!tc.isHidden}
+                          onChange={() => setTestCase(index, 'isHidden', true)}
+                          className="w-4 h-4 rounded text-red-500 bg-black border-white/10 focus:ring-red-500"
+                        />
+                        <span>🔒 Hidden (Category evaluation)</span>
+                      </label>
+                    </div>
                   </div>
                 ))}
               </div>

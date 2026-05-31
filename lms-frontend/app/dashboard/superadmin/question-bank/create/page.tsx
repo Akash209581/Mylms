@@ -33,7 +33,7 @@ function CreateQuestionForm() {
         matchingPairs: [{ left: '', right: '' }],
         jumbledStatements: [''],
         problemStatement: '', inputFormat: '', outputFormat: '', constraints: '',
-        testCases: [{ input: '', output: '', explanation: '' }],
+        testCases: [{ input: '', output: '', explanation: '', isHidden: false }],
         codeSnippet: '', expectedOutput: '',
         allowedLanguages: ['Python'],
         extraRightMatches: [''],
@@ -723,9 +723,39 @@ function CreateQuestionForm() {
                                                     <textarea value={tc.explanation} onChange={e => { const tcs = [...form.testCases]; tcs[i].explanation = e.target.value; set('testCases', tcs) }}
                                                         onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
                                                         rows={4} placeholder="Why this input gives this output..." className="input-field font-mono text-sm resize-none" />
+
+                                                    <div className="flex items-center gap-6 mt-3 p-3 bg-white/5 rounded-xl border border-white/5">
+                                                        <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">Test Case Type:</span>
+                                                        <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-300 select-none">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={!tc.isHidden}
+                                                                onChange={() => {
+                                                                    const tcs = [...form.testCases];
+                                                                    tcs[i].isHidden = false;
+                                                                    set('testCases', tcs);
+                                                                }}
+                                                                className="w-4 h-4 rounded text-primary-500 bg-black border-white/10 focus:ring-primary-500"
+                                                            />
+                                                            <span>🟢 Normal (Visible in sample cases)</span>
+                                                        </label>
+                                                        <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-300 select-none">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={!!tc.isHidden}
+                                                                onChange={() => {
+                                                                    const tcs = [...form.testCases];
+                                                                    tcs[i].isHidden = true;
+                                                                    set('testCases', tcs);
+                                                                }}
+                                                                className="w-4 h-4 rounded text-red-500 bg-black border-white/10 focus:ring-red-500"
+                                                            />
+                                                            <span>🔒 Hidden (Category evaluation)</span>
+                                                        </label>
+                                                    </div>
                                                 </div>
                                             ))}
-                                            <button type="button" onClick={() => set('testCases', [...form.testCases, { input: '', output: '', explanation: '' }])}
+                                            <button type="button" onClick={() => set('testCases', [...form.testCases, { input: '', output: '', explanation: '', isHidden: false }])}
                                                 className="btn-secondary px-4 py-2 text-sm">+ Add Test Case</button>
                                         </div>
                                     </div>

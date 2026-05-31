@@ -302,7 +302,10 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                             <div className="space-y-4 animate-in fade-in duration-200">
                                 <h4 className="text-primary-600 text-xs font-bold uppercase mb-2">Sample Test Cases</h4>
                                 <div className="space-y-4">
-                                    {(form.testCases || []).slice(0, 5).map((tc: any, i: number) => (
+                                    {(form.testCases || [])
+                                        .filter((tc: any) => !tc.isHidden)
+                                        .slice(0, 5)
+                                        .map((tc: any, i: number) => (
                                         <div key={i} className="p-4 bg-gray-50/50 rounded-xl border border-gray-100 space-y-3">
                                             <p className="text-[10px] text-gray-500 font-bold uppercase">Sample Case {i + 1}</p>
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

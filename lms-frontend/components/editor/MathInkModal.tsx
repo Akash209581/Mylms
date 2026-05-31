@@ -39,59 +39,113 @@ export default function MathInkModal({ isOpen, onClose, onInsert }: MathInkModal
   const postProcessMath = (text: string): string => {
     let math = text.trim()
 
-    // Replace common math symbol text representations with actual LaTeX commands
-    const replacements: { [key: string]: string } = {
-      'alpha': '\\alpha',
-      'beta': '\\beta',
-      'gamma': '\\gamma',
-      'delta': '\\delta',
-      'theta': '\\theta',
-      'pi': '\\pi',
-      'sigma': '\\sigma',
-      'sum': '\\sum',
-      'int': '\\int',
-      'sqrt': '\\sqrt',
-      'infinity': '\\infty',
-      'inf': '\\infty',
-      'approx': '\\approx',
-      'times': '\\times',
-      'div': '\\div',
-      'doe': '\\partial',
-      'partial': '\\partial',
-      'nexists': '\\nexists',
-      'doesnotexist': '\\nexists',
-      '=': '=',
-      '+': '+',
-      '-': '-',
-      '*': '\\times',
-      '/': '/',
-      '<': '<',
-      '>': '>',
+    // 1. Comprehensive Unicode mathematical symbol translations
+    const unicodeReplacements: { [key: string]: string } = {
+      // Lowercase Greek
+      'α': '\\alpha', 'β': '\\beta', 'γ': '\\gamma', 'δ': '\\delta',
+      'ε': '\\epsilon', 'ζ': '\\zeta', 'η': '\\eta', 'θ': '\\theta',
+      'ι': '\\iota', 'κ': '\\kappa', 'λ': '\\lambda', 'μ': '\\mu',
+      'ν': '\\nu', 'ξ': '\\xi', 'ο': 'o', 'π': '\\pi', 'ρ': '\\rho',
+      'σ': '\\sigma', 'τ': '\\tau', 'υ': '\\upsilon', 'φ': '\\phi',
+      'χ': '\\chi', 'ψ': '\\psi', 'ω': '\\omega',
+
+      // Uppercase Greek
+      'Α': 'A', 'Β': 'B', 'Γ': '\\Gamma', 'Δ': '\\Delta', 'Ε': 'E',
+      'Ζ': 'Z', 'Η': 'H', 'Θ': '\\Theta', 'Ι': 'I', 'Κ': 'K',
+      'Λ': '\\Lambda', 'Μ': 'M', 'Ν': 'N', 'Ξ': '\\Xi', 'Ο': 'O',
+      'Π': '\\Pi', 'Ρ': 'P', 'Σ': '\\Sigma', 'Τ': 'T', 'Υ': '\\Upsilon',
+      'Φ': '\\Phi', 'Χ': 'X', 'Ψ': '\\Psi', 'Ω': '\\Omega',
+
+      // Mathematical Operators & Notations
+      '∑': '\\sum', '∫': '\\int', '√': '\\sqrt', '∞': '\\infty',
+      '±': '\\pm', '∓': '\\mp', '×': '\\times', '·': '\\cdot',
+      '÷': '\\div', '∂': '\\partial', '∇': '\\nabla', '≠': '\\neq',
+      '≤': '\\le', '≥': '\\ge', '≈': '\\approx', '≡': '\\equiv',
+      '∝': '\\propto', '→': '\\rightarrow', '←': '\\leftrightarrow',
+      '↑': '\\uparrow', '↓': '\\downarrow', '⇒': '\\Rightarrow',
+      '⇐': '\\Leftarrow', '⇔': '\\Leftrightarrow', '∀': '\\forall',
+      '∃': '\\exists', '∄': '\\nexists', '∈': '\\in', '∉': '\\notin',
+      '⊂': '\\subset', '⊃': '\\supset', '⊆': '\\subseteq', '⊇': '\\supseteq',
+      '∩': '\\cap', '∪': '\\cup', '∅': '\\emptyset', '∠': '\\angle',
+      '⊥': '\\perp', '′': "'", '″': "''", 'ℏ': '\\hbar',
     }
 
-    // Replace word structures
-    Object.keys(replacements).forEach(key => {
-      const escapedKey = key.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')
-      const regex = new RegExp(`\\b${escapedKey}\\b`, 'gi')
-      math = math.replace(regex, replacements[key])
-    })
+    Object.keys(unicodeReplacements).forEach(char => {
+      math = math.replace(new RegExp(char, 'g'), unicodeReplacements[char]);
+    });
 
-    // Strip all whitespaces to prevent space-clipping fraction errors
+    // 2. Comprehensive word representation replacements
+    const wordReplacements: { [key: string]: string } = {
+      'alpha': '\\alpha', 'beta': '\\beta', 'gamma': '\\gamma', 'delta': '\\delta',
+      'epsilon': '\\epsilon', 'theta': '\\theta', 'lambda': '\\lambda', 'mu': '\\mu',
+      'pi': '\\pi', 'sigma': '\\sigma', 'omega': '\\omega', 'phi': '\\phi', 'psi': '\\psi',
+      'sum': '\\sum', 'int': '\\int', 'integrate': '\\int', 'integral': '\\int',
+      'sqrt': '\\sqrt', 'infinity': '\\infty', 'inf': '\\infty', 'approx': '\\approx',
+      'times': '\\times', 'div': '\\div', 'partial': '\\partial', 'doesnotexist': '\\nexists',
+    }
+
+    Object.keys(wordReplacements).forEach(word => {
+      const regex = new RegExp(`\\b${word}\\b`, 'gi');
+      math = math.replace(regex, wordReplacements[word]);
+    });
+
+    // 3. Structures and limits parsing (Integration, Summation, Limits)
+    // Limits with subscripts: lim_{x->0} or lim(x→0) or lim x->0
+    math = math.replace(/lim(?:sub|[_]|\s+)?\(?([a-zA-Z0-9]+)\s*(?:->|-->|to|\\to|\\rightarrow|→)\s*([a-zA-Z0-9\\_\\+\\-]+)\)?/gi, '\\lim_{$1 \\to $2}');
+
+    // Integrals with limits: int(a to b) or int_a^b
+    math = math.replace(/(?:int|\\int)(?:[_]|\s+)?\(?([a-zA-Z0-9\-+\\infty]+)\s*(?:to|to\s+the|\\to|\^)\s*([a-zA-Z0-9\-+\\infty]+)\)?/gi, '\\int_{$1}^{$2}');
+
+    // Summations with limits: sum(i=0 to n) or sum_i^n
+    math = math.replace(/(?:sum|\\sum)(?:[_]|\s+)?\(?([a-zA-Z0-9\-+\\infty=]+)\s*(?:to|\\to|\^)\s*([a-zA-Z0-9\-+\\infty]+)\)?/gi, '\\sum_{$1}^{$2}');
+
+    // Plain integrals & sigmas
+    math = math.replace(/(?:int|∫)/g, '\\int ');
+    math = math.replace(/(?:sum|∑|Sigma)/g, '\\sum ');
+
+    // 4. Roots parsing
+    math = math.replace(/(?:sqrt|\\sqrt|√)\(([^)]+)\)/gi, '\\sqrt{$1}');
+    math = math.replace(/(?:sqrt|\\sqrt|√)([a-zA-Z0-9])/gi, '\\sqrt{$1}');
+
+    // 5. Auto-typesetting of standard trigonometric and logarithmic functions
+    const mathFunctions = [
+      'sin', 'cos', 'tan', 'cot', 'sec', 'csc',
+      'log', 'ln', 'lg', 'lim', 'det', 'max', 'min',
+      'sinh', 'cosh', 'tanh', 'arcsin', 'arccos', 'arctan'
+    ];
+    mathFunctions.forEach(func => {
+      const regex = new RegExp(`([^\\\\]|^)\\b${func}\\b`, 'g');
+      math = math.replace(regex, `$1\\${func}`);
+    });
+
+    // 6. Matrix formatting: support brackets/parentheses with rows separated by semicolons
+    const parseMatrix = (match: string, content: string) => {
+      if (content.includes(';')) {
+        const rows = content.split(';');
+        const latexRows = rows.map(row => {
+          const elements = row.trim().split(/[\s,]+/);
+          return elements.filter(Boolean).join(' & ');
+        });
+        return '\\begin{pmatrix}' + latexRows.join(' \\\\ ') + '\\end{pmatrix}';
+      }
+      return match;
+    };
+    math = math.replace(/\[([^\]]+)\]/g, parseMatrix);
+    math = math.replace(/\(([^)]+)\)/g, parseMatrix);
+
+    // 7. Strip spacing for standard LaTeX conversions
     math = math.replace(/\s+/g, '')
 
-    // Subscript conversions (e.g. x_i -> x_i, or standard formatting)
-    math = math.replace(/([a-zA-Z])_([0-9a-zA-Z])/g, '$1_{$2}')
+    // 8. Subscript / Superscript range processing
+    math = math.replace(/([a-zA-Z0-9])_([0-9a-zA-Z]+)/g, '$1_{$2}')
+    math = math.replace(/([a-zA-Z0-9])\^([0-9a-zA-Z+\-]+)/g, '$1^{$2}')
+    math = math.replace(/\b([a-zA-Z])([0-9])\b/g, '$1^{$2}')
 
-    // Superscripts (e.g. x2 -> x^2 or a^2 -> a^{2})
-    math = math.replace(/([a-zA-Z])\^?([0-9])/g, '$1^{$2}')
-    math = math.replace(/([a-zA-Z])\^([a-zA-Z])/g, '$1^{$2}')
-
-    // Advanced Paren-Safe Fractions Parser (e.g. d(4+2x)/x -> \frac{d(4+2x)}{x})
+    // 9. Advanced Paren-Safe Fractions Parser
     const convertToFraction = (str: string): string => {
       let result = str
       let slashIndex = result.indexOf('/')
       while (slashIndex !== -1) {
-        // Find the left boundary
         let leftBound = slashIndex - 1
         let openParens = 0
         while (leftBound >= 0) {
@@ -109,7 +163,6 @@ export default function MathInkModal({ isOpen, onClose, onInsert }: MathInkModal
         }
         leftBound = Math.max(0, leftBound + 1)
         
-        // Find the right boundary
         let rightBound = slashIndex + 1
         let closeParens = 0
         while (rightBound < result.length) {
@@ -365,7 +418,7 @@ export default function MathInkModal({ isOpen, onClose, onInsert }: MathInkModal
       const height = maxY - minY
 
       // Horizontal line signature: wide, flat, and reasonable size
-      if (width > 20 && width > height * 3.5) {
+      if (width > 12 && width > height * 1.8) {
         if (width > maxHorizontalSpan) {
           maxHorizontalSpan = width
           bestLineIndex = i
@@ -399,7 +452,7 @@ export default function MathInkModal({ isOpen, onClose, onInsert }: MathInkModal
       const xs = points.map(p => p.x)
       const avgX = xs.reduce((a, b) => a + b, 0) / xs.length
 
-      const tolerance = 60
+      const tolerance = 100
       if (avgX >= lineMinX - tolerance && avgX <= lineMaxX + tolerance) {
         if (avgY < lineY) {
           aboveCount++
@@ -714,9 +767,13 @@ export default function MathInkModal({ isOpen, onClose, onInsert }: MathInkModal
             <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Live Equation Preview</label>
             <div className="w-full min-h-[90px] rounded-2xl border border-white/15 bg-white/5 p-5 flex items-center justify-center overflow-x-auto shadow-inner math-preview-container">
               <style>{`
+                .math-preview-container,
+                .math-preview-container *,
                 .math-preview-container .katex,
                 .math-preview-container .katex * {
                   color: #ffffff !important;
+                  fill: #ffffff !important;
+                  stroke: #ffffff !important;
                 }
               `}</style>
               {latex.trim() ? (

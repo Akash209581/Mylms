@@ -459,7 +459,10 @@ export default function LessonContentRenderer({ content }: { content: any }) {
           <div className="animate-in fade-in duration-200 space-y-4">
             <h4 className="text-indigo-400 text-xs font-bold uppercase mb-2">Sample Test Cases</h4>
             <div className="space-y-4">
-              {(content.testCases || []).slice(0, 5).map((tc: any, i: number) => (
+              {(content.testCases || [])
+                .filter((tc: any) => !tc.isHidden)
+                .slice(0, 5)
+                .map((tc: any, i: number) => (
                 <div key={i} className="p-5 rounded-2xl bg-white/5 border border-white/10 space-y-3">
                   <p className="text-[10px] text-gray-400 font-bold uppercase">Sample Case {i + 1}</p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

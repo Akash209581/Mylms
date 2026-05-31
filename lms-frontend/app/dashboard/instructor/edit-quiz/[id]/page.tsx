@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Sidebar from '@/components/layout/Sidebar';
 import Navbar from '@/components/layout/Navbar';
@@ -37,7 +37,6 @@ export default function EditQuizPage() {
   const [lesson, setLesson] = useState<Lesson | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
 
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('ALL');
@@ -49,6 +48,9 @@ export default function EditQuizPage() {
   const [maxAttempts, setMaxAttempts] = useState(1);
   const [shuffleQuestions, setShuffleQuestions] = useState(false);
   const [shuffleOptions, setShuffleOptions] = useState(false);
+
+  const [autosaveStatus, setAutosaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const isLoadedRef = useRef(false);
 
   useEffect(() => {
     const stored = localStorage.getItem('user');
@@ -97,8 +99,69 @@ export default function EditQuizPage() {
       alert('Failed to load quiz builder data.');
     } finally {
       setLoading(false);
+      setTimeout(() => {
+        isLoadedRef.current = true;
+      }, 100);
     }
   };
+
+  const triggerAutosave = async (
+    qIds: number[],
+    tLimit: number,
+    pPercent: number,
+    mAttempts: number,
+    sQuestions: boolean,
+    sOptions: boolean
+  ) => {
+    if (!isLoadedRef.current || !lesson) return;
+
+    setAutosaveStatus('saving');
+    try {
+      await api.put(`/lessons/${lesson.id}/content`, {
+        content: {
+          type: 'quiz-builder',
+          questionIds: qIds,
+          settings: {
+            timeLimitMinutes: tLimit,
+            passPercentage: pPercent,
+            maxAttempts: mAttempts,
+            shuffleQuestions: sQuestions,
+            shuffleOptions: sOptions,
+          },
+          lastUpdatedAt: new Date().toISOString(),
+        },
+      });
+      setAutosaveStatus('saved');
+    } catch (error) {
+      console.error('Autosave failed:', error);
+      setAutosaveStatus('error');
+    }
+  };
+
+  useEffect(() => {
+    if (!isLoadedRef.current || !lesson) return;
+
+    const delayDebounce = setTimeout(() => {
+      void triggerAutosave(
+        selectedQuestionIds,
+        timeLimitMinutes,
+        passPercentage,
+        maxAttempts,
+        shuffleQuestions,
+        shuffleOptions
+      );
+    }, 600);
+
+    return () => clearTimeout(delayDebounce);
+  }, [
+    selectedQuestionIds,
+    timeLimitMinutes,
+    passPercentage,
+    maxAttempts,
+    shuffleQuestions,
+    shuffleOptions,
+    lesson?.id
+  ]);
 
   const filteredQuestions = useMemo(() => {
     return questions.filter((q) => {
@@ -121,36 +184,7 @@ export default function EditQuizPage() {
     );
   };
 
-  const saveQuiz = async () => {
-    if (!lesson) return;
-    if (selectedQuestionIds.length === 0) {
-      alert('Select at least one question for this quiz.');
-      return;
-    }
 
-    try {
-      setSaving(true);
-      await api.put(`/lessons/${lesson.id}/content`, {
-        content: {
-          type: 'quiz-builder',
-          questionIds: selectedQuestionIds,
-          settings: {
-            timeLimitMinutes,
-            passPercentage,
-            maxAttempts,
-            shuffleQuestions,
-            shuffleOptions,
-          },
-          lastUpdatedAt: new Date().toISOString(),
-        },
-      });
-      alert('Quiz saved successfully.');
-    } catch (error: any) {
-      alert(error?.response?.data?.message || 'Failed to save quiz');
-    } finally {
-      setSaving(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -233,14 +267,30 @@ export default function EditQuizPage() {
               </label>
             </div>
 
-            <div className="mt-5 flex flex-wrap gap-3">
-              <button
-                onClick={saveQuiz}
-                disabled={saving}
-                className="btn-success px-5 py-2.5 disabled:opacity-50"
-              >
-                {saving ? 'Saving...' : 'Save Quiz'}
-              </button>
+            <div className="mt-5 flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2">
+                {autosaveStatus === 'saving' && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 animate-pulse">
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-ping" />
+                    ⚡ Saving changes...
+                  </span>
+                )}
+                {autosaveStatus === 'saved' && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <span>✨ Saved automatically</span>
+                  </span>
+                )}
+                {autosaveStatus === 'error' && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20">
+                    <span>⚠️ Autosave failed</span>
+                  </span>
+                )}
+                {autosaveStatus === 'idle' && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-white/5 text-gray-400 border border-white/5">
+                    <span>✓ Ready</span>
+                  </span>
+                )}
+              </div>
               <button
                 onClick={() =>
                   router.push(
