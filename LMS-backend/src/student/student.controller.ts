@@ -33,6 +33,13 @@ export class StudentController {
     return this.studentService.getStats(req.user.sub);
   }
 
+  @Roles(UserRole.STUDENT)
+  @UseGuards(RolesGuard)
+  @Get('dashboard-details')
+  async getDashboardDetails(@Request() req: any) {
+    return this.studentService.getDashboardDetails(req.user.sub);
+  }
+
   @Get('activity')
   async getActivity(@Request() req: any) {
     return this.studentService.getActivity(req.user.sub);

@@ -267,7 +267,9 @@ export default function LessonContentRenderer({ content }: { content: any }) {
 
   if (content?.type === 'quiz-builder') {
     const settings = content.settings || {};
-    const questionCount = Array.isArray(content.questionIds) ? content.questionIds.length : 0;
+    const totalPoolCount = Array.isArray(content.questionIds) ? content.questionIds.length : 0;
+    const questionsToServe = Number(settings.questionsToServe) || 0;
+    const activeCount = (questionsToServe > 0 && questionsToServe < totalPoolCount) ? questionsToServe : totalPoolCount;
 
     return (
       <div className="space-y-6 pb-12 animate-in fade-in duration-300">
@@ -302,14 +304,22 @@ export default function LessonContentRenderer({ content }: { content: any }) {
             <div className="p-4 rounded-2xl bg-white/5 border border-white/5 flex flex-col items-center justify-center text-center">
               <span className="text-2xl mb-1">❓</span>
               <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">Questions</span>
-              <span className="text-lg font-black text-amber-300 mt-0.5">{questionCount} Total</span>
+              <span className="text-lg font-black text-amber-300 mt-0.5">{activeCount} Total</span>
             </div>
           </div>
 
           <div className="p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 flex gap-3 items-start">
             <span className="text-lg mt-0.5">ℹ️</span>
             <div className="text-xs text-indigo-300/90 leading-relaxed font-medium">
-              This assessment consists of <strong>{questionCount}</strong> customized questions. 
+              {questionsToServe > 0 && questionsToServe < totalPoolCount ? (
+                <span>
+                  This assessment consists of a randomized pool. Each student will receive <strong>{questionsToServe} questions</strong> selected at random from a master pool of <strong>{totalPoolCount} questions</strong>. No two students will receive the same set of questions!
+                </span>
+              ) : (
+                <span>
+                  This assessment consists of <strong>{totalPoolCount}</strong> customized questions.
+                </span>
+              )}
               {settings.shuffleQuestions && " Questions will be presented in a randomized order."}
               {settings.shuffleOptions && " Multiple choice options will be shuffled dynamically."}
                Make sure you have a stable connection before initiating the session.

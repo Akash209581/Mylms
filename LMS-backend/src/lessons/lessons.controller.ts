@@ -188,6 +188,11 @@ export class LessonsController {
           throw new HttpException(`Invalid quiz content: settings.${field} must be boolean`, HttpStatus.BAD_REQUEST);
         }
       }
+      if (settings.questionsToServe !== undefined && settings.questionsToServe !== null) {
+        if (typeof settings.questionsToServe !== 'number' || Number.isNaN(settings.questionsToServe)) {
+          throw new HttpException('Invalid quiz content: settings.questionsToServe must be a number', HttpStatus.BAD_REQUEST);
+        }
+      }
       return;
     }
 

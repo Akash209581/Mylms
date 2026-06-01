@@ -48,6 +48,7 @@ export default function EditQuizPage() {
   const [maxAttempts, setMaxAttempts] = useState(1);
   const [shuffleQuestions, setShuffleQuestions] = useState(false);
   const [shuffleOptions, setShuffleOptions] = useState(false);
+  const [questionsToServe, setQuestionsToServe] = useState(0);
 
   const [autosaveStatus, setAutosaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const isLoadedRef = useRef(false);
@@ -92,6 +93,7 @@ export default function EditQuizPage() {
       setMaxAttempts(Number(settings.maxAttempts) || 1);
       setShuffleQuestions(Boolean(settings.shuffleQuestions));
       setShuffleOptions(Boolean(settings.shuffleOptions));
+      setQuestionsToServe(Number(settings.questionsToServe) || 0);
 
       setQuestions(Array.isArray(questionRes.data) ? questionRes.data : []);
     } catch (error) {
@@ -111,7 +113,8 @@ export default function EditQuizPage() {
     pPercent: number,
     mAttempts: number,
     sQuestions: boolean,
-    sOptions: boolean
+    sOptions: boolean,
+    qServe: number
   ) => {
     if (!isLoadedRef.current || !lesson) return;
 
@@ -127,6 +130,7 @@ export default function EditQuizPage() {
             maxAttempts: mAttempts,
             shuffleQuestions: sQuestions,
             shuffleOptions: sOptions,
+            questionsToServe: qServe,
           },
           lastUpdatedAt: new Date().toISOString(),
         },
@@ -148,7 +152,8 @@ export default function EditQuizPage() {
         passPercentage,
         maxAttempts,
         shuffleQuestions,
-        shuffleOptions
+        shuffleOptions,
+        questionsToServe
       );
     }, 600);
 
@@ -160,6 +165,7 @@ export default function EditQuizPage() {
     maxAttempts,
     shuffleQuestions,
     shuffleOptions,
+    questionsToServe,
     lesson?.id
   ]);
 
@@ -214,7 +220,7 @@ export default function EditQuizPage() {
               Topic: <span className="text-white font-semibold">{lesson?.title || 'Untitled Topic'}</span>
             </p>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-5">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-5">
               <div>
                 <label className="block text-sm text-gray-300 mb-2">Time Limit (minutes)</label>
                 <input
@@ -243,6 +249,23 @@ export default function EditQuizPage() {
                   min={1}
                   value={maxAttempts}
                   onChange={(e) => setMaxAttempts(Math.max(1, Number(e.target.value) || 1))}
+                  className="input-field w-full"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-300 mb-2 flex items-center justify-between">
+                  <span>Questions to Serve</span>
+                  <span className="text-[9px] text-indigo-400 font-bold bg-indigo-500/10 px-1.5 py-0.5 rounded border border-indigo-500/20">NEW</span>
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  placeholder={`All (${selectedQuestionIds.length})`}
+                  value={questionsToServe || ''}
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    setQuestionsToServe(val >= 0 ? val : 0);
+                  }}
                   className="input-field w-full"
                 />
               </div>

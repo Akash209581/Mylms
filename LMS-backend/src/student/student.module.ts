@@ -11,10 +11,11 @@ import { Lesson } from '../entities/lesson.entity';
 import { Course } from '../entities/course.entity';
 import { CourseModule } from '../entities/module.entity';
 import { Chapter } from '../entities/chapter.entity';
+import { Contest } from '../entities/contest.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, Progress, Enrollment, UserBadge, Badge, Lesson, Course, CourseModule, Chapter]),
+    TypeOrmModule.forFeature([User, Progress, Enrollment, UserBadge, Badge, Lesson, Course, CourseModule, Chapter, Contest]),
   ],
   controllers: [StudentController],
   providers: [StudentService],
