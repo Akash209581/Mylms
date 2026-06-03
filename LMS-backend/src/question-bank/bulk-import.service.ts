@@ -27,7 +27,7 @@ export class BulkImportService {
   ): Promise<BulkImportResponseDto> {
     this.parser.validateFile(file);
 
-    const rows = this.parser.parseFile(file);
+    const rows = await this.parser.parseFile(file);
     const batchSize = 50;
     const errorDetails: ErrorDetail[] = [];
     let successCount = 0;
@@ -68,8 +68,8 @@ export class BulkImportService {
       }
 
       const question = this.questionRepository.create({
-        ...result.question,
-        questionNumber: await this.generateQuestionNumber(result.question.type, collegeId),
+        ...result.question!,
+        questionNumber: await this.generateQuestionNumber(result.question!.type, collegeId),
         collegeId,
         isActive: true,
       });

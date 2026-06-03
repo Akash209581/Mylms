@@ -2,6 +2,7 @@
 'use client'
 
 import { ChangeEvent, useCallback, useEffect, useRef, useState } from 'react'
+import { sanitizeHtml } from '@/lib/sanitize'
 import './LessonEditor.css'
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
@@ -150,13 +151,14 @@ function inlineHTML(text: string): string {
   if (!s.includes('<span')) return applyInline(s)
   // Split around <span ...>...</span> blocks (capture group keeps them in the array)
   const parts = s.split(/(<span[^>]*>[\s\S]*?<\/span>)/g)
-  return parts.map((part, i) => {
+  const resultHtml = parts.map((part, i) => {
     if (i % 2 === 0) return applyInline(part)  // plain text between spans
     // It’s a span — preserve wrapper, process content inside
     const m = part.match(/^(<span[^>]*>)([\s\S]*?)(<\/span>)$/)
     if (!m) return applyInline(part)
     return `${m[1]}${applyInline(m[2])}${m[3]}`
   }).join('')
+  return sanitizeHtml(resultHtml)
 }
 
 function buildTableHTML(rows: string[]): string {
@@ -246,7 +248,7 @@ function renderMarkdown(md: string): string {
   for (const [id, val] of Object.entries(mathMap)) {
     finalHtml = finalHtml.replace(id, val)
   }
-  return finalHtml
+  return sanitizeHtml(finalHtml)
 }
 
 /* ═══════════════════════════════════════════════════════

@@ -15,6 +15,7 @@ import { JwtAuthGuard } from '../common/jwt.guard';
 import { RolesGuard } from '../common/roles.guard';
 import { Roles } from '../common/roles.decorator';
 import { UserRole } from '../entities/user.entity';
+import { UpdateStudentProfileDto } from './student.dto';
 
 @Controller('student')
 @UseGuards(JwtAuthGuard)
@@ -64,7 +65,7 @@ export class StudentController {
   }
 
   @Patch('profile')
-  async updateProfile(@Request() req: any, @Body() updateData: any) {
+  async updateProfile(@Request() req: any, @Body() updateData: UpdateStudentProfileDto) {
     return this.studentService.updateProfile(req.user.sub, updateData);
   }
 

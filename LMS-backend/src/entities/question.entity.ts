@@ -7,7 +7,6 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { College } from './college.entity';
-import { Organization } from './organization.entity';
 
 
 export enum QuestionType {
@@ -126,15 +125,7 @@ export class Question {
   @Column({ name: 'college_id', nullable: true })
   collegeId: number;
 
-  // Organization - Multi-tenant support
-  @Column({ name: 'organization_id', nullable: true })
-  organizationId: number;
 
-  @ManyToOne(() => Organization, (organization) => organization.questions, {
-    onDelete: 'CASCADE',
-  })
-  @JoinColumn({ name: 'organization_id' })
-  organization: Organization;
 
   @ManyToOne(() => College, (college) => college.questions)
   @JoinColumn({ name: 'college_id' })

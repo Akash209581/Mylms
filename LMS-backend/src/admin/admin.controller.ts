@@ -8,6 +8,8 @@ import {
   Body,
   UseGuards,
   Request,
+  HttpException,
+  HttpStatus,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/jwt.guard';
 import { RolesGuard } from '../common/roles.guard';
@@ -156,7 +158,7 @@ export class AdminController {
       return qb;
     }
 
-    const collegeConditions = [];
+    const collegeConditions: string[] = [];
     const params: any = {};
 
     if (userCollegeId) {
@@ -239,6 +241,10 @@ export class AdminController {
       select: ['id', 'name', 'email'],
     });
 
+    if (!approver) {
+      throw new HttpException('Approver user not found', HttpStatus.UNAUTHORIZED);
+    }
+
     // Update course status
     course.status = CourseStatus.APPROVED;
     course.approvedBy = req.user.sub;
@@ -294,6 +300,10 @@ export class AdminController {
       where: { id: req.user.sub },
       select: ['id', 'name', 'email'],
     });
+
+    if (!rejector) {
+      throw new HttpException('Rejector user not found', HttpStatus.UNAUTHORIZED);
+    }
 
     // Update course status
     course.status = CourseStatus.REJECTED;

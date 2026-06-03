@@ -1,5 +1,5 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
-import * as XLSX from 'xlsx';
+import * as ExcelJS from 'exceljs';
 import { ParsedQuestionRow } from './bulk-import.dto';
 
 @Injectable()
@@ -58,23 +58,57 @@ export class FileParserService {
     return isNaN(num) ? undefined : num;
   }
 
-  parseFile(file: any): ParsedQuestionRow[] {
-    const workbook = XLSX.read(file.buffer, { type: 'buffer' });
-    const sheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[sheetName];
-    const data = XLSX.utils.sheet_to_json(worksheet);
+  async parseFile(file: any): Promise<ParsedQuestionRow[]> {
+    const workbook = new ExcelJS.Workbook();
+    try {
+      await workbook.xlsx.load(file.buffer);
+    } catch (err: any) {
+      throw new BadRequestException('Failed to parse Excel file: ' + err.message);
+    }
 
-    if (!data || data.length === 0) {
+    const worksheet = workbook.worksheets[0];
+    if (!worksheet) {
+      throw new BadRequestException('Excel file has no worksheets');
+    }
+
+    const headers: string[] = [];
+    const firstRow = worksheet.getRow(1);
+    firstRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+      headers[colNumber] = cell.text ? cell.text.trim() : '';
+    });
+
+    const parsedRows: ParsedQuestionRow[] = [];
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return; // skip header row
+      const rowData: Record<string, any> = {};
+      let hasValues = false;
+      row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+        const header = headers[colNumber];
+        if (header) {
+          const val = cell.text;
+          if (val !== undefined && val !== null) {
+            rowData[header] = val;
+            if (val.trim() !== '') {
+              hasValues = true;
+            }
+          }
+        }
+      });
+
+      if (hasValues) {
+        parsedRows.push(this.mapRowToQuestion(rowData, rowNumber));
+      }
+    });
+
+    if (parsedRows.length === 0) {
       throw new BadRequestException('File is empty or invalid');
     }
 
-    if (data.length > 1000) {
+    if (parsedRows.length > 1000) {
       throw new BadRequestException('File contains more than 1000 rows');
     }
 
-    return data.map((row: any, index) =>
-      this.mapRowToQuestion(row, index + 2),
-    );
+    return parsedRows;
   }
 
   private mapRowToQuestion(
@@ -83,13 +117,13 @@ export class FileParserService {
   ): ParsedQuestionRow {
     return {
       rowNumber,
-      type: this.getValue(row, ['type', 'questiontype', 'question_type']),
+      type: this.getValue(row, ['type', 'questiontype', 'question_type']) || '',
       questionText: this.getValue(row, [
         'questiontext',
         'question_text',
         'question',
-      ]),
-      topic: this.getValue(row, ['topic', 'topicnames', 'topic_names']),
+      ]) || '',
+      topic: this.getValue(row, ['topic', 'topicnames', 'topic_names']) || '',
       difficulty: this.getValue(row, ['difficulty', 'level']),
       companiesAppeared: this.getValue(row, [
         'companies',

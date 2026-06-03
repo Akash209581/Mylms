@@ -7,6 +7,8 @@ import {
   Body,
   UseGuards,
   ParseIntPipe,
+  Request,
+  NotFoundException,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/jwt.guard';
 import { RolesGuard } from '../common/roles.guard';
@@ -17,7 +19,9 @@ import { User, UserRole } from '../entities/user.entity';
 import { Course, CourseStatus } from '../entities/course.entity';
 import { Enrollment } from '../entities/enrollment.entity';
 import { College } from '../entities/college.entity';
-import { IsEnum, IsOptional } from 'class-validator';
+import { AuditLog } from '../entities/audit-log.entity';
+import { Settings } from '../entities/settings.entity';
+import { IsEnum } from 'class-validator';
 
 class UpdateRoleDto {
   @IsEnum(UserRole) role: UserRole;
@@ -32,6 +36,8 @@ export class SuperadminController {
     @InjectRepository(Course) private courseRepo: Repository<Course>,
     @InjectRepository(Enrollment) private enrollRepo: Repository<Enrollment>,
     @InjectRepository(College) private collegeRepo: Repository<College>,
+    @InjectRepository(AuditLog) private auditRepo: Repository<AuditLog>,
+    @InjectRepository(Settings) private settingsRepo: Repository<Settings>,
   ) { }
 
   @Get('dashboard')
@@ -205,14 +211,51 @@ export class SuperadminController {
   }
 
   @Put('users/:id/role')
-  async changeRole(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateRoleDto) {
+  async changeRole(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateRoleDto,
+    @Request() req: any,
+  ) {
+    const user = await this.userRepo.findOne({ where: { id } });
+    if (!user) throw new NotFoundException('User not found');
+    const oldRole = user.role;
     await this.userRepo.update(id, { role: dto.role });
+
+    // Log audit trail
+    const audit = this.auditRepo.create({
+      actorId: req.user.sub,
+      actorName: req.user.name || req.user.email,
+      actorRole: req.user.role,
+      action: 'ROLE_CHANGED',
+      targetType: 'User',
+      targetId: id,
+      targetName: user.name,
+      details: JSON.stringify({ oldRole, newRole: dto.role }),
+    });
+    await this.auditRepo.save(audit);
+
     return { message: 'Role updated' };
   }
 
   @Delete('users/:id')
-  async deleteUser(@Param('id', ParseIntPipe) id: number) {
+  async deleteUser(@Param('id', ParseIntPipe) id: number, @Request() req: any) {
+    const user = await this.userRepo.findOne({ where: { id } });
+    if (!user) throw new NotFoundException('User not found');
     await this.userRepo.delete(id);
+
+    // Log audit trail
+    const audit = this.auditRepo.create({
+      actorId: req.user.sub,
+      actorName: req.user.name || req.user.email,
+      actorRole: req.user.role,
+      action: 'USER_DELETED',
+      targetType: 'User',
+      targetId: id,
+      targetName: user.name,
+      details: JSON.stringify({ email: user.email }),
+    });
+    await this.auditRepo.save(audit);
+
     return { message: 'User deleted' };
   }
 
@@ -230,9 +273,7 @@ export class SuperadminController {
     const college = await this.collegeRepo.findOne({ where: { id: collegeId } });
     const collegeName = college?.name ?? '';
 
-    // Courses directly belonging to this college:
-    // 1. Course has college_id set to this college
-    // 2. OR Course has no college_id but its instructor belongs to this college (by ID or legacy name)
+    // Courses directly belonging to this college
     const directCourses = await this.courseRepo
       .createQueryBuilder('c')
       .leftJoinAndSelect('c.instructor', 'instructor')
@@ -245,7 +286,6 @@ export class SuperadminController {
       .getMany();
 
     // Courses assigned to this college via the course_assignments join table
-    // (Typically courses created by Super Admin or other colleges and shared)
     const assignedCourses = await this.courseRepo
       .createQueryBuilder('c')
       .leftJoinAndSelect('c.instructor', 'instructor')
@@ -277,33 +317,68 @@ export class SuperadminController {
   }
 
   @Delete('courses/:id')
-  async deleteCourse(@Param('id', ParseIntPipe) id: number) {
+  async deleteCourse(@Param('id', ParseIntPipe) id: number, @Request() req: any) {
+    const course = await this.courseRepo.findOne({ where: { id } });
+    if (!course) throw new NotFoundException('Course not found');
     await this.courseRepo.delete(id);
+
+    // Log audit trail
+    const audit = this.auditRepo.create({
+      actorId: req.user.sub,
+      actorName: req.user.name || req.user.email,
+      actorRole: req.user.role,
+      action: 'COURSE_DELETED',
+      targetType: 'Course',
+      targetId: id,
+      targetName: course.title,
+      details: JSON.stringify({ category: course.category }),
+    });
+    await this.auditRepo.save(audit);
+
     return { message: 'Course deleted' };
   }
 
   @Get('audit-log')
   async getAuditLog() {
-    // Returns audit log entries — will be populated once audit_log entity is added
-    // For now returns empty array gracefully
-    return [];
+    return this.auditRepo.find({
+      order: { createdAt: 'DESC' },
+      take: 100,
+    });
   }
 
   @Get('settings')
   async getSettings() {
+    const dbSettings = await this.settingsRepo.find();
+    const settingsMap = dbSettings.reduce((acc, s) => {
+      let val: any = s.value;
+      if (val === 'true') val = true;
+      else if (val === 'false') val = false;
+      else if (!isNaN(Number(val))) val = Number(val);
+      acc[s.key] = val;
+      return acc;
+    }, {} as any);
+
     return {
-      platformName: 'EduVerse LMS',
-      supportEmail: 'support@eduverse.in',
-      maintenanceMode: false,
-      allowRegistrations: true,
-      maxCoursesPerInstructor: 20,
-      defaultEnrollmentApproval: 'AUTO',
+      platformName: settingsMap.platformName ?? 'EduVerse LMS',
+      supportEmail: settingsMap.supportEmail ?? 'support@eduverse.in',
+      maintenanceMode: settingsMap.maintenanceMode ?? false,
+      allowRegistrations: settingsMap.allowRegistrations ?? true,
+      maxCoursesPerInstructor: settingsMap.maxCoursesPerInstructor ?? 20,
+      defaultEnrollmentApproval: settingsMap.defaultEnrollmentApproval ?? 'AUTO',
     };
   }
 
   @Put('settings')
   async updateSettings(@Body() body: any) {
-    // Settings persistence can be added with a Settings entity later
+    for (const [key, value] of Object.entries(body)) {
+      let s = await this.settingsRepo.findOne({ where: { key } });
+      if (!s) {
+        s = this.settingsRepo.create({ key, value: String(value) });
+      } else {
+        s.value = String(value);
+      }
+      await this.settingsRepo.save(s);
+    }
     return { message: 'Settings saved', data: body };
   }
 }

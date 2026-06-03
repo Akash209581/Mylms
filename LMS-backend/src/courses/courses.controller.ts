@@ -73,7 +73,7 @@ export class CoursesController {
     }
 
     // Common WHERE clause for matching college (own + assigned)
-    const collegeConditions = [];
+    const collegeConditions: string[] = [];
     if (userCollegeId) {
       collegeConditions.push('course.collegeId = :userCollegeId OR assignedCollege.id = :userCollegeId');
     }
@@ -168,7 +168,7 @@ export class CoursesController {
     }
 
     if (effectiveCollegeId || effectiveCollegeName) {
-      const collegeConditions = [];
+      const collegeConditions: string[] = [];
       const params: any = {};
 
       if (effectiveCollegeId) {
@@ -193,31 +193,67 @@ export class CoursesController {
       .getManyAndCount();
 
     // Enhance with module and lesson counts
-    const coursesWithStats = await Promise.all(
-      courses.map(async (course) => {
-        const moduleCount = await this.moduleRepo.count({
-          where: { courseId: course.id },
-        });
-        const modules = await this.moduleRepo.find({
-          where: { courseId: course.id },
-        });
-        const chapters = await this.chapterRepo.find({
-          where: { moduleId: In(modules.map((m) => m.id)) },
-        });
-        const lessonCount = chapters.length > 0 
-          ? await this.lessonRepo.count({
-              where: { chapterId: In(chapters.map((c) => c.id)) },
-            })
-          : 0;
+    const courseIds = courses.map((c) => c.id);
+    const modulesByCourse: { [key: number]: CourseModule[] } = {};
+    const chaptersByModule: { [key: number]: Chapter[] } = {};
+    const lessonsByChapter: { [key: number]: Lesson[] } = {};
 
+    if (courseIds.length > 0) {
+      const allModules = await this.moduleRepo.find({
+        where: { courseId: In(courseIds) },
+      });
+      allModules.forEach((m) => {
+        if (!modulesByCourse[m.courseId]) {
+          modulesByCourse[m.courseId] = [];
+        }
+        modulesByCourse[m.courseId].push(m);
+      });
 
-        return {
-          ...course,
-          moduleCount,
-          lessonCount,
-        };
-      }),
-    );
+      const moduleIds = allModules.map((m) => m.id);
+      if (moduleIds.length > 0) {
+        const allChapters = await this.chapterRepo.find({
+          where: { moduleId: In(moduleIds) },
+        });
+        allChapters.forEach((c) => {
+          if (!chaptersByModule[c.moduleId]) {
+            chaptersByModule[c.moduleId] = [];
+          }
+          chaptersByModule[c.moduleId].push(c);
+        });
+
+        const chapterIds = allChapters.map((c) => c.id);
+        if (chapterIds.length > 0) {
+          const allLessons = await this.lessonRepo.find({
+            where: { chapterId: In(chapterIds) },
+          });
+          allLessons.forEach((l) => {
+            if (!lessonsByChapter[l.chapterId]) {
+              lessonsByChapter[l.chapterId] = [];
+            }
+            lessonsByChapter[l.chapterId].push(l);
+          });
+        }
+      }
+    }
+
+    const coursesWithStats = courses.map((course) => {
+      const modules = modulesByCourse[course.id] || [];
+      const moduleCount = modules.length;
+      let lessonCount = 0;
+      modules.forEach((m) => {
+        const chapters = chaptersByModule[m.id] || [];
+        chapters.forEach((ch) => {
+          const lessons = lessonsByChapter[ch.id] || [];
+          lessonCount += lessons.length;
+        });
+      });
+
+      return {
+        ...course,
+        moduleCount,
+        lessonCount,
+      };
+    });
 
     console.log(`✅ Found ${total} courses, returning page ${pageNum}`);
 
@@ -314,53 +350,82 @@ export class CoursesController {
   }
 
   private async getCourseWithStructure(course: Course) {
-    // Fetch modules
+    // Fetch all modules
     const modules = await this.moduleRepo.find({
       where: { courseId: course.id },
       order: { order: 'ASC' },
     });
 
-    const modulesWithChapters = await Promise.all(
-      modules.map(async (module) => {
-        const chapters = await this.chapterRepo.find({
-          where: { moduleId: module.id },
-          order: { order: 'ASC' },
+    if (modules.length === 0) {
+      return {
+        ...course,
+        modules: [],
+      };
+    }
+
+    const moduleIds = modules.map((m) => m.id);
+    const chapters = await this.chapterRepo.find({
+      where: { moduleId: In(moduleIds) },
+      order: { order: 'ASC' },
+    });
+
+    const chaptersByModule: { [key: number]: Chapter[] } = {};
+    chapters.forEach((c) => {
+      if (!chaptersByModule[c.moduleId]) {
+        chaptersByModule[c.moduleId] = [];
+      }
+      chaptersByModule[c.moduleId].push(c);
+    });
+
+    const lessonsByChapter: { [key: number]: Lesson[] } = {};
+    if (chapters.length > 0) {
+      const chapterIds = chapters.map((c) => c.id);
+      const lessons = await this.lessonRepo.find({
+        where: { chapterId: In(chapterIds) },
+        order: { order: 'ASC' },
+      });
+
+      lessons.forEach((l) => {
+        if (!lessonsByChapter[l.chapterId]) {
+          lessonsByChapter[l.chapterId] = [];
+        }
+        lessonsByChapter[l.chapterId].push(l);
+      });
+
+      if (lessons.length > 0) {
+        const lessonIds = lessons.map((l) => l.id);
+        const resources = await this.resourceRepo.find({
+          where: { lessonId: In(lessonIds) },
+          order: { createdAt: 'ASC' },
         });
 
-        const chaptersWithLessons = await Promise.all(
-          chapters.map(async (chapter) => {
-            const lessons = await this.lessonRepo.find({
-              where: { chapterId: chapter.id },
-              order: { order: 'ASC' },
-            });
+        const resourcesByLesson: { [key: number]: Resource[] } = {};
+        resources.forEach((r) => {
+          if (!resourcesByLesson[r.lessonId]) {
+            resourcesByLesson[r.lessonId] = [];
+          }
+          resourcesByLesson[r.lessonId].push(r);
+        });
 
-            const lessonsWithResources = await Promise.all(
-              lessons.map(async (lesson) => {
-                const resources = await this.resourceRepo.find({
-                  where: { lessonId: lesson.id },
-                  order: { createdAt: 'ASC' },
-                });
+        // Attach resources to lessons
+        lessons.forEach((l) => {
+          (l as any).resources = resourcesByLesson[l.id] || [];
+        });
+      }
 
-                return {
-                  ...lesson,
-                  resources,
-                };
-              }),
-            );
+      // Attach lessons to chapters
+      chapters.forEach((c) => {
+        (c as any).lessons = lessonsByChapter[c.id] || [];
+      });
+    }
 
-            return {
-              ...chapter,
-              lessons: lessonsWithResources,
-            };
-          }),
-        );
-
-        return {
-          ...module,
-          chapters: chaptersWithLessons,
-        };
-      }),
-    );
+    // Attach chapters to modules
+    const modulesWithChapters = modules.map((m) => {
+      return {
+        ...m,
+        chapters: chaptersByModule[m.id] || [],
+      };
+    });
 
     return {
       ...course,
@@ -384,7 +449,11 @@ export class CoursesController {
         select: ['id', 'name', 'email', 'role', 'collegeId'],
       });
 
-      console.log('User found:', user?.name, 'Role:', user?.role, 'College:', user?.collegeId);
+      if (!user) {
+        throw new HttpException('User not found', HttpStatus.UNAUTHORIZED);
+      }
+
+      console.log('User found:', user.name, 'Role:', user.role, 'College:', user.collegeId);
 
       // Validate college access for ADMIN/INSTRUCTOR
       if (user.role !== UserRole.SUPERADMIN && !user.collegeId) {

@@ -71,7 +71,6 @@ export default function Sidebar({ role }: { role?: string }) {
             headers: getAuthHeaders() 
         })
         localStorage.removeItem('user')
-        localStorage.removeItem('access_token')
         router.push('/login')
     }
 

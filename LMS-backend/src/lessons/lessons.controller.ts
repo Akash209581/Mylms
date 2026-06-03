@@ -94,6 +94,8 @@ export class LessonsController {
       relations: ['module', 'module.course'],
     });
 
+    if (!chapter) throw new HttpException('Chapter not found', HttpStatus.NOT_FOUND);
+
     if (req.user.role !== UserRole.SUPERADMIN && chapter.module.course.instructorId !== req.user.sub) {
       throw new HttpException('Forbidden', HttpStatus.FORBIDDEN);
     }
@@ -112,6 +114,8 @@ export class LessonsController {
       where: { id: lesson.chapterId },
       relations: ['module', 'module.course'],
     });
+
+    if (!chapter) throw new HttpException('Chapter not found', HttpStatus.NOT_FOUND);
 
     if (req.user.role !== UserRole.SUPERADMIN && chapter.module.course.instructorId !== req.user.sub) {
       throw new HttpException('Forbidden', HttpStatus.FORBIDDEN);
@@ -141,6 +145,7 @@ export class LessonsController {
         where: { id: lesson.chapterId },
         relations: ['module', 'module.course'],
       });
+      if (!chapter) throw new HttpException('Chapter not found', HttpStatus.NOT_FOUND);
       if (chapter.module.course.instructorId !== req.user.sub) {
         throw new HttpException('Forbidden', HttpStatus.FORBIDDEN);
       }

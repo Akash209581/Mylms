@@ -8,6 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
 import { User, UserRole } from '../entities/user.entity';
 import { SignupDto, LoginDto, CreateUserDto, SuperAdminCreateUserDto } from './auth.dto';
 import { College } from '../entities/college.entity';
@@ -23,6 +24,7 @@ export class AuthService {
   ) {}
 
   async signup(dto: SignupDto) {
+    await this.checkPasswordBreached(dto.password);
     const existing = await this.userRepository.findOne({
       where: { email: dto.email },
     });
@@ -88,7 +90,7 @@ export class AuthService {
     };
     const token = this.jwtService.sign(payload);
 
-    let college = null;
+    let college: College | null = null;
     if (user.collegeId) {
       college = await this.collegeRepository.findOne({ where: { id: user.collegeId } });
     } else if (user.collegeName) {
@@ -113,7 +115,7 @@ export class AuthService {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) throw new UnauthorizedException();
     
-    let college = null;
+    let college: College | null = null;
     if (user.collegeId) {
       college = await this.collegeRepository.findOne({ where: { id: user.collegeId } });
     } else if (user.collegeName) {
@@ -136,7 +138,7 @@ export class AuthService {
     if (existing) throw new ConflictException('Email already registered');
 
     // Validate role based on creator's role
-    const validRoles = this.getAllowedRolesToCreate(creatorRole);
+    const validRoles = this.getAllowedRolesToCreate(creatorRole || '');
     if (!validRoles.includes(dto.role)) {
       throw new BadRequestException(`${creatorRole} can only create: ${validRoles.join(', ')}`);
     }
@@ -171,6 +173,7 @@ export class AuthService {
       throw new BadRequestException('Invalid creator role');
     }
 
+    await this.checkPasswordBreached(dto.password);
     const passwordHash = await bcrypt.hash(dto.password, 10);
     const user = this.userRepository.create({
       name: dto.name,
@@ -246,6 +249,7 @@ export class AuthService {
       await this.collegeRepository.save(college);
     }
 
+    await this.checkPasswordBreached(dto.password);
     const passwordHash = await bcrypt.hash(dto.password, 10);
     const user = this.userRepository.create({
       name: dto.name,
@@ -271,5 +275,34 @@ export class AuthService {
       message: `${dto.role} account created successfully in ${college.name}`,
       user: result,
     };
+  }
+
+  private async checkPasswordBreached(password: string): Promise<void> {
+    const sha1Hash = crypto.createHash('sha1').update(password).digest('hex').toUpperCase();
+    const prefix = sha1Hash.substring(0, 5);
+    const suffix = sha1Hash.substring(5);
+
+    try {
+      const response = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`);
+      if (!response.ok) {
+        console.error(`PwnedPasswords API returned status ${response.status}`);
+        return;
+      }
+      const data = await response.text();
+      const lines = data.split('\n');
+      const matches = lines.some((line) => {
+        const parts = line.split(':');
+        return parts[0].trim() === suffix;
+      });
+
+      if (matches) {
+        throw new BadRequestException('This password has been found in a public data breach and is unsafe. Please choose a different password.');
+      }
+    } catch (err) {
+      if (err instanceof BadRequestException) {
+        throw err;
+      }
+      console.warn('Could not complete HaveIBeenPwned check:', err.message);
+    }
   }
 }

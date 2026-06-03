@@ -2,6 +2,7 @@
 import React, { useRef, useState, useEffect } from 'react'
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
+import { sanitizeHtml } from '@/lib/sanitize'
 
 interface MathInkModalProps {
   isOpen: boolean
@@ -779,7 +780,7 @@ export default function MathInkModal({ isOpen, onClose, onInsert }: MathInkModal
               {latex.trim() ? (
                 <div 
                   className="text-white text-xl text-center leading-relaxed select-all"
-                  dangerouslySetInnerHTML={{ __html: katexHTML }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(katexHTML) }}
                 />
               ) : (
                 <span className="text-gray-500 italic text-sm">Preview of recognized formula will render here</span>

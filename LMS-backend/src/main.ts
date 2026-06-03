@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
+import { HttpExceptionFilter } from './common/http-exception.filter';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const cookieParser = require('cookie-parser');
 
@@ -28,12 +29,14 @@ async function bootstrap() {
   app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+  app.useGlobalFilters(new HttpExceptionFilter());
+
   const allowedOrigins = [
     process.env.FRONTEND_URL,
     'http://localhost:3000',
     'http://localhost:3001',
     'http://localhost:3002',
-    'https://lms-frontend-ashy.vercel.app', // Adding common Vercel/Render patterns
+    'https://lms-frontend-ashy.vercel.app',
   ].filter(Boolean);
 
   app.enableCors({
@@ -44,17 +47,14 @@ async function bootstrap() {
       }
 
       const isAllowed = 
-        allowedOrigins.some((ao) => origin === ao || origin.startsWith(ao as string)) ||
-        /^http:\/\/localhost:\d+$/.test(origin) ||
-        origin.includes('.onrender.com') ||
-        origin.includes('vercel.app');
+        allowedOrigins.includes(origin) ||
+        /^http:\/\/localhost:\d+$/.test(origin);
 
       if (isAllowed) {
-        console.log(`✅ CORS: Allowed origin -> ${origin}`);
+        console.log(`CORS: Allowed origin -> ${origin}`);
         callback(null, true);
       } else {
-        console.warn(`❌ CORS: Blocked origin -> ${origin}`);
-        // Return false to block at browser level, but DON'T throw an Error (prevents 500)
+        console.warn(`CORS: Blocked origin -> ${origin}`);
         callback(null, false);
       }
     },
@@ -63,6 +63,6 @@ async function bootstrap() {
 
   const port = process.env.PORT || 3001;
   await app.listen(port);
-  console.log(`🚀 LMS Backend running on port ${port}`);
+  console.log(`LMS Backend running on port ${port}`);
 }
 bootstrap();

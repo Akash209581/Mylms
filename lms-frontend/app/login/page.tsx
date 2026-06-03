@@ -23,7 +23,6 @@ export default function LoginPage() {
             const data = await res.json()
             if (!res.ok) throw new Error(data.message || 'Login failed')
             localStorage.setItem('user', JSON.stringify(data.user))
-            localStorage.setItem('access_token', data.access_token)
             const role = data.user.role
             if (role === 'STUDENT') router.push('/dashboard/student')
             else if (role === 'INSTRUCTOR') router.push('/dashboard/instructor')

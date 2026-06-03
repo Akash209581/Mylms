@@ -15,17 +15,9 @@ export const api = axios.create({
     },
 });
 
-// Add request interceptor for authentication and debugging
+// Add request interceptor for debugging
 api.interceptors.request.use(
     (config) => {
-        // Add JWT token from localStorage if available
-        const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
-            console.log(`🔑 Auth: Found token, adding Authorization header. Token starts with: ${token.substring(0, 10)}...`);
-        } else {
-            console.warn('⚠️ Auth: No access_token found in localStorage.');
-        }
         console.log(`🌐 API Request: ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`);
         return config;
     },

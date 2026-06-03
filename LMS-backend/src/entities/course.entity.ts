@@ -12,7 +12,6 @@ import {
 } from 'typeorm';
 import { User } from './user.entity';
 import { College } from './college.entity';
-import { Organization } from './organization.entity';
 import { CourseModule } from './module.entity';
 
 
@@ -80,15 +79,7 @@ export class Course {
   @JoinColumn({ name: 'college_id' })
   college: College;
 
-  // Organization - Multi-tenant support
-  @Column({ name: 'organization_id', nullable: true })
-  organizationId: number;
 
-  @ManyToOne(() => Organization, (organization) => organization.courses, {
-    onDelete: 'CASCADE',
-  })
-  @JoinColumn({ name: 'organization_id' })
-  organization: Organization;
 
 
   @ManyToMany(() => College)
@@ -120,7 +111,7 @@ export class Course {
   approver: User;
 
   @Column({ name: 'rejection_reason', type: 'text', nullable: true })
-  rejectionReason: string;
+  rejectionReason: string | null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

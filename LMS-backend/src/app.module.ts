@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { CoursesModule } from './courses/courses.module';
@@ -26,8 +28,6 @@ import { Question } from './entities/question.entity';
 import { Contest } from './entities/contest.entity';
 import { DailyStreak } from './entities/daily-streak.entity';
 import { College } from './entities/college.entity';
-import { Organization } from './entities/organization.entity';
-import { OrganizationModule } from './organization/organization.module';
 import { Chapter } from './entities/chapter.entity';
 import { Domain } from './entities/domain.entity';
 import { Topic } from './entities/topic.entity';
@@ -38,17 +38,24 @@ import { UserBadge } from './entities/user-badge.entity';
 import { ForumModule } from './forum/forum.module';
 import { ForumPost } from './entities/forum-post.entity';
 import { ForumReply } from './entities/forum-reply.entity';
+import { AuditLog } from './entities/audit-log.entity';
+import { Settings } from './entities/settings.entity';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ThrottlerModule.forRoot([{
+      name: 'global',
+      ttl: 60000,
+      limit: 100,
+    }]),
     TypeOrmModule.forRoot({
       type: 'postgres',
       url: process.env.DATABASE_URL,
       ssl: 
         process.env.NODE_ENV === 'production' || 
         (process.env.DATABASE_URL && !process.env.DATABASE_URL.includes('localhost'))
-          ? { rejectUnauthorized: false }
+          ? { rejectUnauthorized: true }
           : false,
       entities: [
         User,
@@ -63,16 +70,17 @@ import { ForumReply } from './entities/forum-reply.entity';
         Contest,
         DailyStreak,
         College,
-        Organization,
         Domain,
         Topic,
         Badge,
         UserBadge,
         ForumPost,
         ForumReply,
+        AuditLog,
+        Settings,
       ],
       autoLoadEntities: true,
-      synchronize: true,
+      synchronize: process.env.NODE_ENV === 'development',
     }),
     AuthModule,
     UsersModule,
@@ -88,13 +96,16 @@ import { ForumReply } from './entities/forum-reply.entity';
     ModulesModule,
     ChaptersModule,
     LessonsModule,
-    OrganizationModule,
     StudentModule,
     ForumModule,
   ],
-
-
-  providers: [KeepAliveService],
+  providers: [
+    KeepAliveService,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
   exports: [],
 })
 export class AppModule { }

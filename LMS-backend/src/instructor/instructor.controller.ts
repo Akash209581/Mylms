@@ -37,7 +37,7 @@ export class InstructorController {
     
     const ownerCondition = 'course.instructorId = :userId';
     
-    const collegeConditions = [];
+    const collegeConditions: string[] = [];
     const params: any = { userId, approvedStatus: CourseStatus.APPROVED };
 
     if (userCollegeId) {

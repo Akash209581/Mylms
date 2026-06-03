@@ -4,6 +4,7 @@
 // Shares the same cell format: { type: 'notebook', cells: Cell[] }
 
 import { useState } from 'react'
+import { sanitizeHtml } from '@/lib/sanitize'
 import './LessonEditor.css'
 import type { Cell, CellType } from './LessonEditor'
 import CodeMirror from '@uiw/react-codemirror'
@@ -59,7 +60,7 @@ function inlineHTML(text: string): string {
     (_, alt, src) => `<img src="${normalizeSrc(src)}" alt="${esc(alt)}" class="nb-preview-img" />`)
   s = s.replace(/\[(.*?)\]\((.*?)\)/g,
     '<a href="$2" target="_blank" rel="noopener noreferrer" class="nb-link">$1</a>')
-  return s
+  return sanitizeHtml(s)
 }
 
 function buildTable(rows: string[]): string {
@@ -126,7 +127,7 @@ function renderMarkdown(md: string): string {
     out.push(`<p class="nb-p">${inlineHTML(t)}</p>`)
     i++
   }
-  return out.join('\n')
+  return sanitizeHtml(out.join('\n'))
 }
 
 /* ── Callout config ── */

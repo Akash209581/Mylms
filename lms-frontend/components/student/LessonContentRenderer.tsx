@@ -3,6 +3,7 @@
 import React, { useState } from 'react'
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
+import { sanitizeHtml } from '@/lib/sanitize'
 import CodeMirror from '@uiw/react-codemirror'
 import { sublime } from '@uiw/codemirror-theme-sublime'
 import { javascript } from '@codemirror/lang-javascript'
@@ -113,14 +114,15 @@ function inlineHTML(text: string): string {
     return html
   }
 
-  if (!s.includes('<span')) return applyInline(s)
+  if (!s.includes('<span')) return sanitizeHtml(applyInline(s))
   const parts = s.split(/(<span[^>]*>[\s\S]*?<\/span>)/g)
-  return parts.map((part, i) => {
+  const resultHtml = parts.map((part, i) => {
     if (i % 2 === 0) return applyInline(part)
     const m = part.match(/^(<span[^>]*>)([\s\S]*?)(<\/span>)$/)
     if (!m) return applyInline(part)
     return `${m[1]}${applyInline(m[2])}${m[3]}`
   }).join('')
+  return sanitizeHtml(resultHtml)
 }
 
 function buildTableHTML(rows: string[]): string {
@@ -205,7 +207,7 @@ function renderMarkdown(md: string): string {
   for (const [id, val] of Object.entries(mathMap)) {
     finalHtml = finalHtml.replace(id, val)
   }
-  return finalHtml
+  return sanitizeHtml(finalHtml)
 }
 
 /* ═══════════════════════════════════════════════════════

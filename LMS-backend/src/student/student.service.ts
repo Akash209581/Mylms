@@ -11,6 +11,7 @@ import { Chapter } from '../entities/chapter.entity';
 import { Lesson } from '../entities/lesson.entity';
 import { Badge } from '../entities/badge.entity';
 import { Contest, ContestStatus, ContestType } from '../entities/contest.entity';
+import { UpdateStudentProfileDto } from './student.dto';
 
 @Injectable()
 export class StudentService {
@@ -113,12 +114,34 @@ export class StudentService {
     });
   }
 
-  async updateProfile(userId: number, updateData: any) {
+  async updateProfile(userId: number, updateData: UpdateStudentProfileDto) {
     await this.userRepository.update(userId, updateData);
     return this.userRepository.findOne({ where: { id: userId } });
   }
 
   async completeLesson(userId: number, lessonId: number) {
+    const lesson = await this.lessonRepository.findOne({
+      where: { id: lessonId },
+      relations: ['chapter', 'chapter.module'],
+    });
+
+    if (!lesson) {
+      throw new NotFoundException('Lesson not found');
+    }
+
+    const courseId = lesson.chapter?.module?.courseId;
+    if (!courseId) {
+      throw new ForbiddenException('Lesson is not associated with a valid course');
+    }
+
+    const enrollment = await this.enrollmentRepository.findOne({
+      where: { studentId: userId, courseId },
+    });
+
+    if (!enrollment) {
+      throw new ForbiddenException('You are not enrolled in the course containing this lesson');
+    }
+
     const existing = await this.progressRepository.findOne({
       where: { studentId: userId, lessonId },
     });
@@ -250,39 +273,62 @@ export class StudentService {
     }
 
     // 3. Load modules with chapters and lessons (including rich content)
-    const modules = await this.courseModuleRepository
-      .createQueryBuilder('module')
-      .where('module.courseId = :courseId', { courseId })
-      .orderBy('module.order', 'ASC')
-      .getMany();
+    const modules = await this.courseModuleRepository.find({
+      where: { courseId },
+      order: { order: 'ASC' },
+    });
 
-    for (const mod of modules) {
-      const chapters = await this.chapterRepository
-        .createQueryBuilder('chapter')
-        .where('chapter.moduleId = :moduleId', { moduleId: mod.id })
-        .orderBy('chapter.order', 'ASC')
-        .getMany();
+    if (modules.length > 0) {
+      const moduleIds = modules.map((m) => m.id);
+      const chapters = await this.chapterRepository.find({
+        where: { moduleId: In(moduleIds) },
+        order: { order: 'ASC' },
+      });
 
-      for (const ch of chapters) {
-        ch['lessons'] = await this.lessonRepository
-          .createQueryBuilder('lesson')
-          .select([
-            'lesson.id',
-            'lesson.title',
-            'lesson.description',
-            'lesson.type',
-            'lesson.videoUrl',
-            'lesson.contentUrl',
-            'lesson.duration',
-            'lesson.order',
-            'lesson.published',
-            'lesson.content',
-          ])
-          .where('lesson.chapterId = :chapterId', { chapterId: ch.id })
-          .orderBy('lesson.order', 'ASC')
-          .getMany();
+      const chaptersByModule: { [key: number]: Chapter[] } = {};
+      chapters.forEach((c) => {
+        if (!chaptersByModule[c.moduleId]) {
+          chaptersByModule[c.moduleId] = [];
+        }
+        chaptersByModule[c.moduleId].push(c);
+      });
+
+      if (chapters.length > 0) {
+        const chapterIds = chapters.map((c) => c.id);
+        const lessons = await this.lessonRepository.find({
+          select: [
+            'id',
+            'title',
+            'description',
+            'type',
+            'videoUrl',
+            'contentUrl',
+            'duration',
+            'order',
+            'published',
+            'content',
+            'chapterId',
+          ],
+          where: { chapterId: In(chapterIds) },
+          order: { order: 'ASC' },
+        });
+
+        const lessonsByChapter: { [key: number]: Lesson[] } = {};
+        lessons.forEach((l) => {
+          if (!lessonsByChapter[l.chapterId]) {
+            lessonsByChapter[l.chapterId] = [];
+          }
+          lessonsByChapter[l.chapterId].push(l);
+        });
+
+        chapters.forEach((c) => {
+          (c as any).lessons = lessonsByChapter[c.id] || [];
+        });
       }
-      (mod as any).chapters = chapters;
+
+      modules.forEach((m) => {
+        (m as any).chapters = chaptersByModule[m.id] || [];
+      });
     }
 
     // 4. Get completed lesson IDs for this student in this course
@@ -305,11 +351,21 @@ export class StudentService {
   }
 
   async getDashboardDetails(userId: number) {
-    // 1. Get student enrolled courses
+    // 1. Get student enrolled courses with nested relations
     const enrollments = await this.enrollmentRepository.find({
       where: { studentId: userId },
-      relations: ['course'],
+      relations: [
+        'course',
+        'course.modules',
+        'course.modules.chapters',
+        'course.modules.chapters.lessons',
+      ],
     });
+
+    const completedProgress = await this.progressRepository.find({
+      where: { studentId: userId, completed: true },
+    });
+    const completedLessonIds = completedProgress.map((p) => p.lessonId);
 
     const coursesProgress: any[] = [];
     const assignedQuizzes: any[] = [];
@@ -318,32 +374,25 @@ export class StudentService {
     for (const e of enrollments) {
       if (!e.course) continue;
 
-      // Fetch all modules for this course
-      const modules = await this.courseModuleRepository.find({
-        where: { courseId: e.courseId },
+      const modules = e.course.modules || [];
+      const chapters: Chapter[] = [];
+      modules.forEach((m) => {
+        if (m.chapters) {
+          chapters.push(...m.chapters);
+        }
       });
-      const moduleIds = modules.map((m) => m.id);
 
-      // Fetch chapters
-      const chapters = moduleIds.length > 0 ? await this.chapterRepository.find({
-        where: { moduleId: In(moduleIds) },
-      }) : [];
-      const chapterIds = chapters.map((c) => c.id);
+      const lessons: Lesson[] = [];
+      chapters.forEach((c) => {
+        if (c.lessons) {
+          lessons.push(...c.lessons);
+        }
+      });
 
-      // Fetch lessons
-      const lessons = chapterIds.length > 0 ? await this.lessonRepository.find({
-        where: { chapterId: In(chapterIds) },
-      }) : [];
       const lessonIds = lessons.map((l) => l.id);
-
-      // Fetch completed lessons in this course
-      const completedProgress = (userId && lessonIds.length > 0) ? await this.progressRepository.find({
-        where: { studentId: userId, lessonId: In(lessonIds), completed: true },
-      }) : [];
-      const completedLessonIds = completedProgress.map((p) => p.lessonId);
+      const completedLessonsCount = lessonIds.filter((id) => completedLessonIds.includes(id)).length;
 
       const totalLessons = lessons.length;
-      const completedLessonsCount = completedProgress.length;
       const progressPercent = totalLessons > 0 ? Math.round((completedLessonsCount / totalLessons) * 100) : 0;
 
       // Find the first uncompleted lesson as the continue shortcut
@@ -424,51 +473,11 @@ export class StudentService {
         };
       });
 
-    // 3. Fetch published contests with fallbacks
-    let openContests = await this.contestRepo.find({
+    // 3. Fetch published contests (no mock seed fallback)
+    const openContests = await this.contestRepo.find({
       where: { status: ContestStatus.PUBLISHED },
       order: { startTime: 'ASC' },
     });
-
-    if (openContests.length === 0) {
-      // Mock / Seed realistic premium contests if none in DB
-      openContests = [
-        {
-          id: 991,
-          title: 'ByteXL Spring Hackathon 2026',
-          description: 'A global challenge testing clean coding, logic, and scalable structures. Big XP rewards await!',
-          type: ContestType.CONTEST,
-          status: ContestStatus.PUBLISHED,
-          durationMinutes: 180,
-          questionIds: [1, 2, 3],
-          startTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
-          endTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
-          targetRole: 'STUDENT',
-          totalMarks: 300,
-          passingMarks: 120,
-          createdById: 1,
-          createdBy: null,
-          createdAt: new Date(),
-        } as any,
-        {
-          id: 992,
-          title: 'Weekly Algorithm Arena #14',
-          description: 'Compete in high speed competitive problems focusing on graphs, dynamic programming, and hash maps.',
-          type: ContestType.CONTEST,
-          status: ContestStatus.PUBLISHED,
-          durationMinutes: 90,
-          questionIds: [4, 5],
-          startTime: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000),
-          endTime: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
-          targetRole: 'STUDENT',
-          totalMarks: 200,
-          passingMarks: 80,
-          createdById: 1,
-          createdBy: null,
-          createdAt: new Date(),
-        } as any,
-      ];
-    }
 
     return {
       coursesProgress,
@@ -482,7 +491,7 @@ export class StudentService {
         durationMinutes: c.durationMinutes,
         startTime: c.startTime,
         endTime: c.endTime,
-        registeredCount: 142 + (c.id % 23),
+        registeredCount: 0,
         totalMarks: c.totalMarks,
       })),
     };

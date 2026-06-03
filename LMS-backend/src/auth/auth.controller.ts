@@ -6,6 +6,7 @@ import {
   UseGuards,
   Request,
   Res,
+  ForbiddenException,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { AuthService } from './auth.service';
@@ -77,14 +78,14 @@ export class AuthController {
     if (req.user.role === UserRole.ADMIN) {
       // ADMIN can only create INSTRUCTOR or STUDENT
       if (dto.role !== 'INSTRUCTOR' && dto.role !== 'STUDENT') {
-        throw new Error('ADMIN can only create INSTRUCTOR or STUDENT accounts');
+        throw new ForbiddenException('ADMIN can only create INSTRUCTOR or STUDENT accounts');
       }
     }
     
     if (req.user.role === UserRole.INSTRUCTOR) {
       // INSTRUCTOR can only create STUDENT
       if (dto.role !== 'STUDENT') {
-        throw new Error('INSTRUCTOR can only create STUDENT accounts');
+        throw new ForbiddenException('INSTRUCTOR can only create STUDENT accounts');
       }
     }
 

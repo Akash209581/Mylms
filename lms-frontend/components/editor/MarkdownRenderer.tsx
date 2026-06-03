@@ -1,6 +1,7 @@
 import React from 'react'
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
+import { sanitizeHtml } from '@/lib/sanitize'
 
 interface MarkdownRendererProps {
   content: string
@@ -190,7 +191,7 @@ export default function MarkdownRenderer({ content, className = '' }: MarkdownRe
   return (
     <div 
       className={`prose dark:prose-invert max-w-none ${className}`}
-      dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }}
+      dangerouslySetInnerHTML={{ __html: sanitizeHtml(renderMarkdown(content)) }}
     />
   )
 }

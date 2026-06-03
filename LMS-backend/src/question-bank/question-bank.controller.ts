@@ -262,14 +262,14 @@ export class QuestionBankController {
 
       const userRole = req?.user?.role;
       // Backward compatibility: older tokens may still carry organizationId.
-      const userCollegeId = req?.user?.collegeId ?? req?.user?.organizationId;
+      const userCollegeId = req?.user?.collegeId;
 
       // SUPERADMIN can access any question.
       if (userRole === UserRole.SUPERADMIN) {
         return question;
       }
 
-      const targetCollegeId = question.collegeId ?? question.organizationId;
+      const targetCollegeId = question.collegeId;
       if (!targetCollegeId) {
         return null;
       }
@@ -330,8 +330,8 @@ export class QuestionBankController {
 
       const userRole = req?.user?.role;
       // Backward compatibility: older tokens may still carry organizationId.
-      const userCollegeId = req?.user?.collegeId ?? req?.user?.organizationId;
-      const targetCollegeId = question.collegeId ?? question.organizationId;
+      const userCollegeId = req?.user?.collegeId;
+      const targetCollegeId = question.collegeId;
 
       // SUPERADMIN can update any question
       if (userRole !== UserRole.SUPERADMIN) {
