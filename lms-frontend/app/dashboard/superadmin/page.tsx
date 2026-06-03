@@ -88,7 +88,7 @@ export default function SuperAdminDashboard() {
                 {/* Recent Users */}
                 <div className="glass-card p-6">
                     <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-lg font-semibold text-white">Recent Users</h3>
+                        <h2 className="text-lg font-semibold text-white">Recent Users</h2>
                         <a href="/dashboard/superadmin/users">
                             <button className="btn-secondary px-4 py-2 text-sm">View All →</button>
                         </a>
@@ -129,8 +129,9 @@ export default function SuperAdminDashboard() {
                                             <td className="py-4 pr-4">
                                                 <select defaultValue={u.role}
                                                     onChange={e => handleRoleChange(u.id, e.target.value)}
+                                                    aria-label="Change user role"
                                                     className="text-xs font-semibold rounded-lg px-2 py-1.5 outline-none cursor-pointer"
-                                                    style={{ background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)', color: '#a5b4fc' }}>
+                                                    style={{ background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)', color: '#ffffff' }}>
                                                     {['STUDENT', 'INSTRUCTOR', 'ADMIN', 'SUPERADMIN'].map(r => (
                                                         <option key={r} value={r} style={{ background: '#1a1a2e' }}>{r}</option>
                                                     ))}
@@ -142,7 +143,7 @@ export default function SuperAdminDashboard() {
                                             <td className="py-4">
                                                 <a href="/dashboard/superadmin/users">
                                                     <button className="px-3 py-1 rounded-lg text-xs font-medium"
-                                                        style={{ background: 'rgba(99,102,241,0.15)', color: '#a5b4fc', border: '1px solid rgba(99,102,241,0.3)' }}>
+                                                        style={{ background: 'rgba(99,102,241,0.15)', color: '#ffffff', border: '1px solid rgba(99,102,241,0.3)' }}>
                                                         Manage
                                                     </button>
                                                 </a>

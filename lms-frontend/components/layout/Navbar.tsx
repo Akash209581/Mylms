@@ -2,12 +2,16 @@
 import { useEffect, useState } from 'react'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { api } from '@/lib/api'
+import { useTheme } from 'next-themes'
 
 export default function Navbar({ title }: { title?: string }) {
+    const { theme } = useTheme()
+    const [mounted, setMounted] = useState(false)
     const [user, setUser] = useState<any>(null)
     const [time, setTime] = useState('')
 
     useEffect(() => {
+        setMounted(true)
         const stored = localStorage.getItem('user')
         if (stored) setUser(JSON.parse(stored))
 
@@ -34,6 +38,17 @@ export default function Navbar({ title }: { title?: string }) {
             user?.role === 'ADMIN' ? '#f97316' :
                 user?.role === 'SUPERADMIN' ? '#ef4444' : '#6366f1'
 
+    const isDarkBackground = mounted && theme && theme !== 'light'
+    const roleTextColor = isDarkBackground
+        ? (user?.role === 'STUDENT' ? '#10b981' :
+           user?.role === 'INSTRUCTOR' ? '#818cf8' :
+           user?.role === 'ADMIN' ? '#fb923c' :
+           user?.role === 'SUPERADMIN' ? '#f87171' : '#818cf8')
+        : (user?.role === 'STUDENT' ? '#047857' :
+           user?.role === 'INSTRUCTOR' ? '#4338ca' :
+           user?.role === 'ADMIN' ? '#c2410c' :
+           user?.role === 'SUPERADMIN' ? '#b91c1c' : '#4338ca')
+
     const initials = user?.name?.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || 'U'
 
     return (
@@ -53,7 +68,7 @@ export default function Navbar({ title }: { title?: string }) {
                 </div>
 
                 {/* Notification bell */}
-                <button className="relative w-10 h-10 rounded-xl flex items-center justify-center bg-[var(--bg-raised)] border border-[var(--border)] hover:bg-[var(--bg-hover)] transition-colors">
+                <button aria-label="View notifications" className="relative w-10 h-10 rounded-xl flex items-center justify-center bg-[var(--bg-raised)] border border-[var(--border)] hover:bg-[var(--bg-hover)] transition-colors">
                     <svg className="w-5 h-5 text-[var(--text-secondary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                             d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
@@ -69,7 +84,7 @@ export default function Navbar({ title }: { title?: string }) {
                     </div>
                     <div className="hidden md:block">
                         <p className="text-[var(--text-primary)] text-sm font-bold leading-none">{user?.name || 'User'}</p>
-                        <p className="text-[10px] uppercase font-bold mt-1 tracking-wider" style={{ color: roleColor }}>{user?.role}</p>
+                        <p className="text-[10px] uppercase font-bold mt-1 tracking-wider" style={{ color: roleTextColor }}>{user?.role}</p>
                     </div>
                 </div>
 
