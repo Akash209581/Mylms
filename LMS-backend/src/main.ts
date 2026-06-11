@@ -22,7 +22,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.use(cookieParser());
-  
+
   // Increase payload size limit for base64 images
   const express = require('express');
   app.use(express.json({ limit: '10mb' }));
@@ -36,7 +36,7 @@ async function bootstrap() {
     'http://localhost:3000',
     'http://localhost:3001',
     'http://localhost:3002',
-    'https://lms-frontend-ashy.vercel.app',
+    'https://lms-0-id5t.onrender.com',
   ].filter(Boolean);
 
   app.enableCors({
@@ -46,7 +46,7 @@ async function bootstrap() {
         return callback(null, true);
       }
 
-      const isAllowed = 
+      const isAllowed =
         allowedOrigins.includes(origin) ||
         /^http:\/\/localhost:\d+$/.test(origin);
 
