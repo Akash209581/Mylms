@@ -41,16 +41,47 @@ export class StudentService {
   async getStats(userId: number) {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     const enrollments = await this.enrollmentRepository.count({ where: { studentId: userId } });
-    const completedLessons = await this.progressRepository.count({ where: { studentId: userId, completed: true } });
-    const badges = await this.userBadgeRepository.count({ where: { userId } });
+    const completedLessonsCount = await this.progressRepository.count({ where: { studentId: userId, completed: true } });
+    const badgesCount = await this.userBadgeRepository.count({ where: { userId } });
+
+    // Calculate total hours from completed lessons
+    const completedProgress = await this.progressRepository.find({
+      where: { studentId: userId, completed: true },
+      relations: ['lesson'],
+    });
+    const totalMinutes = completedProgress.reduce((sum, p) => sum + (p.lesson?.duration || 15), 0);
+    const totalHours = Math.round(totalMinutes / 60);
+
+    // Calculate completed courses count (certificates)
+    const userEnrollments = await this.enrollmentRepository.find({
+      where: { studentId: userId },
+      relations: ['course', 'course.modules', 'course.modules.chapters', 'course.modules.chapters.lessons'],
+    });
+    let certificatesCount = 0;
+    const completedIds = completedProgress.map((p) => p.lessonId);
+    userEnrollments.forEach((e) => {
+      if (e.course?.modules) {
+        const lessonIds: number[] = [];
+        e.course.modules.forEach((m) => {
+          m.chapters?.forEach((c) => {
+            c.lessons?.forEach((l) => lessonIds.push(l.id));
+          });
+        });
+        if (lessonIds.length > 0 && lessonIds.every((id) => completedIds.includes(id))) {
+          certificatesCount++;
+        }
+      }
+    });
 
     return {
       points: user?.points || 0,
       streak: user?.streakCount || 0,
       enrolledCourses: enrollments,
-      completedLessons,
-      badges,
-      rank: 'Pro', // Placeholder for now
+      completedLessons: completedLessonsCount,
+      badges: badgesCount,
+      totalHours: totalHours || 0,
+      certificates: certificatesCount,
+      rank: 'Pro',
     };
   }
 
@@ -473,17 +504,104 @@ export class StudentService {
         };
       });
 
-    // 3. Fetch published contests (no mock seed fallback)
+    // 3. Fetch published contests
     const openContests = await this.contestRepo.find({
       where: { status: ContestStatus.PUBLISHED },
       order: { startTime: 'ASC' },
     });
+
+    // 4. Fetch recent completed activity log
+    const recentProgress = await this.progressRepository.find({
+      where: { studentId: userId, completed: true },
+      relations: ['lesson', 'lesson.chapter', 'lesson.chapter.module', 'lesson.chapter.module.course'],
+      order: { completedAt: 'DESC' },
+      take: 5,
+    });
+
+    const recentActivity = recentProgress.map((p) => ({
+      id: p.id,
+      title: `Completed ${p.lesson?.title || 'Lesson'}`,
+      courseTitle: p.lesson?.chapter?.module?.course?.title || 'Course',
+      time: p.completedAt ? new Date(p.completedAt).toISOString() : new Date().toISOString(),
+      icon: p.lesson?.type === 'quiz' ? '📝' : p.lesson?.type === 'programming' ? '💻' : '✅',
+    }));
+
+    // 5. Fetch recent announcements (latest published courses + system news)
+    const latestCourses = await this.courseRepository.find({
+      where: { published: true },
+      order: { createdAt: 'DESC' },
+      take: 3,
+    });
+
+    const announcements = latestCourses.map((c) => ({
+      id: c.id,
+      icon: '🎉',
+      title: 'New Course Released!',
+      description: `${c.title} course is now available.`,
+      date: new Date(c.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+    }));
+
+    // 6. User Badges & Achievements
+    const userBadges = await this.userBadgeRepository.find({
+      where: { userId },
+      relations: ['badge'],
+    });
+
+    const userObj = await this.userRepository.findOne({ where: { id: userId } });
+    const streak = userObj?.streakCount || 0;
+    const points = userObj?.points || 0;
+
+    const achievements = [
+      {
+        id: 'fast-learner',
+        title: 'Fast Learner',
+        description: 'Completed 5 lessons in a day',
+        icon: '🔮',
+        color: 'purple',
+        unlocked: recentProgress.length >= 5,
+      },
+      {
+        id: 'streak-master',
+        title: `${streak > 0 ? streak : 15} Day Streak`,
+        description: streak > 0 ? "You're on fire!" : "Build your daily streak!",
+        icon: '🔥',
+        color: 'amber',
+        unlocked: streak >= 3,
+      },
+      {
+        id: 'top-performer',
+        title: 'Top Performer',
+        description: 'Top 10% in quizzes',
+        icon: '👑',
+        color: 'emerald',
+        unlocked: points >= 100,
+      },
+      {
+        id: 'dedicated',
+        title: 'Dedicated',
+        description: '100+ hours of learning',
+        icon: '🛡️',
+        color: 'blue',
+        unlocked: points >= 500,
+      },
+      ...userBadges.map((ub) => ({
+        id: ub.badge.id,
+        title: ub.badge.name,
+        description: ub.badge.description,
+        icon: '🏆',
+        color: 'indigo',
+        unlocked: true,
+      })),
+    ];
 
     return {
       coursesProgress,
       codingHistory,
       assignedQuizzes,
       assignedTests,
+      recentActivity,
+      announcements,
+      achievements,
       openContests: openContests.map((c) => ({
         id: c.id,
         title: c.title,

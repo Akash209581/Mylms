@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>LMS Code Compiler Core</title>
+    <style>
+        body { 
+            margin: 0; padding: 0; display: flex; flex-direction: column; 
+            height: 100vh; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: #1e1e1e; color: #d4d4d4; overflow: hidden;
+        }
+        .header { 
+            padding: 10px 20px; background: #2d2d30; display: flex; 
+            gap: 15px; align-items: center; border-bottom: 1px solid #333; 
+        }
+        .header h2 { margin: 0; font-size: 18px; font-weight: 500; color: #fff; margin-right: auto; }
+        .header select, .header button { 
+            padding: 6px 12px; font-size: 14px; background: #3c3c3c; 
+            color: #fff; border: 1px solid #555; border-radius: 4px; cursor: pointer; outline: none; 
+        }
+        .header select:hover { background: #4a4a4a; }
+        .header button { background: #0e639c; border-color: #0e639c; padding: 6px 20px; font-weight: 600; }
+        .header button:hover { background: #1177bb; }
+        .header button:active { background: #094771; }
+        .header button:disabled { background: #555; border-color: #555; cursor: not-allowed; }
+        
+        .main { display: flex; flex: 1; overflow: hidden; }
+        
+        .editor-container { 
+            flex: 2; border-right: 1px solid #333; display: flex; flex-direction: column; 
+        }
+        .io-container { 
+            flex: 1; display: flex; flex-direction: column; background: #1e1e1e; min-width: 300px;
+        }
+        
+        .pane-header { 
+            padding: 8px 15px; background: #252526; font-size: 12px; 
+            text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px; 
+            color: #969696; border-bottom: 1px solid #333; 
+        }
+        
+        #editor { flex: 1; }
+        
+        .pane { flex: 1; display: flex; flex-direction: column; border-bottom: 1px solid #333; }
+        .pane:last-child { border-bottom: none; }
+        
+        .pane-content { 
+            flex: 1; padding: 15px; background: #1e1e1e; color: #d4d4d4; 
+            overflow: auto; border: none; outline: none; resize: none; 
+            font-family: 'Consolas', 'Courier New', monospace; font-size: 14px; 
+            white-space: pre-wrap; margin: 0; box-sizing: border-box; width: 100%;
+        }
+        
+        textarea.pane-content { 
+            background: #1e1e1e; color: #d4d4d4; 
+        }
+        textarea.pane-content::placeholder { color: #555; }
+        
+        .error-text { color: #f14c4c; }
+        .success-text { color: #89d185; }
+        .info-text { color: #cccccc; font-style: italic; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h2>LMS Code Runner</h2>
+        <select id="language">
+            <option value="python" selected>Python</option>
+            <option value="javascript">JavaScript (Node.js)</option>
+            <option value="c">C</option>
+            <option value="java">Java</option>
+        </select>
+        <button id="run-btn">Run Code</button>
+    </div>
+
+    <div class="main">
+        <div class="editor-container">
+            <div class="pane-header">Source Code</div>
+            <div id="editor"></div>
+        </div>
+        
+        <div class="io-container">
+            <div class="pane">
+                <div class="pane-header">Input (stdin)</div>
+                <textarea id="stdin" class="pane-content" spellcheck="false" placeholder="Enter standard input here..."></textarea>
+            </div>
+            <div class="pane">
+                <div class="pane-header">Output (stdout & stderr)</div>
+                <pre id="stdout" class="pane-content info-text">Run your code to see the output here.</pre>
+            </div>
+        </div>
+    </div>
+
+    <!-- Monaco Editor Scripts -->
+    <script>var require = { paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.38.0/min/vs' } };</script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.38.0/min/vs/loader.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.38.0/min/vs/editor/editor.main.nls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.38.0/min/vs/editor/editor.main.js"></script>
+
+    <script>
+        const defaultSnippets = {
+            python: 'print("Hello, LMS!")\n',
+            javascript: 'console.log("Hello, LMS!");\n',
+            c: '#include <stdio.h>\n\nint main() {\n    printf("Hello, LMS!\\n");\n    return 0;\n}\n',
+            java: 'public class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello, LMS!");\n    }\n}\n'
+        };
+
+        const languageMap = {
+            python: 'python',
+            javascript: 'javascript',
+            c: 'c',
+            java: 'java'
+        };
+
+        let editor;
+
+        // Initialize Monaco Editor
+        require(['vs/editor/editor.main'], function () {
+            editor = monaco.editor.create(document.getElementById('editor'), {
+                value: defaultSnippets.python,
+                language: 'python',
+                theme: 'vs-dark',
+                automaticLayout: true,
+                minimap: { enabled: false },
+                fontSize: 14,
+                padding: { top: 15 }
+            });
+
+            // Handle language change
+            document.getElementById('language').addEventListener('change', function(e) {
+                const lang = e.target.value;
+                const monacoLang = languageMap[lang];
+                
+                monaco.editor.setModelLanguage(editor.getModel(), monacoLang);
+                editor.setValue(defaultSnippets[lang]);
+            });
+        });
+
+        // Handle Run Code
+        document.getElementById('run-btn').addEventListener('click', async function() {
+            const btn = document.getElementById('run-btn');
+            const stdoutEl = document.getElementById('stdout');
+            
+            const language = document.getElementById('language').value;
+            const code = editor.getValue();
+            const stdin = document.getElementById('stdin').value;
+
+            btn.disabled = true;
+            btn.innerText = 'Running...';
+            
+            stdoutEl.className = 'pane-content info-text';
+            stdoutEl.innerText = 'Compiling and executing... Please wait.';
+
+            try {
+                const response = await fetch('/execute', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code, language, stdin })
+                });
+
+                const result = await response.json();
+
+                stdoutEl.className = 'pane-content'; // Reset info class
+
+                if (result.error) {
+                    stdoutEl.innerHTML = `<span class="error-text">System Error: ${result.error}</span>\n\n${result.details || ''}`;
+                } else {
+                    let outputHTML = '';
+                    
+                    if (result.exit_code === 0) {
+                        outputHTML += `<span class="success-text">Program exited successfully (Code 0)</span>\n\n`;
+                    } else {
+                        outputHTML += `<span class="error-text">Program exited with code ${result.exit_code}</span>\n\n`;
+                    }
+
+                    if (result.stdout) {
+                        outputHTML += `<b>Standard Output:</b>\n${escapeHTML(result.stdout)}\n`;
+                    }
+                    if (result.stderr) {
+                        outputHTML += `<b class="error-text">Standard Error:</b>\n<span class="error-text">${escapeHTML(result.stderr)}</span>\n`;
+                    }
+                    
+                    if (!result.stdout && !result.stderr) {
+                        outputHTML += `<span class="info-text">No output generated.</span>`;
+                    }
+
+                    stdoutEl.innerHTML = outputHTML;
+                }
+            } catch (err) {
+                stdoutEl.innerHTML = `<span class="error-text">Network Error: ${err.message}</span>\nCheck if the Flask server is running.`;
+            } finally {
+                btn.disabled = false;
+                btn.innerText = 'Run Code';
+            }
+        });
+
+        // Utility to escape HTML to prevent XSS in output
+        function escapeHTML(str) {
+            return str.replace(/[&<>'"]/g, 
+                tag => ({
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    "'": '&#39;',
+                    '"': '&quot;'
+                }[tag])
+            );
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,112 @@
+import docker
+import docker.errors
+import os
+import tempfile
+
+def run_code(code, language, stdin):
+    client = docker.from_env()
+
+    image_map = {
+        'python': 'python-compiler',
+        'c': 'c-compiler',
+        'java': 'java-compiler',
+        'javascript': 'javascript-compiler'
+    }
+
+    if language not in image_map:
+        return {'error': f'Unsupported language: {language}'}
+
+    image_name = image_map[language]
+    
+    try:
+        client.images.get(image_name)
+    except docker.errors.ImageNotFound:
+        try:
+            print(f"Building image for {language}...")
+            client.images.build(
+                path=f'./dockerfiles/{language}',
+                tag=image_name,
+                rm=True
+            )
+            print("Image built.")
+        except docker.errors.BuildError as e:
+            return {'error': 'Failed to build docker image.', 'details': str(e)}
+
+
+    script_map = {
+        'python': 'script.py',
+        'c': 'script.c',
+        'java': 'Main.java',
+        'javascript': 'script.js'
+    }
+    
+    filename = script_map[language]
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        script_path = os.path.join(temp_dir, filename)
+        with open(script_path, 'w') as f:
+            f.write(code)
+
+        run_script_content = create_run_script(language)
+        run_script_path = os.path.join(temp_dir, 'run.sh')
+        with open(run_script_path, 'w') as f:
+            f.write(run_script_content)
+        
+        # Make the run script executable
+        os.chmod(run_script_path, 0o755)
+
+        container = None
+        try:
+            container = client.containers.run(
+                image_name,
+                command=f'/bin/sh -c "echo \'{stdin}\' | timeout 30s /bin/sh /app/run.sh"',
+                volumes={temp_dir: {'bind': '/app', 'mode': 'rw'}},
+                detach=True,
+                mem_limit='256m',
+                cpu_shares=1,
+                working_dir='/app'
+            )
+
+            result = container.wait(timeout=35)
+            stdout = container.logs(stdout=True, stderr=False).decode('utf-8')
+            stderr = container.logs(stdout=False, stderr=True).decode('utf-8')
+            
+            container.remove()
+
+            return {
+                'stdout': stdout,
+                'stderr': stderr,
+                'exit_code': result['StatusCode']
+            }
+
+        except docker.errors.ContainerError as e:
+            if container:
+                container.remove()
+            return {'error': 'Execution failed.', 'details': str(e)}
+        except Exception as e:
+            if container:
+                container.remove()
+            return {'error': 'An unexpected error occurred.', 'details': str(e)}
+
+def create_run_script(language):
+    if language == 'c':
+        return """
+#!/bin/sh
+gcc script.c -o myapp
+if [ $? -eq 0 ]; then
+    ./myapp
+fi
+"""
+    elif language == 'java':
+        return """
+#!/bin/sh
+javac Main.java
+if [ $? -eq 0 ]; then
+    java Main
+fi
+"""
+    elif language == 'python':
+        return "python script.py"
+    elif language == 'javascript':
+        return "node script.js"
+    return ""

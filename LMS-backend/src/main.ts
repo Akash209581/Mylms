@@ -2,15 +2,12 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { HttpExceptionFilter } from './common/http-exception.filter';
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const cookieParser = require('cookie-parser');
-
 async function bootstrap() {
   const dbUrl = process.env.DATABASE_URL;
   if (!dbUrl) {
     throw new Error('DATABASE_URL is missing. Add it in .env before starting LMS-backend.');
   }
-
   try {
     const host = new URL(dbUrl).host;
     const mode = dbUrl.includes('-pooler') ? 'neon-pooler' : 'direct-or-local';
@@ -18,11 +15,8 @@ async function bootstrap() {
   } catch {
     console.warn('[DB] DATABASE_URL is not a valid URL. Connection may fail at startup.');
   }
-
   const app = await NestFactory.create(AppModule);
-
   app.use(cookieParser());
-
   // Increase payload size limit for base64 images
   const express = require('express');
   app.use(express.json({ limit: '10mb' }));
@@ -38,14 +32,12 @@ async function bootstrap() {
     'http://localhost:3002',
     'https://lms-0-id5t.onrender.com',
   ].filter(Boolean);
-
   app.enableCors({
     origin: (origin, callback) => {
       // In development, allow no origin (like Postman or local curl)
       if (!origin) {
         return callback(null, true);
       }
-
       const isAllowed =
         allowedOrigins.includes(origin) ||
         /^http:\/\/localhost:\d+$/.test(origin);
@@ -60,7 +52,6 @@ async function bootstrap() {
     },
     credentials: true,
   });
-
   const port = process.env.PORT || 3001;
   await app.listen(port);
   console.log(`LMS Backend running on port ${port}`);

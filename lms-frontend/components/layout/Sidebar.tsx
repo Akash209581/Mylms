@@ -4,16 +4,20 @@ import { usePathname, useRouter } from 'next/navigation'
 import { API_URL } from '@/lib/api'
 import { getAuthHeaders } from '@/lib/authHeaders'
 
-type NavItem = { label: string; href: string; icon: React.ReactNode }
+type NavItem = { label: string; href: string; icon: React.ReactNode; badge?: string | number }
 
 const studentNav: NavItem[] = [
     { label: 'Dashboard', href: '/dashboard/student', icon: <GridIcon /> },
     { label: 'My Courses', href: '/dashboard/student/courses', icon: <GraduationCapIcon /> },
-    { label: 'My Progress', href: '/dashboard/student/progress', icon: <ProgressIcon /> },
-    { label: 'Leaderboard', href: '/dashboard/student/leaderboard', icon: <TrophyIcon /> },
-    { label: 'Daily Challenge', href: '/dashboard/student/streak', icon: <FireIcon /> },
-    { label: 'Forums', href: '/dashboard/student/forums', icon: <ForumIcon /> },
-    { label: 'Profile', href: '/dashboard/student/profile', icon: <UserIcon /> },
+    { label: 'Course Catalog', href: '/dashboard/student/courses', icon: <CompassIcon /> },
+    { label: 'Assignments', href: '/dashboard/student/progress', icon: <AssignmentIcon /> },
+    { label: 'Quizzes', href: '/dashboard/student/progress', icon: <QuizIcon /> },
+    { label: 'Certificates', href: '/dashboard/student/profile', icon: <TrophyIcon /> },
+    { label: 'Calendar', href: '/dashboard/student/streak', icon: <CalendarIcon /> },
+    { label: 'Messages', href: '/dashboard/student/forums', icon: <MessageIcon />, badge: 3 },
+    { label: 'Resources', href: '/dashboard/student/courses', icon: <FolderIcon /> },
+    { label: 'Discussion', href: '/dashboard/student/forums', icon: <ForumIcon /> },
+    { label: 'Settings', href: '/dashboard/student/profile', icon: <SettingsIcon /> },
 ]
 const instructorNav: NavItem[] = [
     { label: 'Dashboard', href: '/dashboard/instructor', icon: <GridIcon /> },
@@ -59,7 +63,7 @@ export default function Sidebar({ role }: { role?: string }) {
                     role === 'SUPERADMIN' ? superadminNav : studentNav
 
     const roleColor =
-        role === 'STUDENT' ? '#10b981' :
+        role === 'STUDENT' ? '#6366f1' :
             role === 'INSTRUCTOR' ? '#6366f1' :
                 role === 'ADMIN' ? '#f97316' :
                     role === 'SUPERADMIN' ? '#ef4444' : '#6366f1'
@@ -77,42 +81,74 @@ export default function Sidebar({ role }: { role?: string }) {
     return (
         <aside className="sidebar">
             {/* Logo */}
-            <div className="p-6 border-b" style={{ borderColor: 'var(--border)' }}>
+            <div className="p-5 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
                 <Link href="/" className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white"
-                        style={{ background: `linear-gradient(135deg, ${roleColor}, ${roleColor}cc)` }}>
-                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white shadow-md shadow-indigo-500/20"
+                        style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
+                        <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5}
                                 d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                         </svg>
                     </div>
                     <div>
-                        <p className="text-[var(--text-primary)] font-bold text-lg leading-none">EduVerse</p>
-                        <p className="text-xs mt-0.5" style={{ color: roleColor }}>{role}</p>
+                        <p className="text-[var(--text-primary)] font-black text-xl tracking-tight leading-none">EduVerse</p>
+                        <p className="text-[11px] text-indigo-400/80 font-medium mt-1">Learn. Grow. Succeed.</p>
                     </div>
                 </Link>
             </div>
 
             {/* Navigation */}
-            <nav className="flex-1 overflow-y-auto py-4 space-y-1">
-                {navItems.map(item => (
-                    <Link
-                        key={item.href}
-                        href={item.href}
-                        className={`sidebar-link ${pathname === item.href ? 'active' : ''}`}
-                    >
-                        <span className="w-5 h-5">{item.icon}</span>
-                        {item.label}
-                    </Link>
-                ))}
+            <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1.5">
+                {navItems.map(item => {
+                    const isActive = pathname === item.href
+                    return (
+                        <Link
+                            key={item.label}
+                            href={item.href}
+                            prefetch={false}
+                            className={`flex items-center justify-between px-4 py-3 rounded-2xl text-sm font-semibold transition-all group ${
+                                isActive 
+                                    ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/25' 
+                                    : 'text-gray-500 hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]'
+                            }`}
+                        >
+                            <div className="flex items-center gap-3">
+                                <span className={`w-5 h-5 transition-transform group-hover:scale-110 ${isActive ? 'text-white' : 'text-gray-400 group-hover:text-indigo-500'}`}>
+                                    {item.icon}
+                                </span>
+                                <span>{item.label}</span>
+                            </div>
+                            {item.badge !== undefined && (
+                                <span className="bg-indigo-500 text-white text-[11px] font-extrabold px-2 py-0.5 rounded-full shadow-sm">
+                                    {item.badge}
+                                </span>
+                            )}
+                        </Link>
+                    )
+                })}
             </nav>
 
+            {/* Promo Banner Card */}
+            <div className="p-3 mx-2 my-2 rounded-2xl bg-gradient-to-br from-indigo-900 via-indigo-950 to-purple-950 text-white p-4 relative overflow-hidden shadow-xl border border-indigo-500/20">
+                <div className="absolute -right-3 -top-3 w-16 h-16 bg-indigo-500/20 rounded-full blur-xl" />
+                <div className="relative z-10">
+                    <div className="w-8 h-8 rounded-xl bg-indigo-500/30 flex items-center justify-center mb-2">
+                        🚀
+                    </div>
+                    <p className="text-[10px] uppercase tracking-wider font-extrabold text-indigo-300">Unlock More with</p>
+                    <h4 className="text-sm font-black text-white mb-1">EduVerse Pro</h4>
+                    <p className="text-[11px] text-indigo-200/70 mb-3 leading-snug">Access premium courses, certificates and more.</p>
+                    <button className="w-full py-2 px-3 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-1">
+                        Upgrade Now <span>→</span>
+                    </button>
+                </div>
+            </div>
+
             {/* Footer */}
-            <div className="p-4 border-t" style={{ borderColor: 'var(--border)' }}>
+            <div className="p-3 border-t" style={{ borderColor: 'var(--border)' }}>
                 <button
                     onClick={handleLogout}
-                    className="sidebar-link w-full text-left text-red-400 hover:text-red-300"
-                    style={{ background: 'rgba(239,68,68,0.05)' }}
+                    className="flex items-center gap-3 w-full px-4 py-2.5 rounded-xl text-sm font-semibold text-rose-500 hover:bg-rose-500/10 transition-all"
                 >
                     <LogoutIcon />
                     Sign Out
@@ -269,6 +305,42 @@ function SettingsIcon() {
         <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-5 h-5">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+    )
+}
+function CompassIcon() {
+    return (
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-5 h-5">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 21a9 9 0 100-18 9 9 0 000 18z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 9.172l-2.828 5.657-5.657 2.828 2.828-5.657 5.657-2.828z" />
+        </svg>
+    )
+}
+function AssignmentIcon() {
+    return (
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-5 h-5">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+        </svg>
+    )
+}
+function CalendarIcon() {
+    return (
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-5 h-5">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+    )
+}
+function MessageIcon() {
+    return (
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-5 h-5">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+        </svg>
+    )
+}
+function FolderIcon() {
+    return (
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-5 h-5">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
         </svg>
     )
 }
