@@ -100,8 +100,17 @@ export default function SecurePPTViewer({
         }
 
         const pdfjsLib = (window as any).pdfjsLib
-        const response = await fetch(fullFileUrl)
+        // Include auth token for backend-hosted PDFs (local disk fallback)
+        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+        const fetchHeaders: HeadersInit = {}
+        if (token && fullFileUrl && !fullFileUrl.startsWith('https://res.cloudinary.com')) {
+          fetchHeaders['Authorization'] = `Bearer ${token}`
+        }
+        const response = await fetch(fullFileUrl, { headers: fetchHeaders })
         if (!response.ok) {
+          if (response.status === 401 || response.status === 404) {
+            throw new Error(`PDF file not found on server. Please re-upload this course to restore the presentation.`)
+          }
           throw new Error(`HTTP ${response.status}: Failed to download PDF document`)
         }
         const arrayBuffer = await response.arrayBuffer()
