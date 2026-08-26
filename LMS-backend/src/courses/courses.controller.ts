@@ -614,18 +614,37 @@ export class CoursesController {
       const path = require('path');
       fileName = file.originalname;
 
-      // Use UPLOADS_DIR env var (set to Render Persistent Disk mount path)
-      // Falls back to local disk if UPLOADS_DIR not set
-      const baseUploadsDir = process.env.UPLOADS_DIR || path.join(process.cwd(), 'uploads');
-      const pptUploadsDir = path.join(baseUploadsDir, 'ppt');
-      if (!fs.existsSync(pptUploadsDir)) {
-        fs.mkdirSync(pptUploadsDir, { recursive: true });
+      // ── Try Cloudinary first (permanent free cloud storage) ─────────────────
+      // Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET in Render env
+      const cloudUrl = await this.cloudinaryService.uploadBuffer(
+        file.buffer,
+        file.originalname,
+        'lms/pdf-courses',
+      );
+
+      if (cloudUrl) {
+        fileUrl = cloudUrl;
+        console.log(`☁️  PDF stored on Cloudinary: ${fileUrl}`);
+        // For PPTX COM automation on Windows we still need a temp local copy
+        if (file.originalname.toLowerCase().match(/\.pptx?$/) && process.platform === 'win32') {
+          const tmpDir = path.join(process.cwd(), 'uploads', 'tmp');
+          if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
+          filePath = path.join(tmpDir, `${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`);
+          fs.writeFileSync(filePath, file.buffer);
+        }
+      } else {
+        // Fallback: save to local disk (works locally & on Render without Cloudinary)
+        const baseUploadsDir = process.env.UPLOADS_DIR || path.join(process.cwd(), 'uploads');
+        const pptUploadsDir = path.join(baseUploadsDir, 'ppt');
+        if (!fs.existsSync(pptUploadsDir)) {
+          fs.mkdirSync(pptUploadsDir, { recursive: true });
+        }
+        const safeName = `${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+        filePath = path.join(pptUploadsDir, safeName);
+        fs.writeFileSync(filePath, file.buffer);
+        fileUrl = `/uploads/ppt/${safeName}`;
+        console.log(`💾 PDF stored locally (Cloudinary not configured): ${filePath}`);
       }
-      const safeName = `${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-      filePath = path.join(pptUploadsDir, safeName);
-      fs.writeFileSync(filePath, file.buffer);
-      fileUrl = `/uploads/ppt/${safeName}`;
-      console.log(`💾 PDF stored at: ${filePath}`);
 
       // Convert PPTX slides to PNG images using PowerPoint COM automation (Windows only)
       if ((file.originalname.toLowerCase().endsWith('.pptx') || file.originalname.toLowerCase().endsWith('.ppt')) && process.platform === 'win32') {
