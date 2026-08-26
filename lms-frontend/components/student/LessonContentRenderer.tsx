@@ -17,6 +17,7 @@ import { json } from '@codemirror/lang-json'
 import { html } from '@codemirror/lang-html'
 import { css } from '@codemirror/lang-css'
 import { EditorView } from '@codemirror/view'
+import SecurePPTViewer from '@/components/course/SecurePPTViewer'
 
 function getCodeExtensions(language?: string) {
   const lang = (language || '').toLowerCase()
@@ -497,6 +498,25 @@ export default function LessonContentRenderer({ content }: { content: any }) {
         )}
       </div>
     );
+  }
+
+  if (content && typeof content === 'object' && (content.isPpt || Array.isArray(content.slides))) {
+    const userStored = typeof window !== 'undefined' ? localStorage.getItem('user') : null
+    const studentUser = userStored ? JSON.parse(userStored) : {}
+    return (
+      <div className="relative w-full h-[650px] my-6 rounded-3xl overflow-hidden shadow-2xl border border-slate-800">
+        <SecurePPTViewer
+          title={content.title || 'Interactive Presentation'}
+          slides={content.slides || []}
+          fileUrl={content.fileUrl}
+          studentInfo={{
+            name: studentUser.name || 'Learner',
+            email: studentUser.email || '',
+            collegeName: studentUser.collegeName || 'LMS College',
+          }}
+        />
+      </div>
+    )
   }
 
   const cells: Cell[] = Array.isArray(content) 

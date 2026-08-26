@@ -12,7 +12,10 @@ import {
   HttpException,
   HttpStatus,
   ParseIntPipe,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../common/jwt.guard';
 import { OptionalJwtAuthGuard } from '../common/optional-jwt.guard';
 import { RolesGuard } from '../common/roles.guard';
@@ -549,7 +552,228 @@ export class CoursesController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.SUPERADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.INSTRUCTOR)
+  @Post('upload-ppt')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadPptCourse(
+    @UploadedFile() file: any,
+    @Body() body: any,
+    @Request() req: any,
+  ) {
+    const userRole = req.user?.role;
+    const userId = req.user?.sub;
+    const userCollegeId = req.user?.collegeId;
+
+    const title = body.title || 'Untitled PDF Presentation Course';
+    const description = body.description || 'Interactive slide presentation course.';
+    const category = body.category || 'General';
+    const level = body.level || 'Beginner';
+
+    let slides: any[] = [];
+    if (typeof body.slides === 'string') {
+      try { slides = JSON.parse(body.slides); } catch (e) { slides = []; }
+    } else if (Array.isArray(body.slides)) {
+      slides = body.slides;
+    }
+
+    let fileUrl: string | null = null;
+    let fileName: string | null = null;
+    if (file) {
+      const fs = require('fs');
+      const path = require('path');
+      const uploadsDir = path.join(process.cwd(), 'uploads', 'ppt');
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+      const safeName = `${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+      const filePath = path.join(uploadsDir, safeName);
+      fs.writeFileSync(filePath, file.buffer);
+      fileUrl = `/uploads/ppt/${safeName}`;
+      fileName = file.originalname;
+
+      // Convert PPTX slides to PNG images using PowerPoint COM automation
+      if (file.originalname.toLowerCase().endsWith('.pptx') || file.originalname.toLowerCase().endsWith('.ppt')) {
+        try {
+          const { execSync } = require('child_process');
+          const slideImagesDir = path.join(process.cwd(), 'uploads', 'ppt', 'slides');
+          const slideDirName = `${Date.now()}-slides`;
+          const outputDir = path.join(slideImagesDir, slideDirName);
+          if (!fs.existsSync(outputDir)) {
+            fs.mkdirSync(outputDir, { recursive: true });
+          }
+
+          // Use PowerShell + PowerPoint COM to export each slide as PNG
+          const psScript = `
+$ErrorActionPreference = 'Stop'
+Add-Type -AssemblyName Microsoft.Office.Interop.PowerPoint -ErrorAction SilentlyContinue
+$pptApp = New-Object -ComObject PowerPoint.Application
+$pptApp.Visible = [Microsoft.Office.Core.MsoTriState]::msoTrue
+try {
+  $pptFile = $pptApp.Presentations.Open('${filePath.replace(/\\/g, '\\\\')}', $true, $false, $false)
+  $slideCount = $pptFile.Slides.Count
+  Write-Output "SLIDE_COUNT:$slideCount"
+  for ($i = 1; $i -le $slideCount; $i++) {
+    $outPath = '${outputDir.replace(/\\/g, '\\\\')}\\\\slide_$i.png'
+    $pptFile.Slides($i).Export($outPath, 'PNG', 1920, 1080)
+    Write-Output "SLIDE_EXPORTED:$i"
+  }
+  $pptFile.Close()
+} finally {
+  $pptApp.Quit()
+  [System.Runtime.Interopservices.Marshal]::ReleaseComObject($pptApp) | Out-Null
+}
+`;
+          const psScriptPath = path.join(outputDir, 'export_slides.ps1');
+          fs.writeFileSync(psScriptPath, psScript);
+
+          const result = execSync(
+            `powershell -ExecutionPolicy Bypass -NonInteractive -File "${psScriptPath}"`,
+            { timeout: 120000, encoding: 'utf8' }
+          );
+
+          // Collect exported slide PNG images
+          const slideImages = fs.readdirSync(outputDir)
+            .filter((f: string) => f.startsWith('slide_') && f.endsWith('.png'))
+            .sort((a: string, b: string) => {
+              const numA = parseInt(a.match(/\d+/)![0]);
+              const numB = parseInt(b.match(/\d+/)![0]);
+              return numA - numB;
+            });
+
+          if (slideImages.length > 0) {
+            slides = slideImages.map((imgFile: string, idx: number) => ({
+              slideNumber: idx + 1,
+              title: `${title} - Slide ${idx + 1}`,
+              content: '',
+              imageUrl: `/uploads/ppt/slides/${slideDirName}/${imgFile}`,
+            }));
+            console.log(`✅ Exported ${slideImages.length} slides as PNG images`);
+          }
+        } catch (pptErr) {
+          console.error('⚠️ Could not export PPTX slides via PowerPoint COM:', pptErr);
+          // Fallback: try JSZip text extraction
+          try {
+            const JSZip = require('jszip');
+            const zip = await JSZip.loadAsync(file.buffer);
+            const slideFiles = Object.keys(zip.files)
+              .filter((name: string) => /^ppt\/slides\/slide\d+\.xml$/.test(name))
+              .sort((a: string, b: string) => {
+                const numA = parseInt(a.match(/\d+/)![0]);
+                const numB = parseInt(b.match(/\d+/)![0]);
+                return numA - numB;
+              });
+
+            const extractedSlides: any[] = [];
+            for (let i = 0; i < slideFiles.length; i++) {
+              const xmlText = await zip.files[slideFiles[i]].async('text');
+              const matches = Array.from(xmlText.matchAll(/<a:t[^>]*>(.*?)<\/a:t>/g)).map((m: any) => m[1]);
+              const cleanTexts = matches
+                .map((t: string) => t.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').trim())
+                .filter((t: string) => t.length > 0);
+              const slideTitle = cleanTexts[0] || `${title} - Slide ${i + 1}`;
+              const slideBody = cleanTexts.length > 1 ? cleanTexts.slice(1).map((t: string) => `• ${t}`).join('\n') : (cleanTexts[0] || `Presentation Slide ${i + 1}`);
+              extractedSlides.push({ slideNumber: i + 1, title: slideTitle, content: slideBody });
+            }
+            if (extractedSlides.length > 0) slides = extractedSlides;
+          } catch (zipErr) {
+            console.error('⚠️ JSZip fallback also failed:', zipErr);
+          }
+        }
+      }
+
+      if (slides.length === 0) {
+        slides = [
+          { slideNumber: 1, title: `${title} - Introduction`, content: `Welcome to ${title}. Navigate through presentation slides using Next and Previous.` },
+          { slideNumber: 2, title: `${title} - Presentation Overview`, content: `Overview of topics covered in ${title}.` },
+          { slideNumber: 3, title: `${title} - Summary`, content: `Summary and key takeaways.` },
+        ];
+      }
+    }
+
+    if (slides.length === 0) {
+      slides = [
+        { slideNumber: 1, title: `${title} - Slide 1`, content: `Presentation content for ${title}.` }
+      ];
+    }
+
+    const isAutoApprove = userRole === UserRole.SUPERADMIN || userRole === UserRole.ADMIN;
+    const status = isAutoApprove ? CourseStatus.APPROVED : CourseStatus.DRAFT;
+    const published = isAutoApprove ? true : false;
+
+    let collegeId = userCollegeId;
+    if (userRole === UserRole.SUPERADMIN && body.collegeId) {
+      collegeId = parseInt(body.collegeId);
+    }
+
+    const course = this.courseRepo.create({
+      title,
+      description,
+      category,
+      level,
+      instructorId: userId,
+      collegeId,
+      status,
+      published,
+      ...(isAutoApprove && { approvedBy: userId }),
+    });
+
+    const savedCourse = await this.courseRepo.save(course);
+
+    let collegeIdsToAssign: number[] = [];
+    if (body.collegeIds) {
+      const rawColleges = typeof body.collegeIds === 'string' ? JSON.parse(body.collegeIds) : body.collegeIds;
+      if (Array.isArray(rawColleges)) {
+        collegeIdsToAssign = rawColleges.map((id: any) => parseInt(id)).filter((id: number) => !isNaN(id));
+      }
+    } else if (collegeId) {
+      collegeIdsToAssign = [collegeId];
+    }
+
+    if (collegeIdsToAssign.length > 0) {
+      savedCourse.assignedColleges = collegeIdsToAssign.map(id => ({ id } as any));
+      await this.courseRepo.save(savedCourse);
+    }
+
+    const module = this.moduleRepo.create({
+      title: 'Presentation Module',
+      order: 1,
+      courseId: savedCourse.id,
+    });
+    const savedModule = await this.moduleRepo.save(module);
+
+    const chapter = this.chapterRepo.create({
+      title: 'Interactive Slides',
+      order: 1,
+      moduleId: savedModule.id,
+    });
+    const savedChapter = await this.chapterRepo.save(chapter);
+
+    const isPdfFile = file?.originalname?.toLowerCase().endsWith('.pdf') || false;
+
+    const lesson = this.lessonRepo.create({
+      title: `${title} - Slides`,
+      type: 'ppt',
+      published: true,
+      order: 1,
+      chapterId: savedChapter.id,
+      content: {
+        isPpt: true,
+        isPdf: isPdfFile,
+        fileUrl,
+        fileName,
+        slides,
+      },
+    });
+    await this.lessonRepo.save(lesson);
+
+    return {
+      message: 'Presentation Course created and assigned successfully!',
+      course: savedCourse,
+    };
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
   @Post(':id/assign')
   async assignCourse(
     @Param('id') id: number,
@@ -565,11 +789,10 @@ export class CoursesController {
       throw new HttpException('Course not found', HttpStatus.NOT_FOUND);
     }
 
-    // Auto-approve and publish if assigning (Super Admin acts as final validator)
+    // Auto-approve and publish if assigning (Super Admin / Admin acts as final validator)
     course.published = true;
     if (course.status !== CourseStatus.APPROVED) {
       course.status = CourseStatus.APPROVED;
-      // Mark who approved it
       if ((req.user as any)?.sub) {
         course.approvedBy = req.user.sub;
       }

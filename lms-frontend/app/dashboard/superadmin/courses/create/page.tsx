@@ -1,31 +1,52 @@
 'use client'
-import { useEffect, useState } from 'react'
+
+import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
 import MarkdownToolbar from '@/components/editor/MarkdownToolbar'
-import { useRef } from 'react'
+import { API_URL, api } from '@/lib/api'
+
+interface College {
+    id: number
+    name: string
+}
 
 export default function GlobalCreateCoursePage() {
     const router = useRouter()
+    const [courseType, setCourseType] = useState<'standard' | 'ppt'>('ppt')
+    
+    // Standard Course Form
     const [form, setForm] = useState({
         title: '',
         description: '',
-        category: '',
-        level: '',
+        category: 'General',
+        level: 'Beginner',
         price: 0,
         objectives: '',
         prerequisites: '',
-        published: false
+        published: true
     })
+
+    // PPT Upload Form
+    const [pptForm, setPptForm] = useState({
+        title: '',
+        description: '',
+        category: 'General',
+        level: 'Beginner',
+        collegeId: '',
+        targetCollegeMode: 'all', // 'all' or 'specific'
+    })
+    
+    const [pptFile, setPptFile] = useState<File | null>(null)
+    const [colleges, setColleges] = useState<College[]>([])
     const [userRole, setUserRole] = useState<'STUDENT' | 'INSTRUCTOR' | 'ADMIN' | 'SUPERADMIN'>('SUPERADMIN')
     const [saving, setSaving] = useState(false)
     const [success, setSuccess] = useState(false)
     const [error, setError] = useState('')
 
     const descriptionRef = useRef<HTMLTextAreaElement>(null)
-    const objectivesRef = useRef<HTMLTextAreaElement>(null)
-    const prerequisitesRef = useRef<HTMLTextAreaElement>(null)
+    const pptDescRef = useRef<HTMLTextAreaElement>(null)
 
     useEffect(() => {
         const stored = localStorage.getItem('user')
@@ -33,9 +54,23 @@ export default function GlobalCreateCoursePage() {
         const u = JSON.parse(stored)
         if (!['SUPERADMIN', 'ADMIN', 'INSTRUCTOR'].includes(u.role)) { router.push('/login'); return }
         setUserRole(u.role)
+
+        fetchColleges()
     }, [])
 
-    const handleSubmit = async () => {
+    const fetchColleges = async () => {
+        try {
+            const res = await api.get('/auth/colleges')
+            if (Array.isArray(res.data)) {
+                setColleges(res.data)
+            }
+        } catch (e) {
+            console.error('Failed to fetch colleges:', e)
+        }
+    }
+
+    // Submit Standard Course
+    const handleSubmitStandard = async () => {
         if (!form.title || form.title.length < 5) {
             setError('Title must be at least 5 characters long')
             return
@@ -49,11 +84,11 @@ export default function GlobalCreateCoursePage() {
         setError('')
         
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/courses`, {
+            const res = await fetch(`${API_URL}/courses`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify(form),
+                body: JSON.stringify({ ...form, published: true }),
             })
             
             if (!res.ok) {
@@ -62,12 +97,69 @@ export default function GlobalCreateCoursePage() {
                 return
             }
             
-            const result = await res.json()
-            console.log('Course created:', result)
             setSuccess(true)
-            setTimeout(() => router.push(`/dashboard/${userRole.toLowerCase()}/courses`), 2000)
+            setTimeout(() => router.push(`/dashboard/${userRole.toLowerCase()}/courses`), 1500)
         } catch (e: any) {
             setError(e.message || 'Network error')
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    // Submit PPT Course (Simple Upload)
+    const handleSubmitPpt = async () => {
+        if (!pptForm.title || pptForm.title.length < 3) {
+            setError('Course title is required (at least 3 characters)')
+            return
+        }
+        if (!pptForm.description || pptForm.description.length < 10) {
+            setError('Course description is required (at least 10 characters)')
+            return
+        }
+        if (!pptFile) {
+            setError('Please select a presentation file (.ppt, .pptx, or .pdf) to upload')
+            return
+        }
+
+        setSaving(true)
+        setError('')
+
+        try {
+            const formData = new FormData()
+            formData.append('title', pptForm.title)
+            formData.append('description', pptForm.description)
+            formData.append('category', pptForm.category)
+            formData.append('level', pptForm.level)
+            formData.append('file', pptFile)
+
+            if (pptForm.targetCollegeMode === 'specific' && pptForm.collegeId) {
+                formData.append('collegeId', pptForm.collegeId)
+                formData.append('collegeIds', JSON.stringify([parseInt(pptForm.collegeId)]))
+            } else if (colleges.length > 0) {
+                const allIds = colleges.map(c => c.id)
+                formData.append('collegeIds', JSON.stringify(allIds))
+            }
+
+            const storedUser = localStorage.getItem('user')
+            const token = storedUser ? JSON.parse(storedUser).token : null
+
+            const res = await fetch(`${API_URL}/courses/upload-ppt`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
+                body: formData,
+            })
+
+            if (!res.ok) {
+                const errData = await res.json()
+                setError(errData.message || 'Failed to upload PPT course')
+                return
+            }
+
+            setSuccess(true)
+            setTimeout(() => router.push(`/dashboard/${userRole.toLowerCase()}/courses`), 1500)
+        } catch (e: any) {
+            setError(e.message || 'Failed to create PPT course')
         } finally {
             setSaving(false)
         }
@@ -78,194 +170,277 @@ export default function GlobalCreateCoursePage() {
             <Sidebar role={userRole} />
             <Navbar title="Create Course" />
             <main className="page-content">
-                <div className="flex items-center gap-3 mb-8">
-                    <button onClick={() => router.push(`/dashboard/${userRole.toLowerCase()}/courses`)}
-                        className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-[var(--bg-surface)]/10 transition-all">← Back</button>
-                    <div>
-                        <h1 className="text-2xl font-bold text-white">Create New Course</h1>
-                        <p className="text-gray-400 text-sm">Courses created by {userRole.replace('_', ' ')} are automatically approved</p>
+                <div className="flex items-center justify-between mb-8">
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => router.push(`/dashboard/${userRole.toLowerCase()}/courses`)}
+                            className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-[var(--bg-surface)]/10 transition-all"
+                        >
+                            ← Back
+                        </button>
+                        <div>
+                            <h1 className="text-2xl font-bold text-white">Upload PDF / Presentation Course</h1>
+                            <p className="text-gray-400 text-sm">Upload a PDF presentation file to automatically publish it for students slide by slide</p>
+                        </div>
+                    </div>
+
+                    {/* Mode Toggle */}
+                    <div className="bg-slate-900/80 p-1.5 rounded-2xl border border-slate-800 flex gap-1 shadow-lg">
+                        <button
+                            type="button"
+                            onClick={() => { setCourseType('ppt'); setError('') }}
+                            className={`px-5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                                courseType === 'ppt'
+                                    ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md'
+                                    : 'text-gray-400 hover:text-white'
+                            }`}
+                        >
+                            <span>📄</span> Upload PDF File
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => { setCourseType('standard'); setError('') }}
+                            className={`px-5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                                courseType === 'standard'
+                                    ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md'
+                                    : 'text-gray-400 hover:text-white'
+                            }`}
+                        >
+                            <span>📘</span> Standard Course
+                        </button>
                     </div>
                 </div>
 
                 {success ? (
-                    <div className="glass-card p-8 text-center">
-                        <div className="text-5xl mb-4">✅</div>
-                        <h2 className="text-white font-bold text-xl mb-2">Course Created & Approved!</h2>
-                        <p className="text-gray-400">Redirecting to courses list...</p>
+                    <div className="glass-card p-12 text-center max-w-2xl mx-auto shadow-2xl border border-emerald-500/30">
+                        <div className="w-20 h-20 bg-emerald-500/20 text-emerald-400 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-4 border border-emerald-500/30 shadow-lg shadow-emerald-500/20 animate-bounce">
+                            ✅
+                        </div>
+                        <h2 className="text-white font-black text-2xl mb-2">PDF Course Published & Assigned!</h2>
+                        <p className="text-gray-400 text-sm">Students can now view your PDF presentation slide by slide with DRM protection on their dashboard.</p>
                     </div>
                 ) : (
-                    <div className="glass-card p-8 max-w-3xl">
+                    <div className="glass-card p-8 max-w-3xl mx-auto shadow-2xl">
                         {error && (
-                            <div className="p-3 rounded-xl mb-5 text-sm text-red-400"
+                            <div className="p-4 rounded-2xl mb-6 text-sm text-red-400 font-semibold flex items-center gap-3"
                                 style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)' }}>
-                                ❌ {error}
+                                <span>❌</span> {error}
                             </div>
                         )}
 
-                        <div className="space-y-6">
-                            {/* Basic Info */}
-                            <div>
-                                <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
-                                    <span className="text-xl">📚</span>
-                                    Basic Information
-                                </h3>
+                        {courseType === 'ppt' ? (
+                            /* PDF File Upload Form */
+                            <div className="space-y-6">
                                 <div className="space-y-4">
+                                    <h3 className="text-white font-bold text-lg flex items-center gap-2 border-b border-gray-800 pb-3">
+                                        <span>📄</span> PDF Presentation Details
+                                    </h3>
+
                                     <div>
-                                        <label className="text-gray-400 text-sm mb-2 block">Course Title *</label>
+                                        <label className="text-gray-300 text-sm font-semibold mb-2 block">Course Title *</label>
                                         <input
-                                            value={form.title}
-                                            onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
-                                            placeholder="e.g. Complete Python Programming Masterclass"
+                                            value={pptForm.title}
+                                            onChange={e => setPptForm(p => ({ ...p, title: e.target.value }))}
+                                            placeholder="e.g. Operating Systems Architecture Presentation"
                                             className="input-field text-lg"
-                                            maxLength={200}
                                         />
-                                        <p className="text-[var(--text-secondary)] text-xs mt-1">{form.title.length}/200 characters (min 5)</p>
                                     </div>
 
                                     <div>
-                                        <label className="text-gray-400 text-sm mb-2 block font-semibold">Description *</label>
-                                        <MarkdownToolbar textareaRef={descriptionRef} onChange={val => setForm(p => ({ ...p, description: val }))} />
+                                        <label className="text-gray-300 text-sm font-semibold mb-2 block">Description *</label>
                                         <textarea
-                                            ref={descriptionRef}
-                                            value={form.description}
-                                            onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
-                                            onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
-                                            rows={4}
-                                            placeholder="Provide a detailed description of what students will learn..."
-                                            className="input-field resize-none rounded-t-none"
+                                            ref={pptDescRef}
+                                            value={pptForm.description}
+                                            onChange={e => setPptForm(p => ({ ...p, description: e.target.value }))}
+                                            rows={3}
+                                            placeholder="Provide a short summary of this PDF presentation course..."
+                                            className="input-field"
                                         />
-                                        <p className="text-[var(--text-secondary)] text-xs mt-1">{form.description.length} characters (min 20)</p>
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
-                                            <label className="text-gray-400 text-sm mb-2 block">Category</label>
+                                            <label className="text-gray-300 text-sm font-semibold mb-2 block">Category</label>
                                             <select
-                                                value={form.category}
-                                                onChange={e => setForm(p => ({ ...p, category: e.target.value }))}
+                                                value={pptForm.category}
+                                                onChange={e => setPptForm(p => ({ ...p, category: e.target.value }))}
                                                 className="input-field"
                                             >
-                                                <option value="">Select category</option>
+                                                <option value="General">General</option>
                                                 <option value="Programming">Programming</option>
                                                 <option value="Web Development">Web Development</option>
                                                 <option value="Data Science">Data Science</option>
-                                                <option value="Machine Learning">Machine Learning</option>
-                                                <option value="DevOps">DevOps</option>
-                                                <option value="Mobile Development">Mobile Development</option>
-                                                <option value="Database">Database</option>
-                                                <option value="Cloud Computing">Cloud Computing</option>
                                                 <option value="Cybersecurity">Cybersecurity</option>
-                                                <option value="Other">Other</option>
+                                                <option value="Management">Management</option>
                                             </select>
                                         </div>
 
                                         <div>
-                                            <label className="text-gray-400 text-sm mb-2 block">Level</label>
+                                            <label className="text-gray-300 text-sm font-semibold mb-2 block">Level</label>
                                             <select
-                                                value={form.level}
-                                                onChange={e => setForm(p => ({ ...p, level: e.target.value }))}
+                                                value={pptForm.level}
+                                                onChange={e => setPptForm(p => ({ ...p, level: e.target.value }))}
                                                 className="input-field"
                                             >
-                                                <option value="">Select level</option>
                                                 <option value="Beginner">Beginner</option>
                                                 <option value="Intermediate">Intermediate</option>
                                                 <option value="Advanced">Advanced</option>
                                             </select>
                                         </div>
                                     </div>
+                                </div>
 
-                                    <div>
-                                        <label className="text-gray-400 text-sm mb-2 block">Price ($)</label>
-                                        <input
-                                            type="number"
-                                            value={form.price}
-                                            onChange={e => setForm(p => ({ ...p, price: parseFloat(e.target.value) || 0 }))}
-                                            placeholder="0.00"
-                                            min="0"
-                                            step="0.01"
-                                            className="input-field"
-                                        />
-                                        <p className="text-[var(--text-secondary)] text-xs mt-1">Set to 0 for free courses</p>
+                                {/* College Assignment */}
+                                <div className="space-y-4 bg-slate-900/60 p-6 rounded-2xl border border-slate-800">
+                                    <h3 className="text-white font-bold text-base flex items-center gap-2">
+                                        <span>🏛️</span> Target College Assignment
+                                    </h3>
+                                    <p className="text-gray-400 text-xs">Choose which college students will see this presentation course on their dashboard.</p>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="text-gray-300 text-xs font-semibold mb-2 block">Assignment Target</label>
+                                            <select
+                                                value={pptForm.targetCollegeMode}
+                                                onChange={e => setPptForm(p => ({ ...p, targetCollegeMode: e.target.value }))}
+                                                className="input-field text-sm"
+                                            >
+                                                <option value="all">All Colleges (Global Access)</option>
+                                                <option value="specific">Particular College</option>
+                                            </select>
+                                        </div>
+
+                                        {pptForm.targetCollegeMode === 'specific' && (
+                                            <div>
+                                                <label className="text-gray-300 text-xs font-semibold mb-2 block">Select College *</label>
+                                                <select
+                                                    value={pptForm.collegeId}
+                                                    onChange={e => setPptForm(p => ({ ...p, collegeId: e.target.value }))}
+                                                    className="input-field text-sm"
+                                                >
+                                                    <option value="">-- Choose College --</option>
+                                                    {colleges.map(c => (
+                                                        <option key={c.id} value={c.id}>{c.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
-                            </div>
 
-                            {/* Additional Details */}
-                            <div>
-                                <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
-                                    <span className="text-xl">🎯</span>
-                                    Additional Details
-                                </h3>
+                                {/* PDF / Presentation File Upload */}
                                 <div className="space-y-4">
-                                    <div>
-                                        <label className="text-gray-400 text-sm mb-2 block font-semibold">Learning Objectives</label>
-                                        <MarkdownToolbar textareaRef={objectivesRef} onChange={val => setForm(p => ({ ...p, objectives: val }))} />
-                                        <textarea
-                                            ref={objectivesRef}
-                                            value={form.objectives}
-                                            onChange={e => setForm(p => ({ ...p, objectives: e.target.value }))}
-                                            onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
-                                            rows={3}
-                                            placeholder="What will students be able to do after completing this course?"
-                                            className="input-field resize-none rounded-t-none"
-                                        />
-                                    </div>
+                                    <h3 className="text-white font-bold text-base flex items-center gap-2">
+                                        <span>📁</span> Select PDF File (.pdf) *
+                                    </h3>
 
-                                    <div>
-                                        <label className="text-gray-400 text-sm mb-2 block font-semibold">Prerequisites</label>
-                                        <MarkdownToolbar textareaRef={prerequisitesRef} onChange={val => setForm(p => ({ ...p, prerequisites: val }))} />
-                                        <textarea
-                                            ref={prerequisitesRef}
-                                            value={form.prerequisites}
-                                            onChange={e => setForm(p => ({ ...p, prerequisites: e.target.value }))}
-                                            onInput={(e: any) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px' }}
-                                            rows={3}
-                                            placeholder="What knowledge or skills should students have before taking this course?"
-                                            className="input-field resize-none rounded-t-none"
+                                    <div className="border-2 border-dashed border-indigo-500/40 bg-indigo-950/30 rounded-2xl p-8 text-center transition-all hover:border-indigo-500/80">
+                                        <input
+                                            type="file"
+                                            id="ppt-file-input"
+                                            accept=".pdf,.pptx,.ppt,image/*"
+                                            onChange={e => setPptFile(e.target.files?.[0] || null)}
+                                            className="hidden"
                                         />
+                                        <label htmlFor="ppt-file-input" className="cursor-pointer flex flex-col items-center gap-3">
+                                            <div className="w-16 h-16 rounded-2xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-3xl font-black mb-1 border border-indigo-500/30 shadow-lg shadow-indigo-500/10">
+                                                📄
+                                            </div>
+                                            {pptFile ? (
+                                                <div>
+                                                    <p className="text-indigo-300 font-bold text-base">{pptFile.name}</p>
+                                                    <p className="text-slate-400 text-xs mt-1">{(pptFile.size / (1024 * 1024)).toFixed(2)} MB</p>
+                                                </div>
+                                            ) : (
+                                                <div>
+                                                    <p className="text-white font-bold text-base">Click to select PDF document (.pdf)</p>
+                                                    <p className="text-slate-400 text-xs mt-1.5">Direct PDF upload automatically displays as an interactive slide-by-slide deck</p>
+                                                </div>
+                                            )}
+                                        </label>
                                     </div>
                                 </div>
-                            </div>
 
-                            {/* Publishing Options */}
-                            <div>
-                                <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
-                                    <span className="text-xl">🚀</span>
-                                    Publishing Options
-                                </h3>
-                                <div className="flex items-center gap-3 p-4 rounded-xl bg-[var(--bg-surface)]/5">
+                                {/* Submit Button */}
+                                <div className="pt-4 flex justify-end">
                                     <button
-                                        onClick={() => setForm(p => ({ ...p, published: !p.published }))}
-                                        className={`relative w-14 h-7 rounded-full transition-all duration-300 ${form.published ? 'bg-green-500' : 'bg-gray-700'}`}
+                                        type="button"
+                                        onClick={handleSubmitPpt}
+                                        disabled={saving}
+                                        className="px-8 py-4 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold text-sm rounded-2xl shadow-xl transition-all disabled:opacity-50 flex items-center gap-2"
                                     >
-                                        <div className={`absolute top-1 w-5 h-5 rounded-full bg-[var(--bg-surface)] transition-all duration-300 ${form.published ? 'left-8' : 'left-1'}`} />
+                                        {saving ? 'Publishing PDF Course...' : '🚀 Publish PDF Course'}
                                     </button>
-                                    <div>
-                                        <p className="text-white text-sm font-medium">
-                                            {form.published ? '🌐 Publish Immediately' : '📝 Save as Draft'}
-                                        </p>
-                                        <p className="text-[var(--text-secondary)] text-xs">
-                                            {form.published 
-                                                ? 'Course will be visible to all users immediately' 
-                                                : 'Course will be approved but not visible to students yet'}
-                                        </p>
-                                    </div>
                                 </div>
                             </div>
+                        ) : (
+                            /* Standard Course Form */
+                            <div className="space-y-6">
+                                <div>
+                                    <label className="text-gray-400 text-sm mb-2 block">Course Title *</label>
+                                    <input
+                                        value={form.title}
+                                        onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
+                                        placeholder="e.g. Complete Python Programming Masterclass"
+                                        className="input-field text-lg"
+                                        maxLength={200}
+                                    />
+                                </div>
 
-                            {/* Submit Button */}
-                            <button
-                                onClick={handleSubmit}
-                                disabled={saving}
-                                className="btn-primary w-full py-4 text-base font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                {saving ? '⏳ Creating Course...' : '✅ Create & Approve Course'}
-                            </button>
+                                <div>
+                                    <label className="text-gray-400 text-sm mb-2 block font-semibold">Description *</label>
+                                    <MarkdownToolbar textareaRef={descriptionRef} onChange={val => setForm(p => ({ ...p, description: val }))} />
+                                    <textarea
+                                        ref={descriptionRef}
+                                        value={form.description}
+                                        onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
+                                        rows={4}
+                                        placeholder="Provide a detailed description..."
+                                        className="input-field resize-none rounded-t-none"
+                                    />
+                                </div>
 
-                            <p className="text-center text-[var(--text-secondary)] text-xs">
-                                💡 As a {userRole.replace('_', ' ')}, your course will be automatically approved and ready to build content
-                            </p>
-                        </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-gray-400 text-sm mb-2 block">Category</label>
+                                        <select
+                                            value={form.category}
+                                            onChange={e => setForm(p => ({ ...p, category: e.target.value }))}
+                                            className="input-field"
+                                        >
+                                            <option value="General">General</option>
+                                            <option value="Programming">Programming</option>
+                                            <option value="Web Development">Web Development</option>
+                                            <option value="Data Science">Data Science</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="text-gray-400 text-sm mb-2 block">Level</label>
+                                        <select
+                                            value={form.level}
+                                            onChange={e => setForm(p => ({ ...p, level: e.target.value }))}
+                                            className="input-field"
+                                        >
+                                            <option value="Beginner">Beginner</option>
+                                            <option value="Intermediate">Intermediate</option>
+                                            <option value="Advanced">Advanced</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="pt-4 flex justify-end">
+                                    <button
+                                        type="button"
+                                        onClick={handleSubmitStandard}
+                                        disabled={saving}
+                                        className="px-8 py-3.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-bold text-sm rounded-2xl shadow-xl"
+                                    >
+                                        {saving ? 'Creating Course...' : 'Create Course'}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
             </main>

@@ -9,9 +9,7 @@ type NavItem = { label: string; href: string; icon: React.ReactNode; badge?: str
 const studentNav: NavItem[] = [
     { label: 'Dashboard', href: '/dashboard/student', icon: <GridIcon /> },
     { label: 'My Courses', href: '/dashboard/student/courses', icon: <GraduationCapIcon /> },
-    { label: 'Course Catalog', href: '/dashboard/student/courses', icon: <CompassIcon /> },
     { label: 'Assignments', href: '/dashboard/student/progress', icon: <AssignmentIcon /> },
-    { label: 'Quizzes', href: '/dashboard/student/progress', icon: <QuizIcon /> },
     { label: 'Certificates', href: '/dashboard/student/profile', icon: <TrophyIcon /> },
     { label: 'Calendar', href: '/dashboard/student/streak', icon: <CalendarIcon /> },
     { label: 'Messages', href: '/dashboard/student/forums', icon: <MessageIcon />, badge: 3 },
@@ -61,12 +59,6 @@ export default function Sidebar({ role }: { role?: string }) {
             role === 'INSTRUCTOR' ? instructorNav :
                 role === 'ADMIN' ? adminNav :
                     role === 'SUPERADMIN' ? superadminNav : studentNav
-
-    const roleColor =
-        role === 'STUDENT' ? '#6366f1' :
-            role === 'INSTRUCTOR' ? '#6366f1' :
-                role === 'ADMIN' ? '#f97316' :
-                    role === 'SUPERADMIN' ? '#ef4444' : '#6366f1'
 
     const handleLogout = async () => {
         await fetch(`${API_URL}/auth/logout`, { 
@@ -127,22 +119,6 @@ export default function Sidebar({ role }: { role?: string }) {
                     )
                 })}
             </nav>
-
-            {/* Promo Banner Card */}
-            <div className="p-3 mx-2 my-2 rounded-2xl bg-gradient-to-br from-indigo-900 via-indigo-950 to-purple-950 text-white p-4 relative overflow-hidden shadow-xl border border-indigo-500/20">
-                <div className="absolute -right-3 -top-3 w-16 h-16 bg-indigo-500/20 rounded-full blur-xl" />
-                <div className="relative z-10">
-                    <div className="w-8 h-8 rounded-xl bg-indigo-500/30 flex items-center justify-center mb-2">
-                        🚀
-                    </div>
-                    <p className="text-[10px] uppercase tracking-wider font-extrabold text-indigo-300">Unlock More with</p>
-                    <h4 className="text-sm font-black text-white mb-1">EduVerse Pro</h4>
-                    <p className="text-[11px] text-indigo-200/70 mb-3 leading-snug">Access premium courses, certificates and more.</p>
-                    <button className="w-full py-2 px-3 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-1">
-                        Upgrade Now <span>→</span>
-                    </button>
-                </div>
-            </div>
 
             {/* Footer */}
             <div className="p-3 border-t" style={{ borderColor: 'var(--border)' }}>

@@ -128,11 +128,11 @@ describe('Security Controls', () => {
       await expect(service['checkPasswordBreached'](breachedPassword)).rejects.toThrow(
         BadRequestException,
       );
-    });
+    }, 15000);
 
     it('should allow strong unbreached password', async () => {
       const safePassword = 'K39&2pLm$9xZ!qW5_vN8';
       await expect(service['checkPasswordBreached'](safePassword)).resolves.not.toThrow();
-    });
+    }, 15000);
   });
 });
