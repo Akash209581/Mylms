@@ -121,6 +121,12 @@ export default function GlobalCreateCoursePage() {
             return
         }
 
+        const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB limit
+        if (pptFile.size > MAX_FILE_SIZE) {
+            setError(`Selected file size (${(pptFile.size / (1024 * 1024)).toFixed(2)} MB) exceeds the 10MB limit. Please select a smaller PDF presentation file.`)
+            return
+        }
+
         setSaving(true)
         setError('')
 
@@ -140,26 +146,22 @@ export default function GlobalCreateCoursePage() {
                 formData.append('collegeIds', JSON.stringify(allIds))
             }
 
-            const storedUser = localStorage.getItem('user')
-            const token = storedUser ? JSON.parse(storedUser).token : null
-
-            const res = await fetch(`${API_URL}/courses/upload-ppt`, {
-                method: 'POST',
-                credentials: 'include',
-                headers: token ? { Authorization: `Bearer ${token}` } : {},
-                body: formData,
+            const res = await api.post('/courses/upload-ppt', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
             })
 
-            if (!res.ok) {
-                const errData = await res.json()
-                setError(errData.message || 'Failed to upload PPT course')
+            if (res.status !== 200 && res.status !== 201) {
+                setError(res.data?.message || 'Failed to upload PPT course')
                 return
             }
 
             setSuccess(true)
             setTimeout(() => router.push(`/dashboard/${userRole.toLowerCase()}/courses`), 1500)
         } catch (e: any) {
-            setError(e.message || 'Failed to create PPT course')
+            const serverMsg = e.response?.data?.message || e.message
+            setError(serverMsg || 'Failed to create PPT course')
         } finally {
             setSaving(false)
         }
@@ -339,7 +341,17 @@ export default function GlobalCreateCoursePage() {
                                             type="file"
                                             id="ppt-file-input"
                                             accept=".pdf,.pptx,.ppt,image/*"
-                                            onChange={e => setPptFile(e.target.files?.[0] || null)}
+                                            onChange={e => {
+                                                const selected = e.target.files?.[0] || null;
+                                                if (selected && selected.size > 10 * 1024 * 1024) {
+                                                    setError(`Selected file (${(selected.size / (1024 * 1024)).toFixed(2)} MB) exceeds the 10MB size limit. Please choose a smaller file.`);
+                                                    setPptFile(null);
+                                                    e.target.value = '';
+                                                    return;
+                                                }
+                                                setError('');
+                                                setPptFile(selected);
+                                            }}
                                             className="hidden"
                                         />
                                         <label htmlFor="ppt-file-input" className="cursor-pointer flex flex-col items-center gap-3">
@@ -349,12 +361,12 @@ export default function GlobalCreateCoursePage() {
                                             {pptFile ? (
                                                 <div>
                                                     <p className="text-indigo-300 font-bold text-base">{pptFile.name}</p>
-                                                    <p className="text-slate-400 text-xs mt-1">{(pptFile.size / (1024 * 1024)).toFixed(2)} MB</p>
+                                                    <p className="text-slate-400 text-xs mt-1">{(pptFile.size / (1024 * 1024)).toFixed(2)} MB (Max limit: 10MB)</p>
                                                 </div>
                                             ) : (
                                                 <div>
-                                                    <p className="text-white font-bold text-base">Click to select PDF document (.pdf)</p>
-                                                    <p className="text-slate-400 text-xs mt-1.5">Direct PDF upload automatically displays as an interactive slide-by-slide deck</p>
+                                                    <p className="text-white font-bold text-base">Click to select PDF document (.pdf, max 10MB)</p>
+                                                    <p className="text-slate-400 text-xs mt-1.5">Direct PDF upload automatically displays as an interactive slide deck (Maximum 10 MB)</p>
                                                 </div>
                                             )}
                                         </label>

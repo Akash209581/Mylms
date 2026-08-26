@@ -554,12 +554,18 @@ export class CoursesController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.INSTRUCTOR)
   @Post('upload-ppt')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', {
+    limits: { fileSize: 10 * 1024 * 1024 }
+  }))
   async uploadPptCourse(
     @UploadedFile() file: any,
     @Body() body: any,
     @Request() req: any,
   ) {
+    if (file && file.size > 10 * 1024 * 1024) {
+      throw new HttpException('File size exceeds the 10MB limit. Please upload a smaller file.', HttpStatus.BAD_REQUEST);
+    }
+
     const userRole = req.user?.role;
     const userId = req.user?.sub;
     const userCollegeId = req.user?.collegeId;
@@ -591,8 +597,8 @@ export class CoursesController {
       fileUrl = `/uploads/ppt/${safeName}`;
       fileName = file.originalname;
 
-      // Convert PPTX slides to PNG images using PowerPoint COM automation
-      if (file.originalname.toLowerCase().endsWith('.pptx') || file.originalname.toLowerCase().endsWith('.ppt')) {
+      // Convert PPTX slides to PNG images using PowerPoint COM automation (Windows only)
+      if ((file.originalname.toLowerCase().endsWith('.pptx') || file.originalname.toLowerCase().endsWith('.ppt')) && process.platform === 'win32') {
         try {
           const { execSync } = require('child_process');
           const slideImagesDir = path.join(process.cwd(), 'uploads', 'ppt', 'slides');
