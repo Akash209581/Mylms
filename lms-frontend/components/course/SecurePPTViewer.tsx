@@ -48,7 +48,7 @@ export default function SecurePPTViewer({
   const renderTaskRef = useRef<any>(null)
 
   const fullFileUrl = fileUrl ? (fileUrl.startsWith('http') ? fileUrl : `${API_URL}${fileUrl}`) : null
-  const isPdf = fullFileUrl ? fullFileUrl.toLowerCase().endsWith('.pdf') : false
+  const isPdf = fullFileUrl ? (fullFileUrl.toLowerCase().endsWith('.pdf') || fullFileUrl.toLowerCase().includes('.pdf') || fullFileUrl.toLowerCase().includes('raw/upload') || fullFileUrl.toLowerCase().includes('pdf-courses')) : false
   const fileName = fileUrl ? fileUrl.split('/').pop() || 'Presentation File' : 'Presentation File'
 
   // Dynamic slide calculation: if PDF is loaded, use PDF page count
