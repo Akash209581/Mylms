@@ -16,7 +16,7 @@ export class CloudinaryService {
 
   /**
    * Upload a file buffer to Cloudinary.
-   * Returns the secure Cloudinary URL or null if Cloudinary is not configured / upload fails.
+   * Uses resource_type: 'raw' for PDFs to avoid image delivery restrictions.
    */
   async uploadBuffer(
     buffer: Buffer,
@@ -27,12 +27,11 @@ export class CloudinaryService {
 
     if (!isConfigured) {
       this.logger.warn(
-        `⚠️ Cloudinary credentials missing in process.env (cloudName=${!!cloudName}, apiKey=${!!apiKey}, apiSecret=${!!apiSecret}). Falling back to local disk.`,
+        `⚠️ Cloudinary credentials missing in process.env. Falling back to local disk.`,
       );
       return null;
     }
 
-    // Configure Cloudinary dynamically on each upload call
     cloudinary.config({
       cloud_name: cloudName,
       api_key: apiKey,
@@ -41,14 +40,17 @@ export class CloudinaryService {
     });
 
     return new Promise((resolve) => {
-      const safeName = originalName.replace(/[^a-zA-Z0-9.-]/g, '_');
-      const publicId = `${Date.now()}-${safeName}`;
+      // Strip existing .pdf extension to avoid duplicate extensions
+      const baseName = originalName.replace(/\.[^/.]+$/, '').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const isPdf = originalName.toLowerCase().endsWith('.pdf');
+      const ext = isPdf ? '.pdf' : '';
+      const publicId = `${Date.now()}-${baseName}${ext}`;
 
       const uploadStream = cloudinary.uploader.upload_stream(
         {
           folder,
           public_id: publicId,
-          resource_type: 'auto', // Handles both PDF and presentation files
+          resource_type: 'raw', // RAW is required for downloadable and direct PDF viewing
         },
         (error, result) => {
           if (error || !result) {

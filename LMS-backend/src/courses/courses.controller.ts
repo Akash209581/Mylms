@@ -14,6 +14,7 @@ import {
   ParseIntPipe,
   UseInterceptors,
   UploadedFile,
+  Res,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../common/jwt.guard';
@@ -579,6 +580,30 @@ export class CoursesController {
     @Request() req: any,
   ) {
     return this.handleUploadPresentation(file, body, req);
+  }
+
+  @Get('pdf-proxy')
+  async proxyPdf(@Query('url') targetUrl: string, @Res() res: any) {
+    if (!targetUrl) {
+      throw new HttpException('Missing url parameter', HttpStatus.BAD_REQUEST);
+    }
+    try {
+      const axios = require('axios');
+      const response = await axios.get(targetUrl, {
+        responseType: 'arraybuffer',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+        },
+      });
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      return res.send(Buffer.from(response.data));
+    } catch (err: any) {
+      console.error('⚠️ PDF proxy error:', err.message);
+      throw new HttpException('Failed to load PDF via proxy', HttpStatus.BAD_GATEWAY);
+    }
   }
 
   private async handleUploadPresentation(

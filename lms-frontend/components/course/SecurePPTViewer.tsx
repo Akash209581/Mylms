@@ -106,14 +106,34 @@ export default function SecurePPTViewer({
         if (token && fullFileUrl && !fullFileUrl.startsWith('https://res.cloudinary.com')) {
           fetchHeaders['Authorization'] = `Bearer ${token}`
         }
-        const response = await fetch(fullFileUrl, { headers: fetchHeaders })
-        if (!response.ok) {
-          if (response.status === 401 || response.status === 404) {
-            throw new Error(`PDF file not found on server. Please re-upload this course to restore the presentation.`)
+
+        let arrayBuffer: ArrayBuffer | null = null
+        try {
+          const response = await fetch(fullFileUrl, { headers: fetchHeaders })
+          if (response.ok) {
+            arrayBuffer = await response.arrayBuffer()
           }
-          throw new Error(`HTTP ${response.status}: Failed to download PDF document`)
+        } catch (fetchErr) {
+          console.warn('⚠️ Direct PDF fetch failed, attempting backend proxy...', fetchErr)
         }
-        const arrayBuffer = await response.arrayBuffer()
+
+        // If direct fetch did not succeed, fallback to backend PDF proxy
+        if (!arrayBuffer && fullFileUrl) {
+          try {
+            const proxyUrl = `${API_URL}/courses/pdf-proxy?url=${encodeURIComponent(fullFileUrl)}`
+            const proxyRes = await fetch(proxyUrl)
+            if (proxyRes.ok) {
+              arrayBuffer = await proxyRes.arrayBuffer()
+            }
+          } catch (proxyErr) {
+            console.warn('⚠️ Backend PDF proxy fallback failed:', proxyErr)
+          }
+        }
+
+        if (!arrayBuffer) {
+          throw new Error('PDF document could not be loaded. Please re-upload or check network permissions.')
+        }
+
         const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer })
         const pdf = await loadingTask.promise
 
