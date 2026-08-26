@@ -37,7 +37,8 @@ async function bootstrap() {
       }
       const isAllowed =
         allowedOrigins.includes(origin) ||
-        /^http:\/\/localhost:\d+$/.test(origin);
+        /^http:\/\/localhost:\d+$/.test(origin) ||
+        /\.onrender\.com$/.test(origin);
 
       if (isAllowed) {
         console.log(`CORS: Allowed origin -> ${origin}`);
