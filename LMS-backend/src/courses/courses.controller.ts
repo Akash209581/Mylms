@@ -26,6 +26,7 @@ import { Course, CourseStatus } from '../entities/course.entity';
 import { User, UserRole } from '../entities/user.entity';
 import { NotificationService } from '../common/notification.service';
 import { CollegeFilterService } from '../common/college-filter.service';
+import { CloudinaryService } from '../common/cloudinary.service';
 import { CreateCourseDto, UpdateCourseDto, AssignCourseDto } from './courses.dto';
 import { CourseModule } from '../entities/module.entity';
 import { Chapter } from '../entities/chapter.entity';
@@ -50,6 +51,7 @@ export class CoursesController {
     private resourceRepo: Repository<Resource>,
     private notificationService: NotificationService,
     private collegeFilterService: CollegeFilterService,
+    private cloudinaryService: CloudinaryService,
   ) {}
 
 
@@ -606,18 +608,42 @@ export class CoursesController {
 
     let fileUrl: string | null = null;
     let fileName: string | null = null;
+    let filePath: string | null = null;   // used by PPTX PowerShell block below
     if (file) {
       const fs = require('fs');
       const path = require('path');
-      const uploadsDir = path.join(process.cwd(), 'uploads', 'ppt');
-      if (!fs.existsSync(uploadsDir)) {
-        fs.mkdirSync(uploadsDir, { recursive: true });
-      }
-      const safeName = `${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-      const filePath = path.join(uploadsDir, safeName);
-      fs.writeFileSync(filePath, file.buffer);
-      fileUrl = `/uploads/ppt/${safeName}`;
       fileName = file.originalname;
+
+      // ── Try Cloudinary first (permanent cloud storage) ──────────────────────
+      const cloudUrl = await this.cloudinaryService.uploadBuffer(
+        file.buffer,
+        file.originalname,
+        'lms/pdf-courses',
+      );
+
+      if (cloudUrl) {
+        // Cloudinary upload succeeded — use the permanent URL
+        fileUrl = cloudUrl;
+        console.log(`☁️  PDF stored on Cloudinary: ${fileUrl}`);
+        // For PPTX COM automation we still need a temp local copy
+        if (file.originalname.toLowerCase().match(/\.pptx?$/) && process.platform === 'win32') {
+          const tmpDir = path.join(process.cwd(), 'uploads', 'tmp');
+          if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
+          filePath = path.join(tmpDir, `${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`);
+          fs.writeFileSync(filePath, file.buffer);
+        }
+      } else {
+        // Fallback: save to local disk (works locally / if Cloudinary not set up)
+        const uploadsDir = path.join(process.cwd(), 'uploads', 'ppt');
+        if (!fs.existsSync(uploadsDir)) {
+          fs.mkdirSync(uploadsDir, { recursive: true });
+        }
+        const safeName = `${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+        filePath = path.join(uploadsDir, safeName);
+        fs.writeFileSync(filePath, file.buffer);
+        fileUrl = `/uploads/ppt/${safeName}`;
+        console.log(`💾  PDF stored locally (Cloudinary not configured): ${filePath}`);
+      }
 
       // Convert PPTX slides to PNG images using PowerPoint COM automation (Windows only)
       if ((file.originalname.toLowerCase().endsWith('.pptx') || file.originalname.toLowerCase().endsWith('.ppt')) && process.platform === 'win32') {
@@ -637,7 +663,7 @@ Add-Type -AssemblyName Microsoft.Office.Interop.PowerPoint -ErrorAction Silently
 $pptApp = New-Object -ComObject PowerPoint.Application
 $pptApp.Visible = [Microsoft.Office.Core.MsoTriState]::msoTrue
 try {
-  $pptFile = $pptApp.Presentations.Open('${filePath.replace(/\\/g, '\\\\')}', $true, $false, $false)
+  $pptFile = $pptApp.Presentations.Open('${filePath!.replace(/\\/g, '\\\\')}', $true, $false, $false)
   $slideCount = $pptFile.Slides.Count
   Write-Output "SLIDE_COUNT:$slideCount"
   for ($i = 1; $i -le $slideCount; $i++) {

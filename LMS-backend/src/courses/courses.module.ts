@@ -10,6 +10,7 @@ import { College } from '../entities/college.entity';
 import { CoursesController } from './courses.controller';
 import { NotificationService } from '../common/notification.service';
 import { CollegeFilterService } from '../common/college-filter.service';
+import { CloudinaryService } from '../common/cloudinary.service';
 
 @Module({
   imports: [
@@ -17,7 +18,8 @@ import { CollegeFilterService } from '../common/college-filter.service';
   ],
 
   controllers: [CoursesController],
-  providers: [NotificationService, CollegeFilterService],
+  providers: [NotificationService, CollegeFilterService, CloudinaryService],
   exports: [TypeOrmModule],
 })
 export class CoursesModule {}
+
