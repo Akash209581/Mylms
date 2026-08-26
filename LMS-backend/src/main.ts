@@ -51,9 +51,19 @@ async function bootstrap() {
     credentials: true,
   });
 
+  // Use UPLOADS_DIR env var for persistent disk support on Render
+  // Set UPLOADS_DIR=/var/data/uploads in Render environment to use persistent disk
+  const uploadsDir = process.env.UPLOADS_DIR || path.join(process.cwd(), 'uploads');
+  const fs = require('fs');
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+    console.log(`📁 Created uploads directory: ${uploadsDir}`);
+  }
+  console.log(`📁 Serving uploads from: ${uploadsDir}`);
+
   app.use(
     '/uploads',
-    express.static(path.join(process.cwd(), 'uploads'), {
+    express.static(uploadsDir, {
       setHeaders: (res) => {
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
