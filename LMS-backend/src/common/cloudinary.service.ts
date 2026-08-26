@@ -5,51 +5,57 @@ import { Readable } from 'stream';
 @Injectable()
 export class CloudinaryService {
   private readonly logger = new Logger(CloudinaryService.name);
-  private readonly isConfigured: boolean;
 
-  constructor() {
-    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
-    const apiKey = process.env.CLOUDINARY_API_KEY;
-    const apiSecret = process.env.CLOUDINARY_API_SECRET;
-
-    this.isConfigured = !!(cloudName && apiKey && apiSecret);
-
-    if (this.isConfigured) {
-      cloudinary.config({ cloud_name: cloudName, api_key: apiKey, api_secret: apiSecret });
-      this.logger.log('☁️  Cloudinary configured successfully');
-    } else {
-      this.logger.warn('⚠️  Cloudinary env vars not set — uploads will fall back to local disk');
-    }
+  private getCredentials() {
+    const cloudName = (process.env.CLOUDINARY_CLOUD_NAME || '').trim();
+    const apiKey = (process.env.CLOUDINARY_API_KEY || '').trim();
+    const apiSecret = (process.env.CLOUDINARY_API_SECRET || '').trim();
+    const isConfigured = !!(cloudName && apiKey && apiSecret);
+    return { cloudName, apiKey, apiSecret, isConfigured };
   }
 
   /**
    * Upload a file buffer to Cloudinary.
-   * Returns the secure Cloudinary URL or null if Cloudinary is not configured.
+   * Returns the secure Cloudinary URL or null if Cloudinary is not configured / upload fails.
    */
   async uploadBuffer(
     buffer: Buffer,
     originalName: string,
     folder = 'lms/pdf-courses',
   ): Promise<string | null> {
-    if (!this.isConfigured) return null;
+    const { cloudName, apiKey, apiSecret, isConfigured } = this.getCredentials();
 
-    return new Promise((resolve, reject) => {
-      const publicId = `${Date.now()}-${originalName.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+    if (!isConfigured) {
+      this.logger.warn(
+        `⚠️ Cloudinary credentials missing in process.env (cloudName=${!!cloudName}, apiKey=${!!apiKey}, apiSecret=${!!apiSecret}). Falling back to local disk.`,
+      );
+      return null;
+    }
+
+    // Configure Cloudinary dynamically on each upload call
+    cloudinary.config({
+      cloud_name: cloudName,
+      api_key: apiKey,
+      api_secret: apiSecret,
+      secure: true,
+    });
+
+    return new Promise((resolve) => {
+      const safeName = originalName.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const publicId = `${Date.now()}-${safeName}`;
 
       const uploadStream = cloudinary.uploader.upload_stream(
         {
           folder,
           public_id: publicId,
-          resource_type: 'raw',   // 'raw' is required for PDFs / non-image files
-          use_filename: false,
-          unique_filename: false,
+          resource_type: 'auto', // Handles both PDF and presentation files
         },
         (error, result) => {
           if (error || !result) {
-            this.logger.error('Cloudinary upload failed:', error?.message);
-            reject(error || new Error('No result returned from Cloudinary'));
+            this.logger.error(`❌ Cloudinary upload error: ${error?.message || 'Unknown error'}`);
+            resolve(null);
           } else {
-            this.logger.log(`☁️  Uploaded to Cloudinary: ${result.secure_url}`);
+            this.logger.log(`☁️ Successfully uploaded PDF to Cloudinary: ${result.secure_url}`);
             resolve(result.secure_url);
           }
         },
