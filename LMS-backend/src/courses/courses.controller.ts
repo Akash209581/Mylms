@@ -554,7 +554,6 @@ export class CoursesController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.INSTRUCTOR)
   @Post('upload-ppt')
-  @Post('upload-pdf')
   @UseInterceptors(FileInterceptor('file', {
     limits: { fileSize: 10 * 1024 * 1024 }
   }))
@@ -562,6 +561,28 @@ export class CoursesController {
     @UploadedFile() file: any,
     @Body() body: any,
     @Request() req: any,
+  ) {
+    return this.handleUploadPresentation(file, body, req);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.INSTRUCTOR)
+  @Post('upload-pdf')
+  @UseInterceptors(FileInterceptor('file', {
+    limits: { fileSize: 10 * 1024 * 1024 }
+  }))
+  async uploadPdfCourse(
+    @UploadedFile() file: any,
+    @Body() body: any,
+    @Request() req: any,
+  ) {
+    return this.handleUploadPresentation(file, body, req);
+  }
+
+  private async handleUploadPresentation(
+    file: any,
+    body: any,
+    req: any,
   ) {
     if (file && file.size > 10 * 1024 * 1024) {
       throw new HttpException('File size exceeds the 10MB limit. Please upload a smaller file.', HttpStatus.BAD_REQUEST);
