@@ -50,7 +50,9 @@ export class CloudinaryService {
         {
           folder,
           public_id: publicId,
-          resource_type: 'raw', // RAW is required for downloadable and direct PDF viewing
+          resource_type: 'raw',
+          type: 'upload',
+          access_mode: 'public',
         },
         (error, result) => {
           if (error || !result) {
