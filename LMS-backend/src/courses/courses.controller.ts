@@ -570,6 +570,152 @@ export class CoursesController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.INSTRUCTOR)
+  @Post('upload-pdf-file')
+  @UseInterceptors(FileInterceptor('file', {
+    limits: { fileSize: 50 * 1024 * 1024 }
+  }))
+  async uploadPdfFile(@UploadedFile() file: any) {
+    if (!file) {
+      throw new HttpException('No PDF file uploaded', HttpStatus.BAD_REQUEST);
+    }
+
+    const fs = require('fs');
+    const path = require('path');
+
+    let fileUrl = await this.cloudinaryService.uploadBuffer(
+      file.buffer,
+      file.originalname,
+      'lms/pdf-courses',
+    );
+
+    if (!fileUrl) {
+      const baseUploadsDir = process.env.UPLOADS_DIR || path.join(process.cwd(), 'uploads');
+      const pdfUploadsDir = path.join(baseUploadsDir, 'pdf');
+      if (!fs.existsSync(pdfUploadsDir)) {
+        fs.mkdirSync(pdfUploadsDir, { recursive: true });
+      }
+      const safeName = `${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+      const filePath = path.join(pdfUploadsDir, safeName);
+      fs.writeFileSync(filePath, file.buffer);
+      fileUrl = `/uploads/pdf/${safeName}`;
+    }
+
+    return {
+      url: fileUrl,
+      fileName: file.originalname,
+      fileSize: file.size,
+    };
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.INSTRUCTOR)
+  @Post('create-pdf-course')
+  async createPdfCourse(@Body() body: any, @Request() req: any) {
+    const user = await this.userRepo.findOne({
+      where: { id: req.user.sub },
+      select: ['id', 'name', 'email', 'role', 'collegeId'],
+    });
+
+    if (!user) {
+      throw new HttpException('User not found', HttpStatus.UNAUTHORIZED);
+    }
+
+    const isSuperAdmin = user.role === UserRole.SUPERADMIN;
+    const courseStatus = isSuperAdmin || user.role === UserRole.ADMIN ? CourseStatus.APPROVED : CourseStatus.DRAFT;
+    const published = isSuperAdmin || user.role === UserRole.ADMIN ? true : false;
+    const collegeId = isSuperAdmin && body.collegeId ? parseInt(body.collegeId) : user.collegeId;
+
+    const course = this.courseRepo.create({
+      title: body.title || 'Untitled PDF Course',
+      description: body.description || '',
+      category: body.category || 'General',
+      level: body.level || 'Beginner',
+      price: body.price ? Number(body.price) : 0,
+      instructorId: req.user.sub,
+      collegeId,
+      status: courseStatus,
+      published,
+      ...(isSuperAdmin && { approvedBy: req.user.sub }),
+    });
+
+    const savedCourse = await this.courseRepo.save(course);
+
+    // Assign colleges if specified
+    let collegeIdsToAssign: number[] = [];
+    if (body.collegeIds) {
+      const rawColleges = typeof body.collegeIds === 'string' ? JSON.parse(body.collegeIds) : body.collegeIds;
+      if (Array.isArray(rawColleges)) {
+        collegeIdsToAssign = rawColleges.map((id: any) => parseInt(id)).filter((id: number) => !isNaN(id));
+      }
+    } else if (collegeId) {
+      collegeIdsToAssign = [collegeId];
+    }
+
+    if (collegeIdsToAssign.length > 0) {
+      savedCourse.assignedColleges = collegeIdsToAssign.map(id => ({ id } as any));
+      await this.courseRepo.save(savedCourse);
+    }
+
+    // Parse Chapters and Modules
+    const chaptersData = Array.isArray(body.chapters) ? body.chapters : [];
+
+    for (let cIdx = 0; cIdx < chaptersData.length; cIdx++) {
+      const chItem = chaptersData[cIdx];
+      const chNum = chItem.number || cIdx + 1;
+      const chName = chItem.name || `Chapter ${chNum}`;
+
+      const dbModule = this.moduleRepo.create({
+        title: chName.toLowerCase().startsWith('chapter') ? chName : `Chapter ${chNum}: ${chName}`,
+        order: chNum,
+        courseId: savedCourse.id,
+      });
+      const savedDbModule = await this.moduleRepo.save(dbModule);
+
+      const modulesData = Array.isArray(chItem.modules) ? chItem.modules : [];
+      for (let mIdx = 0; mIdx < modulesData.length; mIdx++) {
+        const modItem = modulesData[mIdx];
+        const modNum = modItem.number || mIdx + 1;
+        const modName = modItem.name || `Module ${modNum}`;
+
+        const dbChapter = this.chapterRepo.create({
+          title: modName.toLowerCase().startsWith('module') ? modName : `Module ${modNum}: ${modName}`,
+          order: modNum,
+          moduleId: savedDbModule.id,
+        });
+        const savedDbChapter = await this.chapterRepo.save(dbChapter);
+
+        // Create PDF Lesson
+        const pdfUrl = modItem.pdfUrl || modItem.fileUrl || '';
+        const fileName = modItem.fileName || `${modName}.pdf`;
+        const fileSize = modItem.fileSize || 0;
+
+        const dbLesson = this.lessonRepo.create({
+          title: modName,
+          type: 'pdf',
+          published: true,
+          order: 1,
+          chapterId: savedDbChapter.id,
+          contentUrl: pdfUrl,
+          content: {
+            isPdf: true,
+            pdfUrl,
+            fileName,
+            fileSize,
+          },
+        });
+        await this.lessonRepo.save(dbLesson);
+      }
+    }
+
+    return {
+      message: 'PDF Course created successfully!',
+      id: savedCourse.id,
+      course: savedCourse,
+    };
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.INSTRUCTOR)
   @Post('upload-pdf')
   @UseInterceptors(FileInterceptor('file', {
     limits: { fileSize: 10 * 1024 * 1024 }
