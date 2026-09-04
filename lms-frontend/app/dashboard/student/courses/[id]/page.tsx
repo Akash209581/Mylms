@@ -405,14 +405,16 @@ export default function StudentCourseDetailsPage() {
                             )}
                             {isEnrolled && (
                                 <div className="space-y-4">
-                                    <button
-                                        onClick={() => router.push(`/dashboard/student/courses/${courseId}/learn`)}
-                                        className="btn-primary px-10 py-4 text-xl font-black rounded-2xl shadow-2xl shadow-indigo-500/40 hover:scale-105 transition-all flex items-center gap-3 group"
-                                    >
-                                        <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 -translate-x-full group-hover:animate-shimmer" />
-                                        <span>{completedLessons.length > 0 ? '▶ Resume Learning' : '🚀 Start Learning'}</span>
-                                        <ChevronRight size={24} />
-                                    </button>
+                                    <div className="flex flex-wrap items-center gap-4">
+                                        <button
+                                            onClick={() => router.push(`/dashboard/student/courses/${courseId}/learn?start=true`)}
+                                            className="btn-primary px-10 py-4 text-xl font-black rounded-2xl shadow-2xl shadow-indigo-500/40 hover:scale-105 transition-all flex items-center gap-3 group"
+                                        >
+                                            <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 -translate-x-full group-hover:animate-shimmer" />
+                                            <span>{completedLessons.length > 0 ? '▶ Resume Course' : '🚀 Start Course'}</span>
+                                            <ChevronRight size={24} />
+                                        </button>
+                                    </div>
                                     <div className="flex items-center gap-2 text-emerald-400 font-bold px-1">
                                         <div className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-400/20 ring-1 ring-emerald-400/30">
                                             <CheckCircle2 size={14} />
@@ -469,160 +471,106 @@ export default function StudentCourseDetailsPage() {
                     {/* Right Column - Course Curriculum */}
                     <div className="lg:col-span-2">
                         <div className="glass-card p-6">
-                            <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
-                                <span>📚</span> Course Curriculum
-                            </h2>
+                            <div className="flex justify-between items-center mb-6">
+                                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                                    <span>📚</span> Course Chapters & Modules
+                                </h2>
+                                {isEnrolled && course.modules && course.modules.length > 0 && (
+                                    <button
+                                        onClick={() => router.push(`/dashboard/student/courses/${courseId}/learn`)}
+                                        className="btn-primary px-4 py-2 text-xs font-bold flex items-center gap-1.5"
+                                    >
+                                        <span>🚀</span> Start Learning
+                                    </button>
+                                )}
+                            </div>
 
                             {course.modules && course.modules.length > 0 ? (
-                                <div className="space-y-4">
+                                <div className="space-y-6">
                                     {course.modules.map((module, moduleIndex) => (
-                                        <div key={module.id} className="border border-white/10 rounded-xl overflow-hidden">
-                                            {/* Module Header */}
-                                            <button
-                                                onClick={() => toggleModule(module.id)}
-                                                className="w-full p-4 bg-[var(--bg-surface)]/5 hover:bg-[var(--bg-surface)]/10 transition-colors flex items-center justify-between"
-                                            >
-                                                <div className="flex items-center gap-3 text-left">
-                                                    <span className="text-2xl">
+                                        <div key={module.id} className="border border-white/10 rounded-xl overflow-hidden bg-slate-900/50">
+                                            {/* Chapter Header */}
+                                            <div className="p-4 bg-white/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-white/10">
+                                                <button
+                                                    onClick={() => toggleModule(module.id)}
+                                                    className="flex items-center gap-3 text-left flex-1"
+                                                >
+                                                    <span className="text-xl">
                                                         {expandedModules.has(module.id) ? '📂' : '📁'}
                                                     </span>
                                                     <div>
-                                                        <p className="text-white font-semibold text-lg">
-                                                            Module {moduleIndex + 1}: {module.title}
+                                                        <p className="text-white font-bold text-lg flex items-center gap-2">
+                                                            <span className="px-2.5 py-0.5 bg-indigo-500/20 text-indigo-400 rounded text-xs">
+                                                                Chapter {moduleIndex + 1}
+                                                            </span>
+                                                            <span>{module.title}</span>
                                                         </p>
                                                         {module.description && (
-                                                            <p className="text-gray-400 text-sm mt-1">
+                                                            <p className="text-gray-400 text-xs mt-1">
                                                                 {module.description}
                                                             </p>
                                                         )}
-                                                        <p className="text-[var(--text-secondary)] text-xs mt-1">
-                                                            {module.chapters?.length || 0} chapters
+                                                        <p className="text-gray-400 text-[11px] mt-1 font-semibold">
+                                                            {module.chapters?.length || 0} Modules inside Chapter
                                                         </p>
-
                                                     </div>
-                                                </div>
-                                                <span className="text-gray-400">
-                                                    {expandedModules.has(module.id) ? '▼' : '▶'}
-                                                </span>
-                                            </button>
+                                                </button>
 
-                                            {/* Chapters */}
-                                            {expandedModules.has(module.id) && (
-                                                <div className="p-4 space-y-4 bg-black/20">
-                                                    {module.chapters?.map((chapter, chapterIndex) => (
-                                                        <div key={chapter.id} className="border border-white/5 rounded-lg overflow-hidden">
-                                                            <div className="bg-white/5 p-3 flex justify-between items-center">
-                                                                <h4 className="text-purple-400 font-medium text-sm">
-                                                                    Chapter {moduleIndex+1}.{chapterIndex+1}: {chapter.title}
-                                                                </h4>
-                                                                <span className="text-[10px] text-gray-500 uppercase">
-                                                                    {chapter.lessons?.length || 0} topics
-                                                                </span>
-                                                            </div>
-                                                            <div className="p-2 space-y-2">
-                                                                {chapter.lessons?.map((lesson, lessonIndex) => (
-                                                                    <div key={lesson.id} className="p-3 bg-[var(--bg-surface)]/5 rounded-lg hover:bg-[var(--bg-surface)]/10 transition-colors">
-                                                                        {/* Lesson Header */}
-                                                                        <div className="flex items-start justify-between gap-4">
-                                                                            <div className="flex items-start gap-3 flex-1">
-                                                                                <span className="text-base mt-0.5">
-                                                                                    {typeIcons[lesson.type] || '📄'}
-                                                                                </span>
-                                                                                <div className="flex-1">
-                                                                                    <p className="text-white font-medium text-sm">
-                                                                                        {moduleIndex + 1}.{chapterIndex+1}.{lessonIndex + 1} {lesson.title}
-                                                                                    </p>
-                                                                                    
-                                                                                    {/* Video URL */}
-                                                                                    {lesson.videoUrl && (
-                                                                                        <div className="mt-1">
-                                                                                            <a 
-                                                                                                href={lesson.videoUrl}
-                                                                                                target="_blank"
-                                                                                                rel="noopener noreferrer"
-                                                                                                className="text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1"
-                                                                                            >
-                                                                                                <span>🎬</span> Watch Video
-                                                                                            </a>
-                                                                                        </div>
-                                                                                    )}
-
-                                                                                    {/* Resources */}
-                                                                                    {lesson.resources && lesson.resources.length > 0 && (
-                                                                                        <div className="mt-3 space-y-1">
-                                                                                            <p className="text-gray-400 text-xs font-semibold">
-                                                                                                📎 Resources:
-                                                                                            </p>
-                                                                                            {lesson.resources.map((resource) => (
-                                                                                                <a
-                                                                                                    key={resource.id}
-                                                                                                    href={resource.fileUrl}
-                                                                                                    target="_blank"
-                                                                                                    rel="noopener noreferrer"
-                                                                                                    className="flex items-center gap-2 text-purple-400 hover:text-purple-300 text-sm"
-                                                                                                >
-                                                                                                    <span>📥</span>
-                                                                                                    <span>{resource.title}</span>
-                                                                                                    {resource.fileSize && (
-                                                                                                        <span className="text-[var(--text-secondary)] text-xs">
-                                                                                                            ({formatFileSize(resource.fileSize)})
-                                                                                                        </span>
-                                                                                                    )}
-                                                                                                </a>
-                                                                                            ))}
-                                                                                        </div>
-                                                                                    )}
-                                                                                </div>
-                                                                            </div>
-
-                                                                            {/* Lesson Duration */}
-                                                                            {lesson.duration && (
-                                                                                <div className="text-gray-400 text-xs whitespace-nowrap">
-                                                                                    {formatDuration(lesson.duration)}
-                                                                                </div>
-                                                                            )}
-                                                                        </div>
-                                                                            {/* Mark as Complete Button */}
-                                                                            {isEnrolled && (
-                                                                                <div className="mt-4 flex items-center justify-between border-t border-white/5 pt-3">
-                                                                                    {completedLessons.includes(lesson.id) ? (
-                                                                                        <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/20">
-                                                                                            <span>✨</span> Completed
-                                                                                        </div>
-                                                                                    ) : (
-                                                                                        <button
-                                                                                            onClick={() => handleComplete(lesson.id)}
-                                                                                            disabled={completing === lesson.id}
-                                                                                            className="text-xs font-black uppercase tracking-widest px-4 py-2 bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 rounded-lg hover:bg-indigo-500 hover:text-white transition-all disabled:opacity-50"
-                                                                                        >
-                                                                                            {completing === lesson.id ? 'Processing...' : 'Mark as Done'}
-                                                                                        </button>
-                                                                                    )}
-                                                                                    <div className="flex gap-2">
-                                                                                        <span className="badge bg-blue-500/20 text-blue-400 border-blue-500/30 text-[10px] py-0.5">
-                                                                                            {lesson.type}
-                                                                                        </span>
-                                                                                    </div>
-                                                                                </div>
-                                                                            )}
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
+                                                {isEnrolled && (
+                                                    <button
+                                                        onClick={() => router.push(`/dashboard/student/courses/${courseId}/learn?chapterId=${module.id}&start=true`)}
+                                                        className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 shadow"
+                                                    >
+                                                        <span>▶</span> Start Chapter {moduleIndex + 1}
+                                                    </button>
                                                 )}
                                             </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="text-center py-12 text-gray-400">
-                                        <p className="text-4xl mb-2">📭</p>
-                                        <p>No curriculum has been added to this course yet.</p>
-                                    </div>
-                                )}
-                            </div>
+
+                                            {/* Modules inside Chapter */}
+                                            {expandedModules.has(module.id) && (
+                                                <div className="p-4 space-y-3 bg-black/20">
+                                                    {module.chapters?.map((chapter, chapterIndex) => (
+                                                        <div key={chapter.id} className="p-3.5 bg-white/5 rounded-lg border border-white/5 hover:bg-white/10 transition-colors">
+                                                            <div className="flex items-center justify-between gap-3">
+                                                                <div className="flex items-center gap-3">
+                                                                    <span className="text-base">📄</span>
+                                                                    <div>
+                                                                        <p className="text-white font-medium text-sm flex items-center gap-2">
+                                                                            <span className="text-purple-400 text-xs font-bold">
+                                                                                Module {moduleIndex + 1}.{chapterIndex + 1}
+                                                                            </span>
+                                                                            <span>{chapter.title}</span>
+                                                                        </p>
+                                                                        {chapter.description && (
+                                                                            <p className="text-gray-400 text-xs mt-0.5">{chapter.description}</p>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+
+                                                                {isEnrolled && (
+                                                                    <button
+                                                                        onClick={() => router.push(`/dashboard/student/courses/${courseId}/learn?moduleId=${chapter.id}&start=true`)}
+                                                                        className="text-xs font-bold text-indigo-400 hover:text-indigo-300 hover:underline"
+                                                                    >
+                                                                        Start Module →
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-12 text-gray-400">
+                                    <p className="text-4xl mb-2">📭</p>
+                                    <p>No chapters or modules added to this course yet.</p>
+                                </div>
+                            )}
                         </div>
+                    </div>
                     </div>
                 </main>
         </div>

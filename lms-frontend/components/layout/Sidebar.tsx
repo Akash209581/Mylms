@@ -61,13 +61,18 @@ export default function Sidebar({ role }: { role?: string }) {
                     role === 'SUPERADMIN' ? superadminNav : studentNav
 
     const handleLogout = async () => {
-        await fetch(`${API_URL}/auth/logout`, { 
-            method: 'POST', 
-            credentials: 'include',
-            headers: getAuthHeaders() 
-        })
-        localStorage.removeItem('user')
-        router.push('/login')
+        try {
+            await fetch(`${API_URL}/auth/logout`, { 
+                method: 'POST', 
+                credentials: 'include',
+                headers: getAuthHeaders() 
+            })
+        } catch (err) {
+            console.error('Logout API request failed:', err)
+        } finally {
+            localStorage.removeItem('user')
+            router.push('/login')
+        }
     }
 
     return (
