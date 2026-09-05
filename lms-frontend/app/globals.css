@@ -2925,6 +2925,302 @@ table .text-gray-500 {
   animation: slideDown 0.2s ease-out forwards;
 }
 
+/* Student dashboard: deliberately override the legacy global dark-text rule. */
+.student-dashboard .student-sidebar,
+.student-dashboard .student-sidebar-nav button,
+.student-dashboard .student-sidebar-user,
+.student-dashboard .student-sidebar-promo {
+  color: #eef5ff !important;
+}
+
+.student-dashboard .student-sidebar .student-logo {
+  color: #ffffff !important;
+}
+
+.student-dashboard .student-sidebar .student-sidebar-muted {
+  color: #cbd9ee !important;
+}
+
+.student-dashboard .student-sidebar .student-sidebar-section {
+  color: #8ed5ff !important;
+}
+
+.student-dashboard .student-sidebar-promo p:first-child,
+.student-dashboard .student-sidebar-user p:first-child {
+  color: #ffffff !important;
+}
+
+.student-dashboard .student-primary-button,
+.student-dashboard .student-primary-button * {
+  color: #ffffff !important;
+}
+
+/* Keep the student dashboard usable on short desktop displays as well as wide ones. */
+.student-dashboard .student-sidebar {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(203, 217, 238, 0.35) transparent;
+}
+
+/* The rail scales with the desktop layout viewport; header and content share it. */
+@media (min-width: 1024px) {
+  .student-dashboard {
+    --student-sidebar-width: clamp(176px, calc(11.72vw - 4px), 236px);
+  }
+
+  .student-dashboard .student-sidebar {
+    width: var(--student-sidebar-width) !important;
+  }
+
+  .student-dashboard .student-dashboard-header {
+    left: var(--student-sidebar-width) !important;
+  }
+
+  .student-dashboard .student-dashboard-main {
+    margin-left: var(--student-sidebar-width) !important;
+  }
+}
+
+/* Compact desktop rail: reduce every internal measure together, never wrap labels. */
+@media (min-width: 1024px) and (max-width: 1600px) {
+  .student-dashboard .student-sidebar {
+    padding-left: 10px;
+    padding-right: 10px;
+    padding-top: 14px;
+  }
+
+  .student-dashboard .student-sidebar-brand {
+    gap: 9px;
+    padding-left: 4px;
+  }
+
+  .student-dashboard .student-sidebar-brand > span {
+    width: 32px;
+    height: 32px;
+  }
+
+  .student-dashboard .student-sidebar-brand > span svg {
+    width: 19px;
+    height: 19px;
+  }
+
+  .student-dashboard .student-sidebar .student-logo {
+    font-size: 18px;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .student-dashboard .student-sidebar .student-sidebar-muted {
+    font-size: 9px;
+    line-height: 1.25;
+    white-space: nowrap;
+  }
+
+  .student-dashboard .student-sidebar-divider {
+    margin-top: 14px;
+    margin-bottom: 12px;
+  }
+
+  .student-dashboard .student-sidebar-nav button {
+    min-height: 35px;
+    gap: 10px;
+    padding: 7px 8px;
+    font-size: 11px;
+    line-height: 1.15;
+    white-space: nowrap;
+  }
+
+  .student-dashboard .student-sidebar-nav button svg {
+    width: 17px;
+    height: 17px;
+    flex: 0 0 17px;
+  }
+
+  .student-dashboard .student-sidebar-section {
+    padding-left: 4px;
+    font-size: 9px;
+  }
+
+  .student-dashboard .student-sidebar-section.mt-6 {
+    margin-top: 18px;
+  }
+
+  .student-dashboard .student-sidebar-section.mt-5 {
+    margin-top: 14px;
+  }
+
+  .student-dashboard .student-sidebar-user {
+    gap: 6px;
+    padding: 6px;
+  }
+
+  .student-dashboard .student-sidebar-user > span {
+    width: 27px;
+    height: 27px;
+    font-size: 10px;
+  }
+
+  .student-dashboard .student-sidebar-user p:first-child {
+    font-size: 10px;
+    line-height: 1.1;
+  }
+
+  .student-dashboard .student-sidebar-promo {
+    padding: 12px;
+  }
+
+  .student-dashboard .student-sidebar-promo p:first-child {
+    font-size: 16px;
+    line-height: 1.1;
+  }
+
+  .student-dashboard .student-sidebar-promo button {
+    margin-top: 10px;
+    padding: 6px 8px;
+    font-size: 9px;
+  }
+}
+
+/* Course catalog uses the same airy page rhythm as the redesigned student dashboard. */
+.course-catalog-page .course-catalog-main > :not(.catalog-hero) {
+  margin-left: 24px;
+  margin-right: 24px;
+}
+
+.course-catalog-page .catalog-hero {
+  min-height: 222px;
+}
+
+.course-catalog-page .course-catalog-main > .sticky {
+  top: 64px;
+  padding-top: 16px;
+}
+
+.learning-progress-page .progress-summary {
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.learning-progress-page .progress-summary > div:not(:last-child) {
+  border-right: 1px solid #e2e8f0;
+}
+
+.learning-progress-page .progress-browse-button,
+.learning-progress-page .progress-browse-button * {
+  color: #ffffff !important;
+}
+
+/* White student shell used by Courses and Assignments / Learning Progress. */
+.reference-student-sidebar {
+  position: fixed; inset: 0 auto 0 0; z-index: 50; display: flex; width: 320px; flex-direction: column;
+  border-right: 1px solid #d8e0ed; background: #fff; color: #34445e;
+}
+.reference-brand { display: flex; align-items: center; gap: 14px; padding: 28px 24px; }
+.reference-brand > span { display: grid; width: 52px; height: 52px; place-items: center; border-radius: 18px; background: linear-gradient(135deg,#6366f1,#8b3cf6); color: #fff; box-shadow: 0 8px 18px rgba(99,102,241,.22); }
+.reference-brand > span svg { width: 28px; height: 28px; }
+.reference-brand p { margin: 0; color: #101d39 !important; font-size: 26px; font-weight: 800; line-height: 1; }
+.reference-brand small { display: block; margin-top: 6px; color: #17223a; font-size: 13px; font-weight: 500; }
+.reference-line { height: 1px; margin: 0 0 22px; background: #d5ddea; }
+.reference-student-sidebar nav { padding: 0 15px; }
+.reference-student-sidebar nav button { display: flex; width: 100%; min-height: 56px; align-items: center; gap: 18px; border: 0; border-radius: 18px; background: transparent; color: #34445e; font-size: 17px; font-weight: 600; text-align: left; cursor: pointer; padding: 0 20px; }
+.reference-student-sidebar nav button:hover { background: #f2f5fb; }
+.reference-student-sidebar nav button.active { background: linear-gradient(100deg,#4b43f1,#a32ced); color: #15122c; box-shadow: 0 9px 15px rgba(104,56,237,.2); }
+.reference-student-sidebar nav button svg { width: 22px; height: 22px; flex: 0 0 22px; }
+.reference-student-sidebar nav button b { display: grid; width: 28px; height: 28px; margin-left: auto; place-items: center; border-radius: 50%; background: #5c55ea; color: #fff; font-size: 12px; }
+.reference-nav-label { margin: 21px 10px 9px; color: #64748b !important; font-size: 11px; font-weight: 700; letter-spacing: .08em; }
+.reference-signout { display: flex; align-items: center; gap: 14px; width: 100%; margin-top: auto; border: 0; border-top: 1px solid #d8e0ed; background: #fff; color: #ff4862; font-size: 17px; font-weight: 700; padding: 27px 36px; cursor: pointer; }
+.reference-signout svg { width: 21px; height: 21px; }
+.reference-student-header { position: fixed; top: 0; right: 0; left: 320px; z-index: 45; display: flex; height: 84px; align-items: center; justify-content: space-between; border-bottom: 1px solid #d8e0ed; background: rgba(255,255,255,.96); padding: 0 30px; backdrop-filter: blur(14px); }
+.reference-search { position: relative; width: min(560px,48%); }
+.reference-search svg { position: absolute; top: 50%; left: 19px; width: 21px; height: 21px; transform: translateY(-50%); color: #1a2740; }
+.reference-search input { width: 100%; height: 52px; border: 1px solid #cbd7e8; border-radius: 20px; background: #f9fbff; color: #16213a; font-size: 16px; padding: 0 76px 0 50px; outline: none; }
+.reference-search kbd { position: absolute; top: 50%; right: 17px; transform: translateY(-50%); border-radius: 5px; background: #eef2f8; color: #61718a; padding: 4px 8px; font-size: 11px; }
+.reference-header-actions { display: flex; align-items: center; gap: 16px; }
+.reference-icon-button { position: relative; display: grid; width: 52px; height: 52px; place-items: center; border: 1px solid #d1dceb; border-radius: 18px; background: #f8fbff; color: #17243e; cursor: pointer; }
+.reference-icon-button svg { width: 23px; height: 23px; }
+.reference-icon-button b { position: absolute; top: -4px; right: -4px; display: grid; width: 22px; height: 22px; place-items: center; border-radius: 50%; background: #5a4cf1; color: #fff; font-size: 11px; }
+.reference-user { display: flex; align-items: center; gap: 12px; min-width: 176px; border: 1px solid #cbd7e8; border-radius: 20px; background: #fafcff; padding: 8px 14px 8px 9px; text-align: left; cursor: pointer; }
+.reference-user > span { display: grid; width: 44px; height: 44px; place-items: center; border-radius: 14px; background: linear-gradient(135deg,#7060ef,#9452fb); color: #12142f; font-size: 14px; font-weight: 800; }
+.reference-user strong { display: block; color: #101d39; font-size: 14px; }.reference-user small { display: block; margin-top: 3px; color: #4d5d77; font-size: 12px; }.reference-user svg { width: 17px; height: 17px; margin-left: auto; }
+.course-catalog-page .course-catalog-main, .learning-progress-page .learning-progress-main { margin-left: 320px !important; padding-top: 84px !important; }
+@media (max-width: 1280px) { .reference-student-sidebar { width: 260px; }.reference-student-header { left: 260px; }.course-catalog-page .course-catalog-main, .learning-progress-page .learning-progress-main { margin-left: 260px !important; }.reference-student-sidebar nav button { font-size: 15px; gap: 14px; padding: 0 14px; }.reference-brand { padding: 22px 18px; }.reference-brand p { font-size: 22px; }.reference-search { width: 52%; }.reference-user { min-width: 150px; } }
+
+/* Dashboard joins the same fixed student shell used by the other student pages. */
+.student-dashboard .student-dashboard-main { margin-left: 246px !important; padding-top: 70px !important; }
+.student-settings-page .page-content, .student-certificates-page .page-content { margin-left: 246px !important; padding-top: 94px !important; }
+.forums-reference { margin-left: 246px !important; padding-top: 94px !important; }
+
+/* Community forum reference layout. */
+.forum-reference-main { margin-left:246px; padding-top:70px; }.forum-reference-hero { height:192px; position:relative; overflow:hidden; }.forum-reference-hero>img,.forum-reference-overlay { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }.forum-reference-overlay { background:linear-gradient(90deg,#fff 0%,rgba(255,255,255,.94) 33%,rgba(255,255,255,.16) 62%,rgba(8,27,51,.73) 100%); }.forum-reference-title { position:relative; z-index:1; padding:17px 40px; color:#0b193a; }.forum-reference-title>p { margin:0 0 18px; font:12px sans-serif; color:#53627b; }.forum-reference-title>p span { margin:0 6px; }.forum-reference-title h1 { margin:0; font:800 38px Georgia,serif; }.forum-reference-title h2 { margin:5px 0 15px; color:#536581; font:500 18px sans-serif; }.forum-hero-stats { display:flex; gap:34px; }.forum-stat { display:flex; align-items:center; gap:9px; }.forum-stat>span { display:grid; place-items:center; width:38px; height:38px; border-radius:13px; background:#eef1ff; font-size:19px; }.forum-stat p { margin:0; }.forum-stat b,.forum-stat small { display:block; }.forum-stat b { font:700 16px Georgia,serif; }.forum-stat small { color:#697894; font:11px sans-serif; }.forum-hero-words { position:absolute; z-index:2; right:5%; top:62px; border-left:2px solid #e8bd2e; padding-left:15px; color:#fff; font:700 12px/21px sans-serif; letter-spacing:.05em; }.forum-reference-content { padding:18px 34px 34px; }.forum-toolbar { display:flex; gap:15px; }.forum-toolbar>div { position:relative; flex:1; }.forum-toolbar svg { position:absolute; left:14px; top:50%; width:19px; transform:translateY(-50%); color:#3f59ee; }.forum-toolbar input { width:100%; box-sizing:border-box; border:1px solid #d8e1ee; border-radius:8px; padding:13px 14px 13px 46px; font-size:14px; }.forum-toolbar>button,.forum-create button { display:flex; align-items:center; gap:8px; border:0; border-radius:7px; background:#4d46e9; color:#fff; padding:0 25px; font-weight:700; box-shadow:0 6px 13px rgba(75,70,233,.22); }.forum-toolbar>button svg { position:static; transform:none; color:#fff; }.forum-tabs { display:flex; gap:8px; margin:20px 0; }.forum-tabs button { border:0; border-radius:7px; background:#f0f4f9; color:#5c6d88; padding:10px 20px; font-size:13px; font-weight:700; }.forum-tabs button.active { background:#4d46e9; color:#fff; }.forum-category-row { display:grid; grid-template-columns:repeat(5,1fr); gap:18px; }.forum-category { position:relative; min-height:105px; border-radius:8px; text-align:left; padding:14px; border:1px solid; }.forum-category>span { display:grid; place-items:center; width:30px; height:30px; border-radius:8px; color:#fff; background:#5d55ed; }.forum-category strong { display:block; margin-top:10px; font-size:13px; }.forum-category small { display:flex; align-items:center; gap:3px; margin-top:8px; color:#60718a; font-size:11px; }.forum-category small svg { width:12px; }.forum-category>svg { position:absolute; right:13px; bottom:13px; width:20px; border-radius:50%; background:#fff; padding:4px; }.forum-category.blue{background:#eef6ff;border-color:#cce1ff}.forum-category.violet{background:#f5efff;border-color:#e0d1ff}.forum-category.rose{background:#fff0f5;border-color:#ffd0df}.forum-category.emerald{background:#eafbf8;border-color:#c7eee5}.forum-category.amber{background:#fff6e8;border-color:#f7dcb3}.forum-columns { display:grid; grid-template-columns:minmax(0,1fr) 346px; gap:12px; margin-top:15px; }.forum-posts,.forum-side section { border:1px solid #e5eaf2; border-radius:8px; background:#fff; overflow:hidden; }.forum-posts h2,.forum-side h3 { margin:0; padding:12px; color:#101e3d; font:700 18px Georgia,serif; }.forum-posts h2 svg { width:18px; vertical-align:middle; color:#4c46ea; }.forum-post { display:flex; width:100%; align-items:flex-start; gap:12px; border:0; border-top:1px solid #edf0f5; background:#fff; padding:10px; text-align:left; }.forum-avatar { display:grid; width:35px; height:35px; place-items:center; border-radius:50%; background:#ede7ff; color:#352e73; font-size:12px; font-weight:800; }.forum-post>div { min-width:0; flex:1; }.forum-post strong { display:block; color:#16223c; font-size:13px; }.forum-post p { overflow:hidden; margin:3px 0; color:#667792; font-size:12px; text-overflow:ellipsis; white-space:nowrap; }.forum-post small { color:#5068e9; font-size:10px; }.forum-post aside { color:#526683; font-size:12px; white-space:nowrap; }.forum-post aside svg { width:15px; vertical-align:middle; }.forum-side { display:flex; flex-direction:column; gap:12px; }.forum-side h3 { font-size:15px; }.forum-stat-grid { display:grid; grid-template-columns:1fr 1fr; gap:13px; padding:0 12px 14px; }.forum-side .forum-stat>span { width:32px;height:32px;font-size:15px; }.forum-side .forum-stat b { font-size:14px; }.contributor { display:flex; align-items:center; gap:9px; padding:7px 12px; border-top:1px solid #edf0f5; }.contributor>b { color:#7f8fa6; font-size:11px; }.contributor>span { display:grid; width:27px; height:27px; place-items:center; border-radius:50%; background:#eee8ff; font-size:10px; }.contributor p { margin:0; font-size:11px; font-weight:700; }.contributor small { display:block; color:#71809a; font-size:10px; font-weight:400; }.forum-help { padding:12px; background:#f3f1ff !important; }.forum-help b { font-size:12px; }.forum-help p { margin:3px 0; color:#65728b; font-size:10px; }.forum-help button { float:right; border:0; border-radius:5px; background:#fff; color:#4d46e9; padding:6px 9px; font-size:10px; font-weight:700; }.forum-help button svg { width:11px; vertical-align:middle; }.forum-create { display:grid; max-width:720px; gap:13px; border:1px solid #e0e6f0; border-radius:10px; background:#fff; padding:24px; }.forum-create h2 { margin:0; font:700 24px Georgia,serif; }.forum-create input,.forum-create textarea,.forum-create select { border:1px solid #d8e1ee; border-radius:7px; padding:11px; font:14px sans-serif; }.forum-create textarea { min-height:150px; }.forum-create button { justify-content:center; min-height:42px; }.forum-empty { padding:50px; text-align:center; color:#65728b; }
+@media(max-width:1280px){.forum-reference-main{margin-left:220px}.forum-category-row{grid-template-columns:repeat(3,1fr)}.forum-columns{grid-template-columns:1fr}.forum-side{display:none}}@media(max-width:900px){.forum-reference-main{margin-left:0;padding-top:70px}.forum-category-row{grid-template-columns:repeat(2,1fr)}.forum-reference-title{padding-left:20px}.forum-hero-words{display:none}.forum-reference-content{padding:14px}.forum-toolbar{flex-direction:column}.forum-toolbar>button{height:44px;justify-content:center}.forum-hero-stats{gap:10px}}
+
+/* Profile / settings reference layout. */
+.profile-reference-main{margin-left:246px;padding-top:70px}.profile-banner{height:205px;position:relative;overflow:hidden}.profile-banner img,.profile-banner>div{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.profile-banner>div{background:linear-gradient(90deg,rgba(255,255,255,.92),rgba(255,255,255,.12) 65%,rgba(5,24,49,.78))}.profile-banner p,.profile-banner blockquote,.profile-banner em{position:absolute;z-index:1}.profile-banner p{top:16px;left:34px;margin:0;color:#4c5f82;font-size:12px}.profile-banner p span{margin:0 9px}.profile-banner blockquote{left:34px;top:50px;margin:0;color:#2e466b;font:italic 18px/22px Georgia,serif}.profile-banner blockquote small{display:block;margin-top:9px;font:11px sans-serif}.profile-banner em{right:6%;top:47px;color:#fff;font:italic 20px/24px Georgia,serif}.profile-identity{position:relative;z-index:2;display:flex;align-items:center;gap:22px;margin:-42px 40px 0;padding:0 12px 17px}.profile-avatar{display:grid;position:relative;width:138px;height:138px;place-items:center;overflow:hidden;border:4px solid #fff;border-radius:17px;background:linear-gradient(135deg,#5045ed,#9146ec);box-shadow:0 8px 17px rgba(34,42,65,.2);color:#fff;font-size:39px;font-weight:800}.profile-avatar img{width:100%;height:100%;object-fit:cover}.profile-avatar i{position:absolute;right:-1px;bottom:7px;width:20px;height:20px;border:2px solid #fff;border-radius:50%;background:#13bf87}.profile-identity h1{margin:0;color:#102142;font:800 38px Georgia,serif}.profile-identity p{display:flex;align-items:center;gap:10px;margin:8px 0;color:#3b4d70;font-size:14px}.profile-identity p svg{width:16px}.profile-identity p span{width:5px;height:5px;border-radius:50%;background:#c9d1dd}.profile-identity p b{border-radius:12px;background:#e8e2ff;color:#5a3ee9;padding:4px 11px;font-size:9px;letter-spacing:.07em}.profile-identity small{color:#3d4e6d}.profile-identity>button{display:flex;align-items:center;gap:8px;margin-left:auto;border:0;border-radius:7px;background:#4b43e8;color:#fff;padding:13px 24px;font-weight:700;box-shadow:0 6px 12px rgba(75,67,232,.24)}.profile-identity>button svg{width:16px}.profile-tabs{display:flex;gap:25px;margin:0 32px;padding:12px 14px;border-radius:9px;background:#fff}.profile-tabs button{border:0;background:none;color:#4e5f7a;font-size:13px}.profile-tabs button svg{width:15px;vertical-align:middle;margin-right:7px}.profile-tabs button.active{border-bottom:3px solid #5147ea;color:#26365c;padding-bottom:11px;font-weight:700}.profile-grid{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(330px,1fr);gap:16px;margin:18px 32px}.profile-left,.profile-right{display:flex;flex-direction:column;gap:16px}.profile-card{position:relative;border:1px solid #e2e8f0;border-radius:11px;background:#fff;padding:19px}.profile-card h2{display:flex;align-items:center;gap:11px;margin:0 0 18px;color:#152544;font:700 17px Georgia,serif}.profile-card h2>svg{width:20px;color:#5047e8}.profile-card h2 span{margin-left:auto}.profile-card p{color:#4e6080;font-size:13px}.profile-card>em{position:absolute;right:30px;top:58px;color:#8490ae;font:italic 14px/18px Georgia,serif;text-align:right}.outline,.plain{border:0;background:transparent;color:#5046e9;font-size:12px;font-weight:700}.outline{border:1px solid #7549f4;border-radius:5px;padding:8px 13px}.contact-list p{display:flex;align-items:center;gap:12px;margin:11px 0}.contact-list p svg{width:17px}.contact-list p b{border-radius:12px;background:#d9f8e9;color:#0d9b61;padding:4px 9px;font-size:9px}.connection-buttons{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.connection-buttons a,.connection-buttons button{display:flex;align-items:center;justify-content:center;gap:9px;border:1px solid #d8e2ed;border-radius:6px;background:#fff;color:#344768;padding:11px;font-size:11px;font-weight:700;text-decoration:none}.connection-buttons svg{width:18px}.health{display:flex;align-items:center;gap:25px}.ring{display:grid;width:145px;height:145px;place-content:center;border-radius:50%;background:conic-gradient(#7546ec var(--progress),#f0f2f6 0);position:relative}.ring:before{content:'';position:absolute;inset:11px;border-radius:50%;background:#fff}.ring b,.ring small{position:relative;text-align:center}.ring b{font-size:29px;color:#102142}.ring small{color:#536482;font-size:10px}.health p{margin:8px 0;font-size:12px}.health p svg{width:15px;vertical-align:middle;color:#16b87b}.health p.done{color:#3c5474}.health-tip{margin-top:17px;border-radius:7px;background:#f1f4ff;color:#4a5e82;padding:11px;font-size:12px}.learning-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:13px}.learning-stats>div{display:flex;gap:8px}.learning-stats>div>b{display:grid;width:30px;height:30px;place-items:center;border-radius:9px;background:#f0f2ff;color:#4c47e9}.learning-stats p{margin:0}.learning-stats strong,.learning-stats small{display:block}.learning-stats strong{color:#172746;font-size:13px}.learning-stats small{color:#62718b;font-size:10px}@media(max-width:1280px){.profile-reference-main{margin-left:220px}.profile-grid{grid-template-columns:1fr}.profile-identity h1{font-size:30px}}@media(max-width:900px){.profile-reference-main{margin-left:0}.profile-identity{margin-left:15px;margin-right:15px}.profile-grid,.profile-tabs{margin-left:15px;margin-right:15px}.profile-identity h1{font-size:25px}.profile-avatar{width:95px;height:95px}.profile-tabs{overflow:auto;white-space:nowrap}.connection-buttons{grid-template-columns:1fr}.profile-banner em{display:none}}
+@media (max-width: 1280px) { .student-dashboard .student-dashboard-main, .student-settings-page .page-content, .student-certificates-page .page-content, .forums-reference { margin-left: 220px !important; } }
+
+.reference-header-popover-wrap { position:relative; }
+.reference-popover { position:absolute; right:0; top:48px; z-index:90; min-width:220px; border:1px solid #dce4ef; border-radius:9px; background:#fff; box-shadow:0 14px 30px rgba(17,32,58,.16); padding:8px; color:#172746; }
+.reference-popover strong { display:block; padding:7px 9px; font-size:13px; }.reference-popover p { margin:0; border-top:1px solid #edf0f5; padding:9px; color:#63728b; font-size:12px; }.reference-popover button { display:block; width:100%; border:0; border-radius:5px; background:transparent; color:#263956; padding:9px; text-align:left; font-size:12px; font-weight:700; }.reference-popover button:hover { background:#f1f3ff; color:#4c46e9; }.notification-popover button { color:#4c46e9; }
+
+/* Dark navy variant from the student references. */
+.reference-student-sidebar { width: 246px; border-right: 1px solid rgba(255,255,255,.1); background: linear-gradient(180deg,#102842 0%,#071c33 100%); color: #dce8fa; }
+.reference-brand { padding: 22px 24px 18px; }.reference-brand > span { width: 42px; height: 42px; border-radius: 9px; box-shadow: none; }.reference-brand > span svg { width: 24px; height: 24px; }.reference-brand p { color: #fff !important; font-family: Georgia,serif; font-size: 23px; }.reference-brand small { color: #e0ebf7; font-size: 11px; margin-top: 3px; }.reference-line { margin-bottom: 15px; background: rgba(255,255,255,.12); }
+.reference-student-sidebar nav { padding: 0 13px; }.reference-student-sidebar nav button { min-height: 46px; gap: 15px; border-radius: 7px; color: #dce8fa; font-family: Georgia,serif; font-size: 15px; font-weight: 500; padding: 0 13px; }.reference-student-sidebar nav button:hover { background: rgba(255,255,255,.08); }.reference-student-sidebar nav button.active { background: linear-gradient(100deg,#293f91,#253465); color: #fff; box-shadow: none; }.reference-student-sidebar nav button svg { width: 20px; height: 20px; flex-basis: 20px; }.reference-student-sidebar nav button b { width: 23px; height: 23px; background: #3654c8; font-family: sans-serif; }
+.reference-nav-label { margin: 20px 10px 7px; color: #b9c9df !important; font-size: 10px; font-family: sans-serif; }.reference-sidebar-footer { margin-top: auto; }.reference-sidebar-promo { margin: 12px 23px 16px; padding: 23px; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; background: linear-gradient(145deg,rgba(20,55,96,.72),rgba(10,31,57,.3)); }.reference-sidebar-promo svg { color: #5068ef; width: 32px; height: 32px; }.reference-sidebar-promo p { margin: 14px 0 0; color: #fff !important; font-family: Georgia,serif; font-size: 18px; line-height: 1.35; }.reference-profile { display: flex; align-items: center; width: 100%; gap: 11px; border: 0; border-top: 1px solid rgba(255,255,255,.08); background: transparent; color: #fff; padding: 16px 24px; text-align: left; }.reference-profile > span { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 50%; background: linear-gradient(135deg,#5967ed,#4b43c9); font-weight: 800; }.reference-profile strong { display:block; font-family:Georgia,serif; font-size:13px; }.reference-profile small { display:block; margin-top:3px; color:#cfdbed; font-size:11px; }.reference-profile svg { width:16px; height:16px; margin-left:auto; }.reference-signout { border-top: 0; background: transparent; color: #e5edf8; font-family: Georgia,serif; font-size: 14px; font-weight: 500; padding: 13px 26px 20px; }.reference-student-header { left: 246px; height: 70px; padding: 0 25px; }.reference-search { width:min(560px,48%); }.reference-search input { height:40px; border-radius:9px; font-family:Georgia,serif; font-size:14px; }.reference-search svg { left:14px; width:18px; height:18px; }.reference-header-actions { gap:13px; }.reference-icon-button { width:40px; height:40px; border:0; border-radius:0; background:transparent; }.reference-icon-button b { width:17px; height:17px; font-size:9px; background:#f43f5e; }.reference-user { min-width:150px; border:0; border-radius:0; background:transparent; padding:3px 0 3px 8px; }.reference-user > span { width:42px; height:42px; border-radius:50%; background:#0b1d3c; color:#fff; }.reference-user strong { font-family:Georgia,serif; }.course-catalog-page .course-catalog-main,.learning-progress-page .learning-progress-main { margin-left:246px !important; padding-top:70px !important; }
+@media (max-width: 1280px) { .reference-student-sidebar { width:220px; }.reference-student-header { left:220px; }.course-catalog-page .course-catalog-main,.learning-progress-page .learning-progress-main { margin-left:220px !important; }.reference-student-sidebar nav button { font-size:13px; }.reference-sidebar-promo { display:none; } }
+
+@media (min-width: 1024px) {
+  .course-catalog-page .course-catalog-main > :not(.catalog-hero) {
+    margin-left: 40px;
+    margin-right: 40px;
+  }
+}
+
+@media (max-height: 960px) and (min-width: 1024px) {
+  .student-dashboard .student-sidebar {
+    padding-top: 14px;
+    padding-bottom: 10px;
+  }
+
+  .student-dashboard .student-sidebar-divider {
+    margin-top: 14px;
+    margin-bottom: 14px;
+  }
+
+  .student-dashboard .student-sidebar-nav button {
+    padding-top: 9px;
+    padding-bottom: 9px;
+  }
+
+  .student-dashboard .student-sidebar-section.mt-6 {
+    margin-top: 18px;
+  }
+
+  .student-dashboard .student-sidebar-section.mt-5 {
+    margin-top: 14px;
+  }
+
+  .student-dashboard .student-sidebar-footer {
+    margin-top: 14px;
+  }
+
+  .student-dashboard .student-sidebar-promo {
+    padding: 14px;
+  }
+}
+
+@media (max-height: 820px) and (min-width: 1024px) {
+  .student-dashboard .student-sidebar-promo {
+    display: none;
+  }
+
+  .student-dashboard .student-sidebar-footer {
+    margin-top: 12px;
+  }
+}
+
 @keyframes slideDown {
   from {
     opacity: 0;

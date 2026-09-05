@@ -1,13 +1,11 @@
 'use client'
 import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import Sidebar from '@/components/layout/Sidebar'
-import Navbar from '@/components/layout/Navbar'
+import StudentReferenceShell from '@/components/layout/StudentReferenceShell'
 import { api } from '@/lib/api'
 import CourseCatalogHeader from '@/components/course/CourseCatalogHeader'
 import SearchBar from '@/components/course/SearchBar'
 import FilterPanel from '@/components/course/FilterPanel'
-import FeaturedCourses from '@/components/course/FeaturedCourses'
 import CourseGrid from '@/components/course/CourseGrid'
 import EmptyState from '@/components/course/EmptyState'
 import LoadingSkeleton from '@/components/course/LoadingSkeleton'
@@ -140,11 +138,10 @@ export default function StudentCoursesPage() {
     }, [courses, filterTab, enrollments, sortBy])
 
     return (
-        <div className="min-h-screen bg-[var(--bg-base)] text-[var(--text-primary)] transition-colors">
-            <Sidebar role="STUDENT" />
-            <Navbar title="Course Catalog" />
+        <div className="course-catalog-page min-h-screen bg-[#f8faff] text-[#102142] transition-colors">
+            <StudentReferenceShell active="courses" />
 
-            <main className="page-content pt-24 pb-16 px-6 lg:px-10 max-w-[1600px] mx-auto space-y-8">
+            <main className="course-catalog-main page-content pt-20 pb-16 px-0 max-w-none space-y-0">
                 
                 {/* 1. Course Catalog Hero Header */}
                 <CourseCatalogHeader
@@ -187,17 +184,7 @@ export default function StudentCoursesPage() {
                     />
                 </div>
 
-                {/* 4. Featured Courses Carousel / Grid (only when no active search/filters) */}
-                {!search && !category && !level && pagination.page === 1 && (
-                    <FeaturedCourses
-                        courses={courses}
-                        enrolledIds={enrollments}
-                        onEnroll={handleEnroll}
-                        enrollingId={enrollingId}
-                    />
-                )}
-
-                {/* 5. Course Grid / Loading Skeleton / Empty State */}
+                {/* Course Grid / Loading Skeleton / Empty State */}
                 {loading ? (
                     <LoadingSkeleton />
                 ) : filteredCourses.length === 0 ? (

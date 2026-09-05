@@ -1,191 +1,27 @@
 'use client'
+
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Sidebar from '@/components/layout/Sidebar'
-import Navbar from '@/components/layout/Navbar'
+import { ArrowRight, BookOpen, CircleCheck, ChevronRight, Clock3, GraduationCap } from 'lucide-react'
+import StudentReferenceShell from '@/components/layout/StudentReferenceShell'
 import { getAuthHeaders } from '@/lib/authHeaders'
 
-interface CourseProgress {
-    id: number
-    course: { id: number; title: string; thumbnail?: string; category?: string }
-    completedLessons: number
-    totalLessons: number
-    progressPercent: number
-    enrolledAt: string
-    lastActivity?: string
-}
-
-const Skeleton = ({ className = '' }: { className?: string }) => (
-    <div className={`bg-[var(--bg-raised)] animate-pulse rounded-2xl ${className}`} />
-)
+interface CourseProgress { id: number; course: { id: number; title: string; thumbnail?: string; category?: string }; completedLessons: number; totalLessons: number; progressPercent: number; enrolledAt: string }
+const Skeleton = ({ className = '' }: { className?: string }) => <div className={`animate-pulse rounded-xl bg-slate-100 ${className}`} />
 
 export default function StudentProgressPage() {
-    const router = useRouter()
-    const [enrollments, setEnrollments] = useState<CourseProgress[]>([])
-    const [stats, setStats] = useState<any>(null)
-    const [loading, setLoading] = useState(true)
-
-    useEffect(() => {
-        const stored = localStorage.getItem('user')
-        if (!stored) { router.push('/login'); return }
-        const u = JSON.parse(stored)
-        if (u.role !== 'STUDENT') { router.push(`/dashboard/${u.role.toLowerCase()}`); return }
-
-        const headers = getAuthHeaders()
-        const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
-
-        Promise.all([
-            fetch(`${apiBase}/enrollments/my`, { headers }).then(r => r.json()),
-            fetch(`${apiBase}/student/stats`, { headers }).then(r => r.json()),
-        ]).then(([enrollmentData, statsData]) => {
-            if (Array.isArray(enrollmentData)) {
-                const mapped = enrollmentData.map((e: any) => ({
-                    id: e.id,
-                    course: e.course,
-                    completedLessons: e.completedLessons ?? 0,
-                    totalLessons: e.course?.lessonCount ?? 0,
-                    progressPercent: e.course?.lessonCount
-                        ? Math.round(((e.completedLessons ?? 0) / e.course.lessonCount) * 100)
-                        : 0,
-                    enrolledAt: e.enrolledAt,
-                    lastActivity: e.lastActivity,
-                }))
-                setEnrollments(mapped)
-            }
-            if (statsData && !statsData.message) setStats(statsData)
-        }).catch(() => { }).finally(() => setLoading(false))
-    }, [])
-
-    const overallProgress = enrollments.length
-        ? Math.round(enrollments.reduce((sum, e) => sum + e.progressPercent, 0) / enrollments.length)
-        : 0
-    const completedCourses = enrollments.filter(e => e.progressPercent >= 100).length
-    const inProgress = enrollments.filter(e => e.progressPercent > 0 && e.progressPercent < 100).length
-    const notStarted = enrollments.filter(e => e.progressPercent === 0).length
-
-    const getProgressColor = (pct: number) => {
-        if (pct >= 80) return 'from-emerald-500 to-teal-400'
-        if (pct >= 50) return 'from-indigo-500 to-blue-400'
-        if (pct > 0) return 'from-amber-500 to-orange-400'
-        return 'from-gray-500 to-gray-400'
-    }
-
-    return (
-        <div className="min-h-screen bg-[var(--bg-base)]">
-            <Sidebar role="STUDENT" />
-            <Navbar title="My Progress" />
-            <main className="page-content pt-24 pb-12">
-
-                {/* Header */}
-                <div className="mb-8">
-                    <h1 className="text-3xl font-black text-[var(--text-primary)] mb-1">Learning Progress</h1>
-                    <p className="text-[var(--text-secondary)]">Track your journey across all enrolled courses</p>
-                </div>
-
-                {/* Summary Stats */}
-                {loading ? (
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                        {[1,2,3,4].map(i => <Skeleton key={i} className="h-28" />)}
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                        {[
-                            { label: 'Overall Progress', value: `${overallProgress}%`, icon: '📊', color: 'from-indigo-500 to-purple-500' },
-                            { label: 'Completed', value: completedCourses, icon: '✅', color: 'from-emerald-500 to-teal-500' },
-                            { label: 'In Progress', value: inProgress, icon: '⏳', color: 'from-amber-500 to-orange-500' },
-                            { label: 'Not Started', value: notStarted, icon: '📚', color: 'from-gray-500 to-slate-500' },
-                        ].map((s, i) => (
-                            <div key={i} className="glass-card p-6 flex items-center gap-4">
-                                <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${s.color} flex items-center justify-center text-2xl shadow-lg flex-shrink-0`}>
-                                    {s.icon}
-                                </div>
-                                <div>
-                                    <p className="text-2xl font-black text-[var(--text-primary)]">{s.value}</p>
-                                    <p className="text-xs text-[var(--text-secondary)] font-semibold">{s.label}</p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
-
-                {/* Course Progress List */}
-                <div className="glass-card p-6">
-                    <h2 className="text-xl font-black text-[var(--text-primary)] mb-6 flex items-center gap-3">
-                        <span className="w-2 h-6 bg-indigo-500 rounded-full" />
-                        Course-by-Course Breakdown
-                    </h2>
-
-                    {loading ? (
-                        <div className="space-y-4">
-                            {[1,2,3,4].map(i => <Skeleton key={i} className="h-24" />)}
-                        </div>
-                    ) : enrollments.length === 0 ? (
-                        <div className="text-center py-16">
-                            <div className="text-6xl mb-4">📚</div>
-                            <h3 className="text-xl font-bold text-[var(--text-primary)] mb-2">No enrollments yet</h3>
-                            <p className="text-[var(--text-secondary)] mb-6">Enroll in a course to start tracking your progress</p>
-                            <button
-                                onClick={() => router.push('/dashboard/student/courses')}
-                                className="px-6 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-all"
-                            >
-                                Browse Courses
-                            </button>
-                        </div>
-                    ) : (
-                        <div className="space-y-4">
-                            {enrollments.map((e) => (
-                                <div
-                                    key={e.id}
-                                    onClick={() => router.push(`/dashboard/student/courses/${e.course?.id}/learn`)}
-                                    className="group p-5 rounded-2xl bg-[var(--bg-raised)] hover:bg-[var(--bg-hover)] border border-[var(--border)] hover:border-indigo-500/30 cursor-pointer transition-all duration-200"
-                                >
-                                    <div className="flex items-start justify-between gap-4 mb-4">
-                                        <div className="flex items-center gap-4">
-                                            <div
-                                                className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${getProgressColor(e.progressPercent)} flex items-center justify-center text-2xl shadow-lg flex-shrink-0`}
-                                            >
-                                                {e.progressPercent >= 100 ? '🏆' : e.progressPercent > 0 ? '📖' : '📚'}
-                                            </div>
-                                            <div>
-                                                <h3 className="font-bold text-[var(--text-primary)] group-hover:text-indigo-400 transition-colors line-clamp-1">
-                                                    {e.course?.title}
-                                                </h3>
-                                                <p className="text-xs text-[var(--text-secondary)] mt-1">
-                                                    {e.course?.category} • Enrolled {new Date(e.enrolledAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div className="text-right flex-shrink-0">
-                                            <span className={`text-2xl font-black ${e.progressPercent >= 80 ? 'text-emerald-400' : e.progressPercent >= 40 ? 'text-indigo-400' : 'text-amber-400'}`}>
-                                                {e.progressPercent}%
-                                            </span>
-                                            <p className="text-[10px] text-[var(--text-muted)] font-bold uppercase">complete</p>
-                                        </div>
-                                    </div>
-
-                                    {/* Progress bar */}
-                                    <div className="relative h-3 bg-[var(--border)] rounded-full overflow-hidden">
-                                        <div
-                                            className={`h-full bg-gradient-to-r ${getProgressColor(e.progressPercent)} rounded-full transition-all duration-700`}
-                                            style={{ width: `${e.progressPercent}%` }}
-                                        />
-                                    </div>
-                                    <div className="flex items-center justify-between mt-2">
-                                        <p className="text-[11px] text-[var(--text-muted)]">
-                                            {e.completedLessons} of {e.totalLessons || '?'} lessons completed
-                                        </p>
-                                        {e.progressPercent >= 100 ? (
-                                            <span className="text-[10px] font-black text-emerald-400 uppercase tracking-wide">✓ Completed</span>
-                                        ) : (
-                                            <span className="text-[10px] font-semibold text-indigo-400 group-hover:underline">Continue →</span>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            </main>
-        </div>
-    )
+    const router = useRouter(), [enrollments, setEnrollments] = useState<CourseProgress[]>([]), [loading, setLoading] = useState(true)
+    useEffect(() => { const stored = localStorage.getItem('user'); if (!stored) { router.replace('/login'); return }; const user = JSON.parse(stored); if (user.role !== 'STUDENT') { router.replace(`/dashboard/${user.role.toLowerCase()}`); return }; const headers = getAuthHeaders(), apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'; fetch(`${apiBase}/enrollments/my`, { headers }).then(r => r.ok ? r.json() : []).then(data => { if (Array.isArray(data)) setEnrollments(data.map((e: any) => ({ id: e.id, course: e.course, completedLessons: e.completedLessons ?? 0, totalLessons: e.course?.lessonCount ?? 0, progressPercent: e.course?.lessonCount ? Math.round(((e.completedLessons ?? 0) / e.course.lessonCount) * 100) : 0, enrolledAt: e.enrolledAt }))) }).catch(() => {}).finally(() => setLoading(false)) }, [router])
+    const overall = enrollments.length ? Math.round(enrollments.reduce((sum, item) => sum + item.progressPercent, 0) / enrollments.length) : 0
+    const completed = enrollments.filter(item => item.progressPercent >= 100).length, active = enrollments.filter(item => item.progressPercent > 0 && item.progressPercent < 100).length, untouched = enrollments.filter(item => item.progressPercent === 0).length
+    const stats = [{ label: 'Overall Progress', value: `${overall}%`, icon: <GraduationCap />, tone: 'bg-indigo-50 text-indigo-500' }, { label: 'Completed', value: completed, icon: <CircleCheck />, tone: 'bg-emerald-50 text-emerald-500' }, { label: 'In Progress', value: active, icon: <Clock3 />, tone: 'bg-orange-50 text-orange-500' }, { label: 'Not Started', value: untouched, icon: <BookOpen />, tone: 'bg-slate-100 text-slate-500' }]
+    return <div className="learning-progress-page min-h-screen bg-[#f8faff]"><StudentReferenceShell active="progress" /><main className="learning-progress-main page-content pt-20 pb-12 px-0 max-w-none">
+        <section className="progress-hero relative min-h-[170px] overflow-hidden px-7 py-6 lg:px-10"><img src="/images/learning-progress-hero.png" alt="University campus" className="absolute inset-0 h-full w-full object-cover object-right" /><div className="absolute inset-0 bg-[linear-gradient(90deg,#fff_0%,rgba(255,255,255,.97)_47%,rgba(255,255,255,.2)_75%,rgba(11,31,59,.2)_100%)]" /><div className="relative z-10"><p className="mb-3 text-xs text-slate-500">Home <span className="mx-2 text-indigo-400">/</span> <span className="font-semibold text-[#12264b]">Learning Progress</span></p><h1 className="font-serif text-4xl font-bold text-[#0b193a] lg:text-5xl">Learning Progress</h1><p className="mt-1 font-serif text-lg text-slate-600">Track your journey across all enrolled courses</p></div><blockquote className="absolute right-[22%] top-10 z-10 hidden max-w-[250px] border-b-2 border-indigo-500 pb-3 font-serif text-base italic leading-6 text-slate-600 xl:block">“Progress is not a destination,<br />but a continuous journey.”<span className="mt-2 block text-xs not-italic">— Unknown</span></blockquote><div className="absolute right-[5%] top-1/2 z-10 hidden -translate-y-1/2 border-l-2 border-amber-400 pl-4 text-[11px] font-semibold leading-6 tracking-wider text-white xl:block">LEARN<br />PRACTICE<br />GROW<br />SUCCEED</div></section>
+        {loading ? <div className="mx-6 mt-5 grid grid-cols-2 gap-4 lg:mx-10 lg:grid-cols-4">{[1,2,3,4].map(i => <Skeleton key={i} className="h-24" />)}</div> : <div className="progress-summary mx-6 mt-5 grid grid-cols-2 lg:mx-10 lg:grid-cols-4">{stats.map(stat => <div key={stat.label} className="flex items-center gap-4 bg-white p-5"><span className={`grid h-14 w-14 shrink-0 place-items-center rounded-2xl ${stat.tone}`}>{stat.icon}</span><div><p className="font-serif text-3xl font-bold text-[#0b193a]">{stat.value}</p><p className="text-xs text-slate-500">{stat.label}</p></div><ChevronRight className="ml-auto h-5 w-5 rounded-full bg-slate-50 p-1 text-slate-600" /></div>)}</div>}
+        <section className="progress-breakdown mx-6 mt-5 rounded-xl border border-slate-200 bg-white p-6 lg:mx-10"><h2 className="font-serif text-2xl font-bold text-[#0b193a]"><span className="mr-3 inline-block h-6 w-2 rounded-full bg-indigo-500 align-middle" />Course-by-Course Breakdown</h2><p className="ml-5 mt-1 text-sm text-slate-500">View the progress of each course you are enrolled in.</p>{loading ? <div className="mt-6 space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-20" />)}</div> : enrollments.length === 0 ? <EmptyProgress onBrowse={() => router.push('/dashboard/student/courses')} /> : <div className="mt-6 space-y-3">{enrollments.map(item => <CourseRow key={item.id} item={item} onClick={() => router.push(`/dashboard/student/courses/${item.course?.id}/learn`)} />)}</div>}</section>
+    </main></div>
 }
+
+function EmptyProgress({ onBrowse }: { onBrowse: () => void }) { return <div className="relative overflow-hidden py-12 text-center"><div className="mx-auto mb-4 grid h-28 w-44 place-items-center rounded-[45%] bg-gradient-to-b from-indigo-50 to-white"><GraduationCap className="h-14 w-14 text-indigo-400" /></div><h3 className="font-serif text-2xl font-bold text-[#0b193a]">No enrollments yet</h3><p className="mx-auto mt-2 max-w-sm text-slate-500">Enroll in a course to start tracking your progress and see your learning journey here.</p><button onClick={onBrowse} className="progress-browse-button mt-6 inline-flex items-center gap-3 rounded-lg bg-indigo-600 px-6 py-3 text-sm font-bold text-white hover:bg-indigo-700">Browse Courses <ArrowRight className="h-4 w-4" /></button><div className="mt-12 grid grid-cols-1 gap-5 border-t border-slate-100 pt-5 text-left md:grid-cols-3"><ProgressTip icon={<BookOpen />} title="Discover Courses" text="Explore a wide range of courses" /><ProgressTip icon={<CircleCheck />} title="Learn from Experts" text="Gain skills from industry professionals" /><ProgressTip icon={<GraduationCap />} title="Track Your Progress" text="See your improvement over time" /></div></div> }
+function ProgressTip({ icon, title, text }: any) { return <div className="flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-xl bg-indigo-50 text-indigo-500">{icon}</span><div><p className="font-serif text-sm font-bold text-[#102142]">{title}</p><p className="text-xs text-slate-500">{text}</p></div></div> }
+function CourseRow({ item, onClick }: { item: CourseProgress; onClick: () => void }) { return <button onClick={onClick} className="w-full rounded-lg border border-slate-200 p-4 text-left transition hover:border-indigo-300 hover:shadow-sm"><div className="flex items-center justify-between gap-4"><div className="min-w-0"><p className="truncate font-serif text-lg font-bold text-[#102142]">{item.course?.title}</p><p className="mt-1 text-xs text-slate-500">{item.course?.category || 'Course'} · {item.completedLessons} of {item.totalLessons || 0} lessons completed</p></div><span className="font-serif text-xl font-bold text-indigo-600">{item.progressPercent}%</span></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-indigo-500" style={{ width: `${item.progressPercent}%` }} /></div></button> }
