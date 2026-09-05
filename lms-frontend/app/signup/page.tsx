@@ -2,8 +2,13 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { api, API_URL } from '@/lib/api'
-import { getAuthHeaders } from '@/lib/authHeaders'
+import Image from 'next/image'
+import { 
+    Mail, Lock, Eye, EyeOff, BookOpen, AlertCircle, Loader2,
+    User, Phone, Building2, Globe, GraduationCap, Layers,
+    Calendar, Hash, ArrowRight, ArrowLeft, Check, Search, X, RefreshCw
+} from 'lucide-react'
+import { API_URL } from '@/lib/api'
 
 const INDIAN_STATES = [
     'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
@@ -20,6 +25,8 @@ const COUNTRIES = ['India', 'United States', 'United Kingdom', 'Canada', 'Austra
 export default function SignupPage() {
     const router = useRouter()
     const [currentStep, setCurrentStep] = useState(1)
+    const [showPassword, setShowPassword] = useState(false)
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false)
     const [form, setForm] = useState({
         name: '',
         email: '',
@@ -49,17 +56,14 @@ export default function SignupPage() {
     const [selectedCollegeLogo, setSelectedCollegeLogo] = useState<string | null>(null)
     const autocompleteRef = useRef<HTMLDivElement>(null)
 
-    // Fetch colleges when component mounts
     useEffect(() => {
         fetchColleges()
     }, [])
 
-    // Close dropdown when clicking outside
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
             if (autocompleteRef.current && !autocompleteRef.current.contains(e.target as Node)) {
                 setCollegeDropdownOpen(false)
-                // If user blurred without selecting, restore the selected name or clear
                 if (!collegeSelected) {
                     setCollegeQuery('')
                     setForm(prev => ({ ...prev, collegeName: '' }))
@@ -75,26 +79,18 @@ export default function SignupPage() {
         setCollegesFetchError(false)
         try {
             const apiUrl = `${API_URL}/auth/colleges`
-            console.log('Fetching colleges from:', apiUrl)
             const response = await fetch(apiUrl, {
                 method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
+                headers: { 'Content-Type': 'application/json' }
             })
-            console.log('Response status:', response.status)
             if (response.ok) {
                 const data = await response.json()
-                console.log('✅ Colleges fetched successfully:', data)
                 setColleges(data)
                 setCollegesFetchError(false)
             } else {
-                const errorText = await response.text()
-                console.error('❌ Failed to fetch colleges. Status:', response.status, 'Error:', errorText)
                 setCollegesFetchError(true)
             }
         } catch (err) {
-            console.error('❌ Error fetching colleges:', err)
             setCollegesFetchError(true)
         } finally {
             setLoadingColleges(false)
@@ -125,7 +121,6 @@ export default function SignupPage() {
         return true
     }
 
-    // Derived shorthand used in validation
     const { collegeName } = form
 
     const validateStep2 = () => {
@@ -144,7 +139,6 @@ export default function SignupPage() {
         return true
     }
 
-    // Derived helpers for autocomplete
     const filteredColleges = colleges.filter(c =>
         c.name.toLowerCase().includes(collegeQuery.toLowerCase())
     )
@@ -251,34 +245,116 @@ export default function SignupPage() {
     const renderStep1 = () => (
         <div className="space-y-4">
             <div>
-                <label className="block text-sm font-semibold mb-1.5" style={{ color: '#374151' }}>Full Name *</label>
-                <input type="text" className="input-field" placeholder="John Doe"
-                    value={form.name}
-                    onChange={e => setForm({ ...form, name: e.target.value })} required />
+                <label className="block text-xs sm:text-sm font-semibold text-[#1e293b] mb-1.5">
+                    Full Name *
+                </label>
+                <div className="relative flex items-center">
+                    <div className="absolute left-3.5 text-slate-400 pointer-events-none flex items-center">
+                        <User className="w-4 h-4 stroke-[1.8]" />
+                    </div>
+                    <input 
+                        type="text" 
+                        className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#4F7CFF] focus:ring-4 focus:ring-blue-500/10 transition-all text-sm font-normal" 
+                        placeholder="John Doe"
+                        value={form.name}
+                        onChange={e => setForm({ ...form, name: e.target.value })} 
+                        required 
+                    />
+                </div>
             </div>
+
             <div>
-                <label className="block text-sm font-semibold mb-1.5" style={{ color: '#374151' }}>Student Email *</label>
-                <input type="email" className="input-field" placeholder="you@university.edu"
-                    value={form.email}
-                    onChange={e => setForm({ ...form, email: e.target.value })} required />
+                <label className="block text-xs sm:text-sm font-semibold text-[#1e293b] mb-1.5">
+                    Student Email *
+                </label>
+                <div className="relative flex items-center">
+                    <div className="absolute left-3.5 text-slate-400 pointer-events-none flex items-center">
+                        <Mail className="w-4 h-4 stroke-[1.8]" />
+                    </div>
+                    <input 
+                        type="email" 
+                        className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#4F7CFF] focus:ring-4 focus:ring-blue-500/10 transition-all text-sm font-normal" 
+                        placeholder="you@university.edu"
+                        value={form.email}
+                        onChange={e => setForm({ ...form, email: e.target.value })} 
+                        required 
+                    />
+                </div>
             </div>
+
             <div>
-                <label className="block text-sm font-semibold mb-1.5" style={{ color: '#374151' }}>Mobile Number *</label>
-                <input type="tel" className="input-field" placeholder="+91 9876543210"
-                    value={form.mobileNumber}
-                    onChange={e => setForm({ ...form, mobileNumber: e.target.value })} required />
+                <label className="block text-xs sm:text-sm font-semibold text-[#1e293b] mb-1.5">
+                    Mobile Number *
+                </label>
+                <div className="relative flex items-center">
+                    <div className="absolute left-3.5 text-slate-400 pointer-events-none flex items-center">
+                        <Phone className="w-4 h-4 stroke-[1.8]" />
+                    </div>
+                    <input 
+                        type="tel" 
+                        className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#4F7CFF] focus:ring-4 focus:ring-blue-500/10 transition-all text-sm font-normal" 
+                        placeholder="+91 9876543210"
+                        value={form.mobileNumber}
+                        onChange={e => setForm({ ...form, mobileNumber: e.target.value })} 
+                        required 
+                    />
+                </div>
             </div>
-            <div>
-                <label className="block text-sm font-semibold mb-1.5" style={{ color: '#374151' }}>Set Password *</label>
-                <input type="password" className="input-field" placeholder="Min. 6 characters"
-                    value={form.password}
-                    onChange={e => setForm({ ...form, password: e.target.value })} required />
-            </div>
-            <div>
-                <label className="block text-sm font-semibold mb-1.5" style={{ color: '#374151' }}>Confirm Password *</label>
-                <input type="password" className="input-field" placeholder="Repeat password"
-                    value={form.confirmPassword}
-                    onChange={e => setForm({ ...form, confirmPassword: e.target.value })} required />
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div>
+                    <label className="block text-xs sm:text-sm font-semibold text-[#1e293b] mb-1.5">
+                        Set Password *
+                    </label>
+                    <div className="relative flex items-center">
+                        <div className="absolute left-3.5 text-slate-400 pointer-events-none flex items-center">
+                            <Lock className="w-4 h-4 stroke-[1.8]" />
+                        </div>
+                        <input 
+                            type={showPassword ? 'text' : 'password'}
+                            className="w-full pl-10 pr-9 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#4F7CFF] focus:ring-4 focus:ring-blue-500/10 transition-all text-sm font-normal" 
+                            placeholder="Min. 6 chars"
+                            value={form.password}
+                            onChange={e => setForm({ ...form, password: e.target.value })} 
+                            required 
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 text-slate-400 hover:text-slate-600 transition-colors p-0.5"
+                            tabIndex={-1}
+                        >
+                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <label className="block text-xs sm:text-sm font-semibold text-[#1e293b] mb-1.5">
+                        Confirm Password *
+                    </label>
+                    <div className="relative flex items-center">
+                        <div className="absolute left-3.5 text-slate-400 pointer-events-none flex items-center">
+                            <Lock className="w-4 h-4 stroke-[1.8]" />
+                        </div>
+                        <input 
+                            type={showConfirmPassword ? 'text' : 'password'}
+                            className="w-full pl-10 pr-9 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#4F7CFF] focus:ring-4 focus:ring-blue-500/10 transition-all text-sm font-normal" 
+                            placeholder="Repeat password"
+                            value={form.confirmPassword}
+                            onChange={e => setForm({ ...form, confirmPassword: e.target.value })} 
+                            required 
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                            className="absolute right-3 text-slate-400 hover:text-slate-600 transition-colors p-0.5"
+                            tabIndex={-1}
+                        >
+                            {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     )
@@ -286,59 +362,51 @@ export default function SignupPage() {
     const renderStep2 = () => (
         <div className="space-y-4">
             <div>
-                <label className="block text-sm font-semibold mb-1.5" style={{ color: '#374151' }}>
-                    🏛️ College / University *
+                <label className="block text-xs sm:text-sm font-semibold text-[#1e293b] mb-1.5">
+                    College / University *
                 </label>
 
                 {collegesFetchError ? (
-                    <div className="border-2 border-red-200 rounded-lg p-4 bg-red-50">
-                        <p className="text-sm text-red-700 mb-2">
-                            ⚠️ Unable to load colleges from server. Please check your connection.
+                    <div className="border border-red-200 rounded-xl p-3 bg-red-50 text-center">
+                        <p className="text-xs text-red-600 mb-2">
+                            Unable to load colleges from server. Please check your connection.
                         </p>
                         <button
                             type="button"
                             onClick={fetchColleges}
-                            className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-600 text-white text-xs font-semibold rounded-lg hover:bg-red-700 transition-colors"
                         >
-                            🔄 Retry Loading Colleges
+                            <RefreshCw className="w-3.5 h-3.5" /> Retry
                         </button>
                     </div>
                 ) : loadingColleges ? (
-                    <div className="input-field flex items-center gap-2" style={{ color: '#9ca3af', cursor: 'default' }}>
-                        <svg className="animate-spin w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                        </svg>
-                        <span className="text-sm">Loading colleges...</span>
+                    <div className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-400 text-sm flex items-center gap-2">
+                        <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+                        <span>Loading colleges...</span>
                     </div>
                 ) : (
-                    <div ref={autocompleteRef} style={{ position: 'relative' }}>
-                        <div style={{ position: 'relative' }}>
-                            <span
-                                style={{
-                                    position: 'absolute',
-                                    left: '12px',
-                                    top: '50%',
-                                    transform: 'translateY(-50%)',
-                                    fontSize: '16px',
-                                    pointerEvents: 'none',
-                                    userSelect: 'none',
-                                }}
-                            >
-                                {collegeSelected ? '✅' : '🔍'}
-                            </span>
+                    <div ref={autocompleteRef} className="relative">
+                        <div className="relative flex items-center">
+                            <div className="absolute left-3.5 text-slate-400 pointer-events-none flex items-center">
+                                {collegeSelected ? (
+                                    <Check className="w-4 h-4 text-emerald-600 stroke-[2.5]" />
+                                ) : (
+                                    <Search className="w-4 h-4" />
+                                )}
+                            </div>
+                            
                             <input
                                 type="text"
-                                className="input-field"
-                                style={{
-                                    paddingLeft: selectedCollegeLogo ? '48px' : '38px',
-                                    paddingRight: collegeSelected ? '40px' : '14px',
-                                    borderColor: collegeSelected ? '#10b981' : undefined,
-                                    boxShadow: collegeSelected ? '0 0 0 3px rgba(16,185,129,0.15)' : undefined,
-                                }}
+                                className={`w-full py-3 bg-white border rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-4 transition-all text-sm font-normal ${
+                                    selectedCollegeLogo ? 'pl-12' : 'pl-10'
+                                } ${
+                                    collegeSelected 
+                                        ? 'border-emerald-500 focus:border-emerald-500 focus:ring-emerald-500/10 pr-10' 
+                                        : 'border-slate-200 focus:border-[#4F7CFF] focus:ring-blue-500/10 pr-4'
+                                }`}
                                 placeholder={
                                     colleges.length === 0
-                                        ? 'No colleges available — contact admin'
+                                        ? 'No colleges available'
                                         : 'Type to search your college...'
                                 }
                                 value={collegeQuery}
@@ -348,31 +416,14 @@ export default function SignupPage() {
                                 }}
                                 disabled={colleges.length === 0}
                                 autoComplete="off"
-                                aria-label="Search for your college or university"
                             />
 
                             {selectedCollegeLogo && (
-                                <div
-                                    style={{
-                                        position: 'absolute',
-                                        left: '8px',
-                                        top: '50%',
-                                        transform: 'translateY(-50%)',
-                                        width: '32px',
-                                        height: '32px',
-                                        borderRadius: '6px',
-                                        overflow: 'hidden',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        background: 'white',
-                                        border: '1px solid #e5e7eb',
-                                    }}
-                                >
+                                <div className="absolute left-9 top-1/2 -translate-y-1/2 w-6 h-6 rounded-md overflow-hidden flex items-center justify-center bg-slate-100 border border-slate-200">
                                     <img
                                         src={selectedCollegeLogo}
                                         alt="Logo"
-                                        style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                                        className="max-w-full max-h-full object-contain"
                                     />
                                 </div>
                             )}
@@ -382,59 +433,21 @@ export default function SignupPage() {
                                     type="button"
                                     onClick={handleCollegeClear}
                                     title="Clear selection"
-                                    style={{
-                                        position: 'absolute',
-                                        right: '10px',
-                                        top: '50%',
-                                        transform: 'translateY(-50%)',
-                                        width: '22px',
-                                        height: '22px',
-                                        borderRadius: '50%',
-                                        background: '#e5e7eb',
-                                        border: 'none',
-                                        cursor: 'pointer',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        fontSize: '13px',
-                                        color: '#6b7280',
-                                        lineHeight: 1,
-                                    }}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 flex items-center justify-center transition-colors"
                                 >
-                                    ×
+                                    <X className="w-3.5 h-3.5" />
                                 </button>
                             )}
                         </div>
 
                         {collegeDropdownOpen && !collegeSelected && (
-                            <div
-                                style={{
-                                    position: 'absolute',
-                                    top: 'calc(100% + 4px)',
-                                    left: 0,
-                                    right: 0,
-                                    background: '#ffffff',
-                                    border: '1.5px solid #e5e7eb',
-                                    borderRadius: '12px',
-                                    boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
-                                    zIndex: 999,
-                                    maxHeight: '240px',
-                                    overflowY: 'auto',
-                                }}
-                            >
+                            <div className="absolute top-full mt-1.5 left-0 right-0 bg-white border border-slate-200 rounded-xl shadow-xl z-50 max-h-56 overflow-y-auto divide-y divide-slate-100">
                                 {filteredColleges.length === 0 ? (
-                                    <div
-                                        style={{
-                                            padding: '16px 14px',
-                                            color: '#9ca3af',
-                                            fontSize: '0.875rem',
-                                            textAlign: 'center',
-                                        }}
-                                    >
-                                        😕 No colleges match &ldquo;{collegeQuery}&rdquo;
+                                    <div className="p-4 text-center text-xs text-slate-400">
+                                        No colleges match &ldquo;{collegeQuery}&rdquo;
                                     </div>
                                 ) : (
-                                    filteredColleges.map((college, idx) => (
+                                    filteredColleges.map((college) => (
                                         <button
                                             key={college.id}
                                             type="button"
@@ -442,94 +455,65 @@ export default function SignupPage() {
                                                 e.preventDefault()
                                                 handleCollegeSelect(college)
                                             }}
-                                            style={{
-                                                display: 'block',
-                                                width: '100%',
-                                                textAlign: 'left',
-                                                padding: '10px 14px',
-                                                background: 'transparent',
-                                                border: 'none',
-                                                cursor: 'pointer',
-                                                fontSize: '0.875rem',
-                                                color: '#111827',
-                                                borderBottom:
-                                                    idx < filteredColleges.length - 1 ? '1px solid #f3f4f6' : 'none',
-                                                borderRadius:
-                                                    idx === 0
-                                                        ? '12px 12px 0 0'
-                                                        : idx === filteredColleges.length - 1
-                                                          ? '0 0 12px 12px'
-                                                          : undefined,
-                                                transition: 'background 0.1s',
-                                            }}
-                                            onMouseEnter={(e) => (e.currentTarget.style.background = '#f0f4ff')}
-                                            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                                            className="w-full text-left px-3.5 py-2.5 hover:bg-blue-50/60 transition-colors flex items-center gap-2.5 text-xs sm:text-sm text-slate-700"
                                         >
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                                <div
-                                                    style={{
-                                                        width: '28px',
-                                                        height: '28px',
-                                                        borderRadius: '4px',
-                                                        background: '#f8fafc',
-                                                        border: '1px solid #e2e8f0',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        overflow: 'hidden',
-                                                        flexShrink: 0,
-                                                    }}
-                                                >
-                                                    {college.logoUrl ? (
-                                                        <img
-                                                            src={college.logoUrl}
-                                                            alt="logo"
-                                                            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
-                                                        />
-                                                    ) : (
-                                                        <span style={{ fontSize: '14px' }}>🏛️</span>
-                                                    )}
-                                                </div>
-                                                <span style={{ flex: 1 }}>{college.name}</span>
+                                            <div className="w-6 h-6 rounded bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden flex-shrink-0">
+                                                {college.logoUrl ? (
+                                                    <img
+                                                        src={college.logoUrl}
+                                                        alt="logo"
+                                                        className="max-w-full max-h-full object-contain"
+                                                    />
+                                                ) : (
+                                                    <Building2 className="w-3.5 h-3.5 text-slate-400" />
+                                                )}
                                             </div>
+                                            <span className="truncate">{college.name}</span>
                                         </button>
                                     ))
                                 )}
                             </div>
                         )}
 
-                        <p className="text-xs text-gray-500 mt-1.5">
+                        <p className="text-[11px] text-slate-400 mt-1">
                             {collegeSelected
-                                ? `✅ Selected: ${form.collegeName}`
-                                : colleges.length > 0
-                                  ? `${colleges.length} college${colleges.length !== 1 ? 's' : ''} available — type to search and select from the list`
-                                  : '⚠️ No colleges found. Please contact administration.'}
+                                ? `Selected: ${form.collegeName}`
+                                : `${colleges.length} colleges available — search and select`}
                         </p>
                     </div>
                 )}
             </div>
+
             <div>
-                <label className="block text-sm font-semibold mb-1.5" style={{ color: '#374151' }}>Country *</label>
-                <select
-                    className="input-field"
-                    value={form.country}
-                    onChange={e => setForm({ ...form, country: e.target.value, state: '' })}
-                    required
-                    aria-label="Select your country"
-                >
-                    <option value="">Select your country</option>
-                    {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
+                <label className="block text-xs sm:text-sm font-semibold text-[#1e293b] mb-1.5">
+                    Country *
+                </label>
+                <div className="relative flex items-center">
+                    <div className="absolute left-3.5 text-slate-400 pointer-events-none flex items-center">
+                        <Globe className="w-4 h-4 stroke-[1.8]" />
+                    </div>
+                    <select
+                        className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-[#4F7CFF] focus:ring-4 focus:ring-blue-500/10 transition-all text-sm cursor-pointer font-normal"
+                        value={form.country}
+                        onChange={e => setForm({ ...form, country: e.target.value, state: '' })}
+                        required
+                    >
+                        <option value="">Select your country</option>
+                        {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                </div>
             </div>
+
             {form.country === 'India' && (
                 <div>
-                    <label className="block text-sm font-semibold mb-1.5" style={{ color: '#374151' }}>State *</label>
+                    <label className="block text-xs sm:text-sm font-semibold text-[#1e293b] mb-1.5">
+                        State *
+                    </label>
                     <select
-                        className="input-field"
+                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-[#4F7CFF] focus:ring-4 focus:ring-blue-500/10 transition-all text-sm cursor-pointer font-normal"
                         value={form.state}
                         onChange={e => setForm({ ...form, state: e.target.value })}
                         required
-                        aria-label="Select your state"
                     >
                         <option value="">Select your state</option>
                         {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
@@ -542,167 +526,265 @@ export default function SignupPage() {
     const renderStep3 = () => (
         <div className="space-y-4">
             <div>
-                <label className="block text-sm font-semibold mb-1.5" style={{ color: '#374151' }}>Course *</label>
-                <input type="text" className="input-field" placeholder="e.g. B.Tech, M.Tech, BCA, MCA"
-                    value={form.course}
-                    onChange={e => setForm({ ...form, course: e.target.value })} required />
-            </div>
-            <div>
-                <label className="block text-sm font-semibold mb-1.5" style={{ color: '#374151' }}>Branch *</label>
-                <input type="text" className="input-field" placeholder="e.g. Computer Science, Electronics"
-                    value={form.branch}
-                    onChange={e => setForm({ ...form, branch: e.target.value })} required />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-                <div>
-                    <label className="block text-sm font-semibold mb-1.5" style={{ color: '#374151' }}>Pursuing Year *</label>
-                    <select className="input-field" value={form.pursuingYear}
-                        onChange={e => setForm({ ...form, pursuingYear: e.target.value })} required
-                        aria-label="Select pursuing year">
-                        <option value="">Select</option>
-                        {[1, 2, 3, 4, 5, 6].map(y => <option key={y} value={y}>{y}</option>)}
-                    </select>
-                </div>
-                <div>
-                    <label className="block text-sm font-semibold mb-1.5" style={{ color: '#374151' }}>Semester *</label>
-                    <select className="input-field" value={form.semester}
-                        onChange={e => setForm({ ...form, semester: e.target.value })} required
-                        aria-label="Select semester">
-                        <option value="">Select</option>
-                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
+                <label className="block text-xs sm:text-sm font-semibold text-[#1e293b] mb-1.5">
+                    Course *
+                </label>
+                <div className="relative flex items-center">
+                    <div className="absolute left-3.5 text-slate-400 pointer-events-none flex items-center">
+                        <GraduationCap className="w-4 h-4 stroke-[1.8]" />
+                    </div>
+                    <input 
+                        type="text" 
+                        className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#4F7CFF] focus:ring-4 focus:ring-blue-500/10 transition-all text-sm font-normal" 
+                        placeholder="e.g. B.Tech, M.Tech, BCA, MCA"
+                        value={form.course}
+                        onChange={e => setForm({ ...form, course: e.target.value })} 
+                        required 
+                    />
                 </div>
             </div>
+
             <div>
-                <label className="block text-sm font-semibold mb-1.5" style={{ color: '#374151' }}>Registration Number *</label>
-                <input type="text" className="input-field" placeholder="Your university registration number"
-                    value={form.registrationNumber}
-                    onChange={e => setForm({ ...form, registrationNumber: e.target.value })} required />
+                <label className="block text-xs sm:text-sm font-semibold text-[#1e293b] mb-1.5">
+                    Branch *
+                </label>
+                <div className="relative flex items-center">
+                    <div className="absolute left-3.5 text-slate-400 pointer-events-none flex items-center">
+                        <Layers className="w-4 h-4 stroke-[1.8]" />
+                    </div>
+                    <input 
+                        type="text" 
+                        className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#4F7CFF] focus:ring-4 focus:ring-blue-500/10 transition-all text-sm font-normal" 
+                        placeholder="e.g. Computer Science, Electronics"
+                        value={form.branch}
+                        onChange={e => setForm({ ...form, branch: e.target.value })} 
+                        required 
+                    />
+                </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3.5">
+                <div>
+                    <label className="block text-xs sm:text-sm font-semibold text-[#1e293b] mb-1.5">
+                        Pursuing Year *
+                    </label>
+                    <div className="relative flex items-center">
+                        <div className="absolute left-3.5 text-slate-400 pointer-events-none flex items-center">
+                            <Calendar className="w-3.5 h-3.5 stroke-[1.8]" />
+                        </div>
+                        <select 
+                            className="w-full pl-9 pr-3 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-[#4F7CFF] focus:ring-4 focus:ring-blue-500/10 transition-all text-sm cursor-pointer font-normal" 
+                            value={form.pursuingYear}
+                            onChange={e => setForm({ ...form, pursuingYear: e.target.value })} 
+                            required
+                        >
+                            <option value="">Year</option>
+                            {[1, 2, 3, 4, 5, 6].map(y => <option key={y} value={y}>{y}</option>)}
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label className="block text-xs sm:text-sm font-semibold text-[#1e293b] mb-1.5">
+                        Semester *
+                    </label>
+                    <div className="relative flex items-center">
+                        <div className="absolute left-3.5 text-slate-400 pointer-events-none flex items-center">
+                            <Hash className="w-3.5 h-3.5 stroke-[1.8]" />
+                        </div>
+                        <select 
+                            className="w-full pl-9 pr-3 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-[#4F7CFF] focus:ring-4 focus:ring-blue-500/10 transition-all text-sm cursor-pointer font-normal" 
+                            value={form.semester}
+                            onChange={e => setForm({ ...form, semester: e.target.value })} 
+                            required
+                        >
+                            <option value="">Sem</option>
+                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <label className="block text-xs sm:text-sm font-semibold text-[#1e293b] mb-1.5">
+                    Registration Number *
+                </label>
+                <div className="relative flex items-center">
+                    <div className="absolute left-3.5 text-slate-400 pointer-events-none flex items-center">
+                        <Hash className="w-4 h-4 stroke-[1.8]" />
+                    </div>
+                    <input 
+                        type="text" 
+                        className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#4F7CFF] focus:ring-4 focus:ring-blue-500/10 transition-all text-sm font-normal" 
+                        placeholder="Your university registration number"
+                        value={form.registrationNumber}
+                        onChange={e => setForm({ ...form, registrationNumber: e.target.value })} 
+                        required 
+                    />
+                </div>
             </div>
         </div>
     )
 
     return (
-        <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #fdf4ff 0%, #f0f4ff 50%, #f0fdf4 100%)' }}
-            className="flex items-center justify-center px-4 py-8">
+        <div className="min-h-screen w-full relative flex items-center justify-center p-4 sm:p-6 lg:p-10 selection:bg-indigo-500 selection:text-white bg-[#f4f7fe] overflow-x-hidden">
+            {/* Full Screen Ambient Reference Artwork Background */}
+            <div 
+                className="absolute inset-0 bg-no-repeat bg-cover bg-left sm:bg-center pointer-events-none opacity-95 transition-opacity duration-700"
+                style={{
+                    backgroundImage: "url('/auth-bg-art.png')",
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'left center'
+                }}
+            />
 
-            <div className="absolute top-0 right-0 w-96 h-96 rounded-full opacity-30 blur-3xl pointer-events-none"
-                style={{ background: 'radial-gradient(circle, #e9d5ff, transparent)' }} />
-            <div className="absolute bottom-0 left-0 w-96 h-96 rounded-full opacity-30 blur-3xl pointer-events-none"
-                style={{ background: 'radial-gradient(circle, #c7d2fe, transparent)' }} />
+            {/* Soft Ambient Radial Glows */}
+            <div className="absolute -top-24 -left-24 w-96 h-96 bg-purple-200/40 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-blue-200/40 rounded-full blur-3xl pointer-events-none" />
 
-            <div className="relative z-10 w-full max-w-2xl">
-                <div style={{ background: 'white', borderRadius: '24px', boxShadow: '0 20px 60px rgba(0,0,0,0.10)', border: '1px solid #ede9fe' }}
-                    className="p-10 animate-fade-in">
-
-                    <div className="text-center mb-8">
-                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4"
-                            style={{ background: 'linear-gradient(135deg, #a855f7, #ec4899)' }}>
-                            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round"
-                                    d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                            </svg>
-                        </div>
-                        <h1 className="text-3xl font-bold mb-1" style={{ color: '#0f172a' }}>Join EduVerse</h1>
-                        <p className="text-sm" style={{ color: '#64748b' }}>Student Learning Access Registration</p>
+            {/* Main Split-Screen Container */}
+            <div className="relative z-10 w-full max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center min-h-[580px]">
+                
+                {/* Left Side: Brand Hero */}
+                <div className="lg:col-span-5 xl:col-span-6 flex flex-col justify-between self-stretch py-4 sm:py-8 lg:py-12 pl-2 sm:pl-6 lg:pl-10">
+                    <div className="max-w-md">
+                        <h1 className="text-3xl sm:text-4xl lg:text-[42px] font-extrabold text-[#111827] tracking-tight leading-[1.15]">
+                            Learn Today,
+                        </h1>
+                        <h1 className="text-3xl sm:text-4xl lg:text-[42px] font-extrabold text-[#4F7CFF] tracking-tight leading-[1.15] mt-1">
+                            Lead Tomorrow.
+                        </h1>
+                        <p className="text-[#64748b] text-sm sm:text-[15px] mt-4 font-normal leading-relaxed">
+                            EduVerse is your space to learn,<br className="hidden sm:inline" /> grow, and achieve beyond limits.
+                        </p>
                     </div>
 
-                    {/* Progress Steps */}
-                    {!success && (
-                        <div className="flex items-center justify-center mb-8 gap-2">
-                            {[1, 2, 3].map(step => (
-                                <div key={step} className="flex items-center">
-                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm transition-all ${currentStep >= step
-                                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
-                                        : 'bg-gray-200 text-[var(--text-secondary)]'
-                                        }`}>
-                                        {step}
-                                    </div>
-                                    {step < 3 && (
-                                        <div className={`w-12 h-1 mx-1 rounded transition-all ${currentStep > step ? 'bg-gradient-to-r from-purple-500 to-pink-500' : 'bg-gray-200'
+                    {/* Spacer to let the 3D artwork in the background shine through */}
+                    <div className="hidden lg:block h-64 xl:h-72 w-full pointer-events-none" />
+                </div>
+
+                {/* Right Side: Auth Card */}
+                <div className="lg:col-span-7 xl:col-span-6 flex justify-center w-full">
+                    <div className="w-full max-w-[480px] bg-white rounded-[32px] sm:rounded-[36px] p-7 sm:p-9 shadow-[0_20px_50px_rgba(79,70,229,0.07)] border border-slate-100/90 backdrop-blur-sm">
+                        {/* Top Logo Icon */}
+                        <div className="text-center mb-5">
+                            <div className="inline-flex items-center justify-center w-[56px] h-[56px] rounded-2xl mb-3 bg-gradient-to-tr from-[#6C63FF] to-[#4F7CFF] shadow-lg shadow-indigo-500/25 transition-transform duration-300 hover:scale-105">
+                                <BookOpen className="w-7 h-7 text-white stroke-[2.2]" />
+                            </div>
+                            <h2 className="text-2xl sm:text-[26px] font-bold text-[#0f172a] tracking-tight">
+                                Applied STEM Labs
+                            </h2>
+                            <p className="text-xs sm:text-sm text-[#94a3b8] mt-1 font-normal">
+                                Student Learning Access Registration
+                            </p>
+                        </div>
+
+                        {/* Progress Steps Indicator */}
+                        {!success && (
+                            <div className="flex items-center justify-center mb-5 px-2">
+                                {[
+                                    { step: 1, label: 'Account' },
+                                    { step: 2, label: 'Institution' },
+                                    { step: 3, label: 'Academic' }
+                                ].map((item, idx) => (
+                                    <div key={item.step} className="flex items-center">
+                                        <div className="flex items-center gap-1.5">
+                                            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
+                                                currentStep >= item.step
+                                                    ? 'bg-gradient-to-r from-[#6C63FF] to-[#4F7CFF] text-white shadow-md shadow-indigo-500/20'
+                                                    : 'bg-slate-100 text-slate-400'
+                                            }`}>
+                                                {currentStep > item.step ? <Check className="w-3.5 h-3.5 stroke-[2.5]" /> : item.step}
+                                            </div>
+                                            <span className={`text-xs font-semibold hidden sm:inline ${
+                                                currentStep >= item.step ? 'text-slate-800' : 'text-slate-400'
+                                            }`}>
+                                                {item.label}
+                                            </span>
+                                        </div>
+                                        {idx < 2 && (
+                                            <div className={`w-6 sm:w-10 h-[2px] mx-2 rounded-full transition-all duration-300 ${
+                                                currentStep > item.step ? 'bg-[#4F7CFF]' : 'bg-slate-200'
                                             }`} />
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {success ? (
+                            <div className="text-center py-8">
+                                <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-4 border border-emerald-200">
+                                    <Check className="w-8 h-8 stroke-[2.5]" />
+                                </div>
+                                <h2 className="text-xl font-bold text-slate-900 mb-1">Registration Successful!</h2>
+                                <p className="text-sm text-slate-500">Your student account has been created. Redirecting to login...</p>
+                            </div>
+                        ) : (
+                            <form onSubmit={handleSubmit} className="space-y-4">
+                                {currentStep === 1 && renderStep1()}
+                                {currentStep === 2 && renderStep2()}
+                                {currentStep === 3 && renderStep3()}
+
+                                {error && (
+                                    <div className="flex items-start gap-2.5 p-3 rounded-xl bg-red-50 border border-red-200/80 text-red-600 text-xs sm:text-sm animate-fade-in">
+                                        <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                                        <span>{error}</span>
+                                    </div>
+                                )}
+
+                                {/* Navigation Actions */}
+                                <div className="flex items-center gap-3 pt-2">
+                                    {currentStep > 1 && (
+                                        <button 
+                                            type="button" 
+                                            onClick={handleBack}
+                                            className="px-4 py-3 rounded-xl font-semibold text-sm text-slate-700 bg-slate-100 hover:bg-slate-200 active:scale-[0.99] transition-all flex items-center gap-1.5"
+                                        >
+                                            <ArrowLeft className="w-4 h-4" /> Back
+                                        </button>
+                                    )}
+                                    {currentStep < 3 ? (
+                                        <button 
+                                            type="button" 
+                                            onClick={handleNext}
+                                            className="flex-1 py-3 px-4 bg-gradient-to-r from-[#6C63FF] to-[#4F7CFF] hover:from-[#5b52f5] hover:to-[#3e6df0] active:scale-[0.99] text-white font-semibold text-sm rounded-xl shadow-[0_8px_20px_rgba(79,124,255,0.28)] hover:shadow-[0_10px_25px_rgba(79,124,255,0.38)] transition-all flex items-center justify-center gap-1.5"
+                                        >
+                                            Next Step <ArrowRight className="w-4 h-4" />
+                                        </button>
+                                    ) : (
+                                        <button 
+                                            type="submit" 
+                                            disabled={loading}
+                                            className="flex-1 py-3 px-4 bg-gradient-to-r from-[#6C63FF] to-[#4F7CFF] hover:from-[#5b52f5] hover:to-[#3e6df0] active:scale-[0.99] text-white font-semibold text-sm rounded-xl shadow-[0_8px_20px_rgba(79,124,255,0.28)] hover:shadow-[0_10px_25px_rgba(79,124,255,0.38)] transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+                                        >
+                                            {loading ? (
+                                                <span className="flex items-center justify-center gap-2">
+                                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                                    Creating Account...
+                                                </span>
+                                            ) : (
+                                                'Complete Registration'
+                                            )}
+                                        </button>
                                     )}
                                 </div>
-                            ))}
-                        </div>
-                    )}
+                            </form>
+                        )}
 
-                    {success ? (
-                        <div className="text-center py-8">
-                            <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
-                                style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}>
-                                <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth={2}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                </svg>
-                            </div>
-                            <h2 className="font-semibold text-xl mb-2" style={{ color: '#059669' }}>Registration Successful!</h2>
-                            <p className="text-sm" style={{ color: '#64748b' }}>Your student account has been created. Redirecting to login...</p>
-                        </div>
-                    ) : (
-                        <form onSubmit={handleSubmit}>
-                            {/* Step Titles */}
-                            <div className="mb-6">
-                                <h2 className="text-xl font-bold" style={{ color: '#0f172a' }}>
-                                    {currentStep === 1 && '📝 Personal & Account Details'}
-                                    {currentStep === 2 && '🎓 Institution Details'}
-                                    {currentStep === 3 && '📚 Academic Information'}
-                                </h2>
-                                <p className="text-sm mt-1" style={{ color: '#64748b' }}>
-                                    {currentStep === 1 && 'Create your account credentials'}
-                                    {currentStep === 2 && 'Tell us about your institution'}
-                                    {currentStep === 3 && 'Complete your academic profile'}
-                                </p>
-                            </div>
-
-                            {currentStep === 1 && renderStep1()}
-                            {currentStep === 2 && renderStep2()}
-                            {currentStep === 3 && renderStep3()}
-
-                            {error && (
-                                <div className="mt-4 px-4 py-3 rounded-xl text-sm"
-                                    style={{ background: '#fef2f2', border: '1px solid #fee2e2', color: '#dc2626' }}>
-                                    ⚠️ {error}
-                                </div>
-                            )}
-
-                            {/* Navigation Buttons */}
-                            <div className="flex gap-3 mt-6">
-                                {currentStep > 1 && (
-                                    <button type="button" onClick={handleBack}
-                                        className="flex-1 py-3 rounded-xl font-semibold text-sm transition-all"
-                                        style={{ background: '#f3f4f6', color: '#374151' }}>
-                                        ← Back
-                                    </button>
-                                )}
-                                {currentStep < 3 ? (
-                                    <button type="button" onClick={handleNext}
-                                        className="flex-1 py-3 text-white rounded-xl font-semibold text-sm transition-all"
-                                        style={{ background: 'linear-gradient(135deg, #a855f7, #ec4899)' }}>
-                                        Next →
-                                    </button>
-                                ) : (
-                                    <button type="submit" disabled={loading}
-                                        className="flex-1 py-3 text-white rounded-xl font-semibold text-sm disabled:opacity-60"
-                                        style={{ background: 'linear-gradient(135deg, #a855f7, #ec4899)' }}>
-                                        {loading ? (
-                                            <span className="flex items-center justify-center gap-2">
-                                                <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                                                Creating account...
-                                            </span>
-                                        ) : '✅ Create Account'}
-                                    </button>
-                                )}
-                            </div>
-                        </form>
-                    )}
-
-                    <p className="text-center mt-6 text-sm" style={{ color: '#64748b' }}>
-                        Already have an account?{' '}
-                        <Link href="/login" className="font-semibold" style={{ color: '#6366f1' }}>Sign in</Link>
-                    </p>
+                        {/* Footer Switch */}
+                        <p className="text-center mt-5 text-xs sm:text-sm text-slate-400 font-normal">
+                            Already have an account?{' '}
+                            <Link
+                                href="/login"
+                                className="font-semibold text-[#4F7CFF] hover:text-[#3e68ea] hover:underline transition-colors ml-1"
+                            >
+                                Sign in
+                            </Link>
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>
     )
 }
-
