@@ -23,7 +23,8 @@
     "strictBindCallApply": true,
     "noFallthroughCasesInSwitch": true,
     "types": [
-      "node"
+      "node",
+      "jest"
     ]
   },
   "include": ["src/**/*"],
