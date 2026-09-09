@@ -3,6 +3,7 @@
 import { apiFetch } from '@/lib/apiFetch'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
 import { api, API_URL } from '@/lib/api'
@@ -64,11 +65,11 @@ export default function SuperAdminDashboard() {
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-4 mb-8">
                     {statItems.map((s, i) => (
                         s.link ? (
-                            <a key={i} className="stat-card role-stat-link" href={s.link}>
+                            <Link key={i} className="stat-card role-stat-link" href={s.link}>
                                 <div className="role-stat-icon w-10 h-10 flex items-center justify-center text-xl mb-3" aria-hidden="true">{s.icon}</div>
                                 <p className="text-2xl font-bold role-text-primary mb-0.5">{loading ? '—' : s.value}</p>
                                 <p className="role-text-muted text-xs">{s.label}</p>
-                            </a>
+                            </Link>
                         ) : (
                             <div key={i} className="stat-card">
                                 <div className="role-stat-icon w-10 h-10 flex items-center justify-center text-xl mb-3" aria-hidden="true">{s.icon}</div>
@@ -83,7 +84,7 @@ export default function SuperAdminDashboard() {
                 <div className="glass-card p-6">
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-lg font-semibold role-text-primary">Recent Users</h2>
-                        <a href="/dashboard/superadmin/users" className="role-table-action">View all users →</a>
+                        <Link href="/dashboard/superadmin/users" className="role-table-action">View all users →</Link>
                     </div>
                     {loading ? (
                         <div className="flex justify-center py-10">
@@ -100,7 +101,7 @@ export default function SuperAdminDashboard() {
                                 <thead>
                                     <tr className="border-b" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
                                         {['User', 'Email', 'Role', 'Joined', 'Actions'].map(h => (
-                                            <th key={h} className="text-left text-xs font-semibold role-text-muted pb-3 pr-4">{h}</th>
+                                             <th key={h} className="text-left text-xs font-semibold role-text-muted pb-3 pr-4">{h}</th>
                                         ))}
                                     </tr>
                                 </thead>
@@ -132,7 +133,7 @@ export default function SuperAdminDashboard() {
                                                 {new Date(u.createdAt).toISOString().slice(0, 10)}
                                             </td>
                                             <td className="py-4">
-                                                <a href="/dashboard/superadmin/users" className="role-table-action">Manage</a>
+                                                <Link href="/dashboard/superadmin/users" className="role-table-action">Manage</Link>
                                             </td>
                                         </tr>
                                     ))}

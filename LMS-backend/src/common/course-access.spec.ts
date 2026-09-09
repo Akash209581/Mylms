@@ -12,6 +12,8 @@ describe('Course editing permissions', () => {
     [UserRole.INSTRUCTOR, 12, 8, false],
     [UserRole.INSTRUCTOR, 12, undefined, false],
     [UserRole.INSTRUCTOR, 13, 7, false],
+    [UserRole.CONTENT_CREATOR, 12, 7, true],
+    [UserRole.CONTENT_CREATOR, 12, 8, false],
     [UserRole.STUDENT, 12, 7, false],
   ])('%s user %s with college %s: %s', (role, sub, collegeId, expected) => {
     expect(canEditCourse({ role, sub, collegeId }, course)).toBe(expected);

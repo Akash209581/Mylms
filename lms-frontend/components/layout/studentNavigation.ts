@@ -1,7 +1,8 @@
-import { BookOpen, Bookmark, CircleCheck, Flame, GraduationCap, LayoutDashboard, MessageCircle, Settings, Trophy } from 'lucide-react'
+import { BookOpen, Bookmark, CircleCheck, ClipboardList, Flame, GraduationCap, LayoutDashboard, MessageCircle, Settings, Trophy } from 'lucide-react'
 
 export const studentNavigation = [
   { label: 'Overview', href: '/dashboard/student', icon: LayoutDashboard },
+  { label: 'Exams & Tests', href: '/dashboard/student/exams', icon: ClipboardList },
   { label: 'My Learning', href: '/dashboard/student/my-learning', icon: GraduationCap },
   { label: 'Saved courses', href: '/dashboard/student/saved', icon: Bookmark },
   { label: 'Course Catalog', href: '/dashboard/student/courses', icon: BookOpen },

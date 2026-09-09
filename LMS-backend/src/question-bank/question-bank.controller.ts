@@ -13,6 +13,7 @@ import {
   UploadedFile,
   Res,
   Request,
+  NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -20,6 +21,7 @@ import {
   Question,
   QuestionType,
   Difficulty,
+  QuestionStatus,
 } from '../entities/question.entity';
 import { JwtAuthGuard } from '../common/jwt.guard';
 import { RolesGuard } from '../common/roles.guard';
@@ -43,6 +45,7 @@ class CreateQuestionDto {
   @IsString() topicNames: string;
   @IsEnum(Difficulty) @IsOptional() difficulty?: Difficulty;
   @IsString() @IsOptional() companiesAppeared?: string;
+  @IsString() @IsOptional() targetCompanies?: string;
   @IsString() @IsOptional() programmingLanguage?: string;
   @IsInt() @IsOptional() recentYearAppearing?: number;
   @IsString() @IsOptional() bestPracticeFor?: string;
@@ -70,24 +73,26 @@ class CreateQuestionDto {
   @IsString() @IsOptional() domain?: string;
   @IsString() @IsOptional() description?: string;
   @IsNumber() @IsOptional() collegeId?: number; // SUPERADMIN can specify organization
+  @IsEnum(QuestionStatus) @IsOptional() status?: QuestionStatus;
+  @IsString() @IsOptional() rejectionReason?: string;
 }
 
 @Controller('question-bank')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.INSTRUCTOR)
+@Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.INSTRUCTOR, UserRole.QUESTION_CREATOR)
 export class QuestionBankController {
   constructor(
     @InjectRepository(Question)
     private questionRepo: Repository<Question>,
     private bulkImportService: BulkImportService,
     private CollegeFilterService: CollegeFilterService,
-  ) {}
+  ) { }
 
   private async generateQuestionNumber(
     type: QuestionType,
   ): Promise<string> {
     const prefix = type; // MCQ, FIB, MQ, JC, PQ, OP
-    
+
     // Find the last question created of this type to get its number
     const lastQuestion = await this.questionRepo.findOne({
       where: { type },
@@ -121,16 +126,64 @@ export class QuestionBankController {
     return finalCode;
   }
 
+  @Get('pending')
+  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
+  async getPendingQuestions(@Request() req: any) {
+    const qb = this.questionRepo.createQueryBuilder('q')
+      .leftJoinAndSelect('q.creator', 'creator')
+      .leftJoinAndSelect('q.college', 'college')
+      .where('q.status = :status', { status: QuestionStatus.PENDING_APPROVAL });
+
+    if (req.user?.role === UserRole.ADMIN && req.user?.collegeId) {
+      qb.andWhere('q.collegeId = :cid', { cid: req.user.collegeId });
+    }
+
+    return qb.orderBy('q.createdAt', 'DESC').getMany();
+  }
+
+  @Put(':id/approve')
+  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
+  async approveQuestion(@Param('id', ParseIntPipe) id: number, @Request() req: any) {
+    const question = await this.questionRepo.findOne({ where: { id } });
+    if (!question) throw new NotFoundException('Question not found');
+    await this.questionRepo.update(id, {
+      status: QuestionStatus.APPROVED,
+      approvedBy: req.user.sub,
+      rejectionReason: undefined,
+    });
+    return { success: true, message: 'Question approved successfully' };
+  }
+
+  @Put(':id/reject')
+  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
+  async rejectQuestion(
+    @Param('id', ParseIntPipe) id: number,
+    @Body('reason') reason: string,
+    @Request() req: any,
+  ) {
+    const question = await this.questionRepo.findOne({ where: { id } });
+    if (!question) throw new NotFoundException('Question not found');
+    await this.questionRepo.update(id, {
+      status: QuestionStatus.REJECTED,
+      approvedBy: req.user.sub,
+      rejectionReason: reason || 'Does not meet assessment standards',
+    });
+    return { success: true, message: 'Question rejected' };
+  }
+
   @Get()
   async getAll(
     @Query('type') type?: string,
     @Query('difficulty') difficulty?: string,
     @Query('topic') topic?: string,
     @Query('domain') domain?: string,
+    @Query('status') status?: string,
+    @Query('targetCompanies') targetCompanies?: string,
     @Request() req?: any,
   ) {
     const userRole = req?.user?.role;
     const userCollegeId = req?.user?.collegeId;
+    const userId = req?.user?.sub;
 
     // Get organization filter based on user role
     const collegeFilter = this.CollegeFilterService.getCollegeFilter(
@@ -138,18 +191,34 @@ export class QuestionBankController {
       userCollegeId,
     );
 
-    const qb = this.questionRepo.createQueryBuilder('q');
-    
+    const qb = this.questionRepo.createQueryBuilder('q')
+      .leftJoinAndSelect('q.creator', 'creator')
+      .leftJoinAndSelect('q.approver', 'approver');
+
     // Apply organization filter (SUPERADMIN bypasses, others filtered by org)
     if (collegeFilter.collegeId) {
-      qb.andWhere('q.collegeId = :collegeId', { 
-        collegeId: collegeFilter.collegeId 
+      qb.andWhere('q.collegeId = :collegeId', {
+        collegeId: collegeFilter.collegeId
       });
     }
-    
+
+    // QUESTION_CREATOR sees their own questions (all statuses) + approved questions
+    if (userRole === UserRole.QUESTION_CREATOR) {
+      qb.andWhere('(q.createdBy = :userId OR q.status = :apprStatus)', {
+        userId,
+        apprStatus: QuestionStatus.APPROVED,
+      });
+    }
+
     if (type) qb.andWhere('q.type = :type', { type });
     if (difficulty) qb.andWhere('q.difficulty = :difficulty', { difficulty });
     if (domain) qb.andWhere('q.domain = :domain', { domain });
+    if (status) qb.andWhere('q.status = :status', { status });
+    if (targetCompanies) {
+      qb.andWhere('(q.targetCompanies ILIKE :tcomp OR q.companiesAppeared ILIKE :tcomp)', {
+        tcomp: `%${targetCompanies}%`,
+      });
+    }
     if (topic)
       qb.andWhere('q.topicNames ILIKE :topic', { topic: `%${topic}%` });
     return qb.orderBy('q.createdAt', 'DESC').getMany();
@@ -169,36 +238,36 @@ export class QuestionBankController {
     // Build base query with organization filter
     const baseQuery = this.questionRepo.createQueryBuilder('q');
     if (collegeFilter.collegeId) {
-      baseQuery.andWhere('q.collegeId = :collegeId', { 
-        collegeId: collegeFilter.collegeId 
+      baseQuery.andWhere('q.collegeId = :collegeId', {
+        collegeId: collegeFilter.collegeId
       });
     }
 
     const total = await baseQuery.getCount();
-    
+
     const byType = await this.questionRepo
       .createQueryBuilder('q')
       .select('q.type', 'type')
       .addSelect('COUNT(*)', 'count')
-      .where(collegeFilter.collegeId ? 'q.collegeId = :collegeId' : '1=1', 
+      .where(collegeFilter.collegeId ? 'q.collegeId = :collegeId' : '1=1',
         collegeFilter.collegeId ? { collegeId: collegeFilter.collegeId } : {})
       .groupBy('q.type')
       .getRawMany();
-    
+
     const byDifficulty = await this.questionRepo
       .createQueryBuilder('q')
       .select('q.difficulty', 'difficulty')
       .addSelect('COUNT(*)', 'count')
-      .where(collegeFilter.collegeId ? 'q.collegeId = :collegeId' : '1=1', 
+      .where(collegeFilter.collegeId ? 'q.collegeId = :collegeId' : '1=1',
         collegeFilter.collegeId ? { collegeId: collegeFilter.collegeId } : {})
       .groupBy('q.difficulty')
       .getRawMany();
-    
+
     return { total, byType, byDifficulty };
   }
 
   @Post('bulk-import')
-  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.INSTRUCTOR)
+  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.INSTRUCTOR, UserRole.QUESTION_CREATOR)
   @UseInterceptors(FileInterceptor('file'))
   async bulkImport(@UploadedFile() file: any, @Request() req: any) {
     const userRole = req.user?.role;
@@ -221,7 +290,7 @@ export class QuestionBankController {
   }
 
   @Post('bulk-import/error-report')
-  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.INSTRUCTOR)
+  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.INSTRUCTOR, UserRole.QUESTION_CREATOR)
   async downloadErrorReport(@Body() body: any, @Res() res: Response) {
     const { errorDetails } = body;
 
@@ -254,24 +323,32 @@ export class QuestionBankController {
   @Get(':id')
   async getOne(@Param('id', ParseIntPipe) id: number, @Request() req?: any) {
     try {
-      const question = await this.questionRepo.findOneBy({ id });
-      
+      const question = await this.questionRepo.findOne({
+        where: { id },
+        relations: ['creator', 'approver'],
+      });
+
       if (!question) {
         return null;
       }
 
       const userRole = req?.user?.role;
-      // Backward compatibility: older tokens may still carry organizationId.
       const userCollegeId = req?.user?.collegeId;
+      const userId = req?.user?.sub;
 
       // SUPERADMIN can access any question.
       if (userRole === UserRole.SUPERADMIN) {
         return question;
       }
 
+      // QUESTION_CREATOR can access questions they created
+      if (userRole === UserRole.QUESTION_CREATOR && question.createdBy === userId) {
+        return question;
+      }
+
       const targetCollegeId = question.collegeId;
       if (!targetCollegeId) {
-        return null;
+        return question;
       }
 
       if (!this.CollegeFilterService.canAccessCollege(
@@ -290,10 +367,11 @@ export class QuestionBankController {
   }
 
   @Post()
-  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.INSTRUCTOR)
+  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.INSTRUCTOR, UserRole.QUESTION_CREATOR)
   async create(@Body() dto: CreateQuestionDto, @Request() req?: any) {
     const userRole = req?.user?.role;
     const userCollegeId = req?.user?.collegeId;
+    const userId = req?.user?.sub;
 
     // Validate user has collegeId
     if (userRole !== UserRole.SUPERADMIN && !userCollegeId) {
@@ -306,16 +384,29 @@ export class QuestionBankController {
       : (userCollegeId || 1);
 
     const questionNumber = await this.generateQuestionNumber(dto.type);
-    const q = this.questionRepo.create({ 
-      ...dto, 
+
+    // If QUESTION_CREATOR, mark as PENDING_APPROVAL and record createdBy
+    let status = QuestionStatus.APPROVED;
+    if (userRole === UserRole.QUESTION_CREATOR) {
+      status = QuestionStatus.PENDING_APPROVAL;
+    } else if (dto.status) {
+      status = dto.status;
+    }
+
+    const q = this.questionRepo.create({
+      ...dto,
+      targetCompanies: dto.targetCompanies || dto.companiesAppeared,
+      companiesAppeared: dto.companiesAppeared || dto.targetCompanies,
       questionNumber,
       collegeId,
+      status,
+      createdBy: userId,
     });
     return this.questionRepo.save(q);
   }
 
   @Put(':id')
-  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.INSTRUCTOR)
+  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.INSTRUCTOR, UserRole.QUESTION_CREATOR)
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: Partial<CreateQuestionDto>,
@@ -323,18 +414,25 @@ export class QuestionBankController {
   ) {
     try {
       const question = await this.questionRepo.findOneBy({ id });
-      
+
       if (!question) {
         return { message: 'Question not found' };
       }
 
       const userRole = req?.user?.role;
-      // Backward compatibility: older tokens may still carry organizationId.
       const userCollegeId = req?.user?.collegeId;
+      const userId = req?.user?.sub;
       const targetCollegeId = question.collegeId;
 
       // SUPERADMIN can update any question
-      if (userRole !== UserRole.SUPERADMIN) {
+      if (userRole === UserRole.QUESTION_CREATOR) {
+        // Creator can only update their own question, and edits reset status to PENDING_APPROVAL
+        if (question.createdBy !== userId) {
+          return { message: 'Cannot edit questions created by other users' };
+        }
+        dto.status = QuestionStatus.PENDING_APPROVAL;
+        dto.rejectionReason = undefined;
+      } else if (userRole !== UserRole.SUPERADMIN) {
         if (!targetCollegeId) {
           return { message: 'This question has no college assignment and can only be updated by SUPERADMIN' };
         }
@@ -349,6 +447,11 @@ export class QuestionBankController {
         }
       }
 
+      if (dto.targetCompanies || dto.companiesAppeared) {
+        dto.targetCompanies = dto.targetCompanies || dto.companiesAppeared;
+        dto.companiesAppeared = dto.companiesAppeared || dto.targetCompanies;
+      }
+
       await this.questionRepo.update(id, dto);
       return this.questionRepo.findOneBy({ id });
     } catch (error) {
@@ -361,7 +464,7 @@ export class QuestionBankController {
   @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
   async delete(@Param('id', ParseIntPipe) id: number, @Request() req?: any) {
     const question = await this.questionRepo.findOneBy({ id });
-    
+
     if (!question) {
       return { message: 'Question not found' };
     }

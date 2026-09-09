@@ -139,7 +139,7 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
         const stored = localStorage.getItem('user')
         if (!stored) { router.push('/login'); return }
         const u = JSON.parse(stored)
-        if (u.role !== 'SUPERADMIN' && u.role !== 'ADMIN') { router.push('/login'); return }
+        if (!['SUPERADMIN', 'ADMIN', 'INSTRUCTOR', 'QUESTION_CREATOR'].includes(u.role)) { router.push('/login'); return }
         
         fetchDomains()
 
@@ -318,10 +318,46 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
                                     {DIFFICULTIES.map(d => <option key={d} value={d}>{d.replace('_', ' ')}</option>)}
                                 </select>
                             </div>
-                            <div>
-                                <label className="text-gray-400 text-sm mb-2 block">Companies Appeared</label>
-                                <input value={form.companiesAppeared} onChange={e => set('companiesAppeared', e.target.value)}
-                                    placeholder="Accenture, CapGemini..." className="input-field" />
+                            <div className="col-span-1 sm:col-span-2">
+                                <label className="text-gray-400 text-sm mb-2 block">
+                                    🏢 Target Companies <span className="text-xs text-primary-400">(select quick pills or type custom comma-separated)</span>
+                                </label>
+                                <div className="flex flex-wrap gap-1.5 mb-2.5">
+                                    {['TCS', 'Infosys', 'Wipro', 'Accenture', 'Cognizant', 'Capgemini', 'Amazon', 'Microsoft', 'Google', 'Deloitte', 'IBM', 'Oracle', 'Cisco', 'Adobe'].map(c => {
+                                        const currentList = (form.targetCompanies || form.companiesAppeared || '').split(',').map((x: string) => x.trim()).filter(Boolean)
+                                        const isSelected = currentList.includes(c)
+                                        return (
+                                            <button
+                                                key={c}
+                                                type="button"
+                                                onClick={() => {
+                                                    const updated = isSelected
+                                                        ? currentList.filter((x: string) => x !== c)
+                                                        : [...currentList, c]
+                                                    const val = updated.join(', ')
+                                                    set('targetCompanies', val)
+                                                    set('companiesAppeared', val)
+                                                }}
+                                                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                                                    isSelected
+                                                        ? 'bg-primary-500 text-white shadow-sm shadow-primary-500/30'
+                                                        : 'bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10'
+                                                }`}
+                                            >
+                                                {isSelected ? '✓ ' : '+ '}{c}
+                                            </button>
+                                        )
+                                    })}
+                                </div>
+                                <input 
+                                    value={form.targetCompanies || form.companiesAppeared || ''} 
+                                    onChange={e => {
+                                        set('targetCompanies', e.target.value)
+                                        set('companiesAppeared', e.target.value)
+                                    }}
+                                    placeholder="Accenture, Capgemini, TCS..." 
+                                    className="input-field" 
+                                />
                             </div>
                             <div>
                                 <label className="text-gray-400 text-sm mb-2 block">Programming Language</label>

@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
 import QuestionPreview from '@/components/question-bank/QuestionPreview'
+import { getRoleBasePath } from '@/lib/roleUtils'
 
 const QUESTION_TYPES = [
     { key: 'MCQ', label: 'MCQ', icon: '🔘', desc: 'Multiple Choice', color: '#6366f1' },
@@ -36,7 +37,7 @@ export default function QuestionBankPage() {
         const stored = localStorage.getItem('user')
         if (!stored) { router.push('/login'); return }
         const u = JSON.parse(stored)
-        if (u.role !== 'SUPERADMIN' && u.role !== 'ADMIN' && u.role !== 'INSTRUCTOR') { router.push('/login'); return }
+        if (u.role !== 'SUPERADMIN' && u.role !== 'ADMIN' && u.role !== 'INSTRUCTOR' && u.role !== 'QUESTION_CREATOR') { router.push('/login'); return }
         setUserRole(u.role)
 
         Promise.all([
@@ -58,7 +59,7 @@ export default function QuestionBankPage() {
 
     const diffColors: Record<string, string> = {
         VERY_EASY: '#10b981', EASY: '#34d399', MEDIUM: '#f59e0b',
-        HARD: '#ef4444', VERY_HARD: '#7f1d1d',
+        HARD: '#ef4444', VERY_HARD: '#dc2626',
     }
 
     const filtered = questions.filter(q => {
@@ -66,7 +67,9 @@ export default function QuestionBankPage() {
         const matchDiff = filterDiff === 'ALL' || q.difficulty === filterDiff
         const matchDomain = filterDomain === 'ALL' || (q.domain || 'Programming Domain') === filterDomain
         const matchSearch = !search || q.questionText?.toLowerCase().includes(search.toLowerCase()) ||
-            q.topicNames?.toLowerCase().includes(search.toLowerCase())
+            q.topicNames?.toLowerCase().includes(search.toLowerCase()) ||
+            q.targetCompanies?.toLowerCase().includes(search.toLowerCase()) ||
+            q.companiesAppeared?.toLowerCase().includes(search.toLowerCase())
         // Ensure the question has at least a type and text to be considered "valid" for the list
         return matchType && matchDiff && matchDomain && matchSearch && q.questionText && q.type
     })
@@ -83,11 +86,11 @@ export default function QuestionBankPage() {
                         <p className="role-text-muted">Create and manage all question types for assessments</p>
                     </div>
                     <div className="flex gap-3">
-                        <button onClick={() => router.push(`/dashboard/${userRole.toLowerCase()}/question-bank/bulk-import`)}
+                        <button onClick={() => router.push(`${getRoleBasePath(userRole)}/question-bank/bulk-import`)}
                             className="px-5 py-2.5 text-sm flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors">
                             <span>📊</span> Bulk Import
                         </button>
-                        <button onClick={() => router.push(`/dashboard/${userRole.toLowerCase()}/question-bank/create`)}
+                        <button onClick={() => router.push(`${getRoleBasePath(userRole)}/question-bank/create`)}
                             className="btn-primary px-5 py-2.5 text-sm flex items-center gap-2">
                             <span>+</span> Add Question
                         </button>
@@ -130,7 +133,7 @@ export default function QuestionBankPage() {
                         ))}
                     </div>
                     <div className="flex-1 flex gap-3">
-                        <select value={filterDomain} onChange={e => setFilterDomain(e.target.value)} 
+                        <select value={filterDomain} onChange={e => setFilterDomain(e.target.value)}
                             className="bg-[rgba(255,255,255,0.06)] border border-white/10 rounded-xl px-4 py-2 text-xs text-white outline-none focus:border-primary-500 transition-all min-w-[150px]">
                             <option value="ALL">All Domains</option>
                             <option value="Programming Domain">Programming Domain</option>
@@ -165,7 +168,7 @@ export default function QuestionBankPage() {
                             <table className="role-data-table w-full">
                                 <thead>
                                     <tr className="border-b" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
-                                        {['#', 'Q. Number', 'Domain', 'Type', 'Topic', 'Difficulty', 'Question Title', 'Actions'].map(h => (
+                                        {['#', 'Q. Number', 'Domain', 'Type', 'Topic', 'Target Companies', 'Difficulty', 'Status', 'Question Title', 'Actions'].map(h => (
                                             <th key={h} className="text-left text-xs font-semibold role-text-muted pb-3 pr-4">{h}</th>
                                         ))}
                                     </tr>
@@ -173,6 +176,8 @@ export default function QuestionBankPage() {
                                 <tbody>
                                     {filtered.map((q: any, i: number) => {
                                         const qType = QUESTION_TYPES.find(t => t.key === q.type)
+                                        const companies = q.targetCompanies || q.companiesAppeared || ''
+                                        const status = q.status || 'APPROVED'
                                         return (
                                             <tr key={q.id} className="border-b hover:bg-[var(--bg-surface)]/5 transition-colors"
                                                 style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
@@ -190,10 +195,34 @@ export default function QuestionBankPage() {
                                                     </span>
                                                 </td>
                                                 <td className="py-4 pr-4 role-text-secondary text-sm">{q.topicNames}</td>
+                                                <td className="py-4 pr-4 max-w-[160px]">
+                                                    {companies ? (
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {companies.split(',').slice(0, 2).map((c: string) => (
+                                                                <span key={c} className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[11px] font-medium truncate">
+                                                                    🏢 {c.trim()}
+                                                                </span>
+                                                            ))}
+                                                            {companies.split(',').length > 2 && (
+                                                                <span className="text-[10px] text-slate-400">+{companies.split(',').length - 2} more</span>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-xs text-slate-500">—</span>
+                                                    )}
+                                                </td>
                                                 <td className="py-4 pr-4">
                                                     <span className="px-2 py-1 rounded-lg text-xs font-semibold"
                                                         style={{ background: `${diffColors[q.difficulty] || '#6366f1'}20`, color: diffColors[q.difficulty] || '#6366f1' }}>
                                                         {q.difficulty?.replace('_', ' ')}
+                                                    </span>
+                                                </td>
+                                                <td className="py-4 pr-4">
+                                                    <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${status === 'APPROVED' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' :
+                                                            status === 'PENDING_APPROVAL' ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30 animate-pulse' :
+                                                                'bg-rose-500/15 text-rose-400 border border-rose-500/30'
+                                                        }`} title={q.rejectionReason || undefined}>
+                                                        {status === 'PENDING_APPROVAL' ? '⏳ PENDING' : status}
                                                     </span>
                                                 </td>
                                                 <td className="py-4 pr-4 role-text-secondary text-sm max-w-xs truncate">{q.questionText}</td>
@@ -203,7 +232,7 @@ export default function QuestionBankPage() {
                                                             className="px-2.5 py-1 rounded-lg text-xs font-medium bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500 hover:text-white transition-all">
                                                             Preview
                                                         </button>
-                                                        <button onClick={() => router.push(`/dashboard/${userRole.toLowerCase()}/question-bank/${q.id}/edit`)}
+                                                        <button onClick={() => router.push(`${getRoleBasePath(userRole)}/question-bank/${q.id}/edit`)}
                                                             className="px-2.5 py-1 rounded-lg text-xs font-medium"
                                                             style={{ background: 'rgba(99,102,241,0.15)', color: '#a5b4fc', border: '1px solid rgba(99,102,241,0.3)' }}>
                                                             Edit

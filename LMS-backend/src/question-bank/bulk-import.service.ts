@@ -18,7 +18,7 @@ export class BulkImportService {
     private dataSource: DataSource,
     private validator: QuestionValidatorService,
     private parser: FileParserService,
-  ) {}
+  ) { }
 
   async importQuestionsFromFile(
     file: any,

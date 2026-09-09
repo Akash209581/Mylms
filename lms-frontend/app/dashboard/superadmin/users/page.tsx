@@ -82,6 +82,8 @@ export default function SuperAdminUsersPage() {
         ALL: users.length,
         STUDENT: users.filter(u => u.role === 'STUDENT').length,
         INSTRUCTOR: users.filter(u => u.role === 'INSTRUCTOR').length,
+        QUESTION_CREATOR: users.filter(u => u.role === 'QUESTION_CREATOR').length,
+        CONTENT_CREATOR: users.filter(u => u.role === 'CONTENT_CREATOR').length,
         ADMIN: users.filter(u => u.role === 'ADMIN').length,
         SUPERADMIN: users.filter(u => u.role === 'SUPERADMIN').length,
     }

@@ -21,6 +21,7 @@ import { Enrollment } from '../entities/enrollment.entity';
 import { College } from '../entities/college.entity';
 import { AuditLog } from '../entities/audit-log.entity';
 import { Settings } from '../entities/settings.entity';
+import { Question, QuestionStatus } from '../entities/question.entity';
 import { IsEnum } from 'class-validator';
 
 class UpdateRoleDto {
@@ -38,45 +39,42 @@ export class SuperadminController {
     @InjectRepository(College) private collegeRepo: Repository<College>,
     @InjectRepository(AuditLog) private auditRepo: Repository<AuditLog>,
     @InjectRepository(Settings) private settingsRepo: Repository<Settings>,
+    @InjectRepository(Question) private questionRepo: Repository<Question>,
   ) { }
 
   @Get('dashboard')
   async getDashboard() {
-    const totalUsers = await this.userRepo.count();
-    const totalCourses = await this.courseRepo.count();
-    const totalEnrollments = await this.enrollRepo.count();
-    const studentCount = await this.userRepo.count({
-      where: { role: UserRole.STUDENT },
-    });
-    const instructorCount = await this.userRepo.count({
-      where: { role: UserRole.INSTRUCTOR },
-    });
-    const adminCount = await this.userRepo.count({
-      where: { role: UserRole.ADMIN },
-    });
-
-    // College count
-    const totalColleges = await this.collegeRepo.count();
-    const activeColleges = await this.collegeRepo.count({
-      where: { active: true },
-    });
-
-    // Course status counts
-    const pendingCourses = await this.courseRepo.count({
-      where: { status: CourseStatus.PENDING_APPROVAL },
-    });
-    const approvedCourses = await this.courseRepo.count({
-      where: { status: CourseStatus.APPROVED },
-    });
-    const rejectedCourses = await this.courseRepo.count({
-      where: { status: CourseStatus.REJECTED },
-    });
-
-    const recentUsers = await this.userRepo.find({
-      order: { createdAt: 'DESC' },
-      take: 10,
-      select: ['id', 'name', 'email', 'role', 'createdAt', 'collegeId', 'collegeName'],
-    });
+    const [
+      totalUsers,
+      totalCourses,
+      totalEnrollments,
+      studentCount,
+      instructorCount,
+      adminCount,
+      totalColleges,
+      activeColleges,
+      pendingCourses,
+      approvedCourses,
+      rejectedCourses,
+      recentUsers,
+    ] = await Promise.all([
+      this.userRepo.count(),
+      this.courseRepo.count(),
+      this.enrollRepo.count(),
+      this.userRepo.count({ where: { role: UserRole.STUDENT } }),
+      this.userRepo.count({ where: { role: UserRole.INSTRUCTOR } }),
+      this.userRepo.count({ where: { role: UserRole.ADMIN } }),
+      this.collegeRepo.count(),
+      this.collegeRepo.count({ where: { active: true } }),
+      this.courseRepo.count({ where: { status: CourseStatus.PENDING_APPROVAL } }),
+      this.courseRepo.count({ where: { status: CourseStatus.APPROVED } }),
+      this.courseRepo.count({ where: { status: CourseStatus.REJECTED } }),
+      this.userRepo.find({
+        order: { createdAt: 'DESC' },
+        take: 10,
+        select: ['id', 'name', 'email', 'role', 'createdAt', 'collegeId', 'collegeName'],
+      }),
+    ]);
 
     return {
       totalUsers,
@@ -380,5 +378,99 @@ export class SuperadminController {
       await this.settingsRepo.save(s);
     }
     return { message: 'Settings saved', data: body };
+  }
+
+  // ─── Approvals Hub ─────────────────────────────────────────────────────────
+
+  @Get('approvals/summary')
+  async getApprovalsSummary() {
+    const pendingCourses = await this.courseRepo.count({
+      where: { status: CourseStatus.PENDING_APPROVAL },
+    });
+    const pendingQuestions = await this.questionRepo.count({
+      where: { status: QuestionStatus.PENDING_APPROVAL },
+    });
+    return { pendingCourses, pendingQuestions, totalPending: pendingCourses + pendingQuestions };
+  }
+
+  @Get('approvals/courses')
+  async getPendingCourses() {
+    return this.courseRepo.find({
+      where: { status: CourseStatus.PENDING_APPROVAL },
+      relations: ['instructor', 'approver', 'assignedColleges'],
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  @Put('courses/:id/approve')
+  async approveCourse(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() req: any,
+  ) {
+    const course = await this.courseRepo.findOne({ where: { id } });
+    if (!course) throw new NotFoundException('Course not found');
+    await this.courseRepo.update(id, {
+      status: CourseStatus.APPROVED,
+      published: true,
+      approvedBy: req.user.sub,
+      rejectionReason: null,
+    });
+    return { success: true, message: 'Course approved successfully' };
+  }
+
+  @Put('courses/:id/reject')
+  async rejectCourse(
+    @Param('id', ParseIntPipe) id: number,
+    @Body('reason') reason: string,
+    @Request() req: any,
+  ) {
+    const course = await this.courseRepo.findOne({ where: { id } });
+    if (!course) throw new NotFoundException('Course not found');
+    await this.courseRepo.update(id, {
+      status: CourseStatus.REJECTED,
+      approvedBy: req.user.sub,
+      rejectionReason: reason || 'Content does not meet curriculum quality standards',
+    });
+    return { success: true, message: 'Course rejected' };
+  }
+
+  @Get('approvals/questions')
+  async getPendingQuestions() {
+    return this.questionRepo.find({
+      where: { status: QuestionStatus.PENDING_APPROVAL },
+      relations: ['creator', 'approver', 'college'],
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  @Put('questions/:id/approve')
+  async approveQuestion(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() req: any,
+  ) {
+    const question = await this.questionRepo.findOne({ where: { id } });
+    if (!question) throw new NotFoundException('Question not found');
+    await this.questionRepo.update(id, {
+      status: QuestionStatus.APPROVED,
+      approvedBy: req.user.sub,
+      rejectionReason: undefined,
+    });
+    return { success: true, message: 'Question approved successfully' };
+  }
+
+  @Put('questions/:id/reject')
+  async rejectQuestion(
+    @Param('id', ParseIntPipe) id: number,
+    @Body('reason') reason: string,
+    @Request() req: any,
+  ) {
+    const question = await this.questionRepo.findOne({ where: { id } });
+    if (!question) throw new NotFoundException('Question not found');
+    await this.questionRepo.update(id, {
+      status: QuestionStatus.REJECTED,
+      approvedBy: req.user.sub,
+      rejectionReason: reason || 'Question does not meet assessment standards',
+    });
+    return { success: true, message: 'Question rejected' };
   }
 }

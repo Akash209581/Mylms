@@ -16,7 +16,7 @@ export class TopicController {
   ) {}
 
   @Get()
-  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.INSTRUCTOR)
+  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.INSTRUCTOR, UserRole.QUESTION_CREATOR)
   async getTopics(@Query('domainId') domainId?: number, @Query('domainName') domainName?: string) {
     if (domainId) {
       return this.topicRepo.find({ where: { domainId }, order: { name: 'ASC' } });

@@ -35,7 +35,7 @@ export default function SuperAdminCoursesPage() {
         const stored = localStorage.getItem('user')
         if (!stored) { router.push('/login'); return }
         const u = JSON.parse(stored)
-        if (u.role !== 'SUPERADMIN' && u.role !== 'ADMIN') { router.push('/login'); return }
+        if (!['SUPERADMIN', 'ADMIN', 'INSTRUCTOR', 'CONTENT_CREATOR'].includes(u.role)) { router.push('/login'); return }
         setUserRole(u.role)
 
         const apiUrl = API_URL
@@ -75,7 +75,7 @@ export default function SuperAdminCoursesPage() {
                 const addedCount = selectedColleges.filter(id => !originalAssignedColleges.includes(id)).length
                 const removedCount = originalAssignedColleges.filter(id => !selectedColleges.includes(id)).length
                 let message = 'Course assignments updated successfully.'
-                
+
                 if (addedCount > 0 && removedCount === 0) {
                     message = 'Course successfully assigned to the selected College/University. The course is now available for all users of this college.'
                 } else if (removedCount > 0 && addedCount === 0) {
@@ -150,11 +150,11 @@ export default function SuperAdminCoursesPage() {
     const assignedCourse = courses.find(c => c.id === assignCourseId)
     // Resolve home college with fallback chain: FK → instructor FK → instructor name match
     const homeCollegeId: number | null = assignedCourse ? resolveHomeCollegeId(assignedCourse) : null
-    const isHomeLocked  = (id: number) => Number(id) === homeCollegeId
+    const isHomeLocked = (id: number) => Number(id) === homeCollegeId
     const alreadyAssigned = (id: number) => originalAssignedColleges.map(Number).includes(Number(id))
     const isSelected = (id: number) => selectedColleges.map(Number).includes(Number(id))
     const newlyAdding = selectedColleges.filter(id => !originalAssignedColleges.map(Number).includes(Number(id)))
-    const removing    = originalAssignedColleges.filter(id => !selectedColleges.map(Number).includes(Number(id)) && !isHomeLocked(id))
+    const removing = originalAssignedColleges.filter(id => !selectedColleges.map(Number).includes(Number(id)) && !isHomeLocked(id))
 
     const sortedColleges = [...colleges].sort((a, b) => {
         const aHome = isHomeLocked(a.id) ? 0 : 1
@@ -233,13 +233,36 @@ export default function SuperAdminCoursesPage() {
                                 <div key={course.id} className="course-card group">
                                     {/* Thumbnail */}
                                     <div
-                                        className="h-40 relative overflow-hidden"
-                                        style={{ background: isRejected ? 'linear-gradient(135deg,#374151,#1f2937)' : gradients[i % gradients.length] }}
+                                        className="h-44 relative overflow-hidden bg-slate-950"
+                                        style={{ background: course.thumbnail ? undefined : (isRejected ? 'linear-gradient(135deg,#374151,#1f2937)' : gradients[i % gradients.length]) }}
                                     >
-                                        <div className="absolute inset-0 flex items-center justify-center text-5xl opacity-40 group-hover:scale-110 transition-transform duration-300">
-                                            {isRejected ? '🚫' : '📚'}
+                                        {course.thumbnail ? (
+                                            <img
+                                                src={course.thumbnail}
+                                                alt={course.title}
+                                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                            />
+                                        ) : (
+                                            <div className="absolute inset-0 flex items-center justify-center text-5xl opacity-40 group-hover:scale-110 transition-transform duration-300">
+                                                {isRejected ? '🚫' : '📚'}
+                                            </div>
+                                        )}
+
+                                        {/* Top Left Badges */}
+                                        <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-10">
+                                            {course.category && (
+                                                <span className="px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-md text-white text-[10px] font-black uppercase tracking-wider border border-white/10">
+                                                    {course.category}
+                                                </span>
+                                            )}
+                                            {course.level && (
+                                                <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold backdrop-blur-md self-start">
+                                                    {course.level}
+                                                </span>
+                                            )}
                                         </div>
-                                        <div className="absolute top-3 right-3 flex flex-col gap-2">
+
+                                        <div className="absolute top-3 right-3 flex flex-col gap-1.5 z-10 items-end">
                                             {/* Status badge */}
                                             <span className={`badge ${isApproved ? 'badge-student' : isPending ? 'badge-instructor' : 'bg-red-500/30 text-red-300 border border-red-500/40'}`}>
                                                 {isApproved ? '✅ Approved' : isPending ? '⏳ Pending' : '❌ Rejected'}
@@ -257,12 +280,12 @@ export default function SuperAdminCoursesPage() {
                                                 </span>
                                             )}
                                             {course.approver?.role === 'SUPERADMIN' && (
-                                                <span className="badge bg-indigo-500/20 text-indigo-400 border-indigo-500/30">
+                                                <span className="badge bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
                                                     👑 Assigned by Superadmin
                                                 </span>
                                             )}
                                         </div>
-                                        <div className="absolute bottom-3 left-3 text-white/60 text-xs font-medium">
+                                        <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded text-white/80 text-[10px] font-semibold border border-white/10 z-10">
                                             ID: #{course.id}
                                         </div>
                                     </div>
@@ -284,7 +307,7 @@ export default function SuperAdminCoursesPage() {
 
                                     {/* Content */}
                                     <div className="p-5">
-                        <h3 className={`font-semibold mb-1 line-clamp-1 ${isRejected ? 'text-gray-400' : 'text-white'}`}>
+                                        <h3 className={`font-semibold mb-1 line-clamp-1 ${isRejected ? 'text-gray-400' : 'text-white'}`}>
                                             {course.title}
                                         </h3>
                                         <p className="text-gray-400 text-sm mb-3 line-clamp-2">{course.description || 'No description'}</p>
@@ -414,10 +437,10 @@ export default function SuperAdminCoursesPage() {
                         {/* College list */}
                         <div className="max-h-64 overflow-y-auto p-3 space-y-1.5 bg-white">
                             {(() => {
-                                const filteredColleges = sortedColleges.filter(c => 
+                                const filteredColleges = sortedColleges.filter(c =>
                                     c.name.toLowerCase().includes(collegeSearch.toLowerCase())
                                 )
-                                
+
                                 if (filteredColleges.length === 0) {
                                     return (
                                         <div className="text-center py-10 text-slate-400 text-sm">
@@ -428,30 +451,30 @@ export default function SuperAdminCoursesPage() {
                                 }
 
                                 return filteredColleges.map((c: any) => {
-                                    const isHome    = isHomeLocked(c.id)
-                                    const wasAssigned  = alreadyAssigned(c.id)
-                                    const nowSelected  = isSelected(c.id)
+                                    const isHome = isHomeLocked(c.id)
+                                    const wasAssigned = alreadyAssigned(c.id)
+                                    const nowSelected = isSelected(c.id)
                                     const isNewlyAdding = nowSelected && !wasAssigned && !isHome
-                                    const isRemoving  = wasAssigned && !nowSelected && !isHome
+                                    const isRemoving = wasAssigned && !nowSelected && !isHome
 
                                     let rowClass = 'border border-transparent hover:bg-slate-50'
-                                    if (isHome)                      rowClass = 'border border-amber-200 bg-amber-50'
+                                    if (isHome) rowClass = 'border border-amber-200 bg-amber-50'
                                     else if (wasAssigned && nowSelected) rowClass = 'border border-emerald-200 bg-emerald-50'
-                                    else if (isNewlyAdding)          rowClass = 'border border-indigo-200 bg-indigo-50'
-                                    else if (isRemoving)             rowClass = 'border border-red-200 bg-red-50'
+                                    else if (isNewlyAdding) rowClass = 'border border-indigo-200 bg-indigo-50'
+                                    else if (isRemoving) rowClass = 'border border-red-200 bg-red-50'
 
                                     let cbClass = 'bg-white border-slate-300'
-                                    if (isHome)                       cbClass = 'bg-amber-400 border-amber-400'
+                                    if (isHome) cbClass = 'bg-amber-400 border-amber-400'
                                     else if (wasAssigned && nowSelected) cbClass = 'bg-emerald-500 border-emerald-500'
-                                    else if (isNewlyAdding)           cbClass = 'bg-indigo-500 border-indigo-500'
-                                    else if (isRemoving)              cbClass = 'bg-white border-red-400'
+                                    else if (isNewlyAdding) cbClass = 'bg-indigo-500 border-indigo-500'
+                                    else if (isRemoving) cbClass = 'bg-white border-red-400'
 
                                     const textClass =
                                         isHome ? 'text-amber-800'
-                                        : wasAssigned && nowSelected ? 'text-emerald-800'
-                                        : isNewlyAdding ? 'text-indigo-800'
-                                        : isRemoving ? 'text-red-700'
-                                        : 'text-slate-700'
+                                            : wasAssigned && nowSelected ? 'text-emerald-800'
+                                                : isNewlyAdding ? 'text-indigo-800'
+                                                    : isRemoving ? 'text-red-700'
+                                                        : 'text-slate-700'
 
                                     return (
                                         <label

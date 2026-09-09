@@ -505,8 +505,8 @@ export default function StudentCourseDetailsPage() {
                                                     </span>
                                                     <div>
                                                         <p className="text-white font-bold text-lg flex items-center gap-2">
-                                                            <span className="px-2.5 py-0.5 bg-indigo-500/20 text-indigo-400 rounded text-xs">
-                                                                Chapter {moduleIndex + 1}
+                                                            <span className="px-2.5 py-0.5 bg-indigo-500/20 text-indigo-400 rounded text-xs font-bold">
+                                                                Module {moduleIndex + 1}
                                                             </span>
                                                             <span>{module.title}</span>
                                                         </p>
@@ -516,7 +516,7 @@ export default function StudentCourseDetailsPage() {
                                                             </p>
                                                         )}
                                                         <p className="text-gray-400 text-[11px] mt-1 font-semibold">
-                                                            {module.chapters?.length || 0} Modules inside Chapter
+                                                            {module.chapters?.length || 0} Chapters inside Module
                                                         </p>
                                                     </div>
                                                 </button>
@@ -526,12 +526,12 @@ export default function StudentCourseDetailsPage() {
                                                         onClick={() => router.push(`/dashboard/student/courses/${courseId}/learn?chapterId=${module.id}&start=true`)}
                                                         className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 shadow"
                                                     >
-                                                        <span>▶</span> Start Chapter {moduleIndex + 1}
+                                                        <span>▶</span> Start Module {moduleIndex + 1}
                                                     </button>
                                                 )}
                                             </div>
 
-                                            {/* Modules inside Chapter */}
+                                            {/* Chapters inside Module */}
                                             {expandedModules.has(module.id) && (
                                                 <div className="p-4 space-y-3 bg-black/20">
                                                     {module.chapters?.map((chapter, chapterIndex) => (
@@ -542,7 +542,7 @@ export default function StudentCourseDetailsPage() {
                                                                     <div>
                                                                         <p className="text-white font-medium text-sm flex items-center gap-2">
                                                                             <span className="text-purple-400 text-xs font-bold">
-                                                                                Module {moduleIndex + 1}.{chapterIndex + 1}
+                                                                                Chapter {moduleIndex + 1}.{chapterIndex + 1}
                                                                             </span>
                                                                             <span>{chapter.title}</span>
                                                                         </p>
@@ -557,7 +557,7 @@ export default function StudentCourseDetailsPage() {
                                                                         onClick={() => router.push(`/dashboard/student/courses/${courseId}/learn?moduleId=${chapter.id}&start=true`)}
                                                                         className="text-xs font-bold text-indigo-400 hover:text-indigo-300 hover:underline"
                                                                     >
-                                                                        Start Module →
+                                                                        Start Chapter →
                                                                     </button>
                                                                 )}
                                                             </div>

@@ -115,7 +115,7 @@ export default function BulkQuestionImport() {
     } catch (error: any) {
       alert(
         error.response?.data?.message ||
-          'Failed to upload file. Please try again.',
+        'Failed to upload file. Please try again.',
       );
     } finally {
       setUploading(false);
@@ -178,11 +178,10 @@ export default function BulkQuestionImport() {
 
         {/* File Upload Area */}
         <div
-          className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-            dragActive
+          className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-colors ${dragActive
               ? 'border-blue-500 bg-blue-50'
               : 'border-gray-300 bg-gray-50'
-          }`}
+            }`}
           onDragEnter={handleDrag}
           onDragLeave={handleDrag}
           onDragOver={handleDrag}
@@ -237,11 +236,10 @@ export default function BulkQuestionImport() {
             <button
               onClick={handleUpload}
               disabled={uploading}
-              className={`px-8 py-3 rounded-lg font-medium text-white transition-colors ${
-                uploading
+              className={`px-8 py-3 rounded-lg font-medium text-white transition-colors ${uploading
                   ? 'bg-gray-400 cursor-not-allowed'
                   : 'bg-blue-600 hover:bg-blue-700'
-              }`}
+                }`}
             >
               {uploading ? (
                 <span className="flex items-center">

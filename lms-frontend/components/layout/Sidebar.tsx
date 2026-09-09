@@ -15,8 +15,10 @@ const instructorNav: NavItem[] = [
     { label: 'Dashboard', href: '/dashboard/instructor', icon: <GridIcon /> },
     { label: 'My Courses', href: '/dashboard/instructor/courses', icon: <BookIcon /> },
     { label: 'Create Course', href: '/dashboard/instructor/courses/create', icon: <PlusIcon /> },
+    { label: 'Exams', href: '/dashboard/superadmin/exams', icon: <QuizIcon /> },
     { label: 'Question Bank', href: '/dashboard/instructor/question-bank', icon: <QuizIcon /> },
     { label: 'Add Question', href: '/dashboard/instructor/question-bank/create', icon: <PlusIcon /> },
+    { label: 'Bulk Import', href: '/dashboard/instructor/question-bank/bulk-import', icon: <ChartIcon /> },
     { label: 'My Students', href: '/dashboard/instructor/students', icon: <UsersIcon /> },
     { label: 'Assessment Grading', href: '/dashboard/instructor/grading', icon: <CheckIcon /> },
 ]
@@ -25,20 +27,37 @@ const adminNav: NavItem[] = [
     { label: 'Users', href: '/dashboard/admin/users', icon: <UsersIcon /> },
     { label: 'Courses', href: '/dashboard/admin/courses', icon: <BookIcon /> },
     { label: 'Create Course', href: '/dashboard/admin/courses/create', icon: <PlusIcon /> },
+    { label: 'Exams', href: '/dashboard/superadmin/exams', icon: <QuizIcon /> },
     { label: 'Question Bank', href: '/dashboard/admin/question-bank', icon: <QuizIcon /> },
     { label: 'Add Question', href: '/dashboard/admin/question-bank/create', icon: <PlusIcon /> },
+    { label: 'Bulk Import', href: '/dashboard/admin/question-bank/bulk-import', icon: <ChartIcon /> },
     { label: 'Approvals', href: '/dashboard/admin/approvals', icon: <CheckIcon /> },
     { label: 'Assessment Grading', href: '/dashboard/admin/grading', icon: <CheckIcon /> },
     { label: 'Reports', href: '/dashboard/admin/reports', icon: <ChartIcon /> },
 ]
+const questionCreatorNav: NavItem[] = [
+    { label: 'Question Bank', href: '/dashboard/instructor/question-bank', icon: <QuizIcon /> },
+    { label: 'Add Question', href: '/dashboard/instructor/question-bank/create', icon: <PlusIcon /> },
+    { label: 'Bulk Import', href: '/dashboard/instructor/question-bank/bulk-import', icon: <ChartIcon /> },
+]
+
+const contentCreatorNav: NavItem[] = [
+    { label: 'My Courses', href: '/dashboard/instructor/courses', icon: <BookIcon /> },
+    { label: 'Create Course', href: '/dashboard/instructor/courses/create', icon: <PlusIcon /> },
+    { label: 'Content Studio', href: '/dashboard/superadmin/content', icon: <EditorIcon /> },
+]
+
 const superadminNav: NavItem[] = [
     { label: 'Dashboard', href: '/dashboard/superadmin', icon: <GridIcon /> },
+    { label: 'Approvals Queue', href: '/dashboard/superadmin/approvals', icon: <CheckIcon /> },
     { label: 'All Users', href: '/dashboard/superadmin/users', icon: <UsersIcon /> },
     { label: 'All Courses', href: '/dashboard/superadmin/courses', icon: <BookIcon /> },
     { label: 'Content Creation', href: '/dashboard/superadmin/content', icon: <EditorIcon /> },
     { label: 'Create Course', href: '/dashboard/superadmin/courses/create', icon: <PlusIcon /> },
+    { label: 'Exams & Tests', href: '/dashboard/superadmin/exams', icon: <QuizIcon /> },
     { label: 'Question Bank', href: '/dashboard/superadmin/question-bank', icon: <QuizIcon /> },
     { label: 'Add Question', href: '/dashboard/superadmin/question-bank/create', icon: <PlusIcon /> },
+    { label: 'Bulk Import', href: '/dashboard/superadmin/question-bank/bulk-import', icon: <ChartIcon /> },
     { label: 'Colleges', href: '/dashboard/superadmin/colleges', icon: <CollegeIcon /> },
     { label: 'Contests', href: '/dashboard/superadmin/contests', icon: <TrophyIcon /> },
     { label: 'Daily Streak', href: '/dashboard/superadmin/daily-streak', icon: <FireIcon /> },
@@ -57,92 +76,94 @@ export default function Sidebar({ role }: { role?: string }) {
         role === 'STUDENT' ? studentNav :
             role === 'INSTRUCTOR' ? instructorNav :
                 role === 'ADMIN' ? adminNav :
-                    role === 'SUPERADMIN' ? superadminNav : studentNav
+                    role === 'SUPERADMIN' ? superadminNav :
+                        role === 'QUESTION_CREATOR' ? questionCreatorNav :
+                            role === 'CONTENT_CREATOR' ? contentCreatorNav : studentNav
 
-    const handleLogout = async () => {
-        try {
-            await fetch(`${API_URL}/auth/logout`, { 
-                method: 'POST', 
-                credentials: 'include',
-                headers: getAuthHeaders() 
-            })
-        } catch (err) {
-            console.error('Logout API request failed:', err)
-        } finally {
-            localStorage.removeItem('user')
-            router.push('/login')
-        }
+    const handleLogout = () => {
+        // Immediate local teardown and navigation for instant UI responsiveness
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+        router.replace('/login');
+
+        // Dispatched in background to clear cookies on server
+        fetch(`${API_URL}/auth/logout`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: getAuthHeaders()
+        }).catch(err => {
+            console.warn('Background logout request:', err);
+        });
     }
 
     if (role === 'STUDENT') return <StudentReferenceShell />
     const content = (<>
-            {/* Logo */}
-            <div className="p-5 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
-                <Link href="/" className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white shadow-md shadow-indigo-500/20"
-                        style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
-                        <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5}
-                                d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                        </svg>
-                    </div>
-                    <div>
-                        <p className="text-[var(--text-primary)] font-black text-xl tracking-tight leading-none">EduVerse</p>
-                        <p className="text-[11px] text-indigo-400/80 font-medium mt-1">Learn. Grow. Succeed.</p>
-                    </div>
-                </Link>
-            </div>
+        {/* Logo */}
+        <div className="p-5 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
+            <Link href="/" className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white shadow-md shadow-indigo-500/20"
+                    style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
+                    <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5}
+                            d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                    </svg>
+                </div>
+                <div>
+                    <p className="text-[var(--text-primary)] font-black text-xl tracking-tight leading-none">EduVerse</p>
+                    <p className="text-[11px] text-indigo-400/80 font-medium mt-1">Learn. Grow. Succeed.</p>
+                </div>
+            </Link>
+        </div>
 
-            {/* Navigation */}
-            <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1.5">
-                {navItems.map(item => {
-                    const isActive = pathname === item.href
-                    return (
-                        <Link
-                            key={item.label}
-                            href={item.href}
-                            prefetch={false}
-                            aria-current={isActive ? 'page' : undefined}
-                            onClick={() => drawer.current?.close()}
-                            className={`flex items-center justify-between px-4 py-3 rounded-2xl text-sm font-semibold transition-all group ${
-                                isActive 
-                                    ? 'bg-[var(--accent-soft)] text-[var(--accent-text)]' 
-                                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]'
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1.5">
+            {navItems.map(item => {
+                const isActive = pathname === item.href
+                return (
+                    <Link
+                        key={item.label}
+                        href={item.href}
+                        prefetch={true}
+                        aria-current={isActive ? 'page' : undefined}
+                        onClick={() => drawer.current?.close()}
+                        className={`flex items-center justify-between px-4 py-3 rounded-2xl text-sm font-semibold transition-all group ${isActive
+                                ? 'bg-[var(--accent-soft)] text-[var(--accent-text)]'
+                                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]'
                             }`}
-                        >
-                            <div className="flex items-center gap-3">
-                                <span className={`w-5 h-5 transition-transform group-hover:scale-110 ${isActive ? 'text-[var(--accent-text)]' : 'text-[var(--text-muted)] group-hover:text-[var(--accent-text)]'}`}>
-                                    {item.icon}
-                                </span>
-                                <span>{item.label}</span>
-                            </div>
-                            {item.badge !== undefined && (
-                                <span className="bg-indigo-500 text-white text-[11px] font-extrabold px-2 py-0.5 rounded-full shadow-sm">
-                                    {item.badge}
-                                </span>
-                            )}
-                        </Link>
-                    )
-                })}
-            </nav>
+                    >
+                        <div className="flex items-center gap-3">
+                            <span className={`w-5 h-5 transition-transform group-hover:scale-110 ${isActive ? 'text-[var(--accent-text)]' : 'text-[var(--text-muted)] group-hover:text-[var(--accent-text)]'}`}>
+                                {item.icon}
+                            </span>
+                            <span>{item.label}</span>
+                        </div>
+                        {item.badge !== undefined && (
+                            <span className="bg-indigo-500 text-white text-[11px] font-extrabold px-2 py-0.5 rounded-full shadow-sm">
+                                {item.badge}
+                            </span>
+                        )}
+                    </Link>
+                )
+            })}
+        </nav>
 
-            {/* Footer */}
-            <div className="p-3 border-t" style={{ borderColor: 'var(--border)' }}>
-                <button
-                    onClick={handleLogout}
-                    className="flex items-center gap-3 w-full px-4 py-2.5 rounded-xl text-sm font-semibold text-rose-500 hover:bg-rose-500/10 transition-all"
-                >
-                    <LogoutIcon />
-                    Sign Out
-                </button>
-            </div>
-        </>)
+        {/* Footer */}
+        <div className="p-3 border-t" style={{ borderColor: 'var(--border)' }}>
+            <button
+                onClick={handleLogout}
+                className="flex items-center gap-3 w-full px-4 py-2.5 rounded-xl text-sm font-semibold text-rose-500 hover:bg-rose-500/10 transition-all"
+            >
+                <LogoutIcon />
+                Sign Out
+            </button>
+        </div>
+    </>)
     return <div data-role-shell>
-      <button ref={menuButton} className="portal-role-menu" aria-label="Open navigation" onClick={() => drawer.current?.showModal()}><Menu /></button>
-      <aside className="sidebar portal-role-sidebar">{content}</aside>
-      <dialog className="portal-role-drawer" ref={drawer} aria-label="Workspace navigation" onClose={() => menuButton.current?.focus()}>
-        <button className="portal-role-close" aria-label="Close navigation" onClick={() => drawer.current?.close()}><X /></button>{content}
-      </dialog>
+        <button ref={menuButton} className="portal-role-menu" aria-label="Open navigation" onClick={() => drawer.current?.showModal()}><Menu /></button>
+        <aside className="sidebar portal-role-sidebar">{content}</aside>
+        <dialog className="portal-role-drawer" ref={drawer} aria-label="Workspace navigation" onClose={() => menuButton.current?.focus()}>
+            <button className="portal-role-close" aria-label="Close navigation" onClick={() => drawer.current?.close()}><X /></button>{content}
+        </dialog>
     </div>
 }
 

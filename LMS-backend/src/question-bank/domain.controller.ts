@@ -16,7 +16,7 @@ export class DomainController {
   ) {}
 
   @Get()
-  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.INSTRUCTOR)
+  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.INSTRUCTOR, UserRole.QUESTION_CREATOR)
   async getDomains() {
     return this.domainRepo.find({ order: { name: 'ASC' } });
   }

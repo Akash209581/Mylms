@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Mail, Lock, Eye, EyeOff, BookOpen, AlertCircle, Loader2 } from 'lucide-react'
@@ -11,6 +11,16 @@ export default function LoginPage() {
     const [showPassword, setShowPassword] = useState(false)
     const [error, setError] = useState('')
     const [loading, setLoading] = useState(false)
+
+    useEffect(() => {
+        // Warm up and prefetch dashboard client bundles
+        router.prefetch('/dashboard/student')
+        router.prefetch('/dashboard/instructor')
+        router.prefetch('/dashboard/admin')
+        router.prefetch('/dashboard/superadmin')
+        router.prefetch('/dashboard/instructor/question-bank')
+        router.prefetch('/dashboard/instructor/courses')
+    }, [router])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -31,6 +41,8 @@ export default function LoginPage() {
             else if (role === 'INSTRUCTOR') router.push('/dashboard/instructor')
             else if (role === 'ADMIN') router.push('/dashboard/admin')
             else if (role === 'SUPERADMIN') router.push('/dashboard/superadmin')
+            else if (role === 'QUESTION_CREATOR') router.push('/dashboard/instructor/question-bank')
+            else if (role === 'CONTENT_CREATOR') router.push('/dashboard/instructor/courses')
             else router.push('/dashboard/student')
         } catch (err: any) {
             setError(err.message)

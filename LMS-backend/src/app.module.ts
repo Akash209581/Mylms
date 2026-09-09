@@ -42,6 +42,12 @@ import { AuditLog } from './entities/audit-log.entity';
 import { Settings } from './entities/settings.entity';
 import { LearningStateModule } from './learning-state/learning-state.module';
 import { AssessmentModule } from './assessments/assessment.module';
+import { ExamModule } from './exam/exam.module';
+import { Exam } from './entities/exam.entity';
+import { ExamQuestion } from './entities/exam-question.entity';
+import { ExamAssignment } from './entities/exam-assignment.entity';
+import { ExamAttempt } from './entities/exam-attempt.entity';
+import { ExamCodingSubmission } from './entities/exam-coding-submission.entity';
 
 @Module({
   imports: [
@@ -80,6 +86,11 @@ import { AssessmentModule } from './assessments/assessment.module';
         ForumReply,
         AuditLog,
         Settings,
+        Exam,
+        ExamQuestion,
+        ExamAssignment,
+        ExamAttempt,
+        ExamCodingSubmission,
       ],
       autoLoadEntities: true,
       // This database contains legacy academic tables. Changes require migrations.
@@ -103,6 +114,7 @@ import { AssessmentModule } from './assessments/assessment.module';
     ForumModule,
     LearningStateModule,
     AssessmentModule,
+    ExamModule,
   ],
   providers: [
     KeepAliveService,

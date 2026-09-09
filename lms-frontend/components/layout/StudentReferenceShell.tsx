@@ -26,15 +26,17 @@ export default function StudentReferenceShell(_props: { active?: ActivePage }) {
     const main = document.querySelector('main')
     if (main && !main.id) { main.id = 'student-main'; main.tabIndex = -1 }
   }, [pathname])
-  const signOut = async () => {
+  const signOut = () => {
     setSigningOut(true); setError('')
-    try {
-      await api.post('/auth/logout')
-      localStorage.removeItem('user')
-      localStorage.removeItem('token')
-      router.replace('/login')
-    } catch { setError('Could not sign out. Please try again.') }
-    finally { setSigningOut(false) }
+    localStorage.removeItem('user')
+    localStorage.removeItem('token')
+    router.replace('/login')
+
+    api.post('/auth/logout').catch((err) => {
+      console.warn('Background student logout:', err)
+    }).finally(() => {
+      setSigningOut(false)
+    })
   }
   const search = (event: FormEvent) => {
     event.preventDefault()

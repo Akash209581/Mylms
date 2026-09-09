@@ -26,10 +26,10 @@ const QUESTION_TYPES = [
 function CreateQuestionForm() {
     const router = useRouter()
     const searchParams = useSearchParams()
-    const [currentRole, setCurrentRole] = useState<'SUPERADMIN' | 'ADMIN' | 'INSTRUCTOR'>('SUPERADMIN')
+    const [currentRole, setCurrentRole] = useState<'SUPERADMIN' | 'ADMIN' | 'INSTRUCTOR' | 'QUESTION_CREATOR'>('SUPERADMIN')
     const [step, setStep] = useState(1)
     const [form, setForm] = useState<any>({
-        type: '', topicNames: [], difficulty: 'MEDIUM', companiesAppeared: '',
+        type: '', topicNames: [], difficulty: 'MEDIUM', companiesAppeared: '', targetCompanies: '',
         programmingLanguage: '', recentYearAppearing: new Date().getFullYear(),
         bestPracticeFor: '', questionText: '',
         options: ['', '', '', ''], correctAnswer: '',
@@ -75,12 +75,12 @@ function CreateQuestionForm() {
         const stored = localStorage.getItem('user')
         if (!stored) { router.push('/login'); return }
         const u = JSON.parse(stored)
-        if (u.role !== 'SUPERADMIN' && u.role !== 'ADMIN' && u.role !== 'INSTRUCTOR') { router.push('/login'); return }
+        if (u.role !== 'SUPERADMIN' && u.role !== 'ADMIN' && u.role !== 'INSTRUCTOR' && u.role !== 'QUESTION_CREATOR') { router.push('/login'); return }
         setCurrentRole(u.role)
         fetchDomains()
     }, [])
 
-    const dashboardBase = `/dashboard/${currentRole.toLowerCase()}`
+    const dashboardBase = currentRole === 'QUESTION_CREATOR' ? '/dashboard/instructor' : `/dashboard/${currentRole.toLowerCase()}`
     const returnTo = searchParams.get('returnTo')
 
     useEffect(() => {
@@ -284,10 +284,46 @@ function CreateQuestionForm() {
                                         {DIFFICULTIES.map(d => <option key={d} value={d}>{d.replace('_', ' ')}</option>)}
                                     </select>
                                 </div>
-                                <div>
-                                    <label className="text-gray-400 text-sm mb-2 block">Companies Appeared</label>
-                                    <input value={form.companiesAppeared} onChange={e => set('companiesAppeared', e.target.value)}
-                                        placeholder="Accenture, CapGemini..." className="input-field" />
+                                <div className="col-span-1 sm:col-span-2">
+                                    <label className="text-gray-400 text-sm mb-2 block">
+                                        🏢 Target Companies <span className="text-xs text-primary-400">(select quick pills or type custom comma-separated)</span>
+                                    </label>
+                                    <div className="flex flex-wrap gap-1.5 mb-2.5">
+                                        {['TCS', 'Infosys', 'Wipro', 'Accenture', 'Cognizant', 'Capgemini', 'Amazon', 'Microsoft', 'Google', 'Deloitte', 'IBM', 'Oracle', 'Cisco', 'Adobe'].map(c => {
+                                            const currentList = (form.targetCompanies || form.companiesAppeared || '').split(',').map((x: string) => x.trim()).filter(Boolean)
+                                            const isSelected = currentList.includes(c)
+                                            return (
+                                                <button
+                                                    key={c}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const updated = isSelected
+                                                            ? currentList.filter((x: string) => x !== c)
+                                                            : [...currentList, c]
+                                                        const val = updated.join(', ')
+                                                        set('targetCompanies', val)
+                                                        set('companiesAppeared', val)
+                                                    }}
+                                                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                                                        isSelected
+                                                            ? 'bg-primary-500 text-white shadow-sm shadow-primary-500/30'
+                                                            : 'bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10'
+                                                    }`}
+                                                >
+                                                    {isSelected ? '✓ ' : '+ '}{c}
+                                                </button>
+                                            )
+                                        })}
+                                    </div>
+                                    <input 
+                                        value={form.targetCompanies || form.companiesAppeared || ''} 
+                                        onChange={e => {
+                                            set('targetCompanies', e.target.value)
+                                            set('companiesAppeared', e.target.value)
+                                        }}
+                                        placeholder="Accenture, Capgemini, TCS..." 
+                                        className="input-field" 
+                                    />
                                 </div>
                                 <div>
                                     <label className="text-gray-400 text-sm mb-2 block">Programming Language</label>

@@ -43,16 +43,12 @@ export class AdminController {
     // ADMIN sees only their college's data
     if (userRole === UserRole.ADMIN) {
       if (!collegeId) throw new HttpException('A college assignment is required', HttpStatus.FORBIDDEN);
-      const totalUsers = await this.userRepo.count({
-        where: { collegeId },
-      });
-      const totalCourses = await this.courseRepo.count({
-        where: { collegeId },
-      });
-      const totalEnrollments = await this.enrollRepo.count({ where: { student: { collegeId } } });
-      const pendingApprovals = await this.courseRepo.count({
-        where: { status: CourseStatus.PENDING_APPROVAL, collegeId },
-      });
+      const [totalUsers, totalCourses, totalEnrollments, pendingApprovals] = await Promise.all([
+        this.userRepo.count({ where: { collegeId } }),
+        this.courseRepo.count({ where: { collegeId } }),
+        this.enrollRepo.count({ where: { student: { collegeId } } }),
+        this.courseRepo.count({ where: { status: CourseStatus.PENDING_APPROVAL, collegeId } }),
+      ]);
 
       return {
         totalUsers,
@@ -63,22 +59,22 @@ export class AdminController {
     }
 
     // SUPERADMIN sees all data (legacy support)
-    const totalUsers = await this.userRepo.count();
-    const totalCourses = await this.courseRepo.count();
-    const totalEnrollments = await this.enrollRepo.count();
-    const pendingApprovals = 0;
-
-    const recentUsers = await this.userRepo.find({
-      order: { createdAt: 'DESC' },
-      take: 5,
-      select: ['id', 'name', 'email', 'role', 'createdAt'],
-    });
+    const [totalUsers, totalCourses, totalEnrollments, recentUsers] = await Promise.all([
+      this.userRepo.count(),
+      this.courseRepo.count(),
+      this.enrollRepo.count(),
+      this.userRepo.find({
+        order: { createdAt: 'DESC' },
+        take: 5,
+        select: ['id', 'name', 'email', 'role', 'createdAt'],
+      }),
+    ]);
 
     return {
       totalUsers,
       totalCourses,
       totalEnrollments,
-      pendingApprovals,
+      pendingApprovals: 0,
       recentUsers,
     };
   }

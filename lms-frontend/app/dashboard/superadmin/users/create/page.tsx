@@ -182,8 +182,8 @@ export default function CreateUserPage() {
     }
 
     const getRoleOptions = () => {
-        // SUPERADMIN can create ADMIN, INSTRUCTOR, or STUDENT
-        return ['ADMIN', 'INSTRUCTOR', 'STUDENT']
+        // SUPERADMIN can create ADMIN, INSTRUCTOR, STUDENT, QUESTION_CREATOR, CONTENT_CREATOR
+        return ['ADMIN', 'INSTRUCTOR', 'STUDENT', 'QUESTION_CREATOR', 'CONTENT_CREATOR']
     }
 
     return (
@@ -196,7 +196,7 @@ export default function CreateUserPage() {
                     <div className="bg-[var(--bg-surface)] rounded-2xl shadow-xl p-6 mb-6">
                         <h1 className="text-2xl font-bold text-[var(--text-primary)]">Create New User</h1>
                         <p className="text-[var(--text-secondary)] text-sm mt-1">
-                            Create ADMIN, INSTRUCTOR, or STUDENT accounts with college assignment
+                            Create ADMIN, INSTRUCTOR, STUDENT, QUESTION_CREATOR, or CONTENT_CREATOR accounts
                         </p>
                     </div>
 

@@ -73,7 +73,7 @@ export default function LearningPathPage() {
     // Flat list of modules/lessons for sequential navigation
     const flatLessons = useMemo(() => {
         if (!data?.modules) return []
-        const lessons: (Lesson & { moduleTitle: string; chapterTitle: string; chapterIndex: number; moduleIndex: number })[] = []
+        const lessons: (Lesson & { moduleTitle: string; chapterTitle: string; moduleIndex: number; chapterIndex: number })[] = []
         
         data.modules.forEach((m, mIdx) => {
             m.chapters.forEach((c, cIdx) => {
@@ -83,8 +83,8 @@ export default function LearningPathPage() {
                             ...l,
                             moduleTitle: m.title,
                             chapterTitle: c.title,
-                            chapterIndex: mIdx + 1,
-                            moduleIndex: cIdx + 1,
+                            moduleIndex: mIdx + 1,
+                            chapterIndex: cIdx + 1,
                         })
                     })
                 }
@@ -169,8 +169,8 @@ export default function LearningPathPage() {
         }
     }
 
-    // Determine whether next action is Next Module or Next Chapter
-    const isLastModuleOfChapter = useMemo(() => {
+    // Determine whether next action is Next Chapter or Next Module
+    const isLastChapterOfModule = useMemo(() => {
         if (!currentLesson || currentLessonIndex >= flatLessons.length - 1) return true
         const nextLesson = flatLessons[currentLessonIndex + 1]
         return nextLesson.moduleTitle !== currentLesson.moduleTitle
@@ -180,9 +180,9 @@ export default function LearningPathPage() {
         if (currentLessonIndex >= flatLessons.length - 1) return 'End of course'
         const nextLesson = flatLessons[currentLessonIndex + 1]
         if (nextLesson.moduleTitle === currentLesson?.moduleTitle) {
-            return `Next Module: ${nextLesson.chapterTitle || nextLesson.title}`
+            return `Next Chapter: ${nextLesson.chapterTitle || nextLesson.title}`
         }
-        return `Next Chapter: ${nextLesson.moduleTitle}`
+        return `Next Module: ${nextLesson.moduleTitle}`
     }, [currentLesson, currentLessonIndex, flatLessons])
 
     // Get PDF Url for active module
@@ -257,13 +257,13 @@ export default function LearningPathPage() {
                         </div>
                     </div>
 
-                    {/* Chapters & Modules Tree */}
+                    {/* Modules & Chapters Tree */}
                     <div className="space-y-6">
                         {data.modules.map((m, mIdx) => (
                             <div key={m.id} className="space-y-2">
                                 <div className="flex items-center gap-2 px-2">
                                     <span className="text-[11px] font-black text-indigo-400 uppercase tracking-widest">
-                                        Chapter {mIdx + 1}: {m.title}
+                                        Module {mIdx + 1}: {m.title}
                                     </span>
                                 </div>
                                 <div className="space-y-1">
@@ -281,7 +281,8 @@ export default function LearningPathPage() {
                                             })}
                                             {!c.lessons?.length && <p className="px-3 text-xs text-slate-500">No published lessons</p>}
                                         </div>
-                                    ))}                                </div>
+                                    ))}
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -310,11 +311,11 @@ export default function LearningPathPage() {
                             <h1 className="text-lg font-bold text-white line-clamp-1">{data.course.title}</h1>
                             <div className="flex items-center gap-4 mt-0.5">
                                 <span className="text-xs font-semibold text-indigo-400">
-                                    Chapter {currentLesson?.chapterIndex}: {currentLesson?.moduleTitle}
+                                    Module {currentLesson?.moduleIndex}: {currentLesson?.moduleTitle}
                                 </span>
                                 <span className="h-1 w-1 rounded-full bg-gray-600" />
                                 <span className="text-xs font-medium text-gray-300">
-                                    Module {currentLesson?.chapterIndex}.{currentLesson?.moduleIndex}: {currentLesson?.chapterTitle}
+                                    Chapter {currentLesson?.moduleIndex}.${currentLesson?.chapterIndex}: {currentLesson?.chapterTitle}
                                 </span>
                             </div>
                         </div>
@@ -332,7 +333,7 @@ export default function LearningPathPage() {
                              </div>
                         </div>
                         <div className="text-right">
-                           <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest leading-none mb-1">Module</p>
+                           <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest leading-none mb-1">Chapter</p>
                            <p className="text-sm font-black text-white leading-none">{currentLessonIndex + 1} / {flatLessons.length}</p>
                         </div>
                     </div>
@@ -343,10 +344,10 @@ export default function LearningPathPage() {
                     <div className="mx-auto max-w-5xl animate-in fade-in duration-300">{progressPercent === 100 && flatLessons.length > 0 && <section className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-6"><div><h2 className="text-xl font-bold text-emerald-300">Course completed</h2><p className="mt-1 text-sm text-slate-300">You have completed every published lesson. Your certificate is ready.</p></div><button onClick={() => router.push('/dashboard/student/certificates')} className="rounded-xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-500">View certificate</button></section>}{saveError && <p role="alert" className="mb-4 rounded-xl bg-red-950 p-4 text-red-200">{saveError}</p>}{!currentLesson && <div className="rounded-2xl border border-slate-700 p-8"><h2 className="text-2xl font-bold">No lessons available yet</h2><p className="mt-2 text-slate-400">Your instructor has not published learning content for this course.</p></div>}
                         {currentLesson && (
                             <div key={currentLesson.id}>
-                                {/* Header section for current Module */}
+                                {/* Header section for current Chapter */}
                                 <div className="mb-8">
                                      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[10px] font-black uppercase tracking-widest mb-3">
-                                        Chapter {currentLesson.chapterIndex} • Module {currentLesson.moduleIndex}
+                                        Module {currentLesson.moduleIndex} • Chapter {currentLesson.chapterIndex}
                                      </div>
                                      <h2 className="text-4xl font-black text-white tracking-tight leading-tight">{currentLesson.title}</h2>
                                      {currentLesson.description && (
@@ -361,10 +362,10 @@ export default function LearningPathPage() {
                                             pdfUrl={activePdfUrl}
                                             initialPage={position.pdfPage}
                                             onPageChange={pdfPage => recordPosition({ pdfPage }, true)}
-                                            title={`${currentLesson.moduleTitle} • Module ${currentLesson.chapterIndex}.${currentLesson.moduleIndex}: ${currentLesson.title}`}
+                                            title={`${currentLesson.moduleTitle} • Chapter ${currentLesson.moduleIndex}.${currentLesson.chapterIndex}: ${currentLesson.title}`}
                                             isCompleted={data.completedLessonIds.includes(currentLesson.id)}
                                             onModuleComplete={handleComplete}
-                                            isLastModuleOfChapter={isLastModuleOfChapter}
+                                            isLastModuleOfChapter={isLastChapterOfModule}
                                             isPurePresentationMode={isPresentationMode}
                                             onExitPresentation={() => {
                                                 setIsPresentationMode(false)
@@ -431,7 +432,7 @@ export default function LearningPathPage() {
                                                     onClick={() => setCurrentLessonIndex(prev => prev + 1)}
                                                     className="w-full sm:w-auto px-6 py-4 bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm rounded-xl transition-all flex items-center justify-center gap-2 border border-slate-700"
                                                 >
-                                                    <span>{isLastModuleOfChapter ? '📂 Next Chapter →' : '📄 Next Module →'}</span>
+                                                    <span>{isLastChapterOfModule ? '📂 Next Module →' : '📄 Next Chapter →'}</span>
                                                 </button>
                                             )}
                                         </div>

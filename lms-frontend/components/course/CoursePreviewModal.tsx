@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { api } from '@/lib/api'
 import LessonContentRenderer from '@/components/student/LessonContentRenderer'
+import PdfSlideViewer from '@/components/student/PdfSlideViewer'
 
 // Dynamically import the LessonEditor as it uses browser APIs (Katex, TipTap, etc)
 const LessonEditor = dynamic(() => import('@/components/editor/LessonEditor'), {
@@ -24,6 +25,7 @@ interface CoursePreviewModalProps {
 const typeIcons: Record<string, string> = {
     'video': '🎥',
     'article': '📄',
+    'pdf': '📑',
     'quiz': '📝',
     'test': '📝',
     'assessment': '🏆',
@@ -35,7 +37,7 @@ const typeIcons: Record<string, string> = {
 export default function CoursePreviewModal({ courseId, isOpen, onClose }: CoursePreviewModalProps) {
     const [courseData, setCourseData] = useState<any | null>(null)
     const [selectedLessonId, setSelectedLessonId] = useState<number | null>(null)
-    const [lessonData, setLessonData] = useState<{ title: string; type: string; content: any } | null>(null)
+    const [lessonData, setLessonData] = useState<{ title: string; type: string; content: any; contentUrl?: string } | null>(null)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
@@ -83,8 +85,9 @@ export default function CoursePreviewModal({ courseId, isOpen, onClose }: Course
                     setSelectedLessonId(firstLesson.id)
                     setLessonData({
                         title: firstLesson.title,
-                        type: firstLesson.type,
-                        content: firstLesson.content || { type: 'notebook', cells: [] }
+                        type: firstLesson.type || (firstLesson.content?.isPdf ? 'pdf' : 'article'),
+                        content: firstLesson.content || { type: 'notebook', cells: [] },
+                        contentUrl: firstLesson.contentUrl
                     })
                 }
 
@@ -107,8 +110,9 @@ export default function CoursePreviewModal({ courseId, isOpen, onClose }: Course
         setSelectedLessonId(lesson.id)
         setLessonData({
             title: lesson.title,
-            type: lesson.type,
-            content: lesson.content || { type: 'notebook', cells: [] }
+            type: lesson.type || (lesson.content?.isPdf ? 'pdf' : 'article'),
+            content: lesson.content || { type: 'notebook', cells: [] },
+            contentUrl: lesson.contentUrl
         })
     }
 
@@ -154,7 +158,7 @@ export default function CoursePreviewModal({ courseId, isOpen, onClose }: Course
                                         <div key={module.id} className="border border-[var(--border)] rounded-xl overflow-hidden bg-[var(--bg-surface)] shadow-sm">
                                             {/* Module Header */}
                                             <div className="w-full p-3 bg-[var(--bg-raised)] flex flex-col justify-start">
-                                                <span className="text-[10px] text-indigo-500 font-bold uppercase tracking-wider">Section {moduleIndex + 1}</span>
+                                                <span className="text-[10px] text-indigo-500 font-bold uppercase tracking-wider">Module {moduleIndex + 1}</span>
                                                 <h4 className="font-bold text-[var(--text-primary)] text-sm mt-0.5 line-clamp-2">{module.title}</h4>
                                             </div>
                                             
@@ -173,11 +177,11 @@ export default function CoursePreviewModal({ courseId, isOpen, onClose }: Course
                                                                     : 'hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                                                             }`}
                                                         >
-                                                            <span className="text-sm mt-0.5">{typeIcons[lesson.type] || '📄'}</span>
+                                                            <span className="text-sm mt-0.5">{typeIcons[lesson.type] || (lesson.content?.isPdf ? '📑' : '📄')}</span>
                                                             <div className="flex-1 min-w-0">
                                                                 <p className="text-xs font-semibold truncate leading-snug">{lesson.title}</p>
                                                                 <span className={`text-[9px] uppercase tracking-wider ${isSelected ? 'text-indigo-200' : 'text-[var(--text-secondary)]'}`}>
-                                                                    {lesson.type}
+                                                                    {lesson.type || (lesson.content?.isPdf ? 'pdf' : 'article')}
                                                                 </span>
                                                             </div>
                                                         </button>
@@ -188,7 +192,7 @@ export default function CoursePreviewModal({ courseId, isOpen, onClose }: Course
                                                 {hasChapters && module.chapters.map((chapter: any, chapIdx: number) => (
                                                     <div key={chapter.id} className="space-y-1">
                                                         <div className="px-2 py-1 bg-[var(--bg-hover)] rounded-md border border-[var(--border)]">
-                                                            <span className="text-[9px] text-[var(--text-secondary)] font-bold uppercase">Ch {moduleIndex+1}.{chapIdx+1}: {chapter.title}</span>
+                                                            <span className="text-[9px] text-[var(--text-secondary)] font-bold uppercase">Chapter {moduleIndex+1}.{chapIdx+1}: {chapter.title}</span>
                                                         </div>
                                                         <div className="pl-1.5 space-y-1 border-l border-[var(--border-strong)] ml-2">
                                                             {chapter.lessons?.map((lesson: any, lessonIdx: number) => {
@@ -203,11 +207,11 @@ export default function CoursePreviewModal({ courseId, isOpen, onClose }: Course
                                                                                 : 'hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                                                                         }`}
                                                                     >
-                                                                        <span className="text-sm mt-0.5">{typeIcons[lesson.type] || '📄'}</span>
+                                                                        <span className="text-sm mt-0.5">{typeIcons[lesson.type] || (lesson.content?.isPdf ? '📑' : '📄')}</span>
                                                                         <div className="flex-1 min-w-0">
                                                                             <p className="text-xs font-semibold truncate leading-snug">{lesson.title}</p>
                                                                             <span className={`text-[9px] uppercase tracking-wider ${isSelected ? 'text-indigo-200' : 'text-[var(--text-secondary)]'}`}>
-                                                                                {lesson.type}
+                                                                                {lesson.type || (lesson.content?.isPdf ? 'pdf' : 'article')}
                                                                             </span>
                                                                         </div>
                                                                     </button>
@@ -259,23 +263,44 @@ export default function CoursePreviewModal({ courseId, isOpen, onClose }: Course
                                         </div>
                                         
                                         <div className="min-h-[400px]">
-                                            {lessonData.content?.type === 'quiz-builder' || 
-                                             lessonData.content?.type === 'assignment-builder' || 
-                                             lessonData.content?.type === 'programming-builder' ||
-                                             ['quiz', 'test', 'assessment', 'assignment', 'programming', 'coding'].includes((lessonData.type || '').toLowerCase()) ? (
-                                                <div className="p-6 bg-slate-900/40 rounded-2xl border border-[var(--border)] shadow-inner">
-                                                    <LessonContentRenderer content={lessonData.content} />
-                                                </div>
-                                            ) : (
-                                                <LessonEditor
-                                                    lessonId={0}
-                                                    initialContent={lessonData.content}
-                                                    onSave={async () => { }}
-                                                    readOnly={true}
-                                                    isModal={true}
-                                                    stickyTopOffsetPx={0}
-                                                />
-                                            )}
+                                            {(() => {
+                                                const pdfUrl = lessonData.content?.pdfUrl || lessonData.content?.fileUrl || (lessonData.type === 'pdf' || lessonData.contentUrl?.endsWith('.pdf') ? lessonData.contentUrl : null);
+                                                
+                                                if (pdfUrl || lessonData.type === 'pdf' || lessonData.content?.isPdf) {
+                                                    return (
+                                                        <div className="w-full">
+                                                            <PdfSlideViewer
+                                                                pdfUrl={pdfUrl || ''}
+                                                                title={lessonData.title}
+                                                            />
+                                                        </div>
+                                                    );
+                                                }
+
+                                                if (
+                                                    lessonData.content?.type === 'quiz-builder' || 
+                                                    lessonData.content?.type === 'assignment-builder' || 
+                                                    lessonData.content?.type === 'programming-builder' ||
+                                                    ['quiz', 'test', 'assessment', 'assignment', 'programming', 'coding'].includes((lessonData.type || '').toLowerCase())
+                                                ) {
+                                                    return (
+                                                        <div className="p-6 bg-slate-900/40 rounded-2xl border border-[var(--border)] shadow-inner">
+                                                            <LessonContentRenderer content={lessonData.content} />
+                                                        </div>
+                                                    );
+                                                }
+
+                                                return (
+                                                    <LessonEditor
+                                                        lessonId={0}
+                                                        initialContent={lessonData.content}
+                                                        onSave={async () => { }}
+                                                        readOnly={true}
+                                                        isModal={true}
+                                                        stickyTopOffsetPx={0}
+                                                    />
+                                                );
+                                            })()}
                                         </div>
                                     </div>
                                 </div>

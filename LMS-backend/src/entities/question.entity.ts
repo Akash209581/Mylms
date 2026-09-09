@@ -7,6 +7,7 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { College } from './college.entity';
+import { User } from './user.entity';
 
 
 export enum QuestionType {
@@ -24,6 +25,13 @@ export enum Difficulty {
   MEDIUM = 'MEDIUM',
   HARD = 'HARD',
   VERY_HARD = 'VERY_HARD',
+}
+
+export enum QuestionStatus {
+  DRAFT = 'DRAFT',
+  PENDING_APPROVAL = 'PENDING_APPROVAL',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
 }
 
 @Entity('questions')
@@ -48,6 +56,9 @@ export class Question {
 
   @Column({ nullable: true })
   companiesAppeared: string; // Accenture, CapGemini...
+
+  @Column({ name: 'target_companies', nullable: true })
+  targetCompanies: string; // TCS, Infosys, Wipro, Accenture, Amazon...
 
   @Column({ nullable: true })
   programmingLanguage: string; // Python, C, C++, Java
@@ -121,16 +132,36 @@ export class Question {
   @Column({ default: true })
   isActive: boolean;
 
+  @Column({
+    type: 'varchar',
+    default: QuestionStatus.APPROVED,
+  })
+  status: QuestionStatus;
+
+  @Column({ name: 'created_by', nullable: true })
+  createdBy?: number;
+
+  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'created_by' })
+  creator?: User;
+
+  @Column({ name: 'approved_by', nullable: true })
+  approvedBy?: number;
+
+  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'approved_by' })
+  approver?: User;
+
+  @Column({ name: 'rejection_reason', type: 'text', nullable: true })
+  rejectionReason?: string;
+
   // College/University - Multi-tenant support
   @Column({ name: 'college_id', nullable: true })
   collegeId: number;
 
-
-
   @ManyToOne(() => College, (college) => college.questions)
   @JoinColumn({ name: 'college_id' })
   college: College;
-
 
   @CreateDateColumn()
   createdAt: Date;

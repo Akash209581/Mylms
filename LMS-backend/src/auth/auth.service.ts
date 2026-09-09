@@ -204,9 +204,9 @@ export class AuthService {
   private getAllowedRolesToCreate(creatorRole: string): string[] {
     switch (creatorRole) {
       case UserRole.SUPERADMIN:
-        return ['ADMIN', 'INSTRUCTOR', 'STUDENT'];
+        return ['ADMIN', 'INSTRUCTOR', 'STUDENT', 'QUESTION_CREATOR', 'CONTENT_CREATOR'];
       case UserRole.ADMIN:
-        return ['INSTRUCTOR', 'STUDENT'];
+        return ['INSTRUCTOR', 'STUDENT', 'QUESTION_CREATOR', 'CONTENT_CREATOR'];
       case UserRole.INSTRUCTOR:
         return ['STUDENT'];
       default:
@@ -222,10 +222,10 @@ export class AuthService {
     });
     if (existing) throw new ConflictException('Email already registered');
 
-    // Validate role - SUPERADMIN can create ADMIN, INSTRUCTOR, or STUDENT
-    const allowedRoles = ['ADMIN', 'INSTRUCTOR', 'STUDENT'];
+    // Validate role - SUPERADMIN can create ADMIN, INSTRUCTOR, STUDENT, QUESTION_CREATOR, CONTENT_CREATOR
+    const allowedRoles = ['ADMIN', 'INSTRUCTOR', 'STUDENT', 'QUESTION_CREATOR', 'CONTENT_CREATOR'];
     if (!allowedRoles.includes(dto.role)) {
-      throw new BadRequestException('Invalid role. Must be ADMIN, INSTRUCTOR, or STUDENT');
+      throw new BadRequestException('Invalid role. Must be ADMIN, INSTRUCTOR, STUDENT, QUESTION_CREATOR, or CONTENT_CREATOR');
     }
 
     // Find or create college by name

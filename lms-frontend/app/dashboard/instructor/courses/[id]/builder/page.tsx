@@ -395,29 +395,48 @@ export default function CourseBuilderPage() {
         return 'Content Editor';
     };
 
+    const [pdfUploadProgress, setPdfUploadProgress] = useState<{ [chapterId: number]: number }>({});
+
     const handleUploadModulePdf = async (chapterId: number, file: File) => {
+        if (!file) return;
+        if (file.size > 50 * 1024 * 1024) {
+            alert(`Selected file (${(file.size / (1024 * 1024)).toFixed(2)} MB) exceeds limit of 50MB.`);
+            return;
+        }
+
         try {
+            setPdfUploadProgress(prev => ({ ...prev, [chapterId]: 10 }));
             const formData = new FormData();
             formData.append('file', file);
             const uploadRes = await api.post('/courses/upload-pdf-file', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
+                headers: { 'Content-Type': 'multipart/form-data' },
+                onUploadProgress: (progressEvent) => {
+                    if (progressEvent.total) {
+                        const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                        setPdfUploadProgress(prev => ({ ...prev, [chapterId]: percent }));
+                    }
+                }
             });
             const pdfUrl = uploadRes.data.url;
-            const fileName = uploadRes.data.fileName;
-            const fileSize = uploadRes.data.fileSize;
+            const fileName = uploadRes.data.fileName || file.name;
+            const fileSize = uploadRes.data.fileSize || file.size;
 
             const existingLessons = lessons[chapterId] || [];
             const pdfLesson = existingLessons.find(l => l.type === 'pdf') || existingLessons[0];
 
             if (pdfLesson) {
-                await api.put(`/lessons/${pdfLesson.id}`, {
+                const updatedRes = await api.put(`/lessons/${pdfLesson.id}`, {
                     title: pdfLesson.title || 'PDF Document',
                     type: 'pdf',
                     contentUrl: pdfUrl,
                     content: { isPdf: true, pdfUrl, fileName, fileSize }
                 });
+                setLessons(prev => ({
+                    ...prev,
+                    [chapterId]: prev[chapterId]?.map(l => l.id === pdfLesson.id ? { ...l, contentUrl: pdfUrl, content: { isPdf: true, pdfUrl, fileName, fileSize } } : l) || []
+                }));
             } else {
-                await api.post('/lessons', {
+                const createdRes = await api.post('/lessons', {
                     chapterId,
                     title: 'PDF Document',
                     type: 'pdf',
@@ -425,10 +444,28 @@ export default function CourseBuilderPage() {
                     contentUrl: pdfUrl,
                     content: { isPdf: true, pdfUrl, fileName, fileSize }
                 });
+                if (createdRes.data) {
+                    setLessons(prev => ({
+                        ...prev,
+                        [chapterId]: [...(prev[chapterId] || []), createdRes.data]
+                    }));
+                }
             }
-            alert('PDF file updated successfully!');
+            setPdfUploadProgress(prev => ({ ...prev, [chapterId]: 100 }));
+            setTimeout(() => {
+                setPdfUploadProgress(prev => {
+                    const next = { ...prev };
+                    delete next[chapterId];
+                    return next;
+                });
+            }, 1500);
             fetchCourseData();
         } catch (err: any) {
+            setPdfUploadProgress(prev => {
+                const next = { ...prev };
+                delete next[chapterId];
+                return next;
+            });
             alert('Failed to upload PDF: ' + (err.response?.data?.message || err.message));
         }
     };
@@ -597,7 +634,7 @@ export default function CourseBuilderPage() {
                                             }}
                                             className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors text-xs font-bold flex items-center gap-1 shadow"
                                         >
-                                            ➕ Add Module
+                                            ➕ Add Chapter
                                         </button>
                                         <button
                                             onClick={() => openEditModuleModal(module)}
@@ -614,7 +651,7 @@ export default function CourseBuilderPage() {
                                     </div>
                                 </div>
 
-                                {/* Modules List inside Chapter */}
+                                {/* Chapters List inside Module */}
                                 {expandedModules.has(module.id) && (
                                     <div className="mt-4 ml-4 sm:ml-6 space-y-4 border-l-2 border-indigo-500/20 pl-4">
                                         {chapters[module.id]?.length > 0 ? (
@@ -623,6 +660,7 @@ export default function CourseBuilderPage() {
                                                 const pdfLesson = modLessons.find(l => l.type === 'pdf') || modLessons[0];
                                                 const pdfUrl = pdfLesson?.contentUrl || pdfLesson?.content?.pdfUrl;
                                                 const fileName = pdfLesson?.content?.fileName || (pdfUrl ? pdfUrl.split('/').pop() : '');
+                                                const uploadProg = pdfUploadProgress[chapter.id];
 
                                                 return (
                                                     <div key={chapter.id} className="bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-3">
@@ -630,7 +668,7 @@ export default function CourseBuilderPage() {
                                                             <div className="flex-1 cursor-pointer" onClick={() => toggleChapterExpand(chapter.id)}>
                                                                 <h4 className="text-base font-bold text-white flex items-center gap-2">
                                                                     <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 rounded text-xs font-bold">
-                                                                        Module {index + 1}.{chapterIndex + 1}
+                                                                        Chapter {index + 1}.{chapterIndex + 1}
                                                                     </span>
                                                                     <span>{chapter.title}</span>
                                                                 </h4>
@@ -658,8 +696,24 @@ export default function CourseBuilderPage() {
                                                             </div>
                                                         </div>
 
+                                                        {/* Progress bar during upload */}
+                                                        {uploadProg !== undefined && (
+                                                            <div className="p-3 bg-slate-950 rounded-lg border border-indigo-500/30 space-y-1.5">
+                                                                <div className="flex justify-between text-xs font-bold text-indigo-300">
+                                                                    <span>Uploading PDF...</span>
+                                                                    <span>{uploadProg}%</span>
+                                                                </div>
+                                                                <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                                                                    <div
+                                                                        className="bg-indigo-500 h-full transition-all duration-300"
+                                                                        style={{ width: `${uploadProg}%` }}
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        )}
+
                                                         {/* Attached PDF info badge */}
-                                                        {pdfUrl ? (
+                                                        {pdfUrl && uploadProg === undefined ? (
                                                             <div className="flex items-center justify-between p-2.5 bg-indigo-950/40 rounded-lg border border-indigo-500/30 text-xs">
                                                                 <div className="flex items-center gap-2 text-indigo-300 font-semibold line-clamp-1">
                                                                     <span>📄 PDF Attached:</span>
@@ -674,23 +728,23 @@ export default function CourseBuilderPage() {
                                                                     View PDF ↗
                                                                 </a>
                                                             </div>
-                                                        ) : (
+                                                        ) : uploadProg === undefined ? (
                                                             <div className="p-2.5 bg-slate-950/50 rounded-lg border border-dashed border-slate-700 text-xs text-gray-400 italic flex items-center justify-between">
-                                                                <span>No PDF file attached to this module yet.</span>
+                                                                <span>No PDF file attached to this chapter yet.</span>
                                                                 <label className="cursor-pointer text-indigo-400 font-bold hover:underline not-italic">
                                                                     Upload PDF
                                                                     <input
                                                                         type="file"
                                                                         accept=".pdf"
                                                                         className="hidden"
-                                                                        onChange={e => {
+                                                                        onChange={(e) => {
                                                                             const file = e.target.files?.[0];
                                                                             if (file) handleUploadModulePdf(chapter.id, file);
                                                                         }}
                                                                     />
                                                                 </label>
                                                             </div>
-                                                        )}
+                                                        ) : null}
                                                     </div>
                                                 );
                                             })

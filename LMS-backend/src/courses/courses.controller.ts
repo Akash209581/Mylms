@@ -551,6 +551,43 @@ export class CoursesController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.INSTRUCTOR)
+  @Post('upload-banner')
+  @UseInterceptors(FileInterceptor('file', {
+    limits: { fileSize: 10 * 1024 * 1024 }
+  }))
+  async uploadBannerFile(@UploadedFile() file: any) {
+    if (!file) {
+      throw new HttpException('No banner image uploaded', HttpStatus.BAD_REQUEST);
+    }
+
+    const fs = require('fs');
+    const path = require('path');
+
+    let fileUrl = await this.cloudinaryService.uploadBuffer(
+      file.buffer,
+      file.originalname,
+      'lms/course-banners',
+    );
+
+    if (!fileUrl) {
+      const baseUploadsDir = process.env.UPLOADS_DIR || path.join(process.cwd(), 'uploads');
+      const bannerUploadsDir = path.join(baseUploadsDir, 'banners');
+      if (!fs.existsSync(bannerUploadsDir)) {
+        fs.mkdirSync(bannerUploadsDir, { recursive: true });
+      }
+      const safeName = `${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+      const filePath = path.join(bannerUploadsDir, safeName);
+      fs.writeFileSync(filePath, file.buffer);
+      fileUrl = `/uploads/banners/${safeName}`;
+    }
+
+    return {
+      url: fileUrl,
+    };
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.INSTRUCTOR)
   @Post('upload-pdf-file')
   @UseInterceptors(FileInterceptor('file', {
     limits: { fileSize: 50 * 1024 * 1024 }
@@ -610,6 +647,7 @@ export class CoursesController {
     const course = this.courseRepo.create({
       title: body.title || 'Untitled PDF Course',
       description: body.description || '',
+      thumbnail: body.thumbnail || '',
       category: body.category || 'General',
       level: body.level || 'Beginner',
       price: body.price ? Number(body.price) : 0,
@@ -638,41 +676,46 @@ export class CoursesController {
       await this.courseRepo.save(savedCourse);
     }
 
-    // Parse Chapters and Modules
-    const chaptersData = Array.isArray(body.chapters) ? body.chapters : [];
+    // Parse Modules and Chapters (Top level is Module, child is Chapter, each Chapter contains PDF Lesson)
+    const modulesData = Array.isArray(body.modules)
+      ? body.modules
+      : (Array.isArray(body.chapters) ? body.chapters : []);
 
-    for (let cIdx = 0; cIdx < chaptersData.length; cIdx++) {
-      const chItem = chaptersData[cIdx];
-      const chNum = chItem.number || cIdx + 1;
-      const chName = chItem.name || `Chapter ${chNum}`;
+    for (let mIdx = 0; mIdx < modulesData.length; mIdx++) {
+      const modItem = modulesData[mIdx];
+      const modNum = modItem.number || modItem.order || mIdx + 1;
+      const modTitle = modItem.title || modItem.name || `Module ${modNum}`;
 
       const dbModule = this.moduleRepo.create({
-        title: chName.toLowerCase().startsWith('chapter') ? chName : `Chapter ${chNum}: ${chName}`,
-        order: chNum,
+        title: modTitle,
+        order: modNum,
         courseId: savedCourse.id,
       });
       const savedDbModule = await this.moduleRepo.save(dbModule);
 
-      const modulesData = Array.isArray(chItem.modules) ? chItem.modules : [];
-      for (let mIdx = 0; mIdx < modulesData.length; mIdx++) {
-        const modItem = modulesData[mIdx];
-        const modNum = modItem.number || mIdx + 1;
-        const modName = modItem.name || `Module ${modNum}`;
+      const chaptersData = Array.isArray(modItem.chapters)
+        ? modItem.chapters
+        : (Array.isArray(modItem.modules) ? modItem.modules : []);
+
+      for (let cIdx = 0; cIdx < chaptersData.length; cIdx++) {
+        const chItem = chaptersData[cIdx];
+        const chNum = chItem.number || chItem.order || cIdx + 1;
+        const chTitle = chItem.title || chItem.name || `Chapter ${chNum}`;
 
         const dbChapter = this.chapterRepo.create({
-          title: modName.toLowerCase().startsWith('module') ? modName : `Module ${modNum}: ${modName}`,
-          order: modNum,
+          title: chTitle,
+          order: chNum,
           moduleId: savedDbModule.id,
         });
         const savedDbChapter = await this.chapterRepo.save(dbChapter);
 
-        // Create PDF Lesson
-        const pdfUrl = modItem.pdfUrl || modItem.fileUrl || '';
-        const fileName = modItem.fileName || `${modName}.pdf`;
-        const fileSize = modItem.fileSize || 0;
+        // Create PDF Lesson inside Chapter
+        const pdfUrl = chItem.pdfUrl || chItem.fileUrl || chItem.uploadedUrl || '';
+        const fileName = chItem.fileName || `${chTitle}.pdf`;
+        const fileSize = chItem.fileSize || 0;
 
         const dbLesson = this.lessonRepo.create({
-          title: modName,
+          title: chTitle,
           type: 'pdf',
           published: true,
           order: 1,
