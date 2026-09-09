@@ -1,0 +1,48 @@
+/* Explicit roles for text on administrative surfaces. Action and badge colors
+   remain independent, so a white label on a filled button stays white. */
+.role-text-primary { color: var(--text-primary); }
+.role-text-secondary { color: var(--text-secondary); }
+.role-text-muted { color: var(--text-muted); }
+.role-text-accent { color: var(--accent-text); }
+
+.role-page-header {
+  padding: 4px 0 28px;
+  margin-bottom: 28px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-primary);
+}
+.role-page-header h1 { margin: 6px 0 10px; font-size: clamp(26px, 3vw, 34px); line-height: 1.25; font-weight: 700; letter-spacing: -.03em; }
+.role-page-header p { color: var(--text-secondary); line-height: 1.6; }
+.role-page-header .role-eyebrow { color: var(--accent-text); font-size: 12px; font-weight: 650; letter-spacing: .07em; text-transform: uppercase; }
+.role-college-logo { display: grid; place-items: center; flex-shrink: 0; padding: 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-surface); }
+.role-college-logo img { max-width: 72px; max-height: 72px; object-fit: contain; }
+.role-stat-icon { background: var(--accent-soft); color: var(--accent-text); border-radius: 6px; }
+.role-stat-link { display: block; color: inherit; text-align: left; text-decoration: none; }
+.role-stat-link:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 3px; }
+
+.role-data-table { width: 100%; border-collapse: collapse; color: var(--text-primary); }
+.role-data-table thead { color: var(--text-secondary); }
+.role-data-table th { text-align: left; font-weight: 600; color: var(--text-secondary); white-space: nowrap; }
+.role-data-table tr { border-color: var(--border) !important; }
+.role-data-table tbody tr { border-bottom: 1px solid var(--border); }
+.role-data-table tbody tr:last-child { border-bottom: 0; }
+.role-data-table tbody tr:hover { background: var(--bg-raised); }
+.role-data-table td { vertical-align: middle; }
+.role-table-select { min-height: 36px; border: 1px solid var(--border); border-radius: 5px; padding: 6px 10px; background: var(--bg-surface); color: var(--text-primary); font: inherit; font-size: 12px; }
+.role-table-select option { color: var(--text-primary); background: var(--bg-surface); }
+.role-table-action { display: inline-flex; justify-content: center; align-items: center; gap: 6px; min-height: 36px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 5px; background: var(--bg-surface); color: var(--accent-text); font-size: 12px; font-weight: 600; text-decoration: none; }
+.role-table-action:hover { background: var(--accent-soft); }
+.role-table-action-danger { color: var(--error); background: var(--error-soft); border-color: transparent; }
+.role-table-action-danger:hover { background: var(--error-soft); filter: brightness(.96); }
+
+.role-user-dialog { border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-primary); }
+.role-user-dialog-header, .role-user-dialog-footer { border-color: var(--border); }
+.role-user-detail { background: var(--bg-raised); border-color: var(--border); }
+.role-badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; background: var(--accent-soft); color: var(--accent-text); }
+.role-badge-success { background: var(--success-soft); color: var(--success); }
+.role-badge-error { background: var(--error-soft); color: var(--error); }
+@media (max-width: 600px) {
+  .role-page-header { padding-bottom: 22px; margin-bottom: 22px; }
+  .role-college-logo { display: none; }
+  .role-user-dialog-footer { align-items: flex-start; flex-direction: column; gap: 16px; }
+}

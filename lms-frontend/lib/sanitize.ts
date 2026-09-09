@@ -1,14 +1,10 @@
-import DOMPurify from 'dompurify';
+import DOMPurify from 'isomorphic-dompurify';
 
 /**
  * Safely sanitizes HTML content using DOMPurify.
- * On the server side (during prerendering/SSR), it safely returns the raw string
- * to avoid importing jsdom, which has heavy dependencies and breaks during builds.
- * The client will re-run the sanitization once mounted.
+ * The same policy is applied before server rendering and in the browser.
+ * Never place unsanitized stored content into the initial HTML response.
  */
 export function sanitizeHtml(html: string): string {
-  if (typeof window !== 'undefined') {
-    return DOMPurify.sanitize(html);
-  }
-  return html;
+  return DOMPurify.sanitize(html);
 }

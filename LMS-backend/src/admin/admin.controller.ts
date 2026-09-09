@@ -1,3 +1,4 @@
+import { canEditCourse } from '../common/course-access';
 import {
   Controller,
   Get,
@@ -24,6 +25,7 @@ import { ApproveCourseDto, RejectCourseDto } from '../courses/courses.dto';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
 export class AdminController {
   constructor(
     @InjectRepository(User) private userRepo: Repository<User>,
@@ -40,13 +42,14 @@ export class AdminController {
 
     // ADMIN sees only their college's data
     if (userRole === UserRole.ADMIN) {
+      if (!collegeId) throw new HttpException('A college assignment is required', HttpStatus.FORBIDDEN);
       const totalUsers = await this.userRepo.count({
         where: { collegeId },
       });
       const totalCourses = await this.courseRepo.count({
         where: { collegeId },
       });
-      const totalEnrollments = await this.enrollRepo.count();
+      const totalEnrollments = await this.enrollRepo.count({ where: { student: { collegeId } } });
       const pendingApprovals = await this.courseRepo.count({
         where: { status: CourseStatus.PENDING_APPROVAL, collegeId },
       });
@@ -88,6 +91,7 @@ export class AdminController {
 
     // ADMIN can only see INSTRUCTORS and STUDENTS from their college
     if (userRole === UserRole.ADMIN) {
+      if (!collegeId) throw new HttpException('A college assignment is required', HttpStatus.FORBIDDEN);
       return this.userRepo.find({
         where: {
           collegeId,
@@ -121,6 +125,7 @@ export class AdminController {
 
     // ADMIN can only see users from their college (INSTRUCTOR or STUDENT)
     if (userRole === UserRole.ADMIN) {
+      if (!collegeId) throw new HttpException('A college assignment is required', HttpStatus.FORBIDDEN);
       if (user.collegeId !== collegeId) {
         return null; // Not authorized to view this user
       }
@@ -134,7 +139,12 @@ export class AdminController {
 
   @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
   @Delete('users/:id')
-  async deleteUser(@Param('id') id: number) {
+  async deleteUser(@Param('id') id: number, @Request() req: any) {
+    const user = await this.getUserById(id, req);
+    if (!user) throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+    if (user.id === req.user.sub || (req.user.role !== UserRole.SUPERADMIN && ![UserRole.STUDENT, UserRole.INSTRUCTOR].includes(user.role))) {
+      throw new HttpException('You cannot delete this user', HttpStatus.FORBIDDEN);
+    }
     await this.userRepo.delete(id);
     return { message: 'User deleted' };
   }
@@ -228,6 +238,9 @@ export class AdminController {
       return { success: false, message: 'Course not found' };
     }
 
+    if (!canEditCourse(req.user, course)) {
+      throw new HttpException('You can only review courses owned by your college', HttpStatus.FORBIDDEN);
+    }
     if (course.status !== CourseStatus.PENDING_APPROVAL) {
       return {
         success: false,
@@ -288,6 +301,9 @@ export class AdminController {
       return { success: false, message: 'Course not found' };
     }
 
+    if (!canEditCourse(req.user, course)) {
+      throw new HttpException('You can only review courses owned by your college', HttpStatus.FORBIDDEN);
+    }
     if (course.status !== CourseStatus.PENDING_APPROVAL) {
       return {
         success: false,
@@ -333,7 +349,12 @@ export class AdminController {
   }
 
   @Delete('courses/:id')
-  async deleteCourse(@Param('id') id: number) {
+  async deleteCourse(@Param('id') id: number, @Request() req: any) {
+    const course = await this.courseRepo.findOne({ where: { id } });
+    if (!course) throw new HttpException('Course not found', HttpStatus.NOT_FOUND);
+    if (req.user.role !== UserRole.SUPERADMIN && (!req.user.collegeId || course.collegeId !== req.user.collegeId)) {
+      throw new HttpException('You cannot delete this course', HttpStatus.FORBIDDEN);
+    }
     await this.courseRepo.delete(id);
     return { message: 'Course deleted successfully' };
   }

@@ -1,10 +1,14 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { api } from '@/lib/api'
+import { api, API_URL } from '@/lib/api'
 import LessonContentRenderer from '@/components/student/LessonContentRenderer'
 import PdfSlideViewer from '@/components/student/PdfSlideViewer'
+import LessonNotes from '@/components/student/LessonNotes'
+import LessonBookmarks from '@/components/student/LessonBookmarks'
+import LessonMediaPosition from '@/components/student/LessonMediaPosition'
+import LessonAssessment from '@/components/student/LessonAssessment'
 import { ChevronLeft, ChevronRight, CheckCircle2, Circle, Menu, X, BookOpen, Clock, Award, Download, Maximize2 } from 'lucide-react'
 
 interface Lesson {
@@ -59,9 +63,11 @@ export default function LearningPathPage() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState('')
     const [currentLessonIndex, setCurrentLessonIndex] = useState(0)
-    const [isSidebarOpen, setIsSidebarOpen] = useState(true)
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false)
     const [completing, setCompleting] = useState<number | null>(null)
-    const [pdfFullscreen, setPdfFullscreen] = useState(false)
+    const [saveError, setSaveError] = useState('')
+    const [resumeError, setResumeError] = useState('')
+    const resumeWrites = useRef<Promise<unknown>>(Promise.resolve())
     const [isPresentationMode, setIsPresentationMode] = useState(false)
 
     // Flat list of modules/lessons for sequential navigation
@@ -81,20 +87,6 @@ export default function LearningPathPage() {
                             moduleIndex: cIdx + 1,
                         })
                     })
-                } else {
-                    // Fallback if chapter has no direct lesson, create a virtual lesson for PDF module
-                    lessons.push({
-                        id: c.id,
-                        title: c.title,
-                        type: 'pdf',
-                        published: true,
-                        order: c.order,
-                        chapterId: c.id,
-                        moduleTitle: m.title,
-                        chapterTitle: c.title,
-                        chapterIndex: mIdx + 1,
-                        moduleIndex: cIdx + 1,
-                    })
                 }
             })
         })
@@ -104,43 +96,25 @@ export default function LearningPathPage() {
     const currentLesson = flatLessons[currentLessonIndex]
 
     useEffect(() => {
+        if (loading || !currentLesson) return
+        let active = true
+        // Preserve visit order even if navigation is faster than the network.
+        resumeWrites.current = resumeWrites.current.catch(() => {}).then(() =>
+            api.patch(`/learning-state/courses/${courseId}`, { lastLessonId: currentLesson.id })
+        ).then(() => { if (active) setResumeError('') }).catch(() => {
+            if (active) setResumeError('Your resume position could not be saved. You can continue learning.')
+        })
+        return () => { active = false }
+    }, [loading, courseId, currentLesson?.id])
+
+    useEffect(() => {
         if (courseId) fetchLearningPath()
     }, [courseId])
 
-    useEffect(() => {
-        if (!data?.modules || flatLessons.length === 0) return
-
-        if (typeof window !== 'undefined') {
-            const urlParams = new URLSearchParams(window.location.search)
-            const targetModId = urlParams.get('moduleId')
-            const targetChId = urlParams.get('chapterId')
-            const isStart = urlParams.get('start') === 'true' || urlParams.get('presentation') === 'true'
-
-            if (isStart) {
-                setIsPresentationMode(true)
-            }
-
-            if (targetModId) {
-                const foundIdx = flatLessons.findIndex(l => String(l.chapterId) === targetModId || String(l.id) === targetModId)
-                if (foundIdx !== -1) {
-                    setCurrentLessonIndex(foundIdx)
-                    return
-                }
-            } else if (targetChId) {
-                const foundIdx = flatLessons.findIndex(l => {
-                    const parentMod = data.modules.find(m => String(m.id) === targetChId)
-                    return parentMod?.chapters?.some(c => c.id === l.chapterId)
-                })
-                if (foundIdx !== -1) {
-                    setCurrentLessonIndex(foundIdx)
-                    return
-                }
-            }
-        }
-    }, [data, flatLessons])
-
     const fetchLearningPath = async () => {
         setLoading(true)
+        setError('')
+        setResumeError('')
         try {
             const res = await api.get(`/student/courses/${courseId}/learning-path`)
             setData(res.data)
@@ -149,8 +123,21 @@ export default function LearningPathPage() {
             const firstUncompleted = res.data.modules.flatMap((m: any) => m.chapters.flatMap((c: any) => c.lessons || []))
                 .findIndex((l: any) => !res.data.completedLessonIds.includes(l.id))
 
-            if (firstUncompleted !== -1) {
-                setCurrentLessonIndex(firstUncompleted)
+            const lessons = res.data.modules.flatMap((m: any) => m.chapters.flatMap((c: any) => c.lessons || []))
+            let lastLessonId: number | null = null
+            try {
+                const state = await api.get(`/learning-state/courses/${courseId}`)
+                lastLessonId = state.data.lastLessonId
+            } catch {
+                setResumeError('Your saved resume position could not be loaded. Showing your next unfinished lesson.')
+            }
+            const resumeIndex = lessons.findIndex((lesson: Lesson) => lesson.id === lastLessonId)
+            const query = new URLSearchParams(window.location.search)
+            const target = lessons.findIndex((l: any) => query.has('lessonId') ? String(l.id) === query.get('lessonId') : query.has('moduleId') ? String(l.chapterId) === query.get('moduleId') : query.has('chapterId') ? res.data.modules.find((m: any) => String(m.id) === query.get('chapterId'))?.chapters.some((c: any) => c.id === l.chapterId) : false)
+            if (target >= 0) {
+                setCurrentLessonIndex(target)
+            } else {
+                setCurrentLessonIndex(resumeIndex >= 0 ? resumeIndex : firstUncompleted >= 0 ? firstUncompleted : 0)
             }
         } catch (err: any) {
             console.error('Error fetching learning path:', err)
@@ -162,6 +149,7 @@ export default function LearningPathPage() {
 
     const handleComplete = async () => {
         if (!currentLesson || completing) return
+        setSaveError('')
         setCompleting(currentLesson.id)
         try {
             await api.post(`/student/lessons/${currentLesson.id}/complete`)
@@ -175,7 +163,7 @@ export default function LearningPathPage() {
                 setCurrentLessonIndex(prev => prev + 1)
             }
         } catch (err) {
-            console.error('Error completing lesson:', err)
+            setSaveError('Progress could not be saved. Please try again.')
         } finally {
             setCompleting(null)
         }
@@ -189,7 +177,7 @@ export default function LearningPathPage() {
     }, [currentLesson, currentLessonIndex, flatLessons])
 
     const nextNavLabel = useMemo(() => {
-        if (currentLessonIndex >= flatLessons.length - 1) return 'Course Complete 🎉'
+        if (currentLessonIndex >= flatLessons.length - 1) return 'End of course'
         const nextLesson = flatLessons[currentLessonIndex + 1]
         if (nextLesson.moduleTitle === currentLesson?.moduleTitle) {
             return `Next Module: ${nextLesson.chapterTitle || nextLesson.title}`
@@ -201,9 +189,9 @@ export default function LearningPathPage() {
     const activePdfUrl = useMemo(() => {
         if (!currentLesson) return null
         const contentPdf = currentLesson.content?.pdfUrl || currentLesson.content?.fileUrl
-        if (contentPdf) return contentPdf
-        if (currentLesson.contentUrl && (currentLesson.contentUrl.endsWith('.pdf') || currentLesson.type === 'pdf')) {
-            return currentLesson.contentUrl
+        if (contentPdf) return new URL(contentPdf, API_URL).href
+        if (currentLesson.contentUrl && (/\.pdf(?:[?#]|$)/i.test(currentLesson.contentUrl) || currentLesson.type === 'pdf')) {
+            return new URL(currentLesson.contentUrl, API_URL).href
         }
         return null
     }, [currentLesson])
@@ -228,10 +216,10 @@ export default function LearningPathPage() {
         </div>
     )
 
-    const progressPercent = flatLessons.length > 0 ? Math.round((data.completedLessonIds.length / flatLessons.length) * 100) : 0
+    const progressPercent = flatLessons.length > 0 ? Math.round((flatLessons.filter(l => data.completedLessonIds.includes(l.id)).length / flatLessons.length) * 100) : 0
 
     return (
-        <div className="flex h-screen w-full overflow-hidden bg-[#0a0c10]">
+        <div data-theme="dark" className="learning-workspace flex h-[100dvh] w-full overflow-hidden text-slate-100 bg-[#0a0c10]">
             {/* Sidebar Overlay for Mobile */}
             {!isSidebarOpen && (
                 <button 
@@ -243,7 +231,7 @@ export default function LearningPathPage() {
             )}
 
             {/* Curriculum Sidebar */}
-            <aside className={`fixed inset-y-0 left-0 z-50 w-full transform flex-col bg-[#0f172a] shadow-2xl transition-all duration-300 ease-in-out lg:relative lg:flex lg:w-80 lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+            <aside className={`fixed inset-y-0 left-0 z-50 w-full max-w-sm transform flex flex-col bg-[#0f172a] shadow-2xl transition-all duration-300 ease-in-out lg:relative lg:flex lg:w-80 lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
                 <div className="flex h-20 items-center justify-between border-b border-white/5 px-6">
                     <div className="flex items-center gap-3">
                         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/20 text-indigo-400 ring-1 ring-indigo-500/30">
@@ -251,12 +239,13 @@ export default function LearningPathPage() {
                         </div>
                         <h2 className="font-bold text-white tracking-tight">Course Outline</h2>
                     </div>
-                    <button onClick={() => setIsSidebarOpen(false)} className="text-gray-500 hover:text-white transition-colors">
+                    <button onClick={() => setIsSidebarOpen(false)} aria-label="Close course outline" className="text-gray-500 hover:text-white transition-colors lg:hidden">
                         <X size={20} />
                     </button>
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+                    <LessonBookmarks courseId={String(courseId)} lessons={flatLessons} onSelect={index => { setCurrentLessonIndex(index); setIsSidebarOpen(false) }} />
                     {/* Course Progress */}
                     <div className="mb-6 p-4 rounded-2xl bg-white/5 ring-1 ring-white/10">
                         <div className="flex justify-between items-center mb-2">
@@ -278,38 +267,21 @@ export default function LearningPathPage() {
                                     </span>
                                 </div>
                                 <div className="space-y-1">
-                                    {m.chapters.map((c, cIdx) => {
-                                        const targetLesson = c.lessons?.[0] || { id: c.id }
-                                        const idx = flatLessons.findIndex(fl => fl.chapterId === c.id || fl.id === targetLesson.id)
-                                        const isActive = currentLessonIndex === idx
-                                        const isCompleted = data.completedLessonIds.includes(targetLesson.id)
-
-                                        return (
-                                            <button
-                                                key={c.id}
-                                                onClick={() => {
-                                                    if (idx !== -1) setCurrentLessonIndex(idx)
-                                                    if (window.innerWidth < 1024) setIsSidebarOpen(false)
-                                                }}
-                                                className={`group flex w-full items-center gap-3 rounded-xl p-3 text-left transition-all duration-200 ${
-                                                    isActive ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-gray-400 hover:bg-white/5 hover:text-white'
-                                                }`}
-                                            >
-                                                <div className={`flex-shrink-0 transition-transform duration-200 group-hover:scale-110 ${isActive ? 'text-white' : isCompleted ? 'text-emerald-500' : 'text-gray-600'}`}>
-                                                    {isCompleted ? <CheckCircle2 size={18} /> : <Circle size={18} />}
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className={`line-clamp-1 text-xs font-semibold ${isActive ? 'text-indigo-200' : 'text-gray-400'}`}>
-                                                        Module {mIdx + 1}.{cIdx + 1}
-                                                    </p>
-                                                    <p className={`line-clamp-1 text-sm ${isActive ? 'font-bold text-white' : 'font-medium text-gray-300'}`}>
-                                                        {c.title}
-                                                    </p>
-                                                </div>
-                                            </button>
-                                        )
-                                    })}
-                                </div>
+                                    {m.chapters.map((c, cIdx) => (
+                                        <div key={c.id} className="space-y-1">
+                                            <p className="px-3 pt-3 pb-1 text-xs font-semibold text-slate-400">{mIdx + 1}.{cIdx + 1} {c.title}</p>
+                                            {(c.lessons || []).map(lesson => {
+                                                const idx = flatLessons.findIndex(item => item.id === lesson.id)
+                                                const active = currentLessonIndex === idx
+                                                const done = data.completedLessonIds.includes(lesson.id)
+                                                return <button key={lesson.id} disabled={completing !== null} aria-current={active ? 'step' : undefined} onClick={() => { setCurrentLessonIndex(idx); setSaveError(''); if (window.innerWidth < 1024) setIsSidebarOpen(false) }} className={`flex w-full items-center gap-3 rounded-xl p-3 text-left text-sm transition-colors ${active ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-white/5'}`}>
+                                                    {done ? <CheckCircle2 size={18} className="shrink-0 text-emerald-400" /> : <Circle size={18} className="shrink-0" />}
+                                                    <span className="min-w-0"><span className="block font-medium">{lesson.title}</span><span className="text-xs opacity-60 capitalize">{lesson.type}{lesson.duration ? ` · ${lesson.duration} min` : ''}</span></span>
+                                                </button>
+                                            })}
+                                            {!c.lessons?.length && <p className="px-3 text-xs text-slate-500">No published lessons</p>}
+                                        </div>
+                                    ))}                                </div>
                             </div>
                         ))}
                     </div>
@@ -327,11 +299,11 @@ export default function LearningPathPage() {
             </aside>
 
             {/* Main Learning Content Area */}
-            <main className="relative flex flex-1 flex-col overflow-hidden bg-mesh">
+            <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden bg-mesh">
                 {/* Header Bar */}
-                <header className="flex h-20 items-center justify-between border-b border-white/5 bg-[#0f172a]/50 backdrop-blur-3xl px-8 z-40">
+                <header className="flex h-20 items-center justify-between border-b border-white/5 bg-[#0f172a]/50 backdrop-blur-3xl px-4 sm:px-8 z-40">
                     <div className="flex items-center gap-4">
-                        <button onClick={() => setIsSidebarOpen(true)} className="text-gray-400 hover:text-white lg:hidden">
+                        <button aria-label="Open lesson outline" onClick={() => setIsSidebarOpen(true)} className="text-gray-400 hover:text-white lg:hidden">
                             <Menu size={24} />
                         </button>
                         <div className="hidden sm:block">
@@ -368,7 +340,7 @@ export default function LearningPathPage() {
 
                 {/* Content View Container */}
                 <div className="flex-1 overflow-y-auto px-4 py-8 lg:px-16 custom-scrollbar bg-[#0f172a]/20">
-                    <div className="mx-auto max-w-5xl animate-in fade-in duration-300">
+                    <div className="mx-auto max-w-5xl animate-in fade-in duration-300">{progressPercent === 100 && flatLessons.length > 0 && <section className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-6"><div><h2 className="text-xl font-bold text-emerald-300">Course completed</h2><p className="mt-1 text-sm text-slate-300">You have completed every published lesson. Your certificate is ready.</p></div><button onClick={() => router.push('/dashboard/student/certificates')} className="rounded-xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-500">View certificate</button></section>}{saveError && <p role="alert" className="mb-4 rounded-xl bg-red-950 p-4 text-red-200">{saveError}</p>}{!currentLesson && <div className="rounded-2xl border border-slate-700 p-8"><h2 className="text-2xl font-bold">No lessons available yet</h2><p className="mt-2 text-slate-400">Your instructor has not published learning content for this course.</p></div>}
                         {currentLesson && (
                             <div key={currentLesson.id}>
                                 {/* Header section for current Module */}
@@ -376,18 +348,20 @@ export default function LearningPathPage() {
                                      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[10px] font-black uppercase tracking-widest mb-3">
                                         Chapter {currentLesson.chapterIndex} • Module {currentLesson.moduleIndex}
                                      </div>
-                                     <h2 className="text-4xl font-black text-white tracking-tight leading-tight">{currentLesson.chapterTitle || currentLesson.title}</h2>
+                                     <h2 className="text-4xl font-black text-white tracking-tight leading-tight">{currentLesson.title}</h2>
                                      {currentLesson.description && (
                                          <p className="mt-3 text-lg text-gray-400 font-medium leading-relaxed max-w-3xl">{currentLesson.description}</p>
                                      )}
                                 </div>
 
                                 {/* PDF Presentation Viewer or Rich Content Renderer */}
-                                {activePdfUrl ? (
+                                {currentLesson.content?.type === 'quiz-builder' ? <LessonAssessment lessonId={currentLesson.id} /> : <LessonMediaPosition key={currentLesson.id} lessonId={currentLesson.id}>{(position, recordPosition) => activePdfUrl ? (
                                     <div className="w-full">
                                         <PdfSlideViewer
                                             pdfUrl={activePdfUrl}
-                                            title={`${currentLesson.moduleTitle} • Module ${currentLesson.chapterIndex}.${currentLesson.moduleIndex}: ${currentLesson.chapterTitle || currentLesson.title}`}
+                                            initialPage={position.pdfPage}
+                                            onPageChange={pdfPage => recordPosition({ pdfPage }, true)}
+                                            title={`${currentLesson.moduleTitle} • Module ${currentLesson.chapterIndex}.${currentLesson.moduleIndex}: ${currentLesson.title}`}
                                             isCompleted={data.completedLessonIds.includes(currentLesson.id)}
                                             onModuleComplete={handleComplete}
                                             isLastModuleOfChapter={isLastModuleOfChapter}
@@ -404,8 +378,12 @@ export default function LearningPathPage() {
                                         />
                                     </div>
                                 ) : (
-                                    <LessonContentRenderer content={currentLesson.content || currentLesson.description} />
-                                )}
+                                    <>
+    {currentLesson.videoUrl && <LessonContentRenderer content={[{ id: 'video', type: 'video', content: currentLesson.videoUrl }]} videoResume={{ initialSeconds: position.videoSeconds, onPosition: (videoSeconds, flush) => recordPosition({ videoSeconds }, flush) }} />}
+    <LessonContentRenderer content={currentLesson.content || currentLesson.description} videoResume={currentLesson.videoUrl ? undefined : { initialSeconds: position.videoSeconds, onPosition: (videoSeconds, flush) => recordPosition({ videoSeconds }, flush) }} />
+    {!currentLesson.content && !currentLesson.description && !currentLesson.videoUrl && <p className="rounded-xl border border-slate-700 p-6 text-slate-300">Content has not been added to this lesson yet.</p>}
+</>
+                                )}</LessonMediaPosition>}
                                 
                                 {/* Bottom Complete & Navigation Action Bar */}
                                 <div className="mt-12 pt-8 border-t border-white/10 pb-16">
@@ -461,14 +439,16 @@ export default function LearningPathPage() {
                                 </div>
                             </div>
                         )}
+                        {resumeError && <p role="alert" className="mt-4 rounded-xl bg-red-950 p-4 text-red-200">{resumeError}</p>}
+                        {currentLesson && <LessonNotes lessonId={currentLesson.id} />}
                     </div>
                 </div>
 
                 {/* Footer Navigation Bar */}
-                <footer className="flex h-20 items-center justify-between border-t border-white/5 bg-[#0f172a]/80 backdrop-blur-3xl px-8 z-40">
+                <footer className="flex h-20 items-center justify-between border-t border-white/5 bg-[#0f172a]/80 backdrop-blur-3xl px-4 sm:px-8 z-40">
                     <button 
                       onClick={() => setCurrentLessonIndex(prev => Math.max(0, prev - 1))}
-                      disabled={currentLessonIndex === 0}
+                      disabled={completing !== null || currentLessonIndex === 0}
                       className="group flex items-center gap-3 text-xs font-black uppercase tracking-widest text-gray-400 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed transition-all"
                     >
                         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 ring-1 ring-white/10 group-hover:bg-indigo-500 group-hover:text-white group-hover:ring-indigo-500 transition-all">
@@ -493,7 +473,7 @@ export default function LearningPathPage() {
 
                     <button 
                       onClick={() => setCurrentLessonIndex(prev => Math.min(flatLessons.length - 1, prev + 1))}
-                      disabled={currentLessonIndex === flatLessons.length - 1}
+                      disabled={completing !== null || currentLessonIndex >= flatLessons.length - 1}
                       className="group flex items-center gap-3 text-xs font-black uppercase tracking-widest text-gray-400 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed transition-all"
                     >
                         <span className="hidden sm:inline">{nextNavLabel}</span>

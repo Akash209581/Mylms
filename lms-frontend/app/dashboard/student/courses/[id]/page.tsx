@@ -1,4 +1,8 @@
 'use client'
+
+import { apiFetch } from '@/lib/apiFetch'
+
+import { API_URL } from '@/lib/api'
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
@@ -115,8 +119,8 @@ export default function StudentCourseDetailsPage() {
 
     const fetchCompletedLessons = async () => {
         try {
-            const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
-            const res = await fetch(`${apiBase}/student/completed-lessons`, {
+            const apiBase = API_URL
+            const res = await apiFetch(`${apiBase}/student/completed-lessons?courseId=${courseId}`, {
                 headers: getAuthHeaders(),
                 // Use query param for GET instead of body if it's a GET request
             })
@@ -181,14 +185,15 @@ export default function StudentCourseDetailsPage() {
     const handleComplete = async (lessonId: number) => {
         setCompleting(lessonId)
         try {
-            const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
-            await fetch(`${apiBase}/student/lessons/${lessonId}/complete`, {
+            const apiBase = API_URL
+            const completionResponse = await apiFetch(`${apiBase}/student/lessons/${lessonId}/complete`, {
                 method: 'POST',
                 headers: getAuthHeaders(),
             })
-            setCompletedLessons(prev => [...prev, lessonId])
+            if (!completionResponse.ok) throw new Error('Could not save lesson progress')
+            setCompletedLessons(prev => Array.from(new Set([...prev, lessonId])))
             // Refresh stats in navbar/sidebar by refreshing user
-            const refreshRes = await fetch(`${apiBase}/auth/me`, { headers: getAuthHeaders() })
+            const refreshRes = await apiFetch(`${apiBase}/auth/me`, { headers: getAuthHeaders() })
             const updatedUser = await refreshRes.json()
             if (updatedUser && !updatedUser.message) {
                 localStorage.setItem('user', JSON.stringify(updatedUser))

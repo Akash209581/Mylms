@@ -1,4 +1,8 @@
 'use client'
+
+import { apiFetch } from '@/lib/apiFetch'
+
+import { API_URL } from '@/lib/api'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
@@ -34,10 +38,10 @@ export default function SuperAdminCoursesPage() {
         if (u.role !== 'SUPERADMIN' && u.role !== 'ADMIN') { router.push('/login'); return }
         setUserRole(u.role)
 
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+        const apiUrl = API_URL
         Promise.all([
-            fetch(`${apiUrl}/courses`, { credentials: 'include' }).then(r => r.json()),
-            fetch(`${apiUrl}/colleges`, { credentials: 'include' }).then(r => r.json()),
+            apiFetch(`${apiUrl}/courses`, { credentials: 'include' }).then(r => r.json()),
+            apiFetch(`${apiUrl}/colleges`, { credentials: 'include' }).then(r => r.json()),
         ])
             .then(([coursesData, collegesData]) => {
                 if (Array.isArray(coursesData)) setCourses(coursesData)
@@ -49,7 +53,7 @@ export default function SuperAdminCoursesPage() {
 
     const handleDelete = async (courseId: number) => {
         if (!confirm('Delete this course permanently?')) return
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/superadmin/courses/${courseId}`, {
+        await apiFetch(`${API_URL}/superadmin/courses/${courseId}`, {
             method: 'DELETE', credentials: 'include',
         })
         setCourses(prev => prev.filter(c => c.id !== courseId))
@@ -58,8 +62,8 @@ export default function SuperAdminCoursesPage() {
     const handleAssign = async () => {
         if (!assignCourseId) return
         try {
-            const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/courses/${assignCourseId}/assign`,
+            const res = await apiFetch(
+                `${API_URL}/courses/${assignCourseId}/assign`,
                 {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },

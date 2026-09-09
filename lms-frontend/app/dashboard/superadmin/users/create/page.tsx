@@ -1,4 +1,8 @@
 'use client'
+
+import { apiFetch } from '@/lib/apiFetch'
+
+import { API_URL } from '@/lib/api'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
@@ -55,9 +59,9 @@ export default function CreateUserPage() {
         try {
             const headers = getAuthHeaders()
             console.log('Auth headers:', headers)
-            const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/superadmin/colleges`
+            const apiUrl = `${API_URL}/superadmin/colleges`
             console.log('Fetching from:', apiUrl)
-            const response = await fetch(apiUrl, {
+            const response = await apiFetch(apiUrl, {
                 headers,
                 credentials: 'include'
             })

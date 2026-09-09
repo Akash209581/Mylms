@@ -1,263 +1,52 @@
 'use client'
-import { useEffect, useState, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import StudentReferenceShell from '@/components/layout/StudentReferenceShell'
-import { api } from '@/lib/api'
-import CourseCatalogHeader from '@/components/course/CourseCatalogHeader'
-import SearchBar from '@/components/course/SearchBar'
-import FilterPanel from '@/components/course/FilterPanel'
 import CourseGrid from '@/components/course/CourseGrid'
-import EmptyState from '@/components/course/EmptyState'
-import LoadingSkeleton from '@/components/course/LoadingSkeleton'
+import { api } from '@/lib/api'
 
-interface Course {
-    id: number
-    title: string
-    description: string
-    thumbnail?: string
-    category?: string
-    level?: string
-    price?: number
-    duration?: number
-    status: string
-    moduleCount?: number
-    lessonCount?: number
-    instructor?: {
-        id: number
-        name: string
-        role?: string
-    }
+function CourseCatalog() {
+  const params = useSearchParams(), router = useRouter()
+  const [courses, setCourses] = useState<any[]>([]), [enrollments, setEnrollments] = useState<number[]>([])
+  const [category, setCategory] = useState(''), [level, setLevel] = useState(''), [search, setSearch] = useState(params.get('q') || '')
+  const [sort, setSort] = useState('newest'), [filter, setFilter] = useState('all'), [page, setPage] = useState(1)
+  const [pagination, setPagination] = useState({ total: 0, totalPages: 0 })
+  const [loading, setLoading] = useState(true), [error, setError] = useState(''), [actionError, setActionError] = useState('')
+  const [enrollingId, setEnrollingId] = useState<number | null>(null), [revision, setRevision] = useState(0)
+  useEffect(() => { setSearch(params.get('q') || ''); setPage(1) }, [params])
+  useEffect(() => {
+    const controller = new AbortController()
+    setLoading(true); setError('')
+    const timer = setTimeout(async () => {
+      try {
+        const query = new URLSearchParams({ page: String(page), limit: '12', category, level, search, sort, enrollment: filter })
+        const [catalog, mine] = await Promise.all([api.get(`/courses/public/browse?${query}`, { signal: controller.signal }), api.get('/enrollments/my', { signal: controller.signal })])
+        if (controller.signal.aborted) return
+        setCourses(catalog.data.courses || []); setPagination(catalog.data.pagination)
+        setEnrollments(mine.data.map((enrollment: any) => enrollment.courseId))
+      } catch (failure: any) {
+        if (controller.signal.aborted) return
+        if (failure.response?.status === 401) router.replace('/login')
+        else setError('The catalog could not be loaded. Please try again.')
+      } finally { if (!controller.signal.aborted) setLoading(false) }
+    }, 250)
+    return () => { clearTimeout(timer); controller.abort() }
+  }, [page, category, level, search, sort, filter, revision, router])
+  const change = (setter: (value: string) => void, value: string) => { setter(value); setPage(1) }
+  const enroll = async (courseId: number) => {
+    setEnrollingId(courseId); setActionError('')
+    try { await api.post('/enrollments', { courseId }); setEnrollments(previous => Array.from(new Set([...previous, courseId]))); setRevision(value => value + 1) }
+    catch (failure: any) { setActionError(failure.response?.data?.message || 'Enrollment could not be saved. Please try again.') }
+    finally { setEnrollingId(null) }
+  }
+  return <div className="portal-page"><StudentReferenceShell active="courses" /><main id="student-main" tabIndex={-1} className="portal-main">
+    <div className="portal-page-heading"><div><p className="portal-eyebrow">Discover your next subject</p><h1>Course Catalog</h1><p>Explore published courses available to your institution.</p></div></div>
+    <div className="portal-tabs" aria-label="Filter course enrollment">{[['all', 'All courses'], ['available', 'Available to enroll'], ['enrolled', 'Enrolled']].map(([value, label]) => <button key={value} aria-pressed={filter === value} onClick={() => change(setFilter, value)}>{label}</button>)}</div>
+    <div className="portal-filters"><label>Search courses<input type="search" value={search} placeholder="Course title or description" onChange={event => change(setSearch, event.target.value)} /></label><label>Category<input value={category} placeholder="All categories" onChange={event => change(setCategory, event.target.value)} /></label><label>Level<select value={level} onChange={event => change(setLevel, event.target.value)}><option value="">All levels</option>{['Beginner', 'Intermediate', 'Advanced', 'Expert'].map(value => <option key={value}>{value}</option>)}</select></label><label>Sort by<select value={sort} onChange={event => change(setSort, event.target.value)}><option value="newest">Newest first</option><option value="title">Course title</option><option value="updated">Recently updated</option></select></label></div>
+    {actionError && <p role="alert" className="portal-error">{actionError}</p>}
+    {error ? <div className="portal-error" role="alert">{error}<button onClick={() => setRevision(value => value + 1)} className="portal-button secondary">Try again</button></div> : loading ? <p className="portal-empty" role="status">Loading courses…</p> : <><p className="portal-result-count" aria-live="polite">{pagination.total} {pagination.total === 1 ? 'course' : 'courses'} found</p>{courses.length ? <CourseGrid courses={courses} enrolledIds={enrollments} onEnroll={enroll} enrollingId={enrollingId} /> : <div className="portal-empty"><h2>No courses found</h2><p>Try a different search or clear the filters.</p><button className="portal-button secondary" onClick={() => { setSearch(''); setCategory(''); setLevel(''); setFilter('all'); setPage(1) }}>Clear filters</button></div>}
+    {pagination.totalPages > 1 && <nav aria-label="Catalog pages" className="portal-pagination"><button className="portal-button secondary" onClick={() => setPage(value => value - 1)} disabled={page <= 1}>Previous</button><span>Page {page} of {pagination.totalPages}</span><button className="portal-button secondary" onClick={() => setPage(value => value + 1)} disabled={page >= pagination.totalPages}>Next</button></nav>}</>}
+  </main></div>
 }
 
-export default function StudentCoursesPage() {
-    const router = useRouter()
-    const [courses, setCourses] = useState<Course[]>([])
-    const [enrollments, setEnrollments] = useState<number[]>([])
-    const [filterTab, setFilterTab] = useState<'all' | 'enrolled' | 'available'>('all')
-    const [category, setCategory] = useState<string>('')
-    const [level, setLevel] = useState<string>('')
-    const [search, setSearch] = useState('')
-    const [sortBy, setSortBy] = useState<string>('newest')
-    const [loading, setLoading] = useState(true)
-    const [enrollingId, setEnrollingId] = useState<number | null>(null)
-    const [pagination, setPagination] = useState({
-        page: 1,
-        limit: 12,
-        total: 0,
-        totalPages: 0,
-    })
-
-    const categories = ['Web Development', 'Data Science', 'Mobile Development', 'DevOps', 'AI/ML', 'Cybersecurity']
-    const levels = ['Beginner', 'Intermediate', 'Advanced', 'Expert']
-
-    useEffect(() => {
-        const stored = localStorage.getItem('user')
-        if (!stored) { router.push('/login'); return }
-
-        fetchCourses()
-        fetchEnrollments()
-    }, [pagination.page, category, level, search, sortBy])
-
-    const fetchCourses = async () => {
-        setLoading(true)
-        try {
-            const params = new URLSearchParams({
-                page: pagination.page.toString(),
-                limit: pagination.limit.toString(),
-            })
-
-            if (category) params.append('category', category)
-            if (level) params.append('level', level)
-            if (search) params.append('search', search)
-
-            const response = await api.get(`/courses/public/browse?${params}`)
-            if (response.data) {
-                setCourses(response.data.courses || [])
-                setPagination(prev => ({
-                    ...prev,
-                    ...response.data.pagination,
-                }))
-            }
-        } catch (error) {
-            console.error('Error fetching courses:', error)
-        } finally {
-            setLoading(false)
-        }
-    }
-
-    const fetchEnrollments = async () => {
-        try {
-            const response = await api.get('/enrollments/my')
-            if (Array.isArray(response.data)) {
-                setEnrollments(response.data.map((e: any) => e.courseId))
-            }
-        } catch (error) {
-            console.error('Error fetching enrollments:', error)
-        }
-    }
-
-    const handleEnroll = async (courseId: number) => {
-        setEnrollingId(courseId)
-        try {
-            await api.post('/enrollments', { courseId })
-            setEnrollments(prev => [...prev, courseId])
-        } catch (error) {
-            console.error('Error enrolling:', error)
-        }
-        setEnrollingId(null)
-    }
-
-    const handlePageChange = (newPage: number) => {
-        setPagination(prev => ({ ...prev, page: newPage }))
-        window.scrollTo({ top: 0, behavior: 'smooth' })
-    }
-
-    const clearFilters = () => {
-        setCategory('')
-        setLevel('')
-        setSearch('')
-        setSortBy('newest')
-        setPagination(prev => ({ ...prev, page: 1 }))
-    }
-
-    // Client-side filtering & sorting
-    const filteredCourses = useMemo(() => {
-        let list = filterTab === 'all'
-            ? courses
-            : filterTab === 'enrolled'
-                ? courses.filter(c => enrollments.includes(c.id))
-                : courses.filter(c => !enrollments.includes(c.id))
-
-        if (sortBy === 'rating') {
-            list = [...list].sort((a, b) => (b.id % 5) - (a.id % 5))
-        } else if (sortBy === 'popular') {
-            list = [...list].sort((a, b) => (b.lessonCount || 0) - (a.lessonCount || 0))
-        }
-
-        return list
-    }, [courses, filterTab, enrollments, sortBy])
-
-    return (
-        <div className="course-catalog-page min-h-screen bg-[#f8faff] text-[#102142] transition-colors">
-            <StudentReferenceShell active="courses" />
-
-            <main className="course-catalog-main page-content pt-20 pb-16 px-0 max-w-none space-y-0">
-                
-                {/* 1. Course Catalog Hero Header */}
-                <CourseCatalogHeader
-                    totalCourses={pagination.total || courses.length}
-                    totalCategories={categories.length}
-                    totalInstructors={15}
-                    totalStudents={1240}
-                />
-
-                {/* 2. Large Search Bar */}
-                <SearchBar
-                    value={search}
-                    onChange={(val) => {
-                        setSearch(val)
-                        setPagination(prev => ({ ...prev, page: 1 }))
-                    }}
-                />
-
-                {/* 3. Filter Panel & Sort Controls */}
-                <div className="sticky top-20 z-30 pt-2 pb-3 bg-[var(--bg-base)]/90 backdrop-blur-md transition-all">
-                    <FilterPanel
-                        filterTab={filterTab}
-                        setFilterTab={setFilterTab}
-                        category={category}
-                        setCategory={(cat) => {
-                            setCategory(cat)
-                            setPagination(prev => ({ ...prev, page: 1 }))
-                        }}
-                        level={level}
-                        setLevel={(lvl) => {
-                            setLevel(lvl)
-                            setPagination(prev => ({ ...prev, page: 1 }))
-                        }}
-                        sortBy={sortBy}
-                        setSortBy={setSortBy}
-                        clearFilters={clearFilters}
-                        enrolledCount={enrollments.length}
-                        categories={categories}
-                        levels={levels}
-                    />
-                </div>
-
-                {/* Course Grid / Loading Skeleton / Empty State */}
-                {loading ? (
-                    <LoadingSkeleton />
-                ) : filteredCourses.length === 0 ? (
-                    <EmptyState
-                        onClearFilters={clearFilters}
-                        hasFilters={!!(category || level || search)}
-                    />
-                ) : (
-                    <>
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <h2 className="text-xl font-black text-[var(--text-primary)] tracking-tight">
-                                    {filterTab === 'enrolled' ? 'My Enrolled Courses' : filterTab === 'available' ? 'Available Courses' : 'All Approved Courses'}
-                                </h2>
-                                <span className="text-xs font-bold text-gray-400">
-                                    Showing {filteredCourses.length} courses
-                                </span>
-                            </div>
-
-                            <CourseGrid
-                                courses={filteredCourses}
-                                enrolledIds={enrollments}
-                                onEnroll={handleEnroll}
-                                enrollingId={enrollingId}
-                            />
-                        </div>
-
-                        {/* 6. Modern Rounded Pagination */}
-                        {pagination.totalPages > 1 && (
-                            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-8 border-t border-[var(--border)]">
-                                <span className="text-xs font-bold text-gray-400">
-                                    Page {pagination.page} of {pagination.totalPages} ({pagination.total} total courses)
-                                </span>
-
-                                <div className="flex items-center gap-2">
-                                    <button
-                                        onClick={() => handlePageChange(pagination.page - 1)}
-                                        disabled={pagination.page === 1}
-                                        className="px-4 py-2 rounded-xl text-xs font-extrabold bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border)] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--bg-raised)] transition-all"
-                                    >
-                                        ← Previous
-                                    </button>
-
-                                    <div className="flex items-center gap-1.5">
-                                        {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map(p => (
-                                            <button
-                                                key={p}
-                                                onClick={() => handlePageChange(p)}
-                                                className={`w-8 h-8 rounded-xl text-xs font-black transition-all ${
-                                                    p === pagination.page
-                                                        ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20'
-                                                        : 'bg-[var(--bg-surface)] text-gray-400 border border-[var(--border)] hover:bg-[var(--bg-raised)]'
-                                                }`}
-                                            >
-                                                {p}
-                                            </button>
-                                        ))}
-                                    </div>
-
-                                    <button
-                                        onClick={() => handlePageChange(pagination.page + 1)}
-                                        disabled={pagination.page === pagination.totalPages}
-                                        className="px-4 py-2 rounded-xl text-xs font-extrabold bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border)] disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--bg-raised)] transition-all"
-                                    >
-                                        Next →
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-                    </>
-                )}
-
-            </main>
-        </div>
-    )
-}
+export default function StudentCoursesPage() { return <Suspense fallback={<p role="status">Loading catalog…</p>}><CourseCatalog /></Suspense> }

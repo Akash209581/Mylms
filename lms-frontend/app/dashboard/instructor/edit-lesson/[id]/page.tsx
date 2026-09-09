@@ -1,5 +1,9 @@
 'use client'
 
+import { apiFetch } from '@/lib/apiFetch'
+
+import { API_URL } from '@/lib/api'
+
 import { useCallback, useEffect, useState, useRef } from 'react'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
@@ -96,10 +100,10 @@ export default function EditLessonPage() {
     setLoading(true)
     setError(null)
     try {
-      const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+      const API = API_URL
 
       // 1. Fetch the course
-      let res = await fetch(`${API}/courses/${courseId}`, {
+      let res = await apiFetch(`${API}/courses/${courseId}`, {
         credentials: 'include',
         headers: getAuthHeaders(),
       })
@@ -162,7 +166,7 @@ export default function EditLessonPage() {
 
         // Ensure Module exists
         if (!targetModuleId) {
-          const modRes = await fetch(`${API}/modules`, {
+          const modRes = await apiFetch(`${API}/modules`, {
             method: 'POST',
             credentials: 'include',
             headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
@@ -177,7 +181,7 @@ export default function EditLessonPage() {
         // Ensure Chapter exists within the module
         let targetChapterId = firstModule?.chapters?.[0]?.id
         if (!targetChapterId) {
-          const chapRes = await fetch(`${API}/chapters`, {
+          const chapRes = await apiFetch(`${API}/chapters`, {
             method: 'POST',
             credentials: 'include',
             headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
@@ -189,7 +193,7 @@ export default function EditLessonPage() {
         }
 
         // Create the lesson within the chapter
-        const lessRes = await fetch(`${API}/lessons`, {
+        const lessRes = await apiFetch(`${API}/lessons`, {
           method: 'POST',
           credentials: 'include',
           headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
@@ -217,8 +221,8 @@ export default function EditLessonPage() {
   /* ── Save handler (called by LessonEditor via debounced auto-save) ── */
   const handleSave = useCallback(async (content: Record<string, any>) => {
     if (!lesson?.id) return
-    const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
-    const res = await fetch(`${API}/lessons/${lesson.id}/content`, {
+    const API = API_URL
+    const res = await apiFetch(`${API}/lessons/${lesson.id}/content`, {
       method: 'PUT',
       credentials: 'include',
       headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
@@ -243,8 +247,8 @@ export default function EditLessonPage() {
   const handleSubmitForApproval = async () => {
     if (!confirm('Are you sure you want to submit this course for admin approval?')) return
     try {
-      const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
-      const res = await fetch(`${API}/courses/${courseId}/submit`, {
+      const API = API_URL
+      const res = await apiFetch(`${API}/courses/${courseId}/submit`, {
         method: 'POST',
         credentials: 'include',
         headers: getAuthHeaders(),
@@ -268,8 +272,8 @@ export default function EditLessonPage() {
 
     try {
       setLoading(true)
-      const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
-      const res = await fetch(`${API}/lessons`, {
+      const API = API_URL
+      const res = await apiFetch(`${API}/lessons`, {
         method: 'POST',
         credentials: 'include',
         headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },

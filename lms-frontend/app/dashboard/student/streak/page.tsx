@@ -1,4 +1,8 @@
 'use client'
+
+import { apiFetch } from '@/lib/apiFetch'
+
+import { API_URL } from '@/lib/api'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
@@ -15,7 +19,7 @@ export default function DailyChallengePage() {
 
     useEffect(() => {
         const today = new Date().toISOString().slice(0, 10)
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/daily-streak/today?date=${today}`, { credentials: 'include' })
+        apiFetch(`${API_URL}/daily-streak/today?date=${today}`, { credentials: 'include' })
             .then(r => r.json())
             .then(data => {
                 if (data && !data.message) {

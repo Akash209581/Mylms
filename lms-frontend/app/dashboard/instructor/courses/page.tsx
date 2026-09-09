@@ -1,4 +1,8 @@
 'use client'
+
+import { apiFetch } from '@/lib/apiFetch'
+
+import { API_URL } from '@/lib/api'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
@@ -52,7 +56,7 @@ export default function InstructorCoursesPage() {
                 ? '/instructor/courses'
                 : `/instructor/courses/${filter}`
 
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}${endpoint}`, {
+            const res = await apiFetch(`${API_URL}${endpoint}`, {
                 credentials: 'include'
             })
             const data = await res.json()
@@ -91,7 +95,7 @@ export default function InstructorCoursesPage() {
     const handleSubmitForApproval = async (id: number) => {
         if (!confirm('Are you sure you want to submit this course for admin approval?')) return
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/courses/${id}/submit`, {
+            const res = await apiFetch(`${API_URL}/courses/${id}/submit`, {
                 method: 'POST',
                 credentials: 'include'
             })
@@ -111,7 +115,7 @@ export default function InstructorCoursesPage() {
     const handleDeleteCourse = async (id: number) => {
         if (!confirm('Are you absolutely sure you want to delete this course? This action cannot be undone.')) return
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/courses/${id}`, {
+            const res = await apiFetch(`${API_URL}/courses/${id}`, {
                 method: 'DELETE',
                 credentials: 'include'
             })

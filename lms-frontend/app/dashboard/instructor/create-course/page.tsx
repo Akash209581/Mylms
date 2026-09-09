@@ -1,4 +1,8 @@
 'use client'
+
+import { apiFetch } from '@/lib/apiFetch'
+
+import { API_URL } from '@/lib/api'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
@@ -92,8 +96,8 @@ export default function CreateCoursePage() {
             if (formData.level.trim()) payload.level = formData.level.trim()
             if (formData.price) payload.price = Number(formData.price)
 
-            const response = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/courses`,
+            const response = await apiFetch(
+                `${API_URL}/courses`,
                 { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }
             )
             const data = await response.json()

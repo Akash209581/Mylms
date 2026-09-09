@@ -1,4 +1,8 @@
 'use client'
+
+import { apiFetch } from '@/lib/apiFetch'
+
+import { API_URL } from '@/lib/api'
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
@@ -73,7 +77,7 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
 
     const fetchTopics = async (domainName: string) => {
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/topics?domainName=${encodeURIComponent(domainName)}`, { credentials: 'include' });
+            const res = await apiFetch(`${API_URL}/topics?domainName=${encodeURIComponent(domainName)}`, { credentials: 'include' });
             const data = await res.json();
             if (Array.isArray(data)) setTopics(data);
         } catch (e) { console.error(e) }
@@ -81,7 +85,7 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
 
     const fetchDomains = async () => {
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/domains`, { credentials: 'include' });
+            const res = await apiFetch(`${API_URL}/domains`, { credentials: 'include' });
             const data = await res.json();
             if (Array.isArray(data)) setDomains(data);
         } catch (e) { console.error(e) }
@@ -90,7 +94,7 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
     const handleAddDomain = async () => {
         if (!newDomain.trim()) return;
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/domains`, {
+            const res = await apiFetch(`${API_URL}/domains`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -112,7 +116,7 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
         const domain = domains.find(d => d.name === form.domain);
         if (!domain) return;
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/topics`, {
+            const res = await apiFetch(`${API_URL}/topics`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -140,7 +144,7 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
         fetchDomains()
 
         // Fetch question data
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/question-bank/${id}`, { credentials: 'include' })
+        apiFetch(`${API_URL}/question-bank/${id}`, { credentials: 'include' })
             .then(res => {
                 if (!res.ok) throw new Error('Question not found')
                 return res.json()
@@ -223,7 +227,7 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
 
             const { id: _, questionNumber, createdAt, updatedAt, isActive, opMode, question_number, created_at, updated_at, ...cleanedData } = submitData;
 
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/question-bank/${id}`, {
+            const res = await apiFetch(`${API_URL}/question-bank/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',

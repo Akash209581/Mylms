@@ -1,3 +1,12 @@
+import { canEditCourse } from '../common/course-access';
+import { CourseContentService } from '../common/course-content.service';
+import { IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+
+class UpdateChapterDto {
+  @IsOptional() @IsString() @MaxLength(255) title?: string;
+  @IsOptional() @IsString() @MaxLength(10000) description?: string;
+  @IsOptional() @IsInt() @Min(0) order?: number;
+}
 import {
   Controller,
   Get,
@@ -29,10 +38,11 @@ export class ChaptersController {
     private chapterRepository: Repository<Chapter>,
     @InjectRepository(CourseModule)
     private moduleRepository: Repository<CourseModule>,
+    private contentAccess: CourseContentService,
   ) {}
 
   @Post()
-  @Roles(UserRole.INSTRUCTOR, UserRole.SUPERADMIN)
+  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN)
   async create(@Body() dto: { title: string; description?: string; moduleId: number }, @Req() req: any) {
     console.log('📖 New Chapter request:', dto);
     const module = await this.moduleRepository.findOne({
@@ -47,7 +57,7 @@ export class ChaptersController {
 
 
 
-    if (req.user.role !== UserRole.SUPERADMIN && module.course.instructorId !== req.user.sub) {
+    if (!canEditCourse(req.user, module.course)) {
       throw new HttpException('Forbidden', HttpStatus.FORBIDDEN);
     }
 
@@ -56,21 +66,28 @@ export class ChaptersController {
   }
 
   @Get('module/:moduleId')
-  async findByModule(@Param('moduleId', ParseIntPipe) moduleId: number) {
-    return this.chapterRepository.find({
+  async findByModule(@Param('moduleId', ParseIntPipe) moduleId: number, @Req() req: any) {
+    const module = await this.moduleRepository.findOne({ where: { id: moduleId } });
+    if (!module) throw new HttpException('Module not found', HttpStatus.NOT_FOUND);
+    const course = await this.contentAccess.requireRead(req.user, module.courseId);
+    const chapters = await this.chapterRepository.find({
       where: { moduleId },
       order: { order: 'ASC' },
       relations: ['lessons'],
     });
+    if (!canEditCourse(req.user, course)) {
+      chapters.forEach(chapter => { chapter.lessons = chapter.lessons.filter(lesson => lesson.published); });
+    }
+    return chapters;
   }
 
   @Put(':id')
-  @Roles(UserRole.INSTRUCTOR, UserRole.SUPERADMIN)
-  async update(@Param('id', ParseIntPipe) id: number, @Body() dto: any, @Req() req: any) {
+  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN)
+  async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateChapterDto, @Req() req: any) {
     const chapter = await this.chapterRepository.findOne({ where: { id }, relations: ['module', 'module.course'] });
     if (!chapter) throw new HttpException('Chapter not found', HttpStatus.NOT_FOUND);
 
-    if (req.user.role !== UserRole.SUPERADMIN && chapter.module.course.instructorId !== req.user.sub) {
+    if (!canEditCourse(req.user, chapter.module.course)) {
       throw new HttpException('Forbidden', HttpStatus.FORBIDDEN);
     }
 
@@ -79,12 +96,12 @@ export class ChaptersController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.INSTRUCTOR, UserRole.SUPERADMIN)
+  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN)
   async delete(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
     const chapter = await this.chapterRepository.findOne({ where: { id }, relations: ['module', 'module.course'] });
     if (!chapter) throw new HttpException('Chapter not found', HttpStatus.NOT_FOUND);
 
-    if (req.user.role !== UserRole.SUPERADMIN && chapter.module.course.instructorId !== req.user.sub) {
+    if (!canEditCourse(req.user, chapter.module.course)) {
       throw new HttpException('Forbidden', HttpStatus.FORBIDDEN);
     }
 

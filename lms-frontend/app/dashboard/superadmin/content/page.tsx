@@ -1,5 +1,9 @@
 'use client'
 
+import { apiFetch } from '@/lib/apiFetch'
+
+import { API_URL } from '@/lib/api'
+
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
@@ -27,8 +31,8 @@ export default function ContentCreationPage() {
 
     const fetchCourses = async () => {
         try {
-            const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
-            const res = await fetch(`${API}/courses`, {
+            const API = API_URL
+            const res = await apiFetch(`${API}/courses`, {
                 headers: getAuthHeaders()
             })
             const data = await res.json()

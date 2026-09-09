@@ -130,15 +130,15 @@ export default function AdminDetailPage() {
                         </div>
                         <div className="flex-1">
                             <div className="flex items-center gap-3 mb-2">
-                                <h1 className="text-2xl font-bold text-white">{admin?.name}</h1>
+                                <h1 className="text-2xl font-bold role-text-primary">{admin?.name}</h1>
                                 <span className="badge badge-admin">{admin?.role}</span>
                             </div>
-                            <p className="text-gray-400 mb-4">{admin?.email}</p>
+                            <p className="role-text-muted mb-4">{admin?.email}</p>
                             
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-white/10">
                                 <div>
                                     <p className="text-xs text-[var(--text-secondary)] mb-1">Organization</p>
-                                    <p className="text-white font-medium">
+                                    <p className="role-text-primary font-medium">
                                         {admin?.organization?.name || 'N/A'}
                                         {admin?.organization?.type && (
                                             <span className="text-gray-400 text-sm ml-2">({admin.organization.type})</span>
@@ -147,15 +147,15 @@ export default function AdminDetailPage() {
                                 </div>
                                 <div>
                                     <p className="text-xs text-[var(--text-secondary)] mb-1">College</p>
-                                    <p className="text-white font-medium">{admin?.collegeName || 'N/A'}</p>
+                                    <p className="role-text-primary font-medium">{admin?.collegeName || 'N/A'}</p>
                                 </div>
                                 <div>
                                     <p className="text-xs text-[var(--text-secondary)] mb-1">College ID</p>
-                                    <p className="text-white font-medium">{admin?.collegeId || 'N/A'}</p>
+                                    <p className="role-text-primary font-medium">{admin?.collegeId || 'N/A'}</p>
                                 </div>
                                 <div>
                                     <p className="text-xs text-[var(--text-secondary)] mb-1">Joined</p>
-                                    <p className="text-white font-medium">
+                                    <p className="role-text-primary font-medium">
                                         {admin?.createdAt ? new Date(admin.createdAt).toLocaleDateString('en-US', {
                                             year: 'numeric',
                                             month: 'long',
@@ -165,7 +165,7 @@ export default function AdminDetailPage() {
                                 </div>
                                 <div>
                                     <p className="text-xs text-[var(--text-secondary)] mb-1">Organization ID</p>
-                                    <p className="text-white font-medium">{admin?.organizationId || 'N/A'}</p>
+                                    <p className="role-text-primary font-medium">{admin?.organizationId || 'N/A'}</p>
                                 </div>
                             </div>
                         </div>
@@ -176,10 +176,10 @@ export default function AdminDetailPage() {
                 <div className="glass-card p-6">
                     <div className="flex items-center justify-between mb-6">
                         <div>
-                            <h2 className="text-xl font-bold text-white mb-1">
+                            <h2 className="text-xl font-bold role-text-primary mb-1">
                                 Users in {admin?.collegeName}
                             </h2>
-                            <p className="text-gray-400 text-sm">
+                            <p className="role-text-muted text-sm">
                                 {filteredUsers.length} user{filteredUsers.length !== 1 ? 's' : ''} found
                             </p>
                         </div>
@@ -207,15 +207,15 @@ export default function AdminDetailPage() {
                     {orgUsers.length === 0 ? (
                         <div className="text-center py-16">
                             <div className="text-5xl mb-3">👥</div>
-                            <p className="text-gray-400">No users found in this organization</p>
+                            <p className="role-text-muted">No users found in this organization</p>
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
-                            <table className="w-full">
+                            <table className="role-data-table w-full">
                                 <thead>
                                     <tr className="border-b" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
                                         {['#', 'User', 'Email', 'Role', 'College', 'Joined'].map(h => (
-                                            <th key={h} className="text-left text-xs font-semibold text-gray-400 pb-3 pr-4">{h}</th>
+                                            <th key={h} className="text-left text-xs font-semibold role-text-muted pb-3 pr-4">{h}</th>
                                         ))}
                                     </tr>
                                 </thead>
@@ -230,20 +230,20 @@ export default function AdminDetailPage() {
                                                         style={{ background: 'linear-gradient(135deg, #6366f1, #a855f7)' }}>
                                                         {u.name?.charAt(0).toUpperCase()}
                                                     </div>
-                                                    <span className="text-white text-sm font-medium">{u.name}</span>
+                                                    <span className="role-text-primary text-sm font-medium">{u.name}</span>
                                                 </div>
                                             </td>
-                                            <td className="py-4 pr-4 text-gray-400 text-sm">{u.email}</td>
+                                            <td className="py-4 pr-4 role-text-muted text-sm">{u.email}</td>
                                             <td className="py-4 pr-4">
                                                 <span className={`badge ${
                                                     u.role === 'STUDENT' ? 'badge-student' :
                                                     u.role === 'INSTRUCTOR' ? 'badge-instructor' : 'badge-admin'
                                                 }`}>{u.role}</span>
                                             </td>
-                                            <td className="py-4 pr-4 text-gray-400 text-sm">
+                                            <td className="py-4 pr-4 role-text-muted text-sm">
                                                 {u.collegeName || '—'}
                                             </td>
-                                            <td className="py-4 pr-4 text-gray-400 text-sm">
+                                            <td className="py-4 pr-4 role-text-muted text-sm">
                                                 {new Date(u.createdAt).toISOString().slice(0, 10)}
                                             </td>
                                         </tr>
@@ -253,7 +253,7 @@ export default function AdminDetailPage() {
                             {filteredUsers.length === 0 && (
                                 <div className="text-center py-16">
                                     <div className="text-5xl mb-3">🔍</div>
-                                    <p className="text-gray-400">No {filterRole.toLowerCase()} users found</p>
+                                    <p className="role-text-muted">No {filterRole.toLowerCase()} users found</p>
                                 </div>
                             )}
                         </div>

@@ -40,6 +40,8 @@ import { ForumPost } from './entities/forum-post.entity';
 import { ForumReply } from './entities/forum-reply.entity';
 import { AuditLog } from './entities/audit-log.entity';
 import { Settings } from './entities/settings.entity';
+import { LearningStateModule } from './learning-state/learning-state.module';
+import { AssessmentModule } from './assessments/assessment.module';
 
 @Module({
   imports: [
@@ -80,7 +82,8 @@ import { Settings } from './entities/settings.entity';
         Settings,
       ],
       autoLoadEntities: true,
-      synchronize: process.env.NODE_ENV === 'development',
+      // This database contains legacy academic tables. Changes require migrations.
+      synchronize: false,
     }),
     AuthModule,
     UsersModule,
@@ -98,6 +101,8 @@ import { Settings } from './entities/settings.entity';
     LessonsModule,
     StudentModule,
     ForumModule,
+    LearningStateModule,
+    AssessmentModule,
   ],
   providers: [
     KeepAliveService,

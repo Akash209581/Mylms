@@ -1,22 +1,71 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { Bell, BookOpen, ChevronDown, ChevronRight, CircleCheck, GraduationCap, LayoutDashboard, LogOut, MessageCircle, Search, Settings, Trophy } from 'lucide-react'
-import { API_URL } from '@/lib/api'
-import { getAuthHeaders } from '@/lib/authHeaders'
+import { FormEvent, useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
+import { usePathname, useRouter } from 'next/navigation'
+import { BookOpen, LogOut, Menu, Search, X } from 'lucide-react'
+import { api } from '@/lib/api'
+import { ThemeToggle } from '@/components/ThemeToggle'
+import { isStudentRouteActive, studentNavigation } from './studentNavigation'
+import styles from './StudentShell.module.css'
 
-type ActivePage = 'dashboard' | 'courses' | 'progress' | 'settings' | 'certificates' | 'discussions'
-const initials = (name?: string) => name?.split(' ').map((part: string) => part[0]).join('').slice(0, 2).toUpperCase() || 'AB'
+type ActivePage = 'dashboard' | 'courses' | 'progress' | 'settings' | 'certificates' | 'discussions' | 'my-learning' | 'saved'
 
-export default function StudentReferenceShell({ active }: { active: ActivePage }) {
-    const router = useRouter(), [user, setUser] = useState<any>(null), [notificationsOpen, setNotificationsOpen] = useState(false), [profileOpen, setProfileOpen] = useState(false)
-    useEffect(() => { const stored = localStorage.getItem('user'); if (stored) setUser(JSON.parse(stored)) }, [])
-    const nav = [
-        [LayoutDashboard, 'Dashboard', '/dashboard/student', active === 'dashboard'], [GraduationCap, 'My Courses', '/dashboard/student/courses', active === 'courses'],
-        [CircleCheck, 'Assignments', '/dashboard/student/progress', active === 'progress'], [Trophy, 'Certificates', '/dashboard/student/certificates', active === 'certificates'],
-        [MessageCircle, 'Discussion', '/dashboard/student/forums', active === 'discussions'], [Settings, 'Settings', '/dashboard/student/profile', active === 'settings'],
-    ]
-    const signOut = async () => { try { await fetch(`${API_URL}/auth/logout`, { method: 'POST', credentials: 'include', headers: getAuthHeaders() }) } finally { localStorage.removeItem('user'); router.push('/login') } }
-    return <><aside className="reference-student-sidebar"><div className="reference-brand"><span><BookOpen /></span><div><p>EduVerse</p><small>Learn. Grow. Succeed.</small></div></div><div className="reference-line" /><nav>{nav.map(([Icon, label, href, selected]: any) => <div key={label}><button onClick={() => router.push(href)} className={selected ? 'active' : ''}><Icon /><span>{label}</span></button></div>)}</nav><div className="reference-sidebar-footer"><div className="reference-sidebar-promo"><GraduationCap /><p>Small progress<br />every day leads<br />to big results.</p></div><button className="reference-profile" onClick={() => router.push('/dashboard/student/profile')}><span>{initials(user?.name)}</span><div><strong>{user?.name || 'Akash Bandaru'}</strong><small>Student</small></div><ChevronRight /></button><button className="reference-signout" onClick={signOut}><LogOut /> Sign Out</button></div></aside><header className="reference-student-header"><div className="reference-search"><Search /><input placeholder="Search for courses, lessons, quizzes..." /><kbd>Ctrl K</kbd></div><div className="reference-header-actions"><div className="reference-header-popover-wrap"><button aria-label="Notifications" onClick={() => { setNotificationsOpen(!notificationsOpen); setProfileOpen(false) }} className="reference-icon-button"><Bell /><b>5</b></button>{notificationsOpen && <div className="reference-popover notification-popover"><strong>Notifications</strong><p>Welcome back! Continue your learning journey.</p><p>Your course activity is ready to review.</p><button onClick={() => setNotificationsOpen(false)}>Mark all as read</button></div>}</div><div className="reference-header-popover-wrap"><button aria-label="Account menu" onClick={() => { setProfileOpen(!profileOpen); setNotificationsOpen(false) }} className="reference-user"><span>{initials(user?.name)}</span><div><strong>{user?.name?.split(' ')[0] || 'Akash'}</strong><small>Student</small></div><ChevronDown /></button>{profileOpen && <div className="reference-popover account-popover"><button onClick={() => router.push('/dashboard/student/profile')}>Profile & Settings</button><button onClick={signOut}>Sign Out</button></div>}</div></div></header></>
+export default function StudentReferenceShell(_props: { active?: ActivePage }) {
+  const router = useRouter(), pathname = usePathname()
+  const [user, setUser] = useState<{ name?: string } | null>(null)
+  const [query, setQuery] = useState(''), [error, setError] = useState(''), [signingOut, setSigningOut] = useState(false)
+  const drawer = useRef<HTMLDialogElement>(null)
+  const menuButton = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    try { setUser(JSON.parse(localStorage.getItem('user') || 'null')) } catch { setUser(null) }
+  }, [])
+  const closeDrawer = () => { drawer.current?.close(); menuButton.current?.focus() }
+  useEffect(() => {
+    drawer.current?.close()
+    const main = document.querySelector('main')
+    if (main && !main.id) { main.id = 'student-main'; main.tabIndex = -1 }
+  }, [pathname])
+  const signOut = async () => {
+    setSigningOut(true); setError('')
+    try {
+      await api.post('/auth/logout')
+      localStorage.removeItem('user')
+      localStorage.removeItem('token')
+      router.replace('/login')
+    } catch { setError('Could not sign out. Please try again.') }
+    finally { setSigningOut(false) }
+  }
+  const search = (event: FormEvent) => {
+    event.preventDefault()
+    router.push(`/dashboard/student/courses?q=${encodeURIComponent(query.trim())}`)
+  }
+  const navigation = <>
+    <Link href="/dashboard/student" className={styles.brand}><BookOpen aria-hidden="true" /><span>EduVerse<small>Student workspace</small></span></Link>
+    <nav aria-label="Student navigation" className={styles.navigation}>
+      {studentNavigation.map(({ label, href, icon: Icon }) => <Link key={href} href={href} aria-current={isStudentRouteActive(pathname, href) ? 'page' : undefined} onClick={() => drawer.current?.close()}><Icon aria-hidden="true" /><span>{label}</span></Link>)}
+    </nav>
+    <div className={styles.footer}>
+      <p>{user?.name || 'Student'}<small>Keep making progress, one lesson at a time.</small></p>
+      <button onClick={signOut} disabled={signingOut}><LogOut aria-hidden="true" />{signingOut ? 'Signing out…' : 'Sign out'}</button>
+      {error && <p role="alert">{error}</p>}
+    </div>
+  </>
+  return <div className={styles.root} data-student-shell>
+    <a className={styles.skip} href="#student-main">Skip to main content</a>
+    <aside className={styles.sidebar}>{navigation}</aside>
+    <dialog ref={drawer} className={styles.drawer} aria-label="Student menu" onClose={() => menuButton.current?.focus()}>
+      <button className={styles.close} onClick={closeDrawer} aria-label="Close navigation"><X /></button>
+      {navigation}
+    </dialog>
+    <header className={styles.header}>
+      <button ref={menuButton} className={styles.menu} onClick={() => drawer.current?.showModal()} aria-label="Open navigation"><Menu /></button>
+      <form role="search" onSubmit={search} className={styles.search}>
+        <Search aria-hidden="true" /><input aria-label="Search courses" placeholder="Search courses" value={query} onChange={event => setQuery(event.target.value)} />
+        <button type="submit">Search</button>
+      </form>
+      <ThemeToggle />
+      <Link href="/dashboard/student/profile" className={styles.account} aria-label="Open your profile">{user?.name?.split(' ').map(part => part[0]).slice(0, 2).join('') || 'S'}</Link>
+    </header>
+  </div>
 }

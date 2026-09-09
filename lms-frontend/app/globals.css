@@ -17,7 +17,7 @@
 
   --text-primary: #0f172a;
   --text-secondary: #334155;
-  --text-muted: #64748b;
+  --text-muted: #566274;
 
   --accent: #4f46e5;
   --accent-soft: rgba(79, 70, 229, 0.12);
@@ -44,7 +44,7 @@
 
   --text-primary: #f8fafc;
   --text-secondary: #cbd5e1;
-  --text-muted: #64748b;
+  --text-muted: #a8b6c9;
 
   --accent: #818cf8;
   --accent-soft: rgba(129, 140, 248, 0.15);
@@ -136,7 +136,7 @@
 
   --accent: #a855f7;
   --accent-soft: rgba(168, 85, 247, 0.20);
-  --accent-text: #0b070f;
+  --accent-text: #d8b4fe;
 }
 
 /* ============================================================
@@ -948,80 +948,7 @@ tr:hover td {
    Exceptions: .btn-primary, .hero-section keep white text
    ============================================================ */
 
-/* Catch-all: any element with text-white class becomes dark */
-.text-white {
-  color: var(--text-primary) !important;
-}
-
-.text-gray-50,
-.text-gray-100,
-.text-gray-200,
-.text-gray-300 {
-  color: var(--text-primary) !important;
-}
-
-.text-gray-400 {
-  color: var(--text-secondary) !important;
-}
-
-.text-gray-500 {
-  color: var(--text-secondary) !important;
-}
-
-/* Primary color text */
-.text-primary-400 {
-  color: var(--accent-text) !important;
-}
-
-.text-primary-300 {
-  color: var(--accent) !important;
-}
-
-/* Keep white text ONLY inside buttons and icon containers */
-.btn-primary .text-white,
-.btn-primary {
-  color: #ffffff !important;
-}
-
-/* Badge text keeps its own colored text — don't override */
-.badge {
-  color: inherit !important;
-}
-
-/* Keep sidebar logo/role label */
-.sidebar a p,
-/* Keep sidebar logo */
-.sidebar a p {
-  color: var(--text-primary) !important;
-}
-
-/* Navbar title stays dark */
-.navbar * {
-  color: var(--text-primary);
-}
-
-/* Stat cards — values should be dark */
-.stat-card .text-white {
-  color: var(--text-primary) !important;
-}
-
-.stat-card .text-gray-400 {
-  color: var(--text-secondary) !important;
-}
-
-/* Table cells */
-table .text-white {
-  color: var(--text-primary) !important;
-}
-
-table .text-gray-300 {
-  color: var(--text-primary) !important;
-}
-
-table .text-gray-400,
-table .text-gray-500 {
-  color: var(--text-secondary) !important;
-}
+/* Color utilities retain their meaning. Use semantic tokens for theme-aware surfaces. */
 
 /* Gradient text */
 .gradient-text {

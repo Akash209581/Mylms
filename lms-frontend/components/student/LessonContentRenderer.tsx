@@ -18,6 +18,8 @@ import { html } from '@codemirror/lang-html'
 import { css } from '@codemirror/lang-css'
 import { EditorView } from '@codemirror/view'
 import SecurePPTViewer from '@/components/course/SecurePPTViewer'
+import ResumableVideo from './ResumableVideo'
+import '@/components/editor/LessonEditor.css'
 
 function getCodeExtensions(language?: string) {
   const lang = (language || '').toLowerCase()
@@ -263,10 +265,23 @@ function CodeBlock({ snippets }: { snippets: { lang: string, code: string }[] })
    MAIN COMPONENT
    ═══════════════════════════════════════════════════════ */
 
-export default function LessonContentRenderer({ content }: { content: any }) {
+export default function LessonContentRenderer({ content, videoResume }: { content: any; videoResume?: { initialSeconds: number; onPosition: (seconds: number, flush?: boolean) => void } }) {
   const [activeTab, setActiveTab] = useState<'explanation' | 'problem' | 'testcases'>('explanation');
 
   if (!content) return null
+
+  if (typeof content === 'string') {
+    try {
+      const parsed = JSON.parse(content)
+      if (parsed && typeof parsed === 'object') return <LessonContentRenderer content={parsed} videoResume={videoResume} />
+    } catch { /* Plain text and Markdown are also supported. */ }
+  }
+  if (content.type === 'markdown' && typeof content.source === 'string') {
+    return <LessonContentRenderer content={content.source} videoResume={videoResume} />
+  }
+  if (typeof content.html === 'string' || (typeof content === 'string' && /^\s*<(?:p|div|h[1-6]|ul|ol|table)\b/i.test(content))) {
+    return <div className="lesson-renderer nb-preview" dangerouslySetInnerHTML={{ __html: sanitizeHtml(content.html || content) }} />
+  }
 
   if (content?.type === 'quiz-builder') {
     const settings = content.settings || {};
@@ -521,7 +536,7 @@ export default function LessonContentRenderer({ content }: { content: any }) {
 
   const cells: Cell[] = Array.isArray(content) 
     ? content 
-    : (content.type === 'notebook' && Array.isArray(content.cells)) 
+    : (Array.isArray(content.cells))
       ? content.cells 
       : []
 
@@ -562,7 +577,7 @@ export default function LessonContentRenderer({ content }: { content: any }) {
           if (ytMatch) {
             return (
               <div key={cell.id} className="aspect-video w-full rounded-3xl overflow-hidden glass-card border-none my-8 shadow-2xl ring-1 ring-white/10">
-                <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${ytMatch[1]}`} allowFullScreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" />
+                <iframe title="YouTube lesson video" className="w-full h-full" src={`https://www.youtube.com/embed/${ytMatch[1]}`} allowFullScreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" />
               </div>
             )
           }
@@ -571,14 +586,14 @@ export default function LessonContentRenderer({ content }: { content: any }) {
           if (vmMatch) {
             return (
               <div key={cell.id} className="aspect-video w-full rounded-2xl overflow-hidden glass-card border-none my-8 shadow-2xl ring-1 ring-white/10">
-                <iframe className="w-full h-full" src={`https://player.vimeo.com/video/${vmMatch[1]}`} allowFullScreen allow="autoplay; fullscreen; picture-in-picture" />
+                <iframe title="Vimeo lesson video" className="w-full h-full" src={`https://player.vimeo.com/video/${vmMatch[1]}`} allowFullScreen allow="autoplay; fullscreen; picture-in-picture" />
               </div>
             )
           }
           
           return (
             <div key={cell.id} className="my-8">
-              <video src={src} controls className="w-full rounded-3xl glass-card border-none shadow-2xl ring-1 ring-white/10" preload="metadata" />
+              <ResumableVideo src={src} {...(cell === cells.find(item => item.type === 'video') ? videoResume : undefined)} />
             </div>
           )
         }

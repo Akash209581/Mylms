@@ -1,4 +1,8 @@
 'use client'
+
+import { apiFetch } from '@/lib/apiFetch'
+
+import { API_URL } from '@/lib/api'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
@@ -49,12 +53,12 @@ export default function StudentLeaderboardPage() {
     const fetchLeaderboard = async (u: any, scope: string) => {
         setLoading(true)
         const headers = getAuthHeaders()
-        const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+        const apiBase = API_URL
         try {
             const url = scope === 'college'
                 ? `${apiBase}/student/leaderboard?scope=college`
                 : `${apiBase}/student/leaderboard?scope=global`
-            const res = await fetch(url, { headers })
+            const res = await apiFetch(url, { headers })
             const data = await res.json()
             if (Array.isArray(data)) {
                 const ranked = data.map((entry: any, idx: number) => ({

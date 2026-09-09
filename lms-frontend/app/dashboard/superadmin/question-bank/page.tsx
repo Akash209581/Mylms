@@ -1,4 +1,8 @@
 'use client'
+
+import { apiFetch } from '@/lib/apiFetch'
+
+import { API_URL } from '@/lib/api'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
@@ -36,9 +40,9 @@ export default function QuestionBankPage() {
         setUserRole(u.role)
 
         Promise.all([
-            fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/question-bank`, { credentials: 'include' }).then(r => r.json()),
-            fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/question-bank/stats`, { credentials: 'include' }).then(r => r.json()),
-            fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/domains`, { credentials: 'include' }).then(r => r.json()),
+            apiFetch(`${API_URL}/question-bank`, { credentials: 'include' }).then(r => r.json()),
+            apiFetch(`${API_URL}/question-bank/stats`, { credentials: 'include' }).then(r => r.json()),
+            apiFetch(`${API_URL}/domains`, { credentials: 'include' }).then(r => r.json()),
         ]).then(([qs, s, d]) => {
             if (Array.isArray(qs)) setQuestions(qs)
             setStats(s)
@@ -48,7 +52,7 @@ export default function QuestionBankPage() {
 
     const handleDelete = async (id: number) => {
         if (!confirm('Delete this question?')) return
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/question-bank/${id}`, { method: 'DELETE', credentials: 'include' })
+        await apiFetch(`${API_URL}/question-bank/${id}`, { method: 'DELETE', credentials: 'include' })
         setQuestions(prev => prev.filter(q => q.id !== id))
     }
 
@@ -75,8 +79,8 @@ export default function QuestionBankPage() {
                 {/* Header */}
                 <div className="flex justify-between items-start mb-8">
                     <div>
-                        <h1 className="text-3xl font-bold text-white mb-1">Question Bank</h1>
-                        <p className="text-gray-400">Create and manage all question types for assessments</p>
+                        <h1 className="text-3xl font-bold role-text-primary mb-1">Question Bank</h1>
+                        <p className="role-text-muted">Create and manage all question types for assessments</p>
                     </div>
                     <div className="flex gap-3">
                         <button onClick={() => router.push(`/dashboard/${userRole.toLowerCase()}/question-bank/bulk-import`)}
@@ -146,7 +150,7 @@ export default function QuestionBankPage() {
 
                 {/* Table */}
                 <div className="glass-card p-6">
-                    <p className="text-gray-400 text-sm mb-5">{filtered.length} question{filtered.length !== 1 ? 's' : ''} found</p>
+                    <p className="role-text-muted text-sm mb-5">{filtered.length} question{filtered.length !== 1 ? 's' : ''} found</p>
                     {loading ? (
                         <div className="flex justify-center py-16">
                             <div className="w-10 h-10 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
@@ -154,15 +158,15 @@ export default function QuestionBankPage() {
                     ) : filtered.length === 0 ? (
                         <div className="text-center py-16">
                             <div className="text-5xl mb-3">📋</div>
-                            <p className="text-gray-400">No questions yet. Click "Add Question" to create your first one.</p>
+                            <p className="role-text-muted">No questions yet. Click "Add Question" to create your first one.</p>
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
-                            <table className="w-full">
+                            <table className="role-data-table w-full">
                                 <thead>
                                     <tr className="border-b" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
                                         {['#', 'Q. Number', 'Domain', 'Type', 'Topic', 'Difficulty', 'Question Title', 'Actions'].map(h => (
-                                            <th key={h} className="text-left text-xs font-semibold text-gray-400 pb-3 pr-4">{h}</th>
+                                            <th key={h} className="text-left text-xs font-semibold role-text-muted pb-3 pr-4">{h}</th>
                                         ))}
                                     </tr>
                                 </thead>
@@ -174,10 +178,10 @@ export default function QuestionBankPage() {
                                                 style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
                                                 <td className="py-4 pr-4 text-[var(--text-secondary)] text-sm">{i + 1}</td>
                                                 <td className="py-4 pr-4">
-                                                    <span className="text-xs font-mono font-semibold text-primary-400">{q.questionNumber}</span>
+                                                    <span className="text-xs font-mono font-semibold role-text-accent">{q.questionNumber}</span>
                                                 </td>
                                                 <td className="py-4 pr-4">
-                                                    <span className="text-xs font-semibold text-gray-300">{q.domain || 'Programming Domain'}</span>
+                                                    <span className="text-xs font-semibold role-text-secondary">{q.domain || 'Programming Domain'}</span>
                                                 </td>
                                                 <td className="py-4 pr-4">
                                                     <span className="px-2 py-1 rounded-lg text-xs font-semibold"
@@ -185,14 +189,14 @@ export default function QuestionBankPage() {
                                                         {qType?.icon} {q.type}
                                                     </span>
                                                 </td>
-                                                <td className="py-4 pr-4 text-gray-300 text-sm">{q.topicNames}</td>
+                                                <td className="py-4 pr-4 role-text-secondary text-sm">{q.topicNames}</td>
                                                 <td className="py-4 pr-4">
                                                     <span className="px-2 py-1 rounded-lg text-xs font-semibold"
                                                         style={{ background: `${diffColors[q.difficulty] || '#6366f1'}20`, color: diffColors[q.difficulty] || '#6366f1' }}>
                                                         {q.difficulty?.replace('_', ' ')}
                                                     </span>
                                                 </td>
-                                                <td className="py-4 pr-4 text-gray-300 text-sm max-w-xs truncate">{q.questionText}</td>
+                                                <td className="py-4 pr-4 role-text-secondary text-sm max-w-xs truncate">{q.questionText}</td>
                                                 <td className="py-4">
                                                     <div className="flex gap-2">
                                                         <button onClick={() => { setSelectedQuestion(q); setShowPreview(true) }}

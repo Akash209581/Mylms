@@ -1,5 +1,7 @@
 'use client'
 
+import { apiFetch } from '@/lib/apiFetch'
+
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
@@ -307,7 +309,7 @@ export default function GlobalCreateCoursePage() {
         setError('')
 
         try {
-            const res = await fetch(`${API_URL}/courses`, {
+            const res = await apiFetch(`${API_URL}/courses`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',

@@ -93,7 +93,13 @@ export class EnrollmentsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.SUPERADMIN)
   @Get()
-  async getAllEnrollments() {
-    return this.enrollRepo.find({ relations: ['student', 'course'] });
+  async getAllEnrollments(@Request() req: any) {
+    if (req.user.role !== UserRole.SUPERADMIN && !req.user.collegeId) {
+      throw new ForbiddenException('A college assignment is required');
+    }
+    return this.enrollRepo.find({
+      where: req.user.role === UserRole.SUPERADMIN ? {} : { student: { collegeId: req.user.collegeId } },
+      relations: ['student', 'course'],
+    });
   }
 }

@@ -1,4 +1,8 @@
 'use client'
+
+import { apiFetch } from '@/lib/apiFetch'
+
+import { API_URL } from '@/lib/api'
 import { useEffect, useState, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
@@ -85,7 +89,7 @@ function CreateQuestionForm() {
 
     const fetchTopics = async (domainName: string) => {
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/topics?domainName=${encodeURIComponent(domainName)}`, { credentials: 'include' });
+            const res = await apiFetch(`${API_URL}/topics?domainName=${encodeURIComponent(domainName)}`, { credentials: 'include' });
             const data = await res.json();
             if (Array.isArray(data)) setTopics(data);
         } catch (e) { console.error(e) }
@@ -93,7 +97,7 @@ function CreateQuestionForm() {
 
     const fetchDomains = async () => {
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/domains`, { credentials: 'include' });
+            const res = await apiFetch(`${API_URL}/domains`, { credentials: 'include' });
             const data = await res.json();
             if (Array.isArray(data)) setDomains(data);
         } catch (e) { console.error(e) }
@@ -102,7 +106,7 @@ function CreateQuestionForm() {
     const handleAddDomain = async () => {
         if (!newDomain.trim()) return;
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/domains`, {
+            const res = await apiFetch(`${API_URL}/domains`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -124,7 +128,7 @@ function CreateQuestionForm() {
         const domain = domains.find(d => d.name === form.domain);
         if (!domain) return;
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/topics`, {
+            const res = await apiFetch(`${API_URL}/topics`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -160,7 +164,7 @@ function CreateQuestionForm() {
             if (form.type === 'PQ') {
                 submitData.codeSnippet = JSON.stringify(predefinedCodes);
             }
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/question-bank`, {
+            const res = await apiFetch(`${API_URL}/question-bank`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',

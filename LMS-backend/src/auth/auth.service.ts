@@ -35,19 +35,13 @@ export class AuthService {
       throw new ConflictException('State is required for Indian learners');
     }
 
-    // Find or create college by name
+    // Public registration may join an existing active college; only authorized
+    // platform provisioning can create a college.
     let college = await this.collegeRepository.findOne({
       where: { name: dto.collegeName },
     });
     
-    if (!college) {
-      // Auto-create college if it doesn't exist
-      college = this.collegeRepository.create({
-        name: dto.collegeName,
-        active: true,
-      });
-      await this.collegeRepository.save(college);
-    }
+    if (!college?.active) throw new BadRequestException('Select an available college from the registration list');
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
     const user = this.userRepository.create({
@@ -74,21 +68,12 @@ export class AuthService {
   async login(dto: LoginDto) {
     const user = await this.userRepository.findOne({
       where: { email: dto.email },
+      select: ['id', 'email', 'name', 'role', 'collegeId', 'collegeName', 'isActive', 'passwordHash'],
     });
-    if (!user || !user.passwordHash) throw new UnauthorizedException('Invalid credentials');
+    if (!user || !user.passwordHash || !user.isActive) throw new UnauthorizedException('Invalid credentials');
 
     const valid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!valid) throw new UnauthorizedException('Invalid credentials');
-
-    const payload = {
-      sub: user.id,
-      email: user.email,
-      role: user.role,
-      name: user.name,
-      collegeId: user.collegeId,
-      collegeName: user.collegeName, // Include collegeName in JWT for inheritance
-    };
-    const token = this.jwtService.sign(payload);
 
     let college: College | null = null;
     if (user.collegeId) {
@@ -96,6 +81,20 @@ export class AuthService {
     } else if (user.collegeName) {
       college = await this.collegeRepository.findOne({ where: { name: user.collegeName } });
     }
+
+    if ((user.collegeId || user.collegeName) && (!college || !college.active)) {
+      throw new UnauthorizedException('Your college account is unavailable');
+    }
+
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+      name: user.name,
+      collegeId: user.collegeId || college?.id,
+      collegeName: college?.name || user.collegeName,
+    };
+    const token = this.jwtService.sign(payload);
 
     return {
       access_token: token,

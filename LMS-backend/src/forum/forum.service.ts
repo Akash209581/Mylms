@@ -86,7 +86,7 @@ export class ForumService {
     authorId: number,
     data: { title: string; content: string; category: ForumCategory; tags?: string[] },
   ) {
-    const post = this.postRepo.create({ ...data, authorId });
+    const post = this.postRepo.create({ title: data.title, content: data.content, category: data.category, tags: data.tags, authorId });
     return this.postRepo.save(post);
   }
 

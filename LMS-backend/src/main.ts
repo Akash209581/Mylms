@@ -1,3 +1,5 @@
+import { trustedOrigins, protectMutationOrigin } from './common/request-origin';
+import { ResponsePrivacyInterceptor } from './common/response-privacy.interceptor';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
@@ -22,35 +24,13 @@ async function bootstrap() {
   const path = require('path');
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
-  const allowedOrigins = [
-    process.env.FRONTEND_URL,
-    'http://localhost:3000',
-    'http://localhost:3001',
-    'http://localhost:3002',
-    'https://lms-0-id5t.onrender.com',
-  ].filter(Boolean);
+  const allowedOrigins = trustedOrigins();
+  app.use(protectMutationOrigin(allowedOrigins));
   app.enableCors({
-    origin: (origin, callback) => {
-      // In development, allow no origin (like Postman or local curl)
-      if (!origin) {
-        return callback(null, true);
-      }
-      const isAllowed =
-        allowedOrigins.includes(origin) ||
-        /^http:\/\/localhost:\d+$/.test(origin) ||
-        /\.onrender\.com$/.test(origin);
-
-      if (isAllowed) {
-        console.log(`CORS: Allowed origin -> ${origin}`);
-        callback(null, true);
-      } else {
-        console.warn(`CORS: Blocked origin -> ${origin}`);
-        callback(null, false);
-      }
-    },
+    origin: (origin, callback) => callback(null, !origin || allowedOrigins.has(origin)),
     credentials: true,
   });
-
+  app.useGlobalInterceptors(new ResponsePrivacyInterceptor());
   // Use UPLOADS_DIR env var for persistent disk support on Render
   // Set UPLOADS_DIR=/var/data/uploads in Render environment to use persistent disk
   const uploadsDir = process.env.UPLOADS_DIR || path.join(process.cwd(), 'uploads');
@@ -73,7 +53,7 @@ async function bootstrap() {
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   app.useGlobalFilters(new HttpExceptionFilter());
-  const port = process.env.PORT || 3001;
+  const port = process.env.PORT || 3003;
   await app.listen(port);
   console.log(`LMS Backend running on port ${port}`);
 }

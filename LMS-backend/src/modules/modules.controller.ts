@@ -1,3 +1,5 @@
+import { canEditCourse } from '../common/course-access';
+import { CourseContentService } from '../common/course-content.service';
 import {
   Controller,
   Get,
@@ -34,10 +36,11 @@ export class ModulesController {
     private moduleRepository: Repository<CourseModule>,
     @InjectRepository(Course)
     private courseRepository: Repository<Course>,
+    private contentAccess: CourseContentService,
   ) { }
 
   @Post()
-  @Roles(UserRole.INSTRUCTOR, UserRole.SUPERADMIN)
+  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN)
   async create(@Body() dto: CreateModuleDto, @Req() req: any) {
     console.log('📚 Creating module:', dto);
     console.log('👤 Logged-in user ID:', req.user.sub);
@@ -58,7 +61,7 @@ export class ModulesController {
         throw new HttpException('Courses assigned by SUPER ADMIN are view-only.', HttpStatus.FORBIDDEN);
       }
 
-      if (course.instructorId !== req.user.sub) {
+      if (!canEditCourse(req.user, course)) {
         throw new HttpException(
           'You can only add modules to your own courses',
           HttpStatus.FORBIDDEN,
@@ -85,7 +88,8 @@ export class ModulesController {
   }
 
   @Get('course/:courseId')
-  async findByCourse(@Param('courseId', ParseIntPipe) courseId: number) {
+  async findByCourse(@Param('courseId', ParseIntPipe) courseId: number, @Req() req: any) {
+    await this.contentAccess.requireRead(req.user, courseId);
     const modules = await this.moduleRepository.find({
       where: { courseId },
       order: { order: 'ASC' },
@@ -94,7 +98,7 @@ export class ModulesController {
   }
 
   @Get(':id')
-  async findOne(@Param('id', ParseIntPipe) id: number) {
+  async findOne(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
     const module = await this.moduleRepository.findOne({
       where: { id },
       relations: ['course'],
@@ -104,11 +108,13 @@ export class ModulesController {
       throw new HttpException('Module not found', HttpStatus.NOT_FOUND);
     }
 
-    return module;
+    await this.contentAccess.requireRead(req.user, module.courseId);
+    const { course, ...result } = module;
+    return result;
   }
 
   @Put(':id')
-  @Roles(UserRole.INSTRUCTOR, UserRole.SUPERADMIN)
+  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN)
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateModuleDto,
@@ -129,7 +135,7 @@ export class ModulesController {
         throw new HttpException('Courses assigned by SUPER ADMIN are view-only.', HttpStatus.FORBIDDEN);
       }
 
-      if (module.course.instructorId !== req.user.sub) {
+      if (!canEditCourse(req.user, module.course)) {
         throw new HttpException(
           'You can only edit modules in your own courses',
           HttpStatus.FORBIDDEN,
@@ -142,7 +148,7 @@ export class ModulesController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.INSTRUCTOR, UserRole.SUPERADMIN)
+  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN)
   async delete(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
     const module = await this.moduleRepository.findOne({
       where: { id },
@@ -159,7 +165,7 @@ export class ModulesController {
         throw new HttpException('Courses assigned by SUPER ADMIN cannot be modified.', HttpStatus.FORBIDDEN);
       }
 
-      if (module.course.instructorId !== req.user.sub) {
+      if (!canEditCourse(req.user, module.course)) {
         throw new HttpException(
           'You can only delete modules from your own courses',
           HttpStatus.FORBIDDEN,
@@ -172,7 +178,7 @@ export class ModulesController {
   }
 
   @Post('reorder')
-  @Roles(UserRole.INSTRUCTOR, UserRole.SUPERADMIN)
+  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN)
   async reorder(@Body() dto: ReorderModulesDto, @Req() req: any) {
     const modules = await this.moduleRepository.findBy({ id: In(dto.moduleIds) });
 
@@ -182,7 +188,7 @@ export class ModulesController {
     });
 
     if (req.user.role !== UserRole.SUPERADMIN) {
-      const allOwned = courses.every((c) => c.instructorId === req.user.sub);
+      const allOwned = courses.every((c) => canEditCourse(req.user, c));
       if (!allOwned) {
         throw new HttpException(
           'You can only reorder modules in your own courses',

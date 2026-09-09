@@ -1,4 +1,5 @@
 'use client'
+import { API_URL } from '@/lib/api'
 import { useEffect, useState } from 'react'
 
 export default function DailyStreakDisplay() {
@@ -7,7 +8,7 @@ export default function DailyStreakDisplay() {
 
     useEffect(() => {
         const today = new Date().toISOString().slice(0, 10)
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/daily-streak/today?date=${today}`, { credentials: 'include' })
+        fetch(`${API_URL}/daily-streak/today?date=${today}`, { credentials: 'include' })
             .then(r => r.json())
             .then(data => {
                 if (data && !data.message) setStreak(data)

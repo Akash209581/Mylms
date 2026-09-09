@@ -1,4 +1,8 @@
 'use client'
+
+import { apiFetch } from '@/lib/apiFetch'
+
+import { API_URL } from '@/lib/api'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
@@ -41,9 +45,9 @@ export default function SuperAdminSettingsPage() {
         if (u.role !== 'SUPERADMIN') { router.push('/login'); return }
 
         const headers = getAuthHeaders()
-        const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+        const apiBase = API_URL
 
-        fetch(`${apiBase}/superadmin/settings`, { headers })
+        apiFetch(`${apiBase}/superadmin/settings`, { headers })
             .then(r => r.json())
             .then(data => {
                 if (data && !data.message) setSettings(prev => ({ ...prev, ...data }))
@@ -56,10 +60,10 @@ export default function SuperAdminSettingsPage() {
         setSaving(true)
         setMessage(null)
         const headers = getAuthHeaders()
-        const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+        const apiBase = API_URL
 
         try {
-            const res = await fetch(`${apiBase}/superadmin/settings`, {
+            const res = await apiFetch(`${apiBase}/superadmin/settings`, {
                 method: 'PUT',
                 headers: { ...headers, 'Content-Type': 'application/json' },
                 body: JSON.stringify(settings),

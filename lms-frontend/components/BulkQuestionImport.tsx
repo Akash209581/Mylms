@@ -1,4 +1,5 @@
-'use client';
+'use client'
+import { API_URL } from '@/lib/api';
 
 import React, { useState } from 'react';
 import axios from 'axios';
@@ -31,7 +32,7 @@ export default function BulkQuestionImport() {
   );
   const [showResultModal, setShowResultModal] = useState(false);
 
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+  const API_BASE_URL = API_URL;
 
   // Handle file drag events
   const handleDrag = (e: React.DragEvent) => {

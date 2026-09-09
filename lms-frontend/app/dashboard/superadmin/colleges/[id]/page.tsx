@@ -288,7 +288,7 @@ export default function CollegeDetailsPage({ params }: { params: { id: string } 
     return (
       <div className="min-h-screen bg-mesh flex flex-col items-center justify-center p-4">
         <div className="text-6xl mb-4">🏛️</div>
-        <h2 className="text-2xl font-bold text-white">College Not Found</h2>
+        <h2 className="text-2xl font-bold role-text-primary">College Not Found</h2>
         <button 
           onClick={() => router.push('/dashboard/superadmin/colleges')}
           className="mt-4 text-indigo-400 font-semibold hover:underline"
@@ -432,35 +432,35 @@ export default function CollegeDetailsPage({ params }: { params: { id: string } 
                     ) : courses.length === 0 ? (
                       <div className="py-20 text-center">
                         <div className="text-6xl mb-4 opacity-20">📚</div>
-                        <h3 className="text-xl font-bold text-white">No Courses Assigned</h3>
-                        <p className="text-gray-400 mt-2">Use the "Assign Course" button to add courses to this college.</p>
+                        <h3 className="text-xl font-bold role-text-primary">No Courses Assigned</h3>
+                        <p className="role-text-muted mt-2">Use the "Assign Course" button to add courses to this college.</p>
                       </div>
                     ) : (
                       <div className="overflow-x-auto">
-                        <table className="w-full">
+                        <table className="role-data-table w-full">
                           <thead>
                             <tr className="text-left border-b border-white/5">
-                              <th className="pb-4 pt-2 px-4 text-xs font-bold text-gray-400 uppercase">Course</th>
-                              <th className="pb-4 pt-2 px-4 text-xs font-bold text-gray-400 uppercase">Created By</th>
-                              <th className="pb-4 pt-2 px-4 text-xs font-bold text-gray-400 uppercase">Assigned By</th>
-                              <th className="pb-4 pt-2 px-4 text-xs font-bold text-gray-400 uppercase text-right">Action</th>
+                              <th className="pb-4 pt-2 px-4 text-xs font-bold role-text-muted uppercase">Course</th>
+                              <th className="pb-4 pt-2 px-4 text-xs font-bold role-text-muted uppercase">Created By</th>
+                              <th className="pb-4 pt-2 px-4 text-xs font-bold role-text-muted uppercase">Assigned By</th>
+                              <th className="pb-4 pt-2 px-4 text-xs font-bold role-text-muted uppercase text-right">Action</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-white/5">
                             {courses.map((course) => (
                               <tr key={course.id} className="hover:bg-white/5 transition-colors group">
-                                <td className="py-4 px-4 font-semibold text-white">{course.title}</td>
+                                <td className="py-4 px-4 font-semibold role-text-primary">{course.title}</td>
                                 <td className="py-4 px-4 whitespace-nowrap">
                                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border mr-2 ${getRoleBadgeColor(course.createdBy.role)}`}>
                                     {course.createdBy.role}
                                   </span>
-                                  <span className="text-sm text-gray-300">{course.createdBy.name || 'SUPER ADMIN'}</span>
+                                  <span className="text-sm role-text-secondary">{course.createdBy.name || 'SUPER ADMIN'}</span>
                                 </td>
                                 <td className="py-4 px-4">
                                   {course.assignedBy ? (
-                                    <span className="text-sm text-gray-300">{course.assignedBy.name}</span>
+                                    <span className="text-sm role-text-secondary">{course.assignedBy.name}</span>
                                   ) : (
-                                    <span className="text-xs text-gray-400 italic">Direct Owner</span>
+                                    <span className="text-xs role-text-muted italic">Direct Owner</span>
                                   )}
                                 </td>
                                 <td className="py-4 px-4 text-right">
@@ -481,14 +481,14 @@ export default function CollegeDetailsPage({ params }: { params: { id: string } 
                       <div className="py-20 text-center text-gray-400 font-medium italic">No users found for this college.</div>
                     ) : (
                       <div className="overflow-x-auto">
-                        <table className="w-full">
+                        <table className="role-data-table w-full">
                           <thead>
                             <tr className="text-left border-b border-white/5">
-                              <th className="pb-4 pt-2 px-4 text-xs font-bold text-gray-400 uppercase">Name</th>
-                              <th className="pb-4 pt-2 px-4 text-xs font-bold text-gray-400 uppercase">Email</th>
-                              <th className="pb-4 pt-2 px-4 text-xs font-bold text-gray-400 uppercase">Role</th>
-                              <th className="pb-4 pt-2 px-4 text-xs font-bold text-gray-400 uppercase">College/University</th>
-                              <th className="pb-4 pt-2 px-4 text-xs font-bold text-gray-400 uppercase">Joined</th>
+                              <th className="pb-4 pt-2 px-4 text-xs font-bold role-text-muted uppercase">Name</th>
+                              <th className="pb-4 pt-2 px-4 text-xs font-bold role-text-muted uppercase">Email</th>
+                              <th className="pb-4 pt-2 px-4 text-xs font-bold role-text-muted uppercase">Role</th>
+                              <th className="pb-4 pt-2 px-4 text-xs font-bold role-text-muted uppercase">College/University</th>
+                              <th className="pb-4 pt-2 px-4 text-xs font-bold role-text-muted uppercase">Joined</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-white/5">
@@ -499,19 +499,19 @@ export default function CollegeDetailsPage({ params }: { params: { id: string } 
                                     <div className="h-8 w-8 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-300 font-bold text-xs">
                                       {user.name.charAt(0)}
                                     </div>
-                                    <span className="font-semibold text-white">{user.name}</span>
+                                    <span className="font-semibold role-text-primary">{user.name}</span>
                                   </div>
                                 </td>
-                                <td className="py-4 px-4 text-gray-300 text-sm">{user.email}</td>
+                                <td className="py-4 px-4 role-text-secondary text-sm">{user.email}</td>
                                 <td className="py-4 px-4">
                                   <span className={`px-3 py-1 rounded-lg text-xs font-bold border ${getRoleBadgeColor(user.role)}`}>
                                     {user.role}
                                   </span>
                                 </td>
-                                <td className="py-4 px-4 text-gray-300 text-sm italic">
+                                <td className="py-4 px-4 role-text-secondary text-sm italic">
                                   {user.collegeName || 'N/A'}
                                 </td>
-                                <td className="py-4 px-4 text-gray-400 text-sm">{formatDate(user.createdAt)}</td>
+                                <td className="py-4 px-4 role-text-muted text-sm">{formatDate(user.createdAt)}</td>
                               </tr>
                             ))}
                           </tbody>

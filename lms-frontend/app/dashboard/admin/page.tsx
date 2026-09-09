@@ -1,4 +1,8 @@
 'use client'
+
+import { apiFetch } from '@/lib/apiFetch'
+
+import { API_URL } from '@/lib/api'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
@@ -20,7 +24,7 @@ export default function AdminDashboard() {
         setUser(u)
 
         // Refresh user profile to get latest college logo
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/auth/me`, {
+        apiFetch(`${API_URL}/auth/me`, {
             headers: getAuthHeaders(),
         })
             .then(r => r.json())
@@ -32,7 +36,7 @@ export default function AdminDashboard() {
             })
             .catch(() => { })
 
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/admin/dashboard`, {
+        apiFetch(`${API_URL}/admin/dashboard`, {
             credentials: 'include',
             headers: getAuthHeaders(),
         })
@@ -55,21 +59,21 @@ export default function AdminDashboard() {
             <Navbar title="Admin Dashboard" />
             <main className="page-content">
                 {/* Hero */}
-                <div className="hero-section mb-8 relative overflow-hidden" style={{ background: 'linear-gradient(135deg,#c2410c,#ea580c)' }}>
+                <div className="role-page-header">
                     <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
                         <div>
-                            <p className="text-white/60 text-sm mb-1">Admin Control Panel 🛡️</p>
-                            <h1 className="text-3xl font-bold text-white mb-2">Hello, {user?.name}</h1>
+                            <p className="role-eyebrow">Administration</p>
+                            <h1>Hello, {user?.name}</h1>
                             {user?.collegeName && (
                                 <div className="flex items-center gap-2 mb-2">
-                                    <span className="text-white/90 font-semibold">🎓 {user.collegeName}</span>
+                                    <span className="role-text-secondary text-sm font-semibold">{user.collegeName}</span>
                                 </div>
                             )}
-                            <p className="text-white/70 text-sm md:text-base">Manage users, courses, and platform activity</p>
+                            <p className="text-sm md:text-base">Manage users, courses, and college activity.</p>
                         </div>
 
                         {/* College Logo */}
-                        <div className="flex-shrink-0 bg-white/10 p-3 rounded-2xl border border-white/20 backdrop-blur-sm shadow-inner group transition-all hover:bg-white/20">
+                        <div className="role-college-logo">
                             {user?.collegeLogo ? (
                                 <div className="relative w-24 h-24 flex items-center justify-center overflow-hidden rounded-xl bg-white/5">
                                     <img
@@ -121,10 +125,9 @@ export default function AdminDashboard() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                     {statItems.map((s, i) => (
                         <div key={i} className="stat-card">
-                            <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl mb-4"
-                                style={{ background: s.gradient }}>{s.icon}</div>
-                            <p className="text-3xl font-bold text-white mb-1">{loading ? '—' : s.value}</p>
-                            <p className="text-gray-400 text-sm">{s.label}</p>
+                            <div className="role-stat-icon w-10 h-10 flex items-center justify-center text-xl mb-4" aria-hidden="true">{s.icon}</div>
+                            <p className="text-3xl font-bold role-text-primary mb-1">{loading ? '—' : s.value}</p>
+                            <p className="role-text-muted text-sm">{s.label}</p>
                         </div>
                     ))}
                 </div>
@@ -132,13 +135,12 @@ export default function AdminDashboard() {
                 {/* Activity Notice */}
                 <div className="glass-card p-6">
                     <div className="flex items-center gap-3 mb-2">
-                        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl"
-                            style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }}>
+                        <div className="role-stat-icon w-10 h-10 flex items-center justify-center text-xl" aria-hidden="true">
                             ℹ️
                         </div>
-                        <h3 className="text-lg font-semibold text-white">College Overview</h3>
+                        <h3 className="text-lg font-semibold role-text-primary">College Overview</h3>
                     </div>
-                    <p className="text-gray-400 leading-relaxed">
+                    <p className="role-text-muted leading-relaxed">
                         You are managing users and content within your college. Use the navigation above to access user management, courses, and approval workflows.
                     </p>
                 </div>

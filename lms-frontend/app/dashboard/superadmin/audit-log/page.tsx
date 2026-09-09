@@ -1,4 +1,8 @@
 'use client'
+
+import { apiFetch } from '@/lib/apiFetch'
+
+import { API_URL } from '@/lib/api'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
@@ -46,9 +50,9 @@ export default function AuditLogPage() {
         if (u.role !== 'SUPERADMIN') { router.push('/login'); return }
 
         const headers = getAuthHeaders()
-        const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+        const apiBase = API_URL
 
-        fetch(`${apiBase}/superadmin/audit-log`, { headers })
+        apiFetch(`${apiBase}/superadmin/audit-log`, { headers })
             .then(r => r.json())
             .then(data => {
                 if (Array.isArray(data)) setLogs(data)
@@ -129,7 +133,7 @@ export default function AuditLogPage() {
                     ) : (
                         <>
                             <div className="overflow-x-auto">
-                                <table className="w-full">
+                                <table className="role-data-table w-full">
                                     <thead>
                                         <tr className="border-b border-[var(--border)]">
                                             {['Action', 'Entity', 'Performed By', 'Role', 'Details', 'Time'].map(h => (

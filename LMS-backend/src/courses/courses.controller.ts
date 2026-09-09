@@ -1,3 +1,5 @@
+import { canEditCourse } from '../common/course-access';
+import { CourseContentService, coursePreview } from '../common/course-content.service';
 import {
   Controller,
   Get,
@@ -53,6 +55,7 @@ export class CoursesController {
     private notificationService: NotificationService,
     private collegeFilterService: CollegeFilterService,
     private cloudinaryService: CloudinaryService,
+    private contentAccess: CourseContentService,
   ) {}
 
 
@@ -121,6 +124,8 @@ export class CoursesController {
     @Query('level') level?: string,
     @Query('search') search?: string,
     @Query('collegeId') queryCollegeId?: string,
+    @Query('sort') sort: string = 'newest',
+    @Query('enrollment') enrollment: string = 'all',
   ) {
     const authUser = req.user;
     const isSuperAdmin = authUser && authUser.role === UserRole.SUPERADMIN;
@@ -135,8 +140,8 @@ export class CoursesController {
       authUser: authUser ? { role: authUser.role, colId: authUser.collegeId, colName: authUser.collegeName } : null,
     });
 
-    const pageNum = parseInt(page) || 1;
-    const limitNum = parseInt(limit) || 12;
+    const pageNum = Math.max(1, parseInt(page) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 12));
     const skip = (pageNum - 1) * limitNum;
 
     // Build query
@@ -192,8 +197,14 @@ export class CoursesController {
       queryBuilder.andWhere('1 = 0');
     }
 
+    if (enrollment === 'enrolled' || enrollment === 'available') {
+      if (!authUser) throw new HttpException('Sign in to filter enrolled courses', HttpStatus.UNAUTHORIZED);
+      queryBuilder.andWhere(`${enrollment === 'available' ? 'NOT ' : ''}EXISTS (SELECT 1 FROM enrollments e WHERE e.course_id = course.id AND e.student_id = :studentId)`, { studentId: authUser.sub });
+    }
+    const order = sort === 'title' ? 'course.title' : sort === 'updated' ? 'course.updatedAt' : 'course.createdAt';
     const [courses, total] = await queryBuilder
-      .orderBy('course.createdAt', 'DESC')
+      .orderBy(order, sort === 'title' ? 'ASC' : 'DESC')
+      .addOrderBy('course.id', 'ASC')
       .skip(skip)
       .take(limitNum)
       .getManyAndCount();
@@ -230,7 +241,7 @@ export class CoursesController {
         const chapterIds = allChapters.map((c) => c.id);
         if (chapterIds.length > 0) {
           const allLessons = await this.lessonRepo.find({
-            where: { chapterId: In(chapterIds) },
+            where: { chapterId: In(chapterIds), published: true },
           });
           allLessons.forEach((l) => {
             if (!lessonsByChapter[l.chapterId]) {
@@ -255,7 +266,7 @@ export class CoursesController {
       });
 
       return {
-        ...course,
+        ...coursePreview(course),
         moduleCount,
         lessonCount,
       };
@@ -274,88 +285,58 @@ export class CoursesController {
     };
   }
 
+  @Get('pdf-proxy')
+  async proxyPdf(@Query('url') targetUrl: string, @Res() res: any) {
+    let url: URL;
+    try { url = new URL(targetUrl); }
+    catch { throw new HttpException('Invalid document URL', HttpStatus.BAD_REQUEST); }
+    // Current uploaded course assets live on Cloudinary. Do not follow redirects
+    // or allow arbitrary hosts, local IPs, credentials, schemes or custom ports.
+    if (url.protocol !== 'https:' || url.hostname !== 'res.cloudinary.com' || url.port || url.username || url.password) {
+      throw new HttpException('Document host is not allowed', HttpStatus.BAD_REQUEST);
+    }
+    const maxBytes = 50 * 1024 * 1024;
+    try {
+      const response = await fetch(url, { redirect: 'error', signal: AbortSignal.timeout(15000) });
+      if (!response.ok || !response.body || Number(response.headers.get('content-length')) > maxBytes) throw new Error('Unavailable document');
+      const chunks: Buffer[] = [];
+      let total = 0;
+      const reader = response.body.getReader();
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          total += value.byteLength;
+          if (total > maxBytes) throw new Error('Document exceeds size limit');
+          chunks.push(Buffer.from(value));
+        }
+      } finally { await reader.cancel(); }
+      const data = Buffer.concat(chunks);
+      if (!data.subarray(0, 1024).includes(Buffer.from('%PDF-'))) throw new Error('Invalid PDF');
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+      return res.send(data);
+    } catch {
+      throw new HttpException('Unable to load this PDF document', HttpStatus.BAD_GATEWAY);
+    }
+  }
   @UseGuards(OptionalJwtAuthGuard)
   @Get(':id')
   async findOne(@Param('id', ParseIntPipe) id: number, @Request() req: any) {
-    console.log(`📖 Fetching course ${id} for user:`, req.user);
-
     const course = await this.courseRepo.findOne({
-      where: { id },
-      relations: ['instructor', 'approver', 'assignedColleges'],
+      where: { id }, relations: ['instructor', 'approver', 'assignedColleges'],
     });
-
-    if (!course) {
-      console.log(`❌ Course ${id} not found`);
-      throw new HttpException('Course not found', HttpStatus.NOT_FOUND);
+    if (!course) throw new HttpException('Course not found', HttpStatus.NOT_FOUND);
+    if (!this.contentAccess.canPreview(req.user, course)) {
+      throw new HttpException('Course not available', HttpStatus.FORBIDDEN);
     }
-
-    const userRole = req.user?.role;
-    const userId = req.user?.sub;
-    const userCollegeId = req.user?.collegeId;
-
-    const userCollegeName = req.user?.collegeName;
-
-    console.log('🔍 Access check:', {
-      userRole,
-      userId,
-      userCollegeId,
-      userCollegeName,
-      coursecollegeId: course.collegeId,
-      courseInstructorId: course.instructorId,
-      courseStatus: course.status
-    });
-
-    // SUPERADMIN can see any course from any college
-    if (userRole === UserRole.SUPERADMIN) {
-      return await this.getCourseWithStructure(course);
-    }
-
-    // Check if user can access this course's college (ADMIN/INSTRUCTOR/STUDENT must be in same college or assigned)
-    const isCollegeMatch = 
-      (userCollegeId && (
-        course.collegeId === userCollegeId || 
-        course.assignedColleges?.some(c => c.id === userCollegeId)
-      )) || 
-      (userCollegeName && (
-        course.instructor?.collegeName === userCollegeName ||
-        course.assignedColleges?.some(c => c.name === userCollegeName)
-      ));
-
-    if (userRole && !isCollegeMatch) {
-      console.log(`❌ User cannot access course from different college`);
-      throw new HttpException('You do not have access to this course', HttpStatus.FORBIDDEN);
-    }
-
-    // ADMIN can see any course within their college
-    if (userRole === UserRole.ADMIN) {
-      return await this.getCourseWithStructure(course);
-    }
-
-    // INSTRUCTOR can see their own courses or approved courses within their college
-    if (userRole === UserRole.INSTRUCTOR) {
-      if (
-        course.instructorId === userId ||
-        course.status === CourseStatus.APPROVED
-      ) {
-        return await this.getCourseWithStructure(course);
-      }
-      console.log(`❌ Instructor cannot access course ${id}`);
-      throw new HttpException('You do not have access to this course', HttpStatus.FORBIDDEN);
-    }
-
-    // STUDENT can only see approved and published courses within their college
-    if (course.status === CourseStatus.APPROVED && course.published) {
-      console.log(`✅ Student accessing approved course ${id}`);
-      return await this.getCourseWithStructure(course);
-    }
-
-    console.log(
-      `❌ Course ${id} not accessible: status=${course.status}, published=${course.published}`,
-    );
-    throw new HttpException('Course not available', HttpStatus.FORBIDDEN);
+    const mayRead = await this.contentAccess.canRead(req.user, course);
+    const mayEdit = req.user && canEditCourse(req.user, course);
+    const structured = await this.getCourseWithStructure(course, !mayEdit);
+    return mayRead ? structured : coursePreview(structured);
   }
-
-  private async getCourseWithStructure(course: Course) {
+  private async getCourseWithStructure(course: Course, publishedOnly = false) {
     // Fetch all modules
     const modules = await this.moduleRepo.find({
       where: { courseId: course.id },
@@ -387,7 +368,7 @@ export class CoursesController {
     if (chapters.length > 0) {
       const chapterIds = chapters.map((c) => c.id);
       const lessons = await this.lessonRepo.find({
-        where: { chapterId: In(chapterIds) },
+        where: { chapterId: In(chapterIds), ...(publishedOnly && { published: true }) },
         order: { order: 'ASC' },
       });
 
@@ -462,7 +443,7 @@ export class CoursesController {
       console.log('User found:', user.name, 'Role:', user.role, 'College:', user.collegeId);
 
       // Validate college access for ADMIN/INSTRUCTOR
-      if (user.role !== UserRole.SUPERADMIN && !user.collegeId) {
+      if (user.role !== UserRole.SUPERADMIN && !req.user.collegeId) {
         throw new HttpException(
           'Your account is not associated with a college. Please contact the administrator to assign you to a college before creating courses.',
           HttpStatus.BAD_REQUEST
@@ -478,7 +459,7 @@ export class CoursesController {
       // Set collegeId: SUPERADMIN can specify, others use their own org
       const collegeId = isSuperAdmin && dto.collegeId 
         ? dto.collegeId 
-        : user.collegeId;
+        : req.user.collegeId;
 
       const course = this.courseRepo.create({
         ...dto,
@@ -611,6 +592,7 @@ export class CoursesController {
   @Roles(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.INSTRUCTOR)
   @Post('create-pdf-course')
   async createPdfCourse(@Body() body: any, @Request() req: any) {
+    this.validateDistribution(body, req.user);
     const user = await this.userRepo.findOne({
       where: { id: req.user.sub },
       select: ['id', 'name', 'email', 'role', 'collegeId'],
@@ -623,7 +605,7 @@ export class CoursesController {
     const isSuperAdmin = user.role === UserRole.SUPERADMIN;
     const courseStatus = isSuperAdmin || user.role === UserRole.ADMIN ? CourseStatus.APPROVED : CourseStatus.DRAFT;
     const published = isSuperAdmin || user.role === UserRole.ADMIN ? true : false;
-    const collegeId = isSuperAdmin && body.collegeId ? parseInt(body.collegeId) : user.collegeId;
+    const collegeId = isSuperAdmin && body.collegeId ? parseInt(body.collegeId) : req.user.collegeId;
 
     const course = this.courseRepo.create({
       title: body.title || 'Untitled PDF Course',
@@ -728,35 +710,12 @@ export class CoursesController {
     return this.handleUploadPresentation(file, body, req);
   }
 
-  @Get('pdf-proxy')
-  async proxyPdf(@Query('url') targetUrl: string, @Res() res: any) {
-    if (!targetUrl) {
-      throw new HttpException('Missing url parameter', HttpStatus.BAD_REQUEST);
-    }
-    try {
-      const axios = require('axios');
-      const response = await axios.get(targetUrl, {
-        responseType: 'arraybuffer',
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-        },
-      });
-
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Access-Control-Allow-Origin', '*');
-      res.setHeader('Cache-Control', 'public, max-age=86400');
-      return res.send(Buffer.from(response.data));
-    } catch (err: any) {
-      console.error('⚠️ PDF proxy error:', err.message);
-      throw new HttpException('Failed to load PDF via proxy', HttpStatus.BAD_GATEWAY);
-    }
-  }
-
   private async handleUploadPresentation(
     file: any,
     body: any,
     req: any,
   ) {
+    this.validateDistribution(body, req.user);
     if (file && file.size > 10 * 1024 * 1024) {
       throw new HttpException('File size exceeds the 10MB limit. Please upload a smaller file.', HttpStatus.BAD_REQUEST);
     }
@@ -1002,7 +961,7 @@ try {
   @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
   @Post(':id/assign')
   async assignCourse(
-    @Param('id') id: number,
+    @Param('id', ParseIntPipe) id: number,
     @Body() dto: AssignCourseDto,
     @Request() req: any,
   ) {
@@ -1015,7 +974,13 @@ try {
       throw new HttpException('Course not found', HttpStatus.NOT_FOUND);
     }
 
-    // Auto-approve and publish if assigning (Super Admin / Admin acts as final validator)
+    if (!canEditCourse(req.user, course) ||
+        (req.user.role !== UserRole.SUPERADMIN &&
+          (dto.collegeIds.some(cid => cid !== req.user.collegeId) ||
+           course.assignedColleges.some(college => college.id !== req.user.collegeId)))) {
+      throw new HttpException('Only the platform administrator can distribute courses across colleges', HttpStatus.FORBIDDEN);
+    }
+    // Assigning is an explicit publishing action by the authorized course manager.
     course.published = true;
     if (course.status !== CourseStatus.APPROVED) {
       course.status = CourseStatus.APPROVED;
@@ -1028,6 +993,20 @@ try {
     await this.courseRepo.save(course);
 
     return { message: 'Course assigned, approved and published successfully' };
+  }
+
+  private validateDistribution(body: any, user: { role: UserRole; collegeId?: number }) {
+    let ids: unknown;
+    try { ids = typeof body.collegeIds === 'string' ? JSON.parse(body.collegeIds) : body.collegeIds; }
+    catch { throw new HttpException('Invalid college assignments', HttpStatus.BAD_REQUEST); }
+    if (ids !== undefined && (!Array.isArray(ids) || ids.some(id => !Number.isInteger(Number(id)) || Number(id) <= 0))) {
+      throw new HttpException('College assignments must be positive IDs', HttpStatus.BAD_REQUEST);
+    }
+    if (user.role !== UserRole.SUPERADMIN && (!user.collegeId ||
+      (body.collegeId && Number(body.collegeId) !== user.collegeId) ||
+      (Array.isArray(ids) && ids.some(id => Number(id) !== user.collegeId)))) {
+      throw new HttpException('Courses may only be created for your assigned college', HttpStatus.FORBIDDEN);
+    }
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

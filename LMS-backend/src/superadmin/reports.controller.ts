@@ -53,7 +53,7 @@ export class ReportsController {
     // Top courses by enrollment
     const topCourses = await this.courseRepo
       .createQueryBuilder('course')
-      .leftJoin('course.enrollments', 'enrollment')
+      .leftJoin(Enrollment, 'enrollment', 'enrollment.courseId = course.id')
       .select(['course.id', 'course.title', 'course.category'])
       .addSelect('CAST(COUNT(enrollment.id) AS INTEGER)', 'enrollmentCount')
       .groupBy('course.id')
@@ -92,11 +92,11 @@ export class ReportsController {
     // This could be more complex, but for now let's get enrollment counts per course
     const coursePerformance = await this.courseRepo
       .createQueryBuilder('course')
-      .leftJoin('course.enrollments', 'enrollment')
+      .leftJoin(Enrollment, 'enrollment', 'enrollment.courseId = course.id')
       .select('course.title', 'title')
       .addSelect('COUNT(enrollment.id)', 'enrollmentCount')
       .groupBy('course.id')
-      .orderBy('enrollmentCount', 'DESC')
+      .orderBy('"enrollmentCount"', 'DESC')
       .take(10)
       .getRawMany();
 

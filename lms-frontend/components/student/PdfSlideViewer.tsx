@@ -12,6 +12,8 @@ interface PdfSlideViewerProps {
     onNextModuleClick?: () => void
     isPurePresentationMode?: boolean
     onExitPresentation?: () => void
+    initialPage?: number
+    onPageChange?: (page: number) => void
 }
 
 declare global {
@@ -29,9 +31,13 @@ export default function PdfSlideViewer({
     onNextModuleClick,
     isPurePresentationMode = false,
     onExitPresentation,
+    initialPage = 1,
+    onPageChange,
 }: PdfSlideViewerProps) {
     const containerRef = useRef<HTMLDivElement>(null)
     const canvasRef = useRef<HTMLCanvasElement>(null)
+    const renderTaskRef = useRef<any>(null)
+    const renderSequence = useRef(0)
 
     const [pdfDoc, setPdfDoc] = useState<any>(null)
     const [numPages, setNumPages] = useState<number>(0)
@@ -40,7 +46,7 @@ export default function PdfSlideViewer({
     const [rendering, setRendering] = useState<boolean>(false)
     const [error, setError] = useState<string>('')
     const [isFullscreen, setIsFullscreen] = useState<boolean>(false)
-    const [autoCompleted, setAutoCompleted] = useState<boolean>(false)
+
 
     // Load PDF.js from CDN script if not present
     useEffect(() => {
@@ -85,7 +91,7 @@ export default function PdfSlideViewer({
 
                 setPdfDoc(doc)
                 setNumPages(doc.numPages)
-                setCurrentSlide(1)
+                setCurrentSlide(Math.max(1, Math.min(doc.numPages, Math.floor(initialPage))))
                 setLoading(false)
             } catch (err: any) {
                 console.error('Failed to load PDF presentation:', err)
@@ -103,13 +109,18 @@ export default function PdfSlideViewer({
         }
     }, [pdfUrl])
 
+    useEffect(() => { if (!loading && pdfDoc) onPageChange?.(currentSlide) }, [currentSlide, loading, pdfDoc])
+
     // Render single slide onto HTML5 canvas
     const renderSlide = useCallback(async () => {
         if (!pdfDoc || !canvasRef.current || !containerRef.current) return
 
+        const sequence = ++renderSequence.current
+        renderTaskRef.current?.cancel()
         setRendering(true)
         try {
             const page = await pdfDoc.getPage(currentSlide)
+            if (sequence !== renderSequence.current) return
             const canvas = canvasRef.current
             const ctx = canvas.getContext('2d')
             if (!ctx) return
@@ -124,7 +135,7 @@ export default function PdfSlideViewer({
             const targetScale = Math.min(widthScale, heightScale, 2.5) // limit max zoom to 2.5x
 
             const pixelRatio = window.devicePixelRatio || 1
-            const viewport = page.getViewport({ scale: Math.max(targetScale, 0.8) })
+            const viewport = page.getViewport({ scale: Math.max(targetScale, 0.1) })
 
             canvas.width = Math.floor(viewport.width * pixelRatio)
             canvas.height = Math.floor(viewport.height * pixelRatio)
@@ -139,11 +150,12 @@ export default function PdfSlideViewer({
                 viewport: viewport,
             }
 
-            await page.render(renderContext).promise
+            renderTaskRef.current = page.render(renderContext)
+            await renderTaskRef.current.promise
         } catch (err) {
             console.error('Error rendering slide page:', err)
         } finally {
-            setRendering(false)
+            if (sequence === renderSequence.current) setRendering(false)
         }
     }, [pdfDoc, currentSlide])
 
@@ -154,16 +166,6 @@ export default function PdfSlideViewer({
         window.addEventListener('resize', handleResize)
         return () => window.removeEventListener('resize', handleResize)
     }, [renderSlide])
-
-    // Save progress automatically when student reaches final slide
-    useEffect(() => {
-        if (numPages > 0 && currentSlide === numPages && !autoCompleted && !isCompleted) {
-            setAutoCompleted(true)
-            if (onModuleComplete) {
-                onModuleComplete()
-            }
-        }
-    }, [currentSlide, numPages, autoCompleted, isCompleted, onModuleComplete])
 
     // Navigation functions
     const goToPrevSlide = useCallback(() => {
@@ -218,7 +220,9 @@ export default function PdfSlideViewer({
     // Keyboard Arrow Keys Navigation & Esc Exit
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'ArrowRight' || e.key === 'Space' || e.key === 'PageDown') {
+            const target = e.target as HTMLElement | null
+            if (target?.closest('input, textarea, select, button, a, [contenteditable="true"]')) return
+            if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
                 e.preventDefault()
                 goToNextSlide()
             } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
@@ -273,7 +277,7 @@ export default function PdfSlideViewer({
             className={`group relative flex flex-col items-center justify-between overflow-hidden bg-slate-950 text-white transition-all select-none ${
                 isPurePresentationMode || isFullscreen
                     ? 'fixed inset-0 z-[9999] h-screen w-screen rounded-none'
-                    : 'h-[720px] w-full rounded-3xl border border-indigo-500/30 shadow-2xl ring-1 ring-white/10'
+                    : 'h-[min(720px,75dvh)] min-h-[360px] w-full rounded-3xl border border-indigo-500/30 shadow-2xl ring-1 ring-white/10'
             }`}
         >
             {/* Top Presentation Header Bar */}
@@ -287,9 +291,9 @@ export default function PdfSlideViewer({
                     </h3>
                 </div>
 
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4"><button type="button" onClick={toggleFullscreen} aria-label={isFullscreen ? 'Exit fullscreen' : 'Open fullscreen'} className="rounded-lg p-2 hover:bg-white/10">{isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}</button>
                     {/* Completion Status Badge */}
-                    {(isCompleted || autoCompleted) && (
+                    {isCompleted && (
                         <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-xs font-bold animate-in fade-in duration-300">
                             <CheckCircle2 size={14} />
                             <span>Module Completed</span>
@@ -395,11 +399,11 @@ export default function PdfSlideViewer({
                     {isLastSlide ? (
                         <button
                             onClick={() => {
-                                if (onNextModuleClick) onNextModuleClick()
+                                if (!isCompleted && onModuleComplete) onModuleComplete(); else if (onNextModuleClick) onNextModuleClick()
                             }}
                             className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-black text-sm shadow-xl shadow-emerald-500/20 transition-all hover:scale-105 active:scale-95 animate-pulse"
                         >
-                            <span>{isLastModuleOfChapter ? '📂 Next Chapter' : '📄 Next Module'}</span>
+                            <span>{!isCompleted ? 'Mark complete & continue' : 'Continue'}</span>
                             <ArrowRight size={18} />
                         </button>
                     ) : (

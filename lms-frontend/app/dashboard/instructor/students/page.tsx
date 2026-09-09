@@ -1,4 +1,8 @@
 'use client'
+
+import { apiFetch } from '@/lib/apiFetch'
+
+import { API_URL } from '@/lib/api'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
@@ -20,7 +24,7 @@ export default function InstructorStudentsPage() {
         const u = JSON.parse(stored)
         if (u.role !== 'INSTRUCTOR') { router.push(`/dashboard/${u.role.toLowerCase()}`); return }
 
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/instructor/students`, {
+        apiFetch(`${API_URL}/instructor/students`, {
             credentials: 'include',
             headers: getAuthHeaders(),
         })
@@ -33,7 +37,7 @@ export default function InstructorStudentsPage() {
     const handleViewStudent = async (studentId: number) => {
         setLoadingDetails(true)
         try {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/instructor/students/${studentId}`, {
+            const response = await apiFetch(`${API_URL}/instructor/students/${studentId}`, {
                 credentials: 'include',
                 headers: getAuthHeaders(),
             })
@@ -60,8 +64,8 @@ export default function InstructorStudentsPage() {
             <main className="page-content">
                 {/* Header */}
                 <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-white mb-1">Student Management</h1>
-                    <p className="text-gray-400">View all students in your college/university</p>
+                    <h1 className="text-3xl font-bold role-text-primary mb-1">Student Management</h1>
+                    <p className="role-text-muted">View all students in your college/university</p>
                 </div>
 
                 {/* Search */}
@@ -76,7 +80,7 @@ export default function InstructorStudentsPage() {
                 {/* Table */}
                 <div className="glass-card p-6">
                     <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-lg font-semibold text-white">
+                        <h3 className="text-lg font-semibold role-text-primary">
                             {filtered.length} student{filtered.length !== 1 ? 's' : ''}
                         </h3>
                         <button 
@@ -92,11 +96,11 @@ export default function InstructorStudentsPage() {
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
-                            <table className="w-full">
+                            <table className="role-data-table w-full">
                                 <thead>
                                     <tr className="border-b" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
                                         {['Student', 'Email', 'College', 'Status', 'Joined', 'Last Login'].map(h => (
-                                            <th key={h} className="text-left text-xs font-semibold text-gray-400 pb-3 pr-4">{h}</th>
+                                            <th key={h} className="text-left text-xs font-semibold role-text-muted pb-3 pr-4">{h}</th>
                                         ))}
                                     </tr>
                                 </thead>
@@ -112,11 +116,11 @@ export default function InstructorStudentsPage() {
                                                         style={{ background: 'linear-gradient(135deg,#a855f7,#ec4899)' }}>
                                                         {s.name?.charAt(0).toUpperCase()}
                                                     </div>
-                                                    <span className="text-white text-sm font-medium">{s.name}</span>
+                                                    <span className="role-text-primary text-sm font-medium">{s.name}</span>
                                                 </div>
                                             </td>
-                                            <td className="py-4 pr-4 text-gray-400 text-sm">{s.email}</td>
-                                            <td className="py-4 pr-4 text-gray-400 text-sm">{s.collegeName || '—'}</td>
+                                            <td className="py-4 pr-4 role-text-muted text-sm">{s.email}</td>
+                                            <td className="py-4 pr-4 role-text-muted text-sm">{s.collegeName || '—'}</td>
                                             <td className="py-4 pr-4">
                                                 <span className={`px-3 py-1 rounded-lg text-xs font-semibold ${
                                                     s.isActive !== false 
@@ -126,14 +130,14 @@ export default function InstructorStudentsPage() {
                                                     {s.isActive !== false ? '✓ Active' : '✕ Inactive'}
                                                 </span>
                                             </td>
-                                            <td className="py-4 pr-4 text-gray-400 text-sm">
+                                            <td className="py-4 pr-4 role-text-muted text-sm">
                                                 {new Date(s.createdAt).toLocaleDateString('en-US', { 
                                                     year: 'numeric', 
                                                     month: 'short', 
                                                     day: 'numeric' 
                                                 })}
                                             </td>
-                                            <td className="py-4 pr-4 text-gray-400 text-sm">
+                                            <td className="py-4 pr-4 role-text-muted text-sm">
                                                 {s.lastLoginAt 
                                                     ? new Date(s.lastLoginAt).toLocaleDateString('en-US', { 
                                                         year: 'numeric', 
@@ -150,7 +154,7 @@ export default function InstructorStudentsPage() {
                             {filtered.length === 0 && (
                                 <div className="text-center py-16">
                                     <div className="text-5xl mb-3">👨‍🎓</div>
-                                    <p className="text-gray-400">No students found</p>
+                                    <p className="role-text-muted">No students found</p>
                                 </div>
                             )}
                         </div>

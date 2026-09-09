@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { CourseContentModule } from '../common/course-content.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Course } from '../entities/course.entity';
 import { User } from '../entities/user.entity';
@@ -14,6 +15,7 @@ import { CloudinaryService } from '../common/cloudinary.service';
 
 @Module({
   imports: [
+    CourseContentModule,
     TypeOrmModule.forFeature([Course, User, CourseModule, Chapter, Lesson, Resource, College]),
   ],
 

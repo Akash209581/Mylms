@@ -29,7 +29,7 @@ export class User {
   @Column({ unique: true, length: 255, nullable: true })
   email: string;
 
-  @Column({ name: 'password_hash', nullable: true })
+  @Column({ name: 'password_hash', nullable: true, select: false })
   passwordHash: string;
 
   @Column({ type: 'enum', enum: UserRole, default: UserRole.STUDENT })

@@ -1,7 +1,7 @@
 import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
-import { User } from '../entities/user.entity';
+import { User, UserRole } from '../entities/user.entity';
 import { Progress } from '../entities/progress.entity';
 import { Enrollment } from '../entities/enrollment.entity';
 import { UserBadge } from '../entities/user-badge.entity';
@@ -12,6 +12,8 @@ import { Lesson } from '../entities/lesson.entity';
 import { Badge } from '../entities/badge.entity';
 import { Contest, ContestStatus, ContestType } from '../entities/contest.entity';
 import { UpdateStudentProfileDto } from './student.dto';
+import { College } from '../entities/college.entity';
+import { CourseContentService } from '../common/course-content.service';
 
 @Injectable()
 export class StudentService {
@@ -36,7 +38,32 @@ export class StudentService {
     private chapterRepository: Repository<Chapter>,
     @InjectRepository(Contest)
     private contestRepo: Repository<Contest>,
+    @InjectRepository(College)
+    private collegeRepository: Repository<College>,
+    private courseContentService: CourseContentService,
   ) {}
+
+  private async requireLearningAccess(userId: number, courseId: number) {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user?.isActive || user.role !== UserRole.STUDENT) {
+      throw new ForbiddenException('An active student account is required');
+    }
+
+    // Resolve legacy accounts without trusting the college of an old enrollment.
+    const college = user.collegeId
+      ? await this.collegeRepository.findOne({ where: { id: user.collegeId } })
+      : user.collegeName
+        ? await this.collegeRepository.findOne({ where: { name: user.collegeName } })
+        : null;
+    if (!college?.active) throw new ForbiddenException('An active college assignment is required');
+
+    const course = await this.courseContentService.requireRead({
+      sub: user.id,
+      role: user.role,
+      collegeId: college.id,
+    }, courseId);
+    return { course, user };
+  }
 
   async getStats(userId: number) {
     const user = await this.userRepository.findOne({ where: { id: userId } });
@@ -49,7 +76,7 @@ export class StudentService {
       where: { studentId: userId, completed: true },
       relations: ['lesson'],
     });
-    const totalMinutes = completedProgress.reduce((sum, p) => sum + (p.lesson?.duration || 15), 0);
+    const totalMinutes = completedProgress.reduce((sum, p) => sum + (p.lesson?.duration || 0), 0);
     const totalHours = Math.round(totalMinutes / 60);
 
     // Calculate completed courses count (certificates)
@@ -58,17 +85,28 @@ export class StudentService {
       relations: ['course', 'course.modules', 'course.modules.chapters', 'course.modules.chapters.lessons'],
     });
     let certificatesCount = 0;
-    const completedIds = completedProgress.map((p) => p.lessonId);
+    const certificatesList: { id: string; courseId: number; title: string; studentName: string; completedAt: Date | null }[] = [];
+    const gradedLessons = userEnrollments.flatMap(e => e.course?.modules?.flatMap(m => m.chapters?.flatMap(c => c.lessons || []) || []) || [])
+      .filter(lesson => lesson.published && (['quiz','assessment','assignment','programming'].includes(lesson.type) || ['quiz-builder','assignment-builder','programming-builder'].includes(lesson.content?.type)));
+    const passedLessonIds = new Set<number>();
+    if (gradedLessons.some(lesson => lesson.content?.type === 'quiz-builder')) {
+      const passed = await this.lessonRepository.query(`SELECT DISTINCT r.lesson_id FROM assessment_attempt_runtime r
+        JOIN quiz_attempts a ON a.id=r.attempt_id WHERE a.student_id=$1 AND r.state='RELEASED' AND a.passed=true`, [userId]);
+      passed.forEach(row => passedLessonIds.add(row.lesson_id));
+    }
+    const completedIds = completedProgress.map((p) => p.lessonId).filter(id => !gradedLessons.some(lesson => lesson.id === id) || passedLessonIds.has(id));
     userEnrollments.forEach((e) => {
       if (e.course?.modules) {
         const lessonIds: number[] = [];
         e.course.modules.forEach((m) => {
           m.chapters?.forEach((c) => {
-            c.lessons?.forEach((l) => lessonIds.push(l.id));
+            c.lessons?.filter(l => l.published).forEach((l) => lessonIds.push(l.id));
           });
         });
         if (lessonIds.length > 0 && lessonIds.every((id) => completedIds.includes(id))) {
           certificatesCount++;
+          const dates = completedProgress.filter(p => lessonIds.includes(p.lessonId) && p.completedAt).map(p => new Date(p.completedAt).getTime());
+          certificatesList.push({ id: `EV-${userId}-${e.courseId}`, courseId: e.courseId, title: e.course.title, studentName: user?.name || 'Learner', completedAt: dates.length ? new Date(Math.max(...dates)) : null });
         }
       }
     });
@@ -81,6 +119,7 @@ export class StudentService {
       badges: badgesCount,
       totalHours: totalHours || 0,
       certificates: certificatesCount,
+      certificatesList,
       rank: 'Pro',
     };
   }
@@ -156,7 +195,7 @@ export class StudentService {
       relations: ['chapter', 'chapter.module'],
     });
 
-    if (!lesson) {
+    if (!lesson || !lesson.published) {
       throw new NotFoundException('Lesson not found');
     }
 
@@ -165,12 +204,16 @@ export class StudentService {
       throw new ForbiddenException('Lesson is not associated with a valid course');
     }
 
-    const enrollment = await this.enrollmentRepository.findOne({
-      where: { studentId: userId, courseId },
-    });
+    const { user } = await this.requireLearningAccess(userId, courseId);
 
-    if (!enrollment) {
-      throw new ForbiddenException('You are not enrolled in the course containing this lesson');
+    if (lesson.content?.type === 'quiz-builder') {
+      const [passed] = await this.lessonRepository.query(`SELECT 1 FROM quiz_attempts a
+        JOIN assessment_attempt_runtime r ON r.attempt_id=a.id
+        WHERE r.lesson_id=$1 AND a.student_id=$2 AND r.state='RELEASED' AND a.passed=true LIMIT 1`, [lessonId, userId]);
+      if (!passed) throw new ForbiddenException('Pass this assessment and receive its released result before completing the lesson');
+    } else if (['quiz','assessment','assignment','programming'].includes(lesson.type) ||
+      ['assignment-builder','programming-builder'].includes(lesson.content?.type)) {
+      throw new ForbiddenException('This graded lesson requires a released passing evaluation');
     }
 
     const existing = await this.progressRepository.findOne({
@@ -197,7 +240,6 @@ export class StudentService {
     }
 
     // Award Points
-    const user = await this.userRepository.findOne({ where: { id: userId } });
     if (user) {
       user.points = (user.points || 0) + 10;
 
@@ -283,25 +325,11 @@ export class StudentService {
   }
 
   async getLearningPath(userId: number, courseId: number) {
-    // 1. Load the course with full hierarchy (modules → chapters → lessons with content)
-    const course = await this.courseRepository.findOne({
-      where: { id: courseId },
-      relations: ['instructor'],
-    });
-
-    if (!course) {
-      throw new NotFoundException('Course not found');
-    }
-
-    // 2. Check enrollment
-    const enrollment = await this.enrollmentRepository.findOne({
-      where: { studentId: userId, courseId },
-    });
-    const isEnrolled = !!enrollment;
-
-    if (!isEnrolled) {
-      throw new ForbiddenException('You are not enrolled in this course');
-    }
+    // Recheck course availability and college distribution even for existing enrollments.
+    const { course } = await this.requireLearningAccess(userId, courseId);
+    const instructor = course.instructorId
+      ? await this.userRepository.findOne({ where: { id: course.instructorId }, select: ['name'] })
+      : null;
 
     // 3. Load modules with chapters and lessons (including rich content)
     const modules = await this.courseModuleRepository.find({
@@ -340,7 +368,7 @@ export class StudentService {
             'content',
             'chapterId',
           ],
-          where: { chapterId: In(chapterIds) },
+          where: { chapterId: In(chapterIds), published: true },
           order: { order: 'ASC' },
         });
 
@@ -373,9 +401,9 @@ export class StudentService {
         thumbnail: course.thumbnail,
         category: course.category,
         level: course.level,
-        instructor: course.instructor ? { name: course.instructor.name } : null,
+        instructor: instructor ? { name: instructor.name } : null,
       },
-      isEnrolled,
+      isEnrolled: true,
       completedLessonIds,
       modules,
     };
@@ -405,18 +433,18 @@ export class StudentService {
     for (const e of enrollments) {
       if (!e.course) continue;
 
-      const modules = e.course.modules || [];
+      const modules = [...(e.course.modules || [])].sort((a, b) => a.order - b.order || a.id - b.id);
       const chapters: Chapter[] = [];
       modules.forEach((m) => {
         if (m.chapters) {
-          chapters.push(...m.chapters);
+          chapters.push(...[...m.chapters].sort((a, b) => a.order - b.order || a.id - b.id));
         }
       });
 
       const lessons: Lesson[] = [];
       chapters.forEach((c) => {
         if (c.lessons) {
-          lessons.push(...c.lessons);
+          lessons.push(...c.lessons.filter(lesson => lesson.published).sort((a, b) => a.order - b.order || a.id - b.id));
         }
       });
 
@@ -427,7 +455,6 @@ export class StudentService {
       const progressPercent = totalLessons > 0 ? Math.round((completedLessonsCount / totalLessons) * 100) : 0;
 
       // Find the first uncompleted lesson as the continue shortcut
-      lessons.sort((a, b) => a.id - b.id);
       const nextLesson = lessons.find((l) => !completedLessonIds.includes(l.id));
 
       coursesProgress.push({
@@ -459,7 +486,7 @@ export class StudentService {
             timeLimitMinutes: settings.timeLimitMinutes || 20,
             questionsCount: settings.questionsToServe || lesson.content?.questionIds?.length || 10,
             completed: isCompleted,
-            dueDate: new Date(new Date(e.enrolledAt).getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+            dueDate: settings.dueDate || null,
           });
         }
 
@@ -473,7 +500,7 @@ export class StudentService {
             timeLimitMinutes: settings.timeLimitMinutes || 45,
             questionsCount: settings.questionsToServe || lesson.content?.questionIds?.length || 20,
             completed: isCompleted,
-            dueDate: new Date(new Date(e.enrolledAt).getTime() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+            dueDate: settings.dueDate || null,
           });
         }
       }

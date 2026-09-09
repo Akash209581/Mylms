@@ -1,4 +1,8 @@
 'use client'
+
+import { apiFetch } from '@/lib/apiFetch'
+
+import { API_URL } from '@/lib/api'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
@@ -76,10 +80,10 @@ export default function AdminApprovalsPage() {
                 : '/admin/courses/rejected'
 
             console.log('Endpoint:', endpoint)
-            const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}${endpoint}`
+            const apiUrl = `${API_URL}${endpoint}`
             console.log('Full URL:', apiUrl)
 
-            const res = await fetch(apiUrl, {
+            const res = await apiFetch(apiUrl, {
                 credentials: 'include',
                 headers: getAuthHeaders(),
             })
@@ -107,8 +111,8 @@ export default function AdminApprovalsPage() {
     const handleApproveCourse = async (course: Course) => {
         setActionLoading(course.id)
         try {
-            const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/admin/courses/${course.id}/approve`,
+            const res = await apiFetch(
+                `${API_URL}/admin/courses/${course.id}/approve`,
                 {
                     method: 'PUT',
                     credentials: 'include',
@@ -141,8 +145,8 @@ export default function AdminApprovalsPage() {
 
         setActionLoading(selectedCourse.id)
         try {
-            const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/admin/courses/${selectedCourse.id}/reject`,
+            const res = await apiFetch(
+                `${API_URL}/admin/courses/${selectedCourse.id}/reject`,
                 {
                     method: 'PUT',
                     credentials: 'include',

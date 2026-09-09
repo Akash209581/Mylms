@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ForbiddenException } from '@nestjs/common';
 import { UserRole } from '../entities/user.entity';
 
 export interface CollegeFilter {
@@ -23,7 +23,7 @@ export class CollegeFilterService {
 
     // All other roles must have a collegeId
     if (!userCollegeId) {
-      throw new Error('User must belong to a college');
+      throw new ForbiddenException('User must belong to a college');
     }
 
     return { collegeId: userCollegeId };
@@ -56,7 +56,7 @@ export class CollegeFilterService {
     action: string = 'access',
   ): void {
     if (!this.canAccessCollege(userRole, userCollegeId, targetCollegeId)) {
-      throw new Error(`You do not have permission to ${action} resources from this college`);
+      throw new ForbiddenException(`You do not have permission to ${action} resources from this college`);
     }
   }
 }

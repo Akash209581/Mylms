@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards, Request, Param } from '@nestjs/common';
+import { Controller, Get, UseGuards, Request, Param, ForbiddenException } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/jwt.guard';
 import { RolesGuard } from '../common/roles.guard';
 import { Roles } from '../common/roles.decorator';
@@ -143,6 +143,7 @@ export class InstructorController {
   async getStudents(@Request() req: any) {
     const collegeId = req.user?.collegeId;
     const isSuperAdmin = req.user?.role === UserRole.SUPERADMIN;
+    if (!isSuperAdmin && !collegeId) throw new ForbiddenException('A college assignment is required');
 
     // INSTRUCTOR can only see STUDENTS from their college
     // SUPERADMIN can see all students
@@ -160,11 +161,13 @@ export class InstructorController {
   @Get('students/:id')
   async getStudentById(@Param('id') id: number, @Request() req: any) {
     const collegeId = req.user?.collegeId;
+    const isSuperAdmin = req.user?.role === UserRole.SUPERADMIN;
+    if (!isSuperAdmin && !collegeId) throw new ForbiddenException('A college assignment is required');
 
     const user = await this.userRepo.findOne({
       where: {
         id,
-        collegeId,
+        ...(isSuperAdmin ? {} : { collegeId }),
         role: UserRole.STUDENT,
       },
       select: ['id', 'name', 'email', 'role', 'collegeId', 'collegeName', 'isActive', 'lastLoginAt', 'createdAt', 'updatedAt'],

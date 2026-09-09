@@ -1,4 +1,6 @@
 'use client'
+
+import { apiFetch } from '@/lib/apiFetch'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
@@ -36,7 +38,7 @@ export default function SuperAdminDashboard() {
     ]
 
     const handleRoleChange = async (userId: number, newRole: string) => {
-        await fetch(`${API_URL}/superadmin/users/${userId}/role`, {
+        await apiFetch(`${API_URL}/superadmin/users/${userId}/role`, {
             method: 'PUT',
             headers: getAuthHeaders(),
             credentials: 'include',
@@ -50,16 +52,11 @@ export default function SuperAdminDashboard() {
             <Navbar title="SuperAdmin Panel" />
             <main className="page-content">
                 {/* Hero */}
-                <div className="hero-section hero-dark mb-8 superadmin-hero">
+                <div className="role-page-header">
                     <div className="relative z-10">
-                        <p className="text-white/60 text-sm mb-1">Super Admin Control Center 🔑</p>
-                        <h1 className="text-3xl font-bold text-white mb-2">Welcome, {user?.name}</h1>
-                        <p className="text-white/70 mb-4">Full platform access — manage everything</p>
-                        <div className="flex gap-3">
-                            <span className="px-3 py-1.5 rounded-lg text-xs font-semibold superadmin-badge">
-                                🔑 SUPERADMIN
-                            </span>
-                        </div>
+                        <p className="role-eyebrow">Platform administration</p>
+                        <h1>Welcome, {user?.name}</h1>
+                        <p className="text-sm md:text-base">Oversee colleges, users, courses, and platform activity.</p>
                     </div>
                 </div>
 
@@ -67,19 +64,16 @@ export default function SuperAdminDashboard() {
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-4 mb-8">
                     {statItems.map((s, i) => (
                         s.link ? (
-                            <div key={i} className="stat-card cursor-pointer hover:scale-105 transition-transform"
-                                onClick={() => router.push(s.link)}>
-                                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl mb-3"
-                                    style={{ background: s.gradient }}>{s.icon}</div>
-                                <p className="text-2xl font-bold text-white mb-0.5">{loading ? '—' : s.value}</p>
-                                <p className="text-gray-400 text-xs">{s.label}</p>
-                            </div>
+                            <a key={i} className="stat-card role-stat-link" href={s.link}>
+                                <div className="role-stat-icon w-10 h-10 flex items-center justify-center text-xl mb-3" aria-hidden="true">{s.icon}</div>
+                                <p className="text-2xl font-bold role-text-primary mb-0.5">{loading ? '—' : s.value}</p>
+                                <p className="role-text-muted text-xs">{s.label}</p>
+                            </a>
                         ) : (
                             <div key={i} className="stat-card">
-                                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl mb-3"
-                                    style={{ background: s.gradient }}>{s.icon}</div>
-                                <p className="text-2xl font-bold text-white mb-0.5">{loading ? '—' : s.value}</p>
-                                <p className="text-gray-400 text-xs">{s.label}</p>
+                                <div className="role-stat-icon w-10 h-10 flex items-center justify-center text-xl mb-3" aria-hidden="true">{s.icon}</div>
+                                <p className="text-2xl font-bold role-text-primary mb-0.5">{loading ? '—' : s.value}</p>
+                                <p className="role-text-muted text-xs">{s.label}</p>
                             </div>
                         )
                     ))}
@@ -88,10 +82,8 @@ export default function SuperAdminDashboard() {
                 {/* Recent Users */}
                 <div className="glass-card p-6">
                     <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-lg font-semibold text-white">Recent Users</h2>
-                        <a href="/dashboard/superadmin/users">
-                            <button className="btn-secondary px-4 py-2 text-sm">View All →</button>
-                        </a>
+                        <h2 className="text-lg font-semibold role-text-primary">Recent Users</h2>
+                        <a href="/dashboard/superadmin/users" className="role-table-action">View all users →</a>
                     </div>
                     {loading ? (
                         <div className="flex justify-center py-10">
@@ -100,15 +92,15 @@ export default function SuperAdminDashboard() {
                     ) : !stats?.recentUsers || stats.recentUsers.length === 0 ? (
                         <div className="text-center py-16">
                             <div className="text-5xl mb-3">👥</div>
-                            <p className="text-gray-400">No users yet.</p>
+                            <p className="role-text-muted">No users yet.</p>
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
-                            <table className="w-full">
+                            <table className="role-data-table w-full">
                                 <thead>
                                     <tr className="border-b" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
                                         {['User', 'Email', 'Role', 'Joined', 'Actions'].map(h => (
-                                            <th key={h} className="text-left text-xs font-semibold text-gray-400 pb-3 pr-4">{h}</th>
+                                            <th key={h} className="text-left text-xs font-semibold role-text-muted pb-3 pr-4">{h}</th>
                                         ))}
                                     </tr>
                                 </thead>
@@ -122,31 +114,25 @@ export default function SuperAdminDashboard() {
                                                         style={{ background: 'linear-gradient(135deg,#6366f1,#a855f7)' }}>
                                                         {u.name?.charAt(0).toUpperCase()}
                                                     </div>
-                                                    <span className="text-white text-sm font-medium">{u.name}</span>
+                                                    <span className="role-text-primary text-sm font-medium">{u.name}</span>
                                                 </div>
                                             </td>
-                                            <td className="py-4 pr-4 text-gray-400 text-sm">{u.email}</td>
+                                            <td className="py-4 pr-4 role-text-muted text-sm">{u.email}</td>
                                             <td className="py-4 pr-4">
                                                 <select defaultValue={u.role}
                                                     onChange={e => handleRoleChange(u.id, e.target.value)}
                                                     aria-label="Change user role"
-                                                    className="text-xs font-semibold rounded-lg px-2 py-1.5 outline-none cursor-pointer"
-                                                    style={{ background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)', color: '#ffffff' }}>
+                                                    className="role-table-select">
                                                     {['STUDENT', 'INSTRUCTOR', 'ADMIN', 'SUPERADMIN'].map(r => (
-                                                        <option key={r} value={r} style={{ background: '#1a1a2e' }}>{r}</option>
+                                                        <option key={r} value={r}>{r}</option>
                                                     ))}
                                                 </select>
                                             </td>
-                                            <td className="py-4 pr-4 text-gray-400 text-sm">
+                                            <td className="py-4 pr-4 role-text-muted text-sm">
                                                 {new Date(u.createdAt).toISOString().slice(0, 10)}
                                             </td>
                                             <td className="py-4">
-                                                <a href="/dashboard/superadmin/users">
-                                                    <button className="px-3 py-1 rounded-lg text-xs font-medium"
-                                                        style={{ background: 'rgba(99,102,241,0.15)', color: '#ffffff', border: '1px solid rgba(99,102,241,0.3)' }}>
-                                                        Manage
-                                                    </button>
-                                                </a>
+                                                <a href="/dashboard/superadmin/users" className="role-table-action">Manage</a>
                                             </td>
                                         </tr>
                                     ))}

@@ -1,22 +1,16 @@
 'use client'
 import Link from 'next/link'
+import { useRef } from 'react'
+import { Menu, X } from 'lucide-react'
+import StudentReferenceShell from './StudentReferenceShell'
+import { studentNavigation } from './studentNavigation'
 import { usePathname, useRouter } from 'next/navigation'
 import { API_URL } from '@/lib/api'
 import { getAuthHeaders } from '@/lib/authHeaders'
 
 type NavItem = { label: string; href: string; icon: React.ReactNode; badge?: string | number }
 
-const studentNav: NavItem[] = [
-    { label: 'Dashboard', href: '/dashboard/student', icon: <GridIcon /> },
-    { label: 'My Courses', href: '/dashboard/student/courses', icon: <GraduationCapIcon /> },
-    { label: 'Assignments', href: '/dashboard/student/progress', icon: <AssignmentIcon /> },
-    { label: 'Certificates', href: '/dashboard/student/profile', icon: <TrophyIcon /> },
-    { label: 'Calendar', href: '/dashboard/student/streak', icon: <CalendarIcon /> },
-    { label: 'Messages', href: '/dashboard/student/forums', icon: <MessageIcon />, badge: 3 },
-    { label: 'Resources', href: '/dashboard/student/courses', icon: <FolderIcon /> },
-    { label: 'Discussion', href: '/dashboard/student/forums', icon: <ForumIcon /> },
-    { label: 'Settings', href: '/dashboard/student/profile', icon: <SettingsIcon /> },
-]
+const studentNav: NavItem[] = studentNavigation.map(({ label, href, icon: Icon }) => ({ label, href, icon: <Icon /> }))
 const instructorNav: NavItem[] = [
     { label: 'Dashboard', href: '/dashboard/instructor', icon: <GridIcon /> },
     { label: 'My Courses', href: '/dashboard/instructor/courses', icon: <BookIcon /> },
@@ -24,6 +18,7 @@ const instructorNav: NavItem[] = [
     { label: 'Question Bank', href: '/dashboard/instructor/question-bank', icon: <QuizIcon /> },
     { label: 'Add Question', href: '/dashboard/instructor/question-bank/create', icon: <PlusIcon /> },
     { label: 'My Students', href: '/dashboard/instructor/students', icon: <UsersIcon /> },
+    { label: 'Assessment Grading', href: '/dashboard/instructor/grading', icon: <CheckIcon /> },
 ]
 const adminNav: NavItem[] = [
     { label: 'Dashboard', href: '/dashboard/admin', icon: <GridIcon /> },
@@ -33,6 +28,7 @@ const adminNav: NavItem[] = [
     { label: 'Question Bank', href: '/dashboard/admin/question-bank', icon: <QuizIcon /> },
     { label: 'Add Question', href: '/dashboard/admin/question-bank/create', icon: <PlusIcon /> },
     { label: 'Approvals', href: '/dashboard/admin/approvals', icon: <CheckIcon /> },
+    { label: 'Assessment Grading', href: '/dashboard/admin/grading', icon: <CheckIcon /> },
     { label: 'Reports', href: '/dashboard/admin/reports', icon: <ChartIcon /> },
 ]
 const superadminNav: NavItem[] = [
@@ -46,12 +42,15 @@ const superadminNav: NavItem[] = [
     { label: 'Colleges', href: '/dashboard/superadmin/colleges', icon: <CollegeIcon /> },
     { label: 'Contests', href: '/dashboard/superadmin/contests', icon: <TrophyIcon /> },
     { label: 'Daily Streak', href: '/dashboard/superadmin/daily-streak', icon: <FireIcon /> },
+    { label: 'Assessment Grading', href: '/dashboard/superadmin/grading', icon: <CheckIcon /> },
     { label: 'Reports', href: '/dashboard/superadmin/reports', icon: <ChartIcon /> },
     { label: 'Audit Log', href: '/dashboard/superadmin/audit-log', icon: <AuditIcon /> },
     { label: 'Settings', href: '/dashboard/superadmin/settings', icon: <SettingsIcon /> },
 ]
 
 export default function Sidebar({ role }: { role?: string }) {
+    const drawer = useRef<HTMLDialogElement>(null)
+    const menuButton = useRef<HTMLButtonElement>(null)
     const pathname = usePathname()
     const router = useRouter()
     const navItems =
@@ -75,8 +74,8 @@ export default function Sidebar({ role }: { role?: string }) {
         }
     }
 
-    return (
-        <aside className="sidebar">
+    if (role === 'STUDENT') return <StudentReferenceShell />
+    const content = (<>
             {/* Logo */}
             <div className="p-5 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
                 <Link href="/" className="flex items-center gap-3">
@@ -103,14 +102,16 @@ export default function Sidebar({ role }: { role?: string }) {
                             key={item.label}
                             href={item.href}
                             prefetch={false}
+                            aria-current={isActive ? 'page' : undefined}
+                            onClick={() => drawer.current?.close()}
                             className={`flex items-center justify-between px-4 py-3 rounded-2xl text-sm font-semibold transition-all group ${
                                 isActive 
-                                    ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/25' 
-                                    : 'text-gray-500 hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]'
+                                    ? 'bg-[var(--accent-soft)] text-[var(--accent-text)]' 
+                                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]'
                             }`}
                         >
                             <div className="flex items-center gap-3">
-                                <span className={`w-5 h-5 transition-transform group-hover:scale-110 ${isActive ? 'text-white' : 'text-gray-400 group-hover:text-indigo-500'}`}>
+                                <span className={`w-5 h-5 transition-transform group-hover:scale-110 ${isActive ? 'text-[var(--accent-text)]' : 'text-[var(--text-muted)] group-hover:text-[var(--accent-text)]'}`}>
                                     {item.icon}
                                 </span>
                                 <span>{item.label}</span>
@@ -135,8 +136,14 @@ export default function Sidebar({ role }: { role?: string }) {
                     Sign Out
                 </button>
             </div>
-        </aside>
-    )
+        </>)
+    return <div data-role-shell>
+      <button ref={menuButton} className="portal-role-menu" aria-label="Open navigation" onClick={() => drawer.current?.showModal()}><Menu /></button>
+      <aside className="sidebar portal-role-sidebar">{content}</aside>
+      <dialog className="portal-role-drawer" ref={drawer} aria-label="Workspace navigation" onClose={() => menuButton.current?.focus()}>
+        <button className="portal-role-close" aria-label="Close navigation" onClick={() => drawer.current?.close()}><X /></button>{content}
+      </dialog>
+    </div>
 }
 
 function CheckIcon() {
