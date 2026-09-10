@@ -1,5 +1,4 @@
 import { Injectable, Logger } from '@nestjs/common';
-import axios from 'axios';
 
 export interface RunResult {
   stdout: string;
@@ -24,15 +23,23 @@ export class ExamRunnerService {
   /** Execute code against an input and return raw output */
   async runCode(code: string, language: string, stdin: string): Promise<RunResult> {
     try {
-      const res = await axios.post(`${this.compilerUrl}/run`, { code, language, stdin }, { timeout: 40000 });
-      const data = res.data;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 40000);
+      const res = await fetch(`${this.compilerUrl}/run`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, language, stdin }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      const data = await res.json() as any;
       return {
         stdout: data.stdout || '',
         stderr: data.stderr || '',
         exitCode: data.exit_code ?? 0,
         error: data.error,
       };
-    } catch (err) {
+    } catch (err: any) {
       this.logger.warn(`Compiler service unavailable: ${err.message}`);
       return { stdout: '', stderr: '', exitCode: 1, error: 'Execution service temporarily unavailable' };
     }
