@@ -52,6 +52,15 @@ export class ExamStudentController {
     return this.service.runCode(req.user, attemptId, dto);
   }
 
+  @Get('attempts/:attemptId/code/jobs/:jobId')
+  getJobStatus(
+    @Request() req,
+    @Param('attemptId', ParseIntPipe) attemptId: number,
+    @Param('jobId') jobId: string,
+  ) {
+    return this.service.getJobStatus(req.user, attemptId, jobId);
+  }
+
   @Post('attempts/:attemptId/submit')
   submit(@Request() req, @Param('attemptId', ParseIntPipe) attemptId: number) {
     return this.service.submitAttempt(req.user, attemptId);

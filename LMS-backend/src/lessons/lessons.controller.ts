@@ -44,7 +44,7 @@ export class LessonsController {
   ) {}
 
   @Post()
-  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN)
+  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.CONTENT_CREATOR)
   async create(@Body() dto: CreateLessonDto, @Req() req: any) {
     const chapter = await this.chapterRepository.findOne({
       where: { id: dto.chapterId },
@@ -93,7 +93,7 @@ export class LessonsController {
   }
 
   @Put(':id')
-  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN)
+  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.CONTENT_CREATOR)
   async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateLessonDto, @Req() req: any) {
     const lesson = await this.lessonRepository.findOne({ where: { id } });
     if (!lesson) throw new HttpException('Topic not found', HttpStatus.NOT_FOUND);
@@ -114,7 +114,7 @@ export class LessonsController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN)
+  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.CONTENT_CREATOR)
   async delete(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
     const lesson = await this.lessonRepository.findOne({ where: { id } });
     if (!lesson) throw new HttpException('Topic not found', HttpStatus.NOT_FOUND);
@@ -135,7 +135,7 @@ export class LessonsController {
   }
 
   @Post('reorder')
-  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN)
+  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.CONTENT_CREATOR)
   async reorder(@Body() dto: ReorderLessonsDto, @Req() req: any) {
     const lessons = await this.lessonRepository.find({
       where: { id: In(dto.lessonIds) },
@@ -151,7 +151,7 @@ export class LessonsController {
   }
 
   @Put(':id/content')
-  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN)
+  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.CONTENT_CREATOR)
   async updateContent(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateContentDto, @Req() req: any) {
     const lesson = await this.lessonRepository.findOne({ where: { id } });
     if (!lesson) throw new HttpException('Topic not found', HttpStatus.NOT_FOUND);

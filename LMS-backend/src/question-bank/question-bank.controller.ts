@@ -14,6 +14,7 @@ import {
   Res,
   Request,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -275,7 +276,7 @@ export class QuestionBankController {
 
     // Validate user has collegeId (except SUPERADMIN can import for any org)
     if (userRole !== UserRole.SUPERADMIN && !userCollegeId) {
-      throw new Error('User must belong to an organization to import questions');
+      throw new BadRequestException('User must belong to an organization to import questions');
     }
 
     // For now, use user's collegeId. Later, SUPERADMIN can specify target org
@@ -375,7 +376,7 @@ export class QuestionBankController {
 
     // Validate user has collegeId
     if (userRole !== UserRole.SUPERADMIN && !userCollegeId) {
-      throw new Error('User must belong to an organization to create questions');
+      throw new BadRequestException('User must belong to an organization to create questions');
     }
 
     // Set collegeId: SUPERADMIN can specify, others use their own org or fallback to 1

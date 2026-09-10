@@ -10,6 +10,7 @@ import dynamic from 'next/dynamic'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
 import { getAuthHeaders } from '@/lib/authHeaders'
+import { getRoleBasePath } from '@/lib/roleUtils'
 
 // Dynamically import the cell-based notebook editor to avoid SSR issues
 type LessonEditorProps = {
@@ -78,7 +79,7 @@ export default function EditLessonPage() {
     if (!stored) { router.push('/login'); return }
 
     const u = JSON.parse(stored)
-    const allowedRoles = ['INSTRUCTOR', 'ADMIN', 'SUPERADMIN']
+    const allowedRoles = ['INSTRUCTOR', 'ADMIN', 'SUPERADMIN', 'CONTENT_CREATOR']
     if (!allowedRoles.includes(u.role)) {
       router.push(`/dashboard/${u.role.toLowerCase()}`)
       return
@@ -93,7 +94,7 @@ export default function EditLessonPage() {
 
   const getDashboardPath = () => {
     if (!user) return '/dashboard/instructor'
-    return `/dashboard/${user.role.toLowerCase()}`
+    return getRoleBasePath(user.role)
   }
 
   const fetchLessonData = async () => {

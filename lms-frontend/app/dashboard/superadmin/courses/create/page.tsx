@@ -10,6 +10,7 @@ import MarkdownToolbar from '@/components/editor/MarkdownToolbar'
 import { API_URL, api } from '@/lib/api'
 import axios from 'axios'
 import { UploadCloud, CheckCircle2, Image as ImageIcon, Sparkles, BookOpen, Layers, Trash2, Plus, ArrowRight, Eye } from 'lucide-react'
+import { getRoleBasePath } from '@/lib/roleUtils'
 
 interface College {
     id: number
@@ -470,8 +471,18 @@ export default function GlobalCreateCoursePage() {
                 return
             }
 
+            const data = await res.json()
+            const courseId = data.id ?? data.courseId
+
             setSuccess(true)
-            setTimeout(() => router.push(`/dashboard/${userRole.toLowerCase()}/courses`), 1500)
+            const targetBase = getRoleBasePath(userRole)
+            setTimeout(() => {
+                if (courseId) {
+                    router.push(`${targetBase}/courses/${courseId}/builder`)
+                } else {
+                    router.push(`${targetBase}/courses`)
+                }
+            }, 1200)
         } catch (e: any) {
             setError(e.message || 'Network error')
         } finally {
@@ -493,8 +504,14 @@ export default function GlobalCreateCoursePage() {
                             ← Back
                         </button>
                         <div>
-                            <h1 className="text-2xl font-bold text-white">Create PDF Course</h1>
-                            <p className="text-gray-400 text-sm">Upload multiple PDFs organized in structured Modules & Chapters</p>
+                            <h1 className="text-2xl font-bold text-white">
+                                {courseType === 'standard' ? 'Create Standard Course' : 'Create Multi-PDF Course'}
+                            </h1>
+                            <p className="text-gray-400 text-sm">
+                                {courseType === 'standard'
+                                    ? 'Fill in course details to begin building page-wise notebook lessons'
+                                    : 'Upload multiple PDFs organized in structured Modules & Chapters'}
+                            </p>
                         </div>
                     </div>
 
@@ -528,8 +545,14 @@ export default function GlobalCreateCoursePage() {
                         <div className="w-20 h-20 bg-emerald-500/20 text-emerald-400 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-4 border border-emerald-500/30 shadow-lg shadow-emerald-500/20 animate-bounce">
                             ✅
                         </div>
-                        <h2 className="text-white font-black text-2xl mb-2">PDF Course Created Successfully!</h2>
-                        <p className="text-gray-400 text-sm">Redirecting to your course collection...</p>
+                        <h2 className="text-white font-black text-2xl mb-2">
+                            {courseType === 'standard' ? 'Standard Course Created Successfully!' : 'PDF Course Created Successfully!'}
+                        </h2>
+                        <p className="text-gray-400 text-sm">
+                            {courseType === 'standard'
+                                ? 'Opening Course Builder to create modules & page-wise lessons...'
+                                : 'Redirecting to your course collection...'}
+                        </p>
                     </div>
                 ) : (
                     <div className="glass-card p-8 max-w-5xl mx-auto shadow-2xl space-y-8">

@@ -13,6 +13,8 @@ import { Question, QuestionType } from '../entities/question.entity';
 import { UserRole } from '../entities/user.entity';
 import { SaveMcqAnswersDto, RunCodeDto } from './exam.dto';
 import { ExamRunnerService } from './exam-runner.service';
+import { CompilerQueueService } from '../compiler/compiler-queue.service';
+import { CodeJobPayload, ExecutionStatus } from '../compiler/compiler.constants';
 
 interface RequestUser { sub: number; role: UserRole; collegeId?: number; }
 
@@ -59,6 +61,7 @@ export class ExamStudentService {
     @InjectRepository(Question) private questionRepo: Repository<Question>,
     private readonly db: DataSource,
     private readonly runner: ExamRunnerService,
+    private readonly queueService: CompilerQueueService,
   ) {}
 
   // ─── My Exams ─────────────────────────────────────────────────────────────
@@ -165,7 +168,7 @@ export class ExamStudentService {
     return { saved: true, serverTime: new Date().toISOString() };
   }
 
-  // ─── Run / Submit Coding ──────────────────────────────────────────────────
+  // ─── Run / Submit Coding (Non-blocking FIFO Queue via BullMQ) ─────────────
 
   async runCode(user: RequestUser, attemptId: number, dto: RunCodeDto) {
     const attempt = await this.getStudentAttempt(user, attemptId);
@@ -179,54 +182,58 @@ export class ExamStudentService {
     if (!q || !q.testCases?.length) throw new BadRequestException('No test cases configured');
 
     const allCases = q.testCases || [];
-    const publicCases = allCases.slice(0, Math.max(1, Math.floor(allCases.length / 2)));
-    const hiddenCases = allCases.slice(publicCases.length);
+    const publicCases = allCases.filter((tc: any) => tc.isPublic === true);
+    const hiddenCases = allCases.filter((tc: any) => tc.isPublic === false);
 
-    // Run against public cases (with input/output exposed)
-    const publicResult = await this.runner.runAgainstCases(dto.code, dto.language, publicCases, true);
-    let hiddenPassed = 0;
-    let totalScore = 0;
+    // If isPublic flag is not explicitly stored on objects, fallback to first-half convention
+    const hasExplicitPublicFlags = publicCases.length > 0 || hiddenCases.length > 0;
+    const defaultPublicLimit = Math.max(1, Math.floor(allCases.length / 2));
 
-    if (dto.isFinal) {
-      const hiddenResult = await this.runner.runAgainstCases(dto.code, dto.language, hiddenCases, false);
-      hiddenPassed = hiddenResult.passedCount;
-      const totalPassed = publicResult.passedCount + hiddenPassed;
-      const totalCases = allCases.length;
-      totalScore = (totalPassed / totalCases) * Number(eq.marks);
+    let casesToRun = allCases;
+    if (!dto.isFinal) {
+      // Run Code only executes public test cases
+      casesToRun = hasExplicitPublicFlags
+        ? publicCases
+        : allCases.slice(0, defaultPublicLimit);
     }
 
-    // Determine status
-    let status = SubmissionStatus.PENDING;
-    if (dto.isFinal) {
-      const totalPassed = publicResult.passedCount + hiddenPassed;
-      status = totalPassed === allCases.length
-        ? SubmissionStatus.ACCEPTED
-        : totalPassed === 0 ? SubmissionStatus.WRONG_ANSWER : SubmissionStatus.PARTIAL;
-    }
+    const jobId = `code-${attemptId}-${dto.questionId}-${Date.now()}`;
+    const payload: CodeJobPayload = {
+      jobId,
+      attemptId,
+      questionId: dto.questionId,
+      userId: user.sub,
+      language: dto.language,
+      code: dto.code,
+      executionType: dto.isFinal ? 'SUBMIT' : 'RUN',
+      isFinal: !!dto.isFinal,
+      totalMarks: Number(eq.marks) || 10,
+      testCases: casesToRun.map((tc, idx) => ({
+        input: tc.input,
+        output: tc.output,
+        isPublic: dto.isFinal
+          ? (hasExplicitPublicFlags ? (tc as any).isPublic !== false : idx < defaultPublicLimit)
+          : true,
+        explanation: tc.explanation,
+      })),
+    };
 
-    // Save submission (upsert final, always insert run)
-    if (dto.isFinal) {
-      await this.subRepo.delete({ attemptId, questionId: dto.questionId, isFinal: true }).catch(() => {});
-    }
-    const sub = this.subRepo.create({
-      attemptId, questionId: dto.questionId,
-      language: dto.language, code: dto.code,
-      passedCases: publicResult.passedCount, totalCases: publicCases.length,
-      hiddenPassed, hiddenTotal: hiddenCases.length,
-      score: totalScore, status, isFinal: !!dto.isFinal,
-    });
-    await this.subRepo.save(sub);
+    const enqueued = await this.queueService.enqueueJob(payload);
 
     return {
-      submissionId: sub.id,
-      status,
-      publicResults: publicResult.results,
-      passedPublic: publicResult.passedCount,
-      totalPublic: publicCases.length,
-      // Never reveal hidden test case details or total hidden count
-      score: dto.isFinal ? totalScore : undefined,
+      jobId: enqueued.jobId,
+      status: enqueued.status,
+      position: enqueued.position,
+      executionType: payload.executionType,
+      isFinal: !!dto.isFinal,
       serverTime: new Date().toISOString(),
     };
+  }
+
+  /** Retrieve job status and live queue position or execution result */
+  async getJobStatus(user: RequestUser, attemptId: number, jobId: string) {
+    const attempt = await this.getStudentAttempt(user, attemptId);
+    return this.queueService.getJobStatus(jobId);
   }
 
   // ─── Final Submit ─────────────────────────────────────────────────────────

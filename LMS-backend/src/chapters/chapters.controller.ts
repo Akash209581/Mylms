@@ -42,7 +42,7 @@ export class ChaptersController {
   ) {}
 
   @Post()
-  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN)
+  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.CONTENT_CREATOR)
   async create(@Body() dto: { title: string; description?: string; moduleId: number }, @Req() req: any) {
     console.log('📖 New Chapter request:', dto);
     const module = await this.moduleRepository.findOne({
@@ -82,7 +82,7 @@ export class ChaptersController {
   }
 
   @Put(':id')
-  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN)
+  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.CONTENT_CREATOR)
   async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateChapterDto, @Req() req: any) {
     const chapter = await this.chapterRepository.findOne({ where: { id }, relations: ['module', 'module.course'] });
     if (!chapter) throw new HttpException('Chapter not found', HttpStatus.NOT_FOUND);
@@ -96,7 +96,7 @@ export class ChaptersController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN)
+  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.CONTENT_CREATOR)
   async delete(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
     const chapter = await this.chapterRepository.findOne({ where: { id }, relations: ['module', 'module.course'] });
     if (!chapter) throw new HttpException('Chapter not found', HttpStatus.NOT_FOUND);

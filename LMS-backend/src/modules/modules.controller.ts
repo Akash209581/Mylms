@@ -40,7 +40,7 @@ export class ModulesController {
   ) { }
 
   @Post()
-  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN)
+  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.CONTENT_CREATOR)
   async create(@Body() dto: CreateModuleDto, @Req() req: any) {
     console.log('📚 Creating module:', dto);
     console.log('👤 Logged-in user ID:', req.user.sub);
@@ -114,7 +114,7 @@ export class ModulesController {
   }
 
   @Put(':id')
-  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN)
+  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.CONTENT_CREATOR)
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateModuleDto,
@@ -148,7 +148,7 @@ export class ModulesController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN)
+  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.CONTENT_CREATOR)
   async delete(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
     const module = await this.moduleRepository.findOne({
       where: { id },
@@ -178,7 +178,7 @@ export class ModulesController {
   }
 
   @Post('reorder')
-  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN)
+  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.CONTENT_CREATOR)
   async reorder(@Body() dto: ReorderModulesDto, @Req() req: any) {
     const modules = await this.moduleRepository.findBy({ id: In(dto.moduleIds) });
 

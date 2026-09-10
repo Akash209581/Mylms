@@ -43,7 +43,7 @@ export default function InstructorCoursesPage() {
         const stored = localStorage.getItem('user')
         if (!stored) { router.push('/login'); return }
         const u = JSON.parse(stored)
-        if (u.role !== 'INSTRUCTOR') { router.push(`/dashboard/${u.role.toLowerCase()}`); return }
+        if (u.role !== 'INSTRUCTOR' && u.role !== 'CONTENT_CREATOR') { router.push(`/dashboard/${u.role.toLowerCase()}`); return }
         setUser(u)
 
         fetchCourses()
@@ -134,7 +134,7 @@ export default function InstructorCoursesPage() {
 
     return (
         <div className="min-h-screen bg-mesh">
-            <Sidebar role="INSTRUCTOR" />
+            <Sidebar role={user?.role || 'INSTRUCTOR'} />
             <Navbar title="My Courses" />
             <main className="page-content">
                 {/* Hero */}

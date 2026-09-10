@@ -98,8 +98,8 @@ export class CoursesController {
       return qb.where(collegeCondition, params).getMany();
     }
 
-    // INSTRUCTOR can see their own courses (all statuses) + approved courses from their college + assigned ones
-    if (userRole === UserRole.INSTRUCTOR) {
+    // INSTRUCTOR and CONTENT_CREATOR can see their own courses (all statuses) + approved courses from their college + assigned ones
+    if (userRole === UserRole.INSTRUCTOR || userRole === UserRole.CONTENT_CREATOR) {
       params.userId = userId;
       params.approvedStatus = CourseStatus.APPROVED;
       return qb.where(`(course.instructorId = :userId AND ${collegeCondition})`, params)
@@ -422,7 +422,7 @@ export class CoursesController {
 
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN)
+  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.CONTENT_CREATOR)
   @Post()
   async create(@Body() dto: CreateCourseDto, @Request() req: any) {
     console.log('📝 Course creation request received');
@@ -500,7 +500,7 @@ export class CoursesController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.INSTRUCTOR)
+  @Roles(UserRole.INSTRUCTOR, UserRole.CONTENT_CREATOR)
   @Post(':id/submit')
   async submitCourse(@Param('id') id: number, @Request() req: any) {
     const course = await this.courseRepo.findOne({ where: { id, instructorId: req.user.sub } });
@@ -536,7 +536,7 @@ export class CoursesController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.INSTRUCTOR)
+  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.INSTRUCTOR, UserRole.CONTENT_CREATOR)
   @Post('upload-ppt')
   @UseInterceptors(FileInterceptor('file', {
     limits: { fileSize: 10 * 1024 * 1024 }
@@ -550,7 +550,7 @@ export class CoursesController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.INSTRUCTOR)
+  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.INSTRUCTOR, UserRole.CONTENT_CREATOR)
   @Post('upload-banner')
   @UseInterceptors(FileInterceptor('file', {
     limits: { fileSize: 10 * 1024 * 1024 }
@@ -587,7 +587,7 @@ export class CoursesController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.INSTRUCTOR)
+  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.INSTRUCTOR, UserRole.CONTENT_CREATOR)
   @Post('upload-pdf-file')
   @UseInterceptors(FileInterceptor('file', {
     limits: { fileSize: 50 * 1024 * 1024 }
@@ -626,7 +626,7 @@ export class CoursesController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.INSTRUCTOR)
+  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.INSTRUCTOR, UserRole.CONTENT_CREATOR)
   @Post('create-pdf-course')
   async createPdfCourse(@Body() body: any, @Request() req: any) {
     this.validateDistribution(body, req.user);
@@ -740,7 +740,7 @@ export class CoursesController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.INSTRUCTOR)
+  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.INSTRUCTOR, UserRole.CONTENT_CREATOR)
   @Post('upload-pdf')
   @UseInterceptors(FileInterceptor('file', {
     limits: { fileSize: 10 * 1024 * 1024 }
@@ -1053,7 +1053,7 @@ try {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN)
+  @Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.CONTENT_CREATOR)
   @Put(':id')
   async update(
     @Param('id') id: number,
@@ -1089,8 +1089,8 @@ try {
         throw new HttpException('Cannot update course from different college', HttpStatus.FORBIDDEN);
       }
 
-      // INSTRUCTOR can only update their own courses
-      if (userRole === UserRole.INSTRUCTOR && course.instructorId !== userId) {
+      // INSTRUCTOR and CONTENT_CREATOR can only update their own courses
+      if ((userRole === UserRole.INSTRUCTOR || userRole === UserRole.CONTENT_CREATOR) && course.instructorId !== userId) {
         throw new HttpException('You can only update your own courses', HttpStatus.FORBIDDEN);
       }
     }
@@ -1100,7 +1100,7 @@ try {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.INSTRUCTOR)
+  @Roles(UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.INSTRUCTOR, UserRole.CONTENT_CREATOR)
   @Delete(':id')
   async remove(@Param('id') id: number, @Request() req: any) {
     const course = await this.courseRepo.findOne({ 
@@ -1132,8 +1132,8 @@ try {
         throw new HttpException('Cannot delete course from different college', HttpStatus.FORBIDDEN);
       }
 
-      // INSTRUCTOR can only delete their own courses
-      if (userRole === UserRole.INSTRUCTOR && course.instructorId !== userId) {
+      // INSTRUCTOR and CONTENT_CREATOR can only delete their own courses
+      if ((userRole === UserRole.INSTRUCTOR || userRole === UserRole.CONTENT_CREATOR) && course.instructorId !== userId) {
         throw new HttpException('You can only delete your own courses', HttpStatus.FORBIDDEN);
       }
     }

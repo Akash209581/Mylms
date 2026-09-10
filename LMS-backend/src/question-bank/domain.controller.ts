@@ -22,7 +22,7 @@ export class DomainController {
   }
 
   @Post()
-  @Roles(UserRole.SUPERADMIN)
+  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.INSTRUCTOR, UserRole.QUESTION_CREATOR)
   async createDomain(@Body('name') name: string) {
     if (!name?.trim()) throw new BadRequestException('Domain name is required');
     

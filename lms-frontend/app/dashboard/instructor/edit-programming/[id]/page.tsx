@@ -134,7 +134,7 @@ export default function EditProgrammingPage() {
     }
 
     const parsed = JSON.parse(stored);
-    if (!['INSTRUCTOR', 'ADMIN', 'SUPERADMIN'].includes(parsed.role)) {
+    if (!['INSTRUCTOR', 'ADMIN', 'SUPERADMIN', 'CONTENT_CREATOR'].includes(parsed.role)) {
       router.push('/login');
       return;
     }
@@ -143,7 +143,7 @@ export default function EditProgrammingPage() {
     void loadData();
   }, [lessonId]);
 
-  const dashboardBase = `/dashboard/${(user?.role || 'instructor').toLowerCase()}`;
+  const dashboardBase = user?.role === 'SUPERADMIN' ? '/dashboard/superadmin' : user?.role === 'ADMIN' ? '/dashboard/admin' : '/dashboard/instructor';
 
   const loadData = async () => {
     try {

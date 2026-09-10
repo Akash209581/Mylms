@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import Sidebar from '@/components/layout/Sidebar';
 import Navbar from '@/components/layout/Navbar';
+import { getRoleBasePath } from '@/lib/roleUtils';
 
 interface Course {
     id: number;
@@ -120,8 +121,7 @@ export default function CourseBuilderPage() {
     }, [courseId]);
 
     const getDashboardPath = () => {
-        if (!user) return '/dashboard/instructor';
-        return `/dashboard/${user.role.toLowerCase()}`;
+        return getRoleBasePath(user?.role);
     };
 
     const fetchCourseData = async () => {

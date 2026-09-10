@@ -32,7 +32,7 @@ export class TopicController {
   }
 
   @Post()
-  @Roles(UserRole.SUPERADMIN)
+  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.INSTRUCTOR, UserRole.QUESTION_CREATOR)
   async createTopic(@Body('name') name: string, @Body('domainId') domainId: number) {
     if (!name?.trim() || !domainId) throw new BadRequestException('Name and DomainId are required');
 

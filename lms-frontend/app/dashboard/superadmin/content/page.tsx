@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
 import { getAuthHeaders } from '@/lib/authHeaders'
+import { getRoleBasePath } from '@/lib/roleUtils'
 
 interface Course {
     id: number
@@ -24,8 +25,18 @@ export default function ContentCreationPage() {
     const [courses, setCourses] = useState<Course[]>([])
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState('')
+    const [userRole, setUserRole] = useState<string>('SUPERADMIN')
 
     useEffect(() => {
+        const stored = localStorage.getItem('user')
+        if (stored) {
+            try {
+                const u = JSON.parse(stored)
+                if (u?.role) setUserRole(u.role)
+            } catch (e) {
+                console.error(e)
+            }
+        }
         fetchCourses()
     }, [])
 
@@ -53,7 +64,7 @@ export default function ContentCreationPage() {
 
     return (
         <div className="min-h-screen bg-mesh">
-            <Sidebar role="SUPERADMIN" />
+            <Sidebar role={userRole} />
             <Navbar title="Content Creation Console" />
             
             <main className="page-content">
@@ -85,7 +96,7 @@ export default function ContentCreationPage() {
                         <h3 className="text-xl font-bold text-white mb-2">No courses found</h3>
                         <p className="text-gray-400 mb-6">Create a new course first to start building content.</p>
                         <button 
-                            onClick={() => router.push('/dashboard/superadmin/courses/create')}
+                            onClick={() => router.push(`${getRoleBasePath(userRole)}/courses/create`)}
                             className="btn-primary"
                         >
                             ➕ Create Course
@@ -119,13 +130,13 @@ export default function ContentCreationPage() {
 
                                     <div className="flex gap-3">
                                         <button 
-                                            onClick={() => router.push(`/dashboard/superadmin/edit-lesson/${course.id}`)}
+                                            onClick={() => router.push(`${getRoleBasePath(userRole)}/edit-lesson/${course.id}`)}
                                             className="flex-1 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold transition-all shadow-lg shadow-purple-900/20"
                                         >
                                             📓 Open Notebook
                                         </button>
                                         <button 
-                                            onClick={() => router.push(`/dashboard/superadmin/courses/${course.id}/builder`)}
+                                            onClick={() => router.push(`${getRoleBasePath(userRole)}/courses/${course.id}/builder`)}
                                             className="px-3 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 transition-all border border-white/10"
                                             title="Structure Builder"
                                         >

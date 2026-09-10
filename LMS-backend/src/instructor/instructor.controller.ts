@@ -10,7 +10,7 @@ import { User, UserRole } from '../entities/user.entity';
 
 @Controller('instructor')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN)
+@Roles(UserRole.INSTRUCTOR, UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.CONTENT_CREATOR)
 export class InstructorController {
   constructor(
     @InjectRepository(Course)

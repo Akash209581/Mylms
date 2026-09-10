@@ -16,8 +16,11 @@ import { ExamRunnerService } from './exam-runner.service';
 import { ExamController } from './exam.controller';
 import { ExamStudentController } from './exam-student.controller';
 
+import { CompilerModule } from '../compiler/compiler.module';
+
 @Module({
   imports: [
+    CompilerModule,
     TypeOrmModule.forFeature([
       Exam, ExamQuestion, ExamAssignment,
       ExamAttempt, ExamCodingSubmission,
