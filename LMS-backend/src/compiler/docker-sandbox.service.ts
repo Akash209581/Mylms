@@ -21,19 +21,45 @@ export interface RawExecutionResult {
 @Injectable()
 export class DockerSandboxService {
   private readonly logger = new Logger(DockerSandboxService.name);
-  private dockerChecked = false;
   private dockerAvailable = false;
+  private dockerCheckedAt = 0;
+  private static readonly DOCKER_CHECK_TTL_MS = 4000;
 
   /** Check whether Docker is installed and running */
   async isDockerAvailable(): Promise<boolean> {
+    if (this.dockerCheckedAt && Date.now() - this.dockerCheckedAt < DockerSandboxService.DOCKER_CHECK_TTL_MS) {
+      return this.dockerAvailable;
+    }
     try {
-      execSync('docker info --format "{{.ServerVersion}}"', { stdio: 'pipe', timeout: 3000 });
+      execSync('docker info --format "{{.ServerVersion}}"', { stdio: 'pipe', timeout: 12000 });
       this.dockerAvailable = true;
-      return true;
     } catch {
       this.dockerAvailable = false;
+    }
+    this.dockerCheckedAt = Date.now();
+    return this.dockerAvailable;
+  }
+
+  imageExists(image: string): boolean {
+    if (!image || /[\s;|&<>]/.test(image)) return false;
+    try {
+      execSync('docker image inspect ' + image, { stdio: 'pipe', timeout: 4000 });
+      return true;
+    } catch {
       return false;
     }
+  }
+
+  /**
+   * Convert a host path to a Docker Desktop bind-mount source.
+   * Verified on Windows: C:/Users/... is accepted by Docker Desktop WSL2.
+   */
+  normalizeVolumePath(p: string): string {
+    const resolved = path.resolve(p);
+    if (process.platform === 'win32') {
+      return resolved.replace(/\\/g, '/');
+    }
+    return resolved;
   }
 
   /** Prepare an isolated temporary directory with student code */
@@ -59,6 +85,38 @@ export class DockerSandboxService {
     }
   }
 
+  private sandboxDockerArgs(opts: {
+    containerName: string;
+    workspaceDir: string;
+    writableWorkspace: boolean;
+    interactive?: boolean;
+    image: string;
+  }): string[] {
+    const source = this.normalizeVolumePath(opts.workspaceDir);
+    const mode = opts.writableWorkspace ? 'rw' : 'ro';
+    return [
+      'run',
+      '--name', opts.containerName,
+      '--rm',
+      ...(opts.interactive ? ['-i'] : []),
+      '--network', SANDBOX_LIMITS.NETWORK,
+      '--memory', SANDBOX_LIMITS.MEMORY,
+      '--memory-swap', SANDBOX_LIMITS.MEMORY_SWAP,
+      '--cpus', SANDBOX_LIMITS.CPUS,
+      '--pids-limit', String(SANDBOX_LIMITS.PIDS_LIMIT),
+      '--user', SANDBOX_LIMITS.USER,
+      '--security-opt', 'no-new-privileges',
+      '--cap-drop', 'ALL',
+      '--read-only',
+      '--tmpfs', '/tmp:rw,noexec,nosuid,size=16m',
+      '--env', 'HOME=/tmp',
+      '--env', 'TMPDIR=/tmp',
+      '-v', `${source}:/workspace:${mode}`,
+      '-w', '/workspace',
+      opts.image,
+    ];
+  }
+
   /** Run compilation inside the language-specific Docker container */
   async compileCode(
     config: LanguageRunnerConfig,
@@ -68,22 +126,29 @@ export class DockerSandboxService {
       return { success: true };
     }
 
-    const containerName = `compile-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-    const normalizedDir = this.normalizeVolumePath(workspaceDir);
+    const isAvailable = await this.isDockerAvailable();
+    if (!isAvailable) {
+      return {
+        success: false,
+        compilationError: 'Docker sandbox engine is currently unavailable. Please contact the administrator.',
+      };
+    }
 
+    if (!this.imageExists(config.image)) {
+      return {
+        success: false,
+        compilationError: `Runner image "${config.image}" is not available on this server.`,
+      };
+    }
+
+    const containerName = `compile-${Date.now()}-${Math.random().toString(36).substring(7)}`;
     const dockerArgs = [
-      'run',
-      '--name', containerName,
-      '--rm',
-      '--network', SANDBOX_LIMITS.NETWORK,
-      '--memory', SANDBOX_LIMITS.MEMORY,
-      '--memory-swap', SANDBOX_LIMITS.MEMORY_SWAP,
-      '--cpus', SANDBOX_LIMITS.CPUS,
-      '--pids-limit', String(SANDBOX_LIMITS.PIDS_LIMIT),
-      '--security-opt', 'no-new-privileges',
-      '-v', `${normalizedDir}:/workspace:rw`,
-      '-w', '/workspace',
-      config.image,
+      ...this.sandboxDockerArgs({
+        containerName,
+        workspaceDir,
+        writableWorkspace: true,
+        image: config.image,
+      }),
       'sh', '-c', config.compileCmd,
     ];
 
@@ -113,34 +178,32 @@ export class DockerSandboxService {
     stdin: string,
     timeoutMs: number = SANDBOX_LIMITS.TIME_LIMIT_MS,
   ): Promise<RawExecutionResult> {
+    const unavailable = (stderr: string): RawExecutionResult => ({
+      stdout: '',
+      stderr,
+      exitCode: 1,
+      execTimeMs: 0,
+      status: ExecutionStatus.SYSTEM_ERROR,
+    });
+
     const isAvailable = await this.isDockerAvailable();
     if (!isAvailable) {
-      return {
-        stdout: '',
-        stderr: 'Docker sandbox engine is currently unavailable. Please contact the administrator.',
-        exitCode: 1,
-        execTimeMs: 0,
-        status: ExecutionStatus.SYSTEM_ERROR,
-      };
+      return unavailable('Docker sandbox engine is currently unavailable. Please contact the administrator.');
+    }
+
+    if (!this.imageExists(config.image)) {
+      return unavailable(`Runner image "${config.image}" is not available on this server.`);
     }
 
     const containerName = `exec-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-    const normalizedDir = this.normalizeVolumePath(workspaceDir);
-
     const dockerArgs = [
-      'run',
-      '-i',
-      '--name', containerName,
-      '--rm',
-      '--network', SANDBOX_LIMITS.NETWORK,
-      '--memory', SANDBOX_LIMITS.MEMORY,
-      '--memory-swap', SANDBOX_LIMITS.MEMORY_SWAP,
-      '--cpus', SANDBOX_LIMITS.CPUS,
-      '--pids-limit', String(SANDBOX_LIMITS.PIDS_LIMIT),
-      '--security-opt', 'no-new-privileges',
-      '-v', `${normalizedDir}:/workspace:ro`,
-      '-w', '/workspace',
-      config.image,
+      ...this.sandboxDockerArgs({
+        containerName,
+        workspaceDir,
+        writableWorkspace: false,
+        interactive: true,
+        image: config.image,
+      }),
       'sh', '-c', config.runCmd,
     ];
 
@@ -166,7 +229,7 @@ export class DockerSandboxService {
       let isTimedOut = false;
       let hasEnded = false;
 
-      const child = spawn(cmd, args, { stdio: ['pipe', 'pipe', 'pipe'] });
+      const child = spawn(cmd, args, { stdio: ['pipe', 'pipe', 'pipe'], env: process.env });
 
       const timer = setTimeout(() => {
         isTimedOut = true;
@@ -187,12 +250,29 @@ export class DockerSandboxService {
         child.stdin.end();
       }
 
+      let stdoutTruncated = false;
+      let stderrTruncated = false;
+
       child.stdout?.on('data', (d) => {
-        stdout += d.toString();
+        if (stdoutTruncated) return;
+        const chunk = d.toString();
+        if (stdout.length + chunk.length > SANDBOX_LIMITS.MAX_OUTPUT_BYTES) {
+          stdout = (stdout + chunk).slice(0, SANDBOX_LIMITS.MAX_OUTPUT_BYTES) + '\n[output truncated]';
+          stdoutTruncated = true;
+          return;
+        }
+        stdout += chunk;
       });
 
       child.stderr?.on('data', (d) => {
-        stderr += d.toString();
+        if (stderrTruncated) return;
+        const chunk = d.toString();
+        if (stderr.length + chunk.length > SANDBOX_LIMITS.MAX_OUTPUT_BYTES) {
+          stderr = (stderr + chunk).slice(0, SANDBOX_LIMITS.MAX_OUTPUT_BYTES) + '\n[output truncated]';
+          stderrTruncated = true;
+          return;
+        }
+        stderr += chunk;
       });
 
       child.on('error', (err) => {
@@ -225,7 +305,6 @@ export class DockerSandboxService {
           return;
         }
 
-        // Docker exit code 137 is SIGKILL (often OOM)
         const oomKilled = code === 137;
         let status = ExecutionStatus.ACCEPTED;
         if (oomKilled) {
@@ -248,13 +327,9 @@ export class DockerSandboxService {
 
   /** Force kill a container if still active */
   private forceKillContainer(name: string) {
+    if (!name || /[\s;|&<>]/.test(name)) return;
     try {
-      execSync(`docker rm -f ${name}`, { stdio: 'ignore', timeout: 2000 });
+      execSync('docker rm -f ' + name, { stdio: 'ignore', timeout: 2000 });
     } catch {}
-  }
-
-  /** Converts Windows paths to Unix-friendly Docker volume format */
-  private normalizeVolumePath(p: string): string {
-    return p.replace(/\\/g, '/');
   }
 }

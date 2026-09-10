@@ -69,7 +69,9 @@ describe('Secure Code Execution Module Tests', () => {
       expect(SANDBOX_LIMITS.CPUS).toBe('1.0');
       expect(SANDBOX_LIMITS.PIDS_LIMIT).toBe(64);
       expect(SANDBOX_LIMITS.USER).toBe('1000:1000');
+      expect(SANDBOX_LIMITS.CAP_DROP).toBe('ALL');
       expect(SANDBOX_LIMITS.TIME_LIMIT_MS).toBe(5000);
+      expect(SANDBOX_LIMITS.MAX_OUTPUT_BYTES).toBe(64 * 1024);
     });
   });
 
@@ -161,6 +163,40 @@ describe('Secure Code Execution Module Tests', () => {
       const serialized = JSON.stringify(sanitized);
       expect(serialized).not.toContain('SECRET_INPUT_9999');
       expect(serialized).not.toContain('SECRET_OUTPUT_8888');
+    });
+
+    it('should omit the test suite for RUN executions and keep stdout', () => {
+      const sanitized = gradingService.sanitizeResultsForClient({
+        jobId: 'run-1',
+        attemptId: 1,
+        questionId: 10,
+        status: ExecutionStatus.ACCEPTED,
+        passedCases: 1,
+        totalCases: 1,
+        score: 10,
+        executionTimeMs: 20,
+        stdout: 'hello\n',
+        stderr: '',
+        exitCode: 0,
+        executionType: 'RUN',
+        publicResults: [
+          {
+            testCaseIndex: 1,
+            passed: true,
+            isPublic: true,
+            input: '1',
+            expected: '1',
+            actual: 'hello',
+            status: ExecutionStatus.ACCEPTED,
+          },
+        ],
+        submittedAt: new Date().toISOString(),
+      });
+
+      expect(sanitized.publicResults).toEqual([]);
+      expect(sanitized.stdout).toBe('hello\n');
+      expect(sanitized.score).toBe(0);
+      expect(sanitized.executionType).toBe('RUN');
     });
   });
 
@@ -278,6 +314,28 @@ describe('Secure Code Execution Module Tests', () => {
       await worker.close();
       await testQueue.obliterate({ force: true });
       await testQueue.close();
+    });
+
+    it('waitForAttemptJobs stays false while queued and true after complete', async () => {
+      const queueService = new CompilerQueueService();
+      (queueService as any).isRedisOnline = false;
+      let release: () => void = () => {};
+      const gate = new Promise<void>((resolve) => { release = resolve; });
+      queueService.setFallbackProcessor(async () => {
+        await gate;
+      });
+      await queueService.enqueueJob({
+        jobId: 'pending-1', attemptId: 42, questionId: 1, userId: 1,
+        language: 'python', code: 'print(1)', executionType: 'RUN',
+        isFinal: false, totalMarks: 10, testCases: [],
+      });
+      expect(queueService.hasPendingJobs(42)).toBe(true);
+      const early = await queueService.waitForAttemptJobs(42, 200);
+      expect(early).toBe(false);
+      release();
+      const done = await queueService.waitForAttemptJobs(42, 2000);
+      expect(done).toBe(true);
+      await queueService.onModuleDestroy();
     });
   });
 });

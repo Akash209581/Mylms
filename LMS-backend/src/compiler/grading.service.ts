@@ -60,30 +60,38 @@ export class GradingService {
 
   /** Mask hidden test cases from the client response */
   sanitizeResultsForClient(result: ExecutionJobResult): Partial<ExecutionJobResult> {
+    const isRun = result.executionType === 'RUN';
     return {
       jobId: result.jobId,
       attemptId: result.attemptId,
       questionId: result.questionId,
       status: result.status,
-      passedCases: result.passedCases,
-      totalCases: result.totalCases,
-      score: result.score,
+      passedCases: isRun ? undefined : result.passedCases,
+      totalCases: isRun ? undefined : result.totalCases,
+      score: isRun ? 0 : result.score,
       executionTimeMs: result.executionTimeMs,
       compilationError: result.compilationError,
       runtimeError: result.runtimeError,
-      // Only include public results with visible input/output
-      publicResults: (result.publicResults || [])
-        .filter((r) => r.isPublic)
-        .map((r) => ({
-          testCaseIndex: r.testCaseIndex,
-          passed: r.passed,
-          isPublic: true,
-          input: r.input,
-          expected: r.expected,
-          actual: r.actual,
-          execTimeMs: r.execTimeMs,
-          status: r.status,
-        })),
+      stdout: result.stdout,
+      stderr: result.stderr,
+      exitCode: result.exitCode,
+      executionType: result.executionType,
+      // Run Code is stdout only; Submit Code includes public cases (hidden cases masked)
+      publicResults: isRun
+        ? []
+        : (result.publicResults || [])
+            .filter((r) => r.isPublic)
+            .map((r) => ({
+              testCaseIndex: r.testCaseIndex,
+              passed: r.passed,
+              isPublic: true,
+              input: r.input,
+              expected: r.expected,
+              actual: r.actual,
+              stderr: r.stderr,
+              execTimeMs: r.execTimeMs,
+              status: r.status,
+            })),
       submittedAt: result.submittedAt,
     };
   }

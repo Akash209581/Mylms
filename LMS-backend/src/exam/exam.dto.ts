@@ -1,6 +1,6 @@
 import {
   IsString, IsOptional, IsInt, IsBoolean, IsNumber, IsEnum,
-  IsDateString, Min, Max, IsArray, IsIn,
+  IsDateString, Min, Max, IsArray, IsIn, IsObject,
 } from 'class-validator';
 import { ExamStatus } from '../entities/exam.entity';
 
@@ -91,11 +91,17 @@ export class ImportMcqConfirmDto {
 
 export class SaveMcqAnswersDto {
   /** { questionId: "A"|"B"|"C"|"D"|null } */
-  answers: Record<string, string | null>;
+  @IsObject() @IsOptional() answers?: Record<string, string | null>;
   /** Updated time spent { questionId: seconds } */
-  @IsOptional() timeSpent?: Record<string, number>;
+  @IsObject() @IsOptional() timeSpent?: Record<string, number>;
   /** Ids to add/remove from review list */
-  @IsOptional() markedReview?: number[];
+  @IsArray() @IsInt({ each: true }) @IsOptional() markedReview?: number[];
+}
+
+export class SubmitExamDto {
+  @IsObject() @IsOptional() answers?: Record<string, string | null>;
+  @IsArray() @IsInt({ each: true }) @IsOptional() markedReview?: number[];
+  @IsString() @IsOptional() reason?: string;
 }
 
 // ─── Student: code run / submit ──────────────────────────────────────────────
@@ -105,6 +111,7 @@ export class RunCodeDto {
   @IsString() language: string;
   @IsString() code: string;
   @IsBoolean() @IsOptional() isFinal?: boolean; // true = grade this submission
+  @IsString() @IsOptional() stdin?: string;
 }
 
 // ─── Grade manual submission ─────────────────────────────────────────────────

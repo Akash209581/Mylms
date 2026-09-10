@@ -1,6 +1,7 @@
 'use client'
 import React, { useState } from 'react'
 import MarkdownRenderer from '@/components/editor/MarkdownRenderer'
+import { normalizeMcqLetter } from '@/lib/mcq-answer'
 
 interface QuestionPreviewProps {
     form: any
@@ -23,21 +24,25 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                         )}
                         <div className="grid gap-4">
                             <h4 className="text-gray-400 text-[10px] font-bold uppercase mb-2 tracking-[0.2em]">Select Correct Option</h4>
-                            {(form.options || []).map((opt: string, i: number) => opt && (
-                                <div key={i} className={`p-5 rounded-2xl border-2 transition-all ${form.correctAnswer === opt
+                            {(form.options || []).map((opt: string, i: number) => {
+                                const letter = String.fromCharCode(65 + i)
+                                const isCorrect = normalizeMcqLetter(form.correctAnswer, form.options) === letter || form.correctAnswer === opt
+                                return opt && (
+                                <div key={i} className={`p-5 rounded-2xl border-2 transition-all ${isCorrect
                                     ? 'bg-primary-50 border-primary-500 text-slate-900 shadow-sm'
                                     : 'bg-white border-gray-100 text-slate-500 hover:border-gray-200'
                                     }`}>
                                     <div className="flex items-center gap-4">
-                                        <div className={`w-8 h-8 rounded-xl border-2 flex items-center justify-center text-sm font-bold ${form.correctAnswer === opt ? 'border-primary-500 bg-primary-500 text-white' : 'border-gray-200'
+                                        <div className={`w-8 h-8 rounded-xl border-2 flex items-center justify-center text-sm font-bold ${isCorrect ? 'border-primary-500 bg-primary-500 text-white' : 'border-gray-200'
                                             }`}>
-                                            {String.fromCharCode(65 + i)}
+                                            {letter}
                                         </div>
                                         <span className="font-medium">{opt}</span>
-                                        {form.correctAnswer === opt && <span className="ml-auto text-[10px] font-bold bg-primary-500 text-white px-3 py-1 rounded-full uppercase tracking-wider">Correct</span>}
+                                        {isCorrect && <span className="ml-auto text-[10px] font-bold bg-primary-500 text-white px-3 py-1 rounded-full uppercase tracking-wider">Correct</span>}
                                     </div>
                                 </div>
-                            ))}
+                                )
+                            })}
                         </div>
                         {form.explanation && (
                             <div className="bg-emerald-50/50 p-6 rounded-2xl border border-emerald-100">

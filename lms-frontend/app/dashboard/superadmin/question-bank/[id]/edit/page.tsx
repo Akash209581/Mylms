@@ -9,6 +9,8 @@ import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
 import QuestionPreview from '@/components/question-bank/QuestionPreview'
 import MarkdownToolbar from '@/components/editor/MarkdownToolbar'
+import { normalizeMcqLetter } from '@/lib/mcq-answer'
+import { getRoleBasePath } from '@/lib/roleUtils'
 
 const COMPANIES = ['Accenture', 'CapGemini', 'Infosys', 'TCS', 'Wipro', 'Amazon', 'Google', 'Microsoft', 'Adobe', 'Flipkart', 'Other']
 const LANGUAGES = ['Python', 'Java', 'C', 'C++', 'JavaScript', 'Any']
@@ -233,8 +235,15 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
                 credentials: 'include',
                 body: JSON.stringify(cleanedData),
             })
-            if (!res.ok) { const e = await res.json(); setError(e.message || 'Error saving'); return }
-            router.push('/dashboard/superadmin/question-bank')
+            if (!res.ok) {
+                const e = await res.json().catch(() => ({}))
+                const msg = Array.isArray(e.message) ? e.message.join(', ') : e.message
+                setError(msg || 'Error saving')
+                return
+            }
+            const stored = localStorage.getItem('user')
+            const role = stored ? JSON.parse(stored).role : 'SUPERADMIN'
+            router.push(`${getRoleBasePath(role)}/question-bank`)
         } catch (e: any) { setError(e.message) }
         finally { setSaving(false) }
     }
@@ -429,12 +438,12 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
                                 </div>
                                 <div>
                                     <label className="text-gray-400 text-sm mb-2 block">Correct Answer</label>
-                                    <select value={form.correctAnswer} onChange={e => {
+                                    <select value={normalizeMcqLetter(form.correctAnswer, form.options) || ''} onChange={e => {
                                         set('correctAnswer', e.target.value);
                                         set('expectedOutput', e.target.value);
                                     }} className="input-field max-w-xs">
                                         <option value="">Select correct option</option>
-                                        {(form.options || []).map((o: string, i: number) => o && <option key={i} value={o}>{String.fromCharCode(65 + i)}. {o}</option>)}
+                                        {(form.options || []).map((o: string, i: number) => o && <option key={i} value={String.fromCharCode(65 + i)}>{String.fromCharCode(65 + i)}. {o}</option>)}
                                     </select>
                                 </div>
                             </div>

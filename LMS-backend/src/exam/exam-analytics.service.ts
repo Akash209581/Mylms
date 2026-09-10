@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
+import { normalizeMcqLetter } from '../common/mcq-answer.util';
 
 @Injectable()
 export class ExamAnalyticsService {
@@ -21,7 +22,12 @@ export class ExamAnalyticsService {
       FROM exam_attempts WHERE exam_id = $1
     `, [examId]);
 
-    return stats;
+    const [{ assigned }] = await this.db.query(
+      `SELECT COUNT(*)::int AS assigned FROM exam_assignments WHERE exam_id = $1`,
+      [examId],
+    );
+
+    return { ...stats, assigned: assigned ?? 0 };
   }
 
   async scoreDistribution(examId: number) {
@@ -48,10 +54,12 @@ export class ExamAnalyticsService {
   async studentPerformance(examId: number, page = 1, limit = 50) {
     const offset = (page - 1) * limit;
     const rows = await this.db.query(`
-      SELECT u.id AS "studentId", u.name, u.email,
+      SELECT u.id AS "studentId", u.name, u.email, u.registration_number AS "regNo",
         a.attempt_number AS "attemptNumber",
         a.mcq_score AS "mcqScore", a.coding_score AS "codingScore",
         a.total_score AS "totalScore", a.passed,
+        a.tab_switch_count AS "tabSwitchCount",
+        a.auto_submitted_reason AS "autoSubmittedReason",
         a.start_time AS "startTime", a.end_time AS "endTime",
         EXTRACT(EPOCH FROM (a.end_time - a.start_time)) / 60 AS "timeTakenMinutes",
         RANK() OVER (ORDER BY a.total_score DESC NULLS LAST) AS rank
@@ -70,29 +78,73 @@ export class ExamAnalyticsService {
   }
 
   async questionAnalytics(examId: number) {
-    const mcqRows = await this.db.query(`
+    const mcqMeta = await this.db.query(`
       SELECT
         eq.question_id AS "questionId",
         q."questionText" AS "questionText",
+        q."problemStatement" AS "problemStatement",
         q.options,
         q."correctAnswer" AS "correctAnswer",
         eq.marks,
-        COUNT(a.id)::int AS "totalAttempts",
-        COUNT(a.id) FILTER (WHERE (a.mcq_answers->>eq.question_id::text) = q."correctAnswer")::int AS "correct",
-        COUNT(a.id) FILTER (WHERE (a.mcq_answers->>eq.question_id::text) IS NOT NULL AND (a.mcq_answers->>eq.question_id::text) != '' AND (a.mcq_answers->>eq.question_id::text) != q."correctAnswer")::int AS "incorrect",
-        COUNT(a.id) FILTER (WHERE (a.mcq_answers->>eq.question_id::text) IS NULL OR (a.mcq_answers->>eq.question_id::text) = '')::int AS "unanswered",
-        ROUND(100.0 * COUNT(a.id) FILTER (WHERE (a.mcq_answers->>eq.question_id::text) = q."correctAnswer") / NULLIF(COUNT(a.id) FILTER (WHERE (a.mcq_answers->>eq.question_id::text) IS NOT NULL AND (a.mcq_answers->>eq.question_id::text) != ''), 0), 1) AS "accuracy"
+        eq.sort_order AS "sortOrder"
       FROM exam_questions eq
       JOIN questions q ON q.id = eq.question_id
-      LEFT JOIN exam_attempts a ON a.exam_id = eq.exam_id AND a.status != 'IN_PROGRESS'
       WHERE eq.exam_id = $1 AND eq.section = 'A'
-      GROUP BY eq.question_id, q."questionText", q.options, q."correctAnswer", eq.marks, eq.sort_order
       ORDER BY eq.sort_order ASC
     `, [examId]);
+
+    const attempts = await this.db.query(`
+      SELECT mcq_answers AS "mcqAnswers"
+      FROM exam_attempts
+      WHERE exam_id = $1 AND status != 'IN_PROGRESS'
+    `, [examId]);
+
+    const mcq = (mcqMeta || []).map((q: any) => {
+      const options: string[] = Array.isArray(q.options)
+        ? q.options
+        : (typeof q.options === 'string' ? JSON.parse(q.options || '[]') : []);
+      const correctLetter = normalizeMcqLetter(q.correctAnswer, options);
+      const optionCounts: Record<string, number> = { A: 0, B: 0, C: 0, D: 0 };
+      let correct = 0;
+      let incorrect = 0;
+      let unanswered = 0;
+
+      for (const a of attempts) {
+        const raw = a.mcqAnswers ?? a.mcq_answers;
+        const answers = typeof raw === 'string' ? JSON.parse(raw || '{}') : (raw || {});
+        const given = answers[String(q.questionId)] ?? answers[q.questionId];
+        if (!given) {
+          unanswered++;
+          continue;
+        }
+        const givenLetter = normalizeMcqLetter(given, options);
+        if (givenLetter && optionCounts[givenLetter] != null) optionCounts[givenLetter]++;
+        if (givenLetter && givenLetter === correctLetter) correct++;
+        else incorrect++;
+      }
+
+      const totalAttempts = attempts.length;
+      const accuracy = totalAttempts ? Math.round((1000 * correct) / totalAttempts) / 10 : 0;
+      return {
+        questionId: q.questionId,
+        questionText: q.questionText,
+        problemStatement: q.problemStatement,
+        options,
+        correctAnswer: correctLetter,
+        marks: q.marks,
+        totalAttempts,
+        correct,
+        incorrect,
+        unanswered,
+        accuracy,
+        optionCounts,
+      };
+    });
 
     const codingRows = await this.db.query(`
       SELECT
         eq.question_id AS "questionId",
+        q."questionText" AS "questionText",
         q."problemStatement" AS "problemStatement",
         eq.marks,
         COUNT(DISTINCT s.attempt_id)::int AS "submissions",
@@ -104,11 +156,11 @@ export class ExamAnalyticsService {
       LEFT JOIN exam_coding_submissions s ON s.question_id = eq.question_id AND s.is_final = true
       LEFT JOIN exam_attempts a ON a.id = s.attempt_id AND a.exam_id = eq.exam_id AND a.status != 'IN_PROGRESS'
       WHERE eq.exam_id = $1 AND eq.section = 'B'
-      GROUP BY eq.question_id, q."problemStatement", eq.marks, eq.sort_order
+      GROUP BY eq.question_id, q."questionText", q."problemStatement", eq.marks, eq.sort_order
       ORDER BY eq.sort_order ASC
     `, [examId]);
 
-    return { mcq: mcqRows, coding: codingRows };
+    return { mcq, coding: codingRows };
   }
 
   async studentDetail(examId: number, studentId: number) {

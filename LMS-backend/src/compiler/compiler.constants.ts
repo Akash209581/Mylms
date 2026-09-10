@@ -82,8 +82,10 @@ export const SANDBOX_LIMITS = {
   PIDS_LIMIT: 64,
   USER: '1000:1000',
   NETWORK: 'none',
+  CAP_DROP: 'ALL',
   TIME_LIMIT_MS: 5000, // 5 seconds per test case
   COMPILE_TIME_LIMIT_MS: 10000, // 10 seconds for compilation
+  MAX_OUTPUT_BYTES: 64 * 1024,
 };
 
 export interface TestCasePayload {
@@ -130,6 +132,10 @@ export interface ExecutionJobResult {
   executionTimeMs: number;
   compilationError?: string;
   runtimeError?: string;
+  stdout?: string;
+  stderr?: string;
+  exitCode?: number;
+  executionType?: 'RUN' | 'SUBMIT';
   publicResults: SingleCaseResult[];
   submittedAt: string;
 }

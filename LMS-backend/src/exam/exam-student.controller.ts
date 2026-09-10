@@ -6,7 +6,7 @@ import { RolesGuard } from '../common/roles.guard';
 import { Roles } from '../common/roles.decorator';
 import { UserRole } from '../entities/user.entity';
 import { ExamStudentService } from './exam-student.service';
-import { SaveMcqAnswersDto, RunCodeDto } from './exam.dto';
+import { SaveMcqAnswersDto, RunCodeDto, SubmitExamDto } from './exam.dto';
 
 @Controller('student/exams')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -61,9 +61,21 @@ export class ExamStudentController {
     return this.service.getJobStatus(req.user, attemptId, jobId);
   }
 
+  @Post('attempts/:attemptId/tab-switch')
+  recordTabSwitch(
+    @Request() req,
+    @Param('attemptId', ParseIntPipe) attemptId: number,
+  ) {
+    return this.service.recordTabSwitch(req.user, attemptId);
+  }
+
   @Post('attempts/:attemptId/submit')
-  submit(@Request() req, @Param('attemptId', ParseIntPipe) attemptId: number) {
-    return this.service.submitAttempt(req.user, attemptId);
+  submit(
+    @Request() req,
+    @Param('attemptId', ParseIntPipe) attemptId: number,
+    @Body() dto: SubmitExamDto,
+  ) {
+    return this.service.submitAttempt(req.user, attemptId, dto || {});
   }
 
   @Get('attempts/:attemptId/result')

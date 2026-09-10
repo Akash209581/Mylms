@@ -15,6 +15,8 @@ import {
   Request,
   NotFoundException,
   BadRequestException,
+  ConflictException,
+  HttpException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -39,7 +41,12 @@ import {
 } from 'class-validator';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { BulkImportService } from './bulk-import.service';
-import { Response } from 'express';
+import type { Response } from 'express';
+import { normalizeMcqLetter } from '../common/mcq-answer.util';
+import {
+  DUPLICATE_QUESTION_MESSAGE,
+  questionDuplicateKey,
+} from '../common/question-duplicate.util';
 
 class CreateQuestionDto {
   @IsEnum(QuestionType) type: QuestionType;
@@ -127,6 +134,27 @@ export class QuestionBankController {
     return finalCode;
   }
 
+  private async assertQuestionIsNew(
+    type: QuestionType,
+    questionText: string,
+    collegeId: number,
+    excludeId?: number,
+  ) {
+    const incoming = questionDuplicateKey(type, questionText);
+    if (!incoming.endsWith(':')) {
+      const qb = this.questionRepo
+        .createQueryBuilder('q')
+        .select(['q.id', 'q.type', 'q.questionText'])
+        .where('q.collegeId = :collegeId', { collegeId })
+        .andWhere('q.type = :type', { type });
+      if (excludeId) qb.andWhere('q.id != :excludeId', { excludeId });
+      const matches = await qb.getMany();
+      if (matches.some((q) => questionDuplicateKey(q.type, q.questionText) === incoming)) {
+        throw new ConflictException(DUPLICATE_QUESTION_MESSAGE);
+      }
+    }
+  }
+
   @Get('pending')
   @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
   async getPendingQuestions(@Request() req: any) {
@@ -180,6 +208,8 @@ export class QuestionBankController {
     @Query('domain') domain?: string,
     @Query('status') status?: string,
     @Query('targetCompanies') targetCompanies?: string,
+    @Query('search') search?: string,
+    @Query('limit') limit?: string,
     @Request() req?: any,
   ) {
     const userRole = req?.user?.role;
@@ -222,6 +252,14 @@ export class QuestionBankController {
     }
     if (topic)
       qb.andWhere('q.topicNames ILIKE :topic', { topic: `%${topic}%` });
+    if (search?.trim()) {
+      qb.andWhere(
+        '(q.questionText ILIKE :search OR q.problemStatement ILIKE :search OR q.topicNames ILIKE :search)',
+        { search: `%${search.trim()}%` },
+      );
+    }
+    const take = limit ? Math.min(Math.max(parseInt(limit, 10) || 50, 1), 200) : undefined;
+    if (take) qb.take(take);
     return qb.orderBy('q.createdAt', 'DESC').getMany();
   }
 
@@ -384,7 +422,13 @@ export class QuestionBankController {
       ? dto.collegeId
       : (userCollegeId || 1);
 
+    await this.assertQuestionIsNew(dto.type, dto.questionText, collegeId);
+
     const questionNumber = await this.generateQuestionNumber(dto.type);
+
+    if (dto.type === QuestionType.MCQ && dto.correctAnswer) {
+      dto.correctAnswer = normalizeMcqLetter(dto.correctAnswer, dto.options) || dto.correctAnswer;
+    }
 
     // If QUESTION_CREATOR, mark as PENDING_APPROVAL and record createdBy
     let status = QuestionStatus.APPROVED;
@@ -453,9 +497,19 @@ export class QuestionBankController {
         dto.companiesAppeared = dto.companiesAppeared || dto.targetCompanies;
       }
 
+      if ((dto.type === QuestionType.MCQ || question.type === QuestionType.MCQ) && dto.correctAnswer) {
+        dto.correctAnswer = normalizeMcqLetter(dto.correctAnswer, dto.options || question.options) || dto.correctAnswer;
+      }
+
+      const nextType = dto.type || question.type;
+      const nextText = dto.questionText ?? question.questionText;
+      const nextCollegeId = question.collegeId || userCollegeId || 1;
+      await this.assertQuestionIsNew(nextType, nextText, nextCollegeId, id);
+
       await this.questionRepo.update(id, dto);
       return this.questionRepo.findOneBy({ id });
     } catch (error) {
+      if (error instanceof HttpException) throw error;
       console.error('Error updating question:', error);
       throw new Error(`Failed to update question: ${error.message}`);
     }

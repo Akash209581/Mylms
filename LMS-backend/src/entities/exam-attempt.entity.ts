@@ -57,6 +57,12 @@ export class ExamAttempt {
   @Column({ name: 'marked_review', type: 'jsonb', default: [] })
   markedReview: number[];
 
+  @Column({ name: 'tab_switch_count', type: 'int', default: 0 })
+  tabSwitchCount: number;
+
+  @Column({ name: 'auto_submitted_reason', type: 'varchar', length: 32, nullable: true })
+  autoSubmittedReason: string | null;
+
   @Column({ name: 'mcq_score', type: 'decimal', precision: 9, scale: 2, nullable: true })
   mcqScore: number;
 

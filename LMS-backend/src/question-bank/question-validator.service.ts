@@ -92,7 +92,7 @@ export class QuestionValidatorService {
     }
 
     const options = [row.optionA, row.optionB, row.optionC, row.optionD];
-    const correctAnswer = options['ABCD'.indexOf(correctOptionUpper)];
+    const correctAnswer = correctOptionUpper;
 
     const question: ValidatedQuestion = {
       type: QuestionType.MCQ,

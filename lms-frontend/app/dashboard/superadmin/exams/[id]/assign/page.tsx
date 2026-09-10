@@ -174,7 +174,7 @@ export default function ExamAssignPage() {
     }
   }
 
-  const role = user?.role === 'SUPERADMIN' ? 'superadmin' : user?.role === 'ADMIN' ? 'admin' : 'instructor'
+  const examBase = '/dashboard/superadmin/exams'
 
   const filteredColleges = colleges.filter(c =>
     c.name?.toLowerCase().includes(collegeSearch.toLowerCase()) ||
@@ -191,7 +191,7 @@ export default function ExamAssignPage() {
       <main className="page-content max-w-6xl">
         <div className="flex justify-between items-center mb-6">
           <button
-            onClick={() => router.push(`/dashboard/${role}/exams/${examId}/questions`)}
+            onClick={() => router.push(`${examBase}/${examId}/questions`)}
             className="btn-secondary text-sm"
           >
             ← Back to Questions
@@ -204,7 +204,7 @@ export default function ExamAssignPage() {
               🕒 Edit Timings & Schedule
             </button>
             <button
-              onClick={() => router.push(`/dashboard/${role}/exams/${examId}/analytics`)}
+              onClick={() => router.push(`${examBase}/${examId}/analytics`)}
               className="btn-primary text-sm"
             >
               View Analytics →

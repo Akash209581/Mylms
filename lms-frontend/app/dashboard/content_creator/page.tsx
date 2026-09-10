@@ -1,4 +1,4 @@
 'use client';
-import CoursesPage from '@/app/dashboard/superadmin/courses/page';
+import CoursesPage from '@/app/dashboard/instructor/courses/page';
 
 export default CoursesPage;

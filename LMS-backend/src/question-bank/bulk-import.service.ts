@@ -9,6 +9,10 @@ import {
 } from './bulk-import.dto';
 import { QuestionValidatorService } from './question-validator.service';
 import { FileParserService } from './file-parser.service';
+import {
+  DUPLICATE_QUESTION_MESSAGE,
+  questionDuplicateKey,
+} from '../common/question-duplicate.util';
 
 @Injectable()
 export class BulkImportService {
@@ -32,9 +36,17 @@ export class BulkImportService {
     const errorDetails: ErrorDetail[] = [];
     let successCount = 0;
 
+    const existing = await this.questionRepository.find({
+      where: { collegeId },
+      select: ['id', 'type', 'questionText'],
+    });
+    const seen = new Set(
+      existing.map((q) => questionDuplicateKey(q.type, q.questionText)),
+    );
+
     for (let i = 0; i < rows.length; i += batchSize) {
       const batch = rows.slice(i, i + batchSize);
-      const { successful, errors } = await this.processBatch(batch, collegeId);
+      const { successful, errors } = await this.processBatch(batch, collegeId, seen);
       successCount += successful;
       errorDetails.push(...errors);
     }
@@ -52,6 +64,7 @@ export class BulkImportService {
   private async processBatch(
     batch: ParsedQuestionRow[],
     collegeId: number,
+    seen: Set<string>,
   ): Promise<{ successful: number; errors: ErrorDetail[] }> {
     const errors: ErrorDetail[] = [];
     const validQuestions: Question[] = [];
@@ -66,6 +79,17 @@ export class BulkImportService {
         });
         continue;
       }
+
+      const key = questionDuplicateKey(result.question!.type, result.question!.questionText);
+      if (seen.has(key)) {
+        errors.push({
+          rowNumber: row.rowNumber,
+          reason: DUPLICATE_QUESTION_MESSAGE,
+          data: this.sanitizeRowForError(row),
+        });
+        continue;
+      }
+      seen.add(key);
 
       const question = this.questionRepository.create({
         ...result.question!,

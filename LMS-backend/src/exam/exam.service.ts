@@ -62,6 +62,7 @@ export class ExamService {
     this.assertAdmin(user);
     const exam = this.examRepo.create({
       ...dto,
+      tabSwitchMonitoring: dto.tabSwitchMonitoring ?? true,
       collegeId: user.role === UserRole.SUPERADMIN ? undefined : user.collegeId,
       createdById: user.sub,
       status: ExamStatus.DRAFT,
@@ -73,7 +74,8 @@ export class ExamService {
     this.assertAdmin(user);
     const qb = this.examRepo.createQueryBuilder('e')
       .select(['e.id','e.title','e.status','e.durationMinutes','e.startAt','e.endAt',
-               'e.totalMarks','e.passingMarks','e.createdAt'])
+               'e.totalMarks','e.passingMarks','e.createdAt',
+               'e.showCorrectAnswers','e.showExplanations'])
       .orderBy('e.createdAt','DESC');
     if (user.role !== UserRole.SUPERADMIN) {
       if (!user.collegeId) throw new ForbiddenException('College required');
@@ -101,8 +103,8 @@ export class ExamService {
     this.assertAdmin(user);
     const exam = await this.getExamOrFail(id);
     await this.assertOwns(user, exam);
-    if (exam.status !== ExamStatus.DRAFT && exam.status !== ExamStatus.SCHEDULED)
-      throw new ConflictException('Only DRAFT and SCHEDULED exams can be edited');
+    if (exam.status === ExamStatus.ARCHIVED)
+      throw new ConflictException('Archived exams cannot be edited');
 
     if (dto.startAt !== undefined) exam.startAt = dto.startAt ? new Date(dto.startAt) : (null as any);
     if (dto.endAt !== undefined) exam.endAt = dto.endAt ? new Date(dto.endAt) : (null as any);
@@ -182,12 +184,15 @@ export class ExamService {
     await this.validateQuestionsAccess(user, exam, qIds, section);
 
     const maxOrder = await this.eqRepo.maximum('sortOrder', { examId: id, section }) ?? -1;
+    const existing = await this.eqRepo.find({
+      where: { examId: id, questionId: In(qIds) },
+      select: ['questionId'],
+    });
+    const existingSet = new Set(existing.map(e => e.questionId));
     const rows: ExamQuestion[] = [];
     for (let i = 0; i < dto.questions.length; i++) {
       const d = dto.questions[i];
-      // Skip duplicates already in exam
-      const exists = await this.eqRepo.findOne({ where: { examId: id, questionId: d.questionId } });
-      if (exists) continue;
+      if (existingSet.has(d.questionId)) continue;
       rows.push(this.eqRepo.create({
         examId: id, questionId: d.questionId, section,
         marks: d.marks, negativeMarks: d.negativeMarks ?? 0,

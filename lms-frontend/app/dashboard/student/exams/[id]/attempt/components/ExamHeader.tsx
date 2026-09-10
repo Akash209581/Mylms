@@ -121,11 +121,17 @@ export default function ExamHeader({
       <div className="flex items-center gap-2.5 shrink-0">
         {tabWarnings > 0 && (
           <div
-            className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-amber-300 bg-amber-500/15 border border-amber-500/30 px-2.5 py-1.5 rounded-lg"
-            title={`You switched tabs ${tabWarnings} times. Exam activity is monitored.`}
+            className={`hidden sm:flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border ${
+              tabWarnings >= 3
+                ? 'text-rose-300 bg-rose-500/15 border-rose-500/30'
+                : 'text-amber-300 bg-amber-500/15 border-amber-500/30'
+            }`}
+            title={tabWarnings >= 3
+              ? 'Third tab switch — exam is being submitted'
+              : `You switched tabs ${tabWarnings} time${tabWarnings === 1 ? '' : 's'}. Auto-submit at 3.`}
           >
             <span>⚠️</span>
-            <span>Tab switch: {tabWarnings}</span>
+            <span>Tab switch: {tabWarnings}/3</span>
           </div>
         )}
 

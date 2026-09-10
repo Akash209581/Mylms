@@ -20,22 +20,6 @@ const nextConfig = {
     async rewrites() {
         return [
             {
-                source: '/dashboard/question_creator/question-bank/:path*',
-                destination: '/dashboard/instructor/question-bank/:path*',
-            },
-            {
-                source: '/dashboard/question_creator/question%20bank/:path*',
-                destination: '/dashboard/instructor/question-bank/:path*',
-            },
-            {
-                source: '/dashboard/question_creator/:path*',
-                destination: '/dashboard/instructor/:path*',
-            },
-            {
-                source: '/dashboard/content_creator/:path*',
-                destination: '/dashboard/instructor/:path*',
-            },
-            {
                 source: '/dashboard/:role/question%20bank/:path*',
                 destination: '/dashboard/:role/question-bank/:path*',
             },

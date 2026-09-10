@@ -47,6 +47,7 @@ interface Attempt {
   durationMinutes: number
   negativeMarking: boolean
   tabSwitchMonitoring: boolean
+  tabSwitchCount?: number
   totalMarks: number
   passingMarks: number
   mcqAnswers: Record<string, string | null>
@@ -87,6 +88,16 @@ export default function ExamAttemptPage() {
   }>>({})
 
   const saveTimer = useRef<ReturnType<typeof setTimeout>>()
+  const answersRef = useRef(answers)
+  const markedRef = useRef(markedReview)
+  const codeRef = useRef(code)
+  const languageRef = useRef(language)
+  const submittingRef = useRef(false)
+  const submitExamRef = useRef<(reason?: string) => Promise<void>>(async () => {})
+  answersRef.current = answers
+  markedRef.current = markedReview
+  codeRef.current = code
+  languageRef.current = language
 
   useEffect(() => {
     if (!attemptId) {
@@ -96,17 +107,25 @@ export default function ExamAttemptPage() {
     fetchAttempt()
   }, [attemptId])
 
-  // Tab switch monitoring
+  // Tab switch monitoring — persist + auto-submit on 3rd switch
   useEffect(() => {
-    if (!attempt?.tabSwitchMonitoring) return
-    const handleVisibility = () => {
-      if (document.visibilityState === 'hidden') {
-        setTabWarnings((w) => w + 1)
+    if (!attempt?.tabSwitchMonitoring || !attemptId) return
+    const handleVisibility = async () => {
+      if (document.visibilityState !== 'hidden') return
+      try {
+        const r = await api.post(`/student/exams/attempts/${attemptId}/tab-switch`)
+        const count = r.data?.count ?? 0
+        setTabWarnings(count)
+        if (r.data?.autoSubmit) {
+          await submitExamRef.current('TAB_SWITCH')
+        }
+      } catch (e) {
+        console.warn('Tab-switch report failed:', e)
       }
     }
     document.addEventListener('visibilitychange', handleVisibility)
     return () => document.removeEventListener('visibilitychange', handleVisibility)
-  }, [attempt?.tabSwitchMonitoring])
+  }, [attempt?.tabSwitchMonitoring, attemptId])
 
   const fetchAttempt = async () => {
     try {
@@ -115,6 +134,7 @@ export default function ExamAttemptPage() {
       setAttempt(data)
       setAnswers(data.mcqAnswers || {})
       setMarkedReview(data.markedReview || [])
+      if (typeof data.tabSwitchCount === 'number') setTabWarnings(data.tabSwitchCount)
 
       if (data.questions.length > 0 && !currentQuestionId) {
         setCurrentQuestionId(data.questions[0].id)
@@ -143,6 +163,15 @@ export default function ExamAttemptPage() {
       console.error('Failed to load attempt:', err)
       setLoading(false)
     }
+  }
+
+  const flushAnswers = async () => {
+    if (!attemptId) return
+    clearTimeout(saveTimer.current)
+    await api.patch(`/student/exams/attempts/${attemptId}/answers`, {
+      answers: answersRef.current,
+      markedReview: markedRef.current,
+    })
   }
 
   // Auto-save MCQ answers and review marks
@@ -187,11 +216,12 @@ export default function ExamAttemptPage() {
   }
 
   // Run Code or Submit Code
-  const runCode = async (questionId: number, isFinal: boolean) => {
-    const c = code[questionId] || ''
-    const lang = language[questionId] || 'python'
-    if (!c.trim()) return
+  const runCode = async (questionId: number, isFinal: boolean, opts?: { stdin?: string; wait?: boolean }): Promise<boolean> => {
+    const c = (opts?.wait ? codeRef.current[questionId] : code[questionId]) || ''
+    const lang = (opts?.wait ? languageRef.current[questionId] : language[questionId]) || 'python'
+    if (!c.trim()) return true
 
+    const executionType = isFinal ? 'SUBMIT' : 'RUN'
     setRunning((r) => ({ ...r, [questionId]: true }))
     setCodeResult((prev) => {
       const copy = { ...prev }
@@ -199,14 +229,25 @@ export default function ExamAttemptPage() {
       return copy
     })
 
+    const attachResult = (result: any) => {
+      setCodeResult((prev) => ({ ...prev, [questionId]: { ...result, executionType } }))
+      setRunning((r) => ({ ...r, [questionId]: false }))
+      setJobStates((prev) => {
+        const copy = { ...prev }
+        delete copy[questionId]
+        return copy
+      })
+    }
+
     try {
       const r = await api.post(`/student/exams/attempts/${attemptId}/code`, {
         questionId,
         language: lang,
         code: c,
         isFinal,
+        stdin: opts?.stdin,
       })
-      const { jobId, position, status, executionType } = r.data
+      const { jobId, position, status } = r.data
 
       setJobStates((prev) => ({
         ...prev,
@@ -214,13 +255,60 @@ export default function ExamAttemptPage() {
           jobId,
           status: status || 'QUEUED',
           position: position || 1,
-          executionType: executionType || (isFinal ? 'SUBMIT' : 'RUN'),
+          executionType,
           currentCase: 0,
           totalCases: 0,
         },
       }))
 
-      // Connect to Socket.IO gateway for real-time live events
+      const terminal = (data: any) =>
+        data?.result ||
+        ['ACCEPTED', 'PARTIAL', 'WRONG_ANSWER', 'COMPILATION_ERROR', 'RUNTIME_ERROR', 'TIME_LIMIT_EXCEEDED', 'MEMORY_LIMIT_EXCEEDED', 'SYSTEM_ERROR'].includes(data?.status)
+
+      const pollUntilDone = () =>
+        new Promise<boolean>((resolve) => {
+          const deadline = Date.now() + (opts?.wait ? 60000 : 90000)
+          const pollTimer = setInterval(async () => {
+            try {
+              const pollRes = await api.get(`/student/exams/attempts/${attemptId}/code/jobs/${jobId}`)
+              const data = pollRes.data
+              if (!data) return
+              if (data.status === 'QUEUED' || data.status === 'RUNNING') {
+                setJobStates((prev) => ({
+                  ...prev,
+                  [questionId]: {
+                    ...prev[questionId],
+                    status: data.status,
+                    position: data.position ?? prev[questionId]?.position,
+                  },
+                }))
+              } else if (terminal(data)) {
+                clearInterval(pollTimer)
+                attachResult(data.result || { status: data.status, error: data.error, executionType })
+                resolve(true)
+              }
+            } catch {
+              // keep polling
+            }
+            if (Date.now() > deadline) {
+              clearInterval(pollTimer)
+              setRunning((r) => ({ ...r, [questionId]: false }))
+              if (opts?.wait) {
+                attachResult({
+                  error: 'Timed out waiting for code evaluation. The exam was not submitted.',
+                  status: 'SYSTEM_ERROR',
+                  executionType,
+                })
+              }
+              resolve(false)
+            }
+          }, 1000)
+        })
+
+      if (opts?.wait) {
+        return await pollUntilDone()
+      }
+
       let socket: any = null
       try {
         socket = io(`${API_URL}/code-execution`, {
@@ -228,19 +316,6 @@ export default function ExamAttemptPage() {
           withCredentials: true,
         })
         socket.emit('join_job', { jobId })
-
-        socket.on('queue_status', (data: any) => {
-          if (data.jobId === jobId) {
-            setJobStates((prev) => ({
-              ...prev,
-              [questionId]: {
-                ...prev[questionId],
-                status: 'QUEUED',
-                position: data.position,
-              },
-            }))
-          }
-        })
 
         socket.on('job_progress', (data: any) => {
           if (data.jobId === jobId) {
@@ -258,26 +333,14 @@ export default function ExamAttemptPage() {
 
         socket.on('job_completed', (data: any) => {
           if (data.jobId === jobId) {
-            setCodeResult((prev) => ({ ...prev, [questionId]: data.result }))
-            setRunning((r) => ({ ...r, [questionId]: false }))
-            setJobStates((prev) => {
-              const copy = { ...prev }
-              delete copy[questionId]
-              return copy
-            })
+            attachResult(data.result)
             if (socket) socket.disconnect()
           }
         })
 
         socket.on('job_failed', (data: any) => {
           if (data.jobId === jobId) {
-            setCodeResult((prev) => ({ ...prev, [questionId]: { error: data.error } }))
-            setRunning((r) => ({ ...r, [questionId]: false }))
-            setJobStates((prev) => {
-              const copy = { ...prev }
-              delete copy[questionId]
-              return copy
-            })
+            attachResult({ error: data.error, executionType })
             if (socket) socket.disconnect()
           }
         })
@@ -285,83 +348,51 @@ export default function ExamAttemptPage() {
         console.warn('Socket error, relying on polling fallback:', sockErr)
       }
 
-      // Fast Resilient Polling Fallback
-      const pollTimer = setInterval(async () => {
-        try {
-          const pollRes = await api.get(`/student/exams/attempts/${attemptId}/code/jobs/${jobId}`)
-          const data = pollRes.data
-          if (!data) return
-
-          if (data.status === 'QUEUED') {
-            setJobStates((prev) => ({
-              ...prev,
-              [questionId]: {
-                ...prev[questionId],
-                status: 'QUEUED',
-                position: data.position ?? prev[questionId]?.position,
-              },
-            }))
-          } else if (data.status === 'RUNNING') {
-            setJobStates((prev) => ({
-              ...prev,
-              [questionId]: {
-                ...prev[questionId],
-                status: 'RUNNING',
-              },
-            }))
-          } else if (
-            data.result ||
-            ['ACCEPTED', 'PARTIAL', 'WRONG_ANSWER', 'COMPILATION_ERROR', 'RUNTIME_ERROR', 'TIME_LIMIT_EXCEEDED', 'MEMORY_LIMIT_EXCEEDED', 'SYSTEM_ERROR'].includes(data.status)
-          ) {
-            clearInterval(pollTimer)
-            if (socket) socket.disconnect()
-            setCodeResult((prev) => ({ ...prev, [questionId]: data.result || { status: data.status, error: data.error } }))
-            setRunning((r) => ({ ...r, [questionId]: false }))
-            setJobStates((prev) => {
-              const copy = { ...prev }
-              delete copy[questionId]
-              return copy
-            })
-          }
-        } catch {
-          // Keep polling
-        }
-      }, 1000)
-
-      setTimeout(() => {
-        clearInterval(pollTimer)
+      pollUntilDone().then(() => {
         if (socket) socket.disconnect()
-        setRunning((r) => ({ ...r, [questionId]: false }))
-      }, 90000)
+      })
+      return true
     } catch (e: any) {
-      setCodeResult((prev) => ({
-        ...prev,
-        [questionId]: { error: e.response?.data?.message || 'Failed to submit code for execution' },
-      }))
-      setRunning((r) => ({ ...r, [questionId]: false }))
+      attachResult({ error: e.response?.data?.message || 'Failed to submit code for execution', executionType })
+      return false
     }
   }
 
   // Final Exam Submission
-  const submitExam = async () => {
+  const submitExam = async (reason?: string) => {
+    if (submittingRef.current) return
+    submittingRef.current = true
     setSubmitting(true)
     try {
+      await flushAnswers().catch(() => {})
       const codingQs = attempt?.questions.filter((q) => q.section === 'B') || []
       for (const q of codingQs) {
-        if (code[q.id]?.trim()) {
-          await runCode(q.id, true).catch(() => {})
+        if (codeRef.current[q.id]?.trim()) {
+          const finished = await runCode(q.id, true, { wait: true }).catch(() => false)
+          if (!finished && reason !== 'TIMER' && reason !== 'TAB_SWITCH') {
+            submittingRef.current = false
+            setSubmitting(false)
+            window.alert('Your code is still being evaluated. The exam was not submitted. Wait a few seconds and submit again.')
+            return
+          }
         }
       }
-      await api.post(`/student/exams/attempts/${attemptId}/submit`)
+      await api.post(`/student/exams/attempts/${attemptId}/submit`, {
+        answers: answersRef.current,
+        markedReview: markedRef.current,
+        reason,
+      })
       router.push(`/dashboard/student/exams/${examId}/result?attemptId=${attemptId}`)
     } catch (err) {
       console.error('Failed to submit exam:', err)
+      submittingRef.current = false
       setSubmitting(false)
     }
   }
+  submitExamRef.current = submitExam
 
   const handleExpire = () => {
-    if (!submitting) submitExam()
+    if (!submittingRef.current) submitExam('TIMER')
   }
 
   const currentQuestion = attempt?.questions.find((q) => q.id === currentQuestionId)
@@ -491,7 +522,7 @@ export default function ExamAttemptPage() {
                   codeResult={codeResult[currentQuestion.id]}
                   jobState={jobStates[currentQuestion.id]}
                   isRunning={running[currentQuestion.id] || false}
-                  onRunCode={() => runCode(currentQuestion.id, false)}
+                  onRunCode={(stdin) => runCode(currentQuestion.id, false, { stdin })}
                   onSubmitCode={() => runCode(currentQuestion.id, true)}
                   isMarkedForReview={markedReview.includes(currentQuestion.id)}
                   onToggleReview={() => toggleReview(currentQuestion.id)}

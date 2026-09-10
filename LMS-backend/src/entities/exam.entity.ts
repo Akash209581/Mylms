@@ -80,16 +80,16 @@ export class Exam {
   @Column({ name: 'show_results', default: true })
   showResults: boolean;
 
-  @Column({ name: 'show_correct_answers', default: false })
+  @Column({ name: 'show_correct_answers', default: true })
   showCorrectAnswers: boolean;
 
-  @Column({ name: 'show_explanations', default: false })
+  @Column({ name: 'show_explanations', default: true })
   showExplanations: boolean;
 
   @Column({ name: 'ranking_enabled', default: false })
   rankingEnabled: boolean;
 
-  @Column({ name: 'tab_switch_monitoring', default: false })
+  @Column({ name: 'tab_switch_monitoring', default: true })
   tabSwitchMonitoring: boolean;
 
   @CreateDateColumn({ name: 'created_at' })

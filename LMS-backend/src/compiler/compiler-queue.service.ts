@@ -16,7 +16,13 @@ export class CompilerQueueService implements OnModuleInit, OnModuleDestroy {
   private isRedisOnline = false;
 
   // In-memory registry for fast result polling and fallback
-  private jobResults = new Map<string, { status: ExecutionStatus; result?: any; error?: string; position?: number }>();
+  private jobResults = new Map<string, {
+    status: ExecutionStatus;
+    result?: any;
+    error?: string;
+    position?: number;
+    attemptId?: number;
+  }>();
 
   // In-memory fallback queue if Redis server is not yet running
   private fallbackQueue: CodeJobPayload[] = [];
@@ -86,7 +92,7 @@ export class CompilerQueueService implements OnModuleInit, OnModuleDestroy {
   async enqueueJob(
     payload: CodeJobPayload,
   ): Promise<{ jobId: string; status: ExecutionStatus; position: number }> {
-    this.jobResults.set(payload.jobId, { status: ExecutionStatus.QUEUED });
+    this.jobResults.set(payload.jobId, { status: ExecutionStatus.QUEUED, attemptId: payload.attemptId });
 
     if (this.isRedisOnline && this.queue) {
       try {
@@ -96,7 +102,11 @@ export class CompilerQueueService implements OnModuleInit, OnModuleDestroy {
         });
 
         const position = await this.getQueuePosition(payload.jobId);
-        this.jobResults.set(payload.jobId, { status: ExecutionStatus.QUEUED, position });
+        this.jobResults.set(payload.jobId, {
+          status: ExecutionStatus.QUEUED,
+          position,
+          attemptId: payload.attemptId,
+        });
         return { jobId: payload.jobId, status: ExecutionStatus.QUEUED, position };
       } catch (err) {
         this.logger.warn(`Failed to add to Redis BullMQ: ${err.message}. Enqueuing in local FIFO fallback.`);
@@ -106,7 +116,11 @@ export class CompilerQueueService implements OnModuleInit, OnModuleDestroy {
     // Local in-memory sequential FIFO fallback
     const position = this.fallbackQueue.length + 1 + (this.fallbackProcessing ? 1 : 0);
     this.fallbackQueue.push(payload);
-    this.jobResults.set(payload.jobId, { status: ExecutionStatus.QUEUED, position });
+    this.jobResults.set(payload.jobId, {
+      status: ExecutionStatus.QUEUED,
+      position,
+      attemptId: payload.attemptId,
+    });
     this.processFallbackNext();
 
     return { jobId: payload.jobId, status: ExecutionStatus.QUEUED, position };
@@ -192,23 +206,47 @@ export class CompilerQueueService implements OnModuleInit, OnModuleDestroy {
 
   /** Update job progress state in registry */
   updateJobProgress(jobId: string, status: ExecutionStatus, currentCase?: number, totalCases?: number) {
-    this.jobResults.set(jobId, { status });
+    const prev = this.jobResults.get(jobId);
+    this.jobResults.set(jobId, { ...prev, status, attemptId: prev?.attemptId });
   }
 
   /** Store completed job result */
   setJobCompleted(jobId: string, result: Partial<ExecutionJobResult>) {
+    const prev = this.jobResults.get(jobId);
     this.jobResults.set(jobId, {
       status: result.status || ExecutionStatus.ACCEPTED,
       result,
+      attemptId: prev?.attemptId ?? result.attemptId,
     });
   }
 
   /** Store failed job result */
   setJobFailed(jobId: string, error: string) {
+    const prev = this.jobResults.get(jobId);
     this.jobResults.set(jobId, {
       status: ExecutionStatus.SYSTEM_ERROR,
       error,
+      attemptId: prev?.attemptId,
     });
+  }
+
+  hasPendingJobs(attemptId: number): boolean {
+    if (!attemptId) return false;
+    for (const rec of this.jobResults.values()) {
+      if (rec.attemptId === attemptId && (rec.status === ExecutionStatus.QUEUED || rec.status === ExecutionStatus.RUNNING)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  async waitForAttemptJobs(attemptId: number, timeoutMs: number): Promise<boolean> {
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+      if (!this.hasPendingJobs(attemptId)) return true;
+      await new Promise((r) => setTimeout(r, 250));
+    }
+    return !this.hasPendingJobs(attemptId);
   }
 
   /** Process next job sequentially in local fallback mode (concurrency = 1) */
@@ -222,9 +260,14 @@ export class CompilerQueueService implements OnModuleInit, OnModuleDestroy {
 
     if (nextJob) {
       try {
-        await this.fallbackProcessor(nextJob);
+        const result = await this.fallbackProcessor(nextJob);
+        const current = this.jobResults.get(nextJob.jobId);
+        if (current && (current.status === ExecutionStatus.QUEUED || current.status === ExecutionStatus.RUNNING)) {
+          this.setJobCompleted(nextJob.jobId, result || { status: ExecutionStatus.ACCEPTED });
+        }
       } catch (err) {
         this.logger.error(`Fallback worker failed for job ${nextJob.jobId}: ${err.message}`);
+        this.setJobFailed(nextJob.jobId, err.message);
       }
     }
 

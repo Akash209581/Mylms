@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import MarkdownRenderer from '@/components/editor/MarkdownRenderer'
 
 interface Question {
   id: number
@@ -9,6 +10,7 @@ interface Question {
   marks: number
   negativeMarks: number
   questionText?: string
+  problemStatement?: string
   options?: string[]
 }
 
@@ -98,9 +100,27 @@ export default function McqWorkspace({
 
       {/* ── Question Statement ── */}
       <div className="p-6 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-sm mb-6">
-        <p className="text-base sm:text-lg font-medium text-slate-100 leading-relaxed whitespace-pre-line">
-          {question.questionText}
-        </p>
+        {(() => {
+          const title = question.questionText?.trim() || ''
+          const body = question.problemStatement?.trim() || ''
+          const showTitle = !!title && !!body && title !== body
+          const statement = body || title
+          return (
+            <>
+              {showTitle && (
+                <h2 className="text-sm font-semibold text-slate-400 mb-3">{title}</h2>
+              )}
+              {statement ? (
+                <MarkdownRenderer
+                  content={statement}
+                  className="text-base sm:text-lg font-medium text-slate-100 leading-relaxed"
+                />
+              ) : (
+                <p className="text-base sm:text-lg font-medium text-slate-100 leading-relaxed">Question unavailable</p>
+              )}
+            </>
+          )
+        })()}
       </div>
 
       {/* ── Options List ── */}

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { getRoleBasePath } from '@/lib/roleUtils';
 import Sidebar from '@/components/layout/Sidebar';
 import Navbar from '@/components/layout/Navbar';
 import BulkQuestionImport from '@/components/BulkQuestionImport';
@@ -41,12 +42,7 @@ export default function InstructorBulkImportPage() {
               </p>
             </div>
             <button
-              onClick={() => {
-                const target = ['SUPERADMIN', 'ADMIN'].includes(userRole)
-                  ? `/dashboard/${userRole.toLowerCase()}/question-bank`
-                  : '/dashboard/instructor/question-bank';
-                router.push(target);
-              }}
+              onClick={() => router.push(`${getRoleBasePath(userRole)}/question-bank`)}
               className="px-4 py-2 text-sm bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors flex items-center gap-2"
             >
               ← Back to Question Bank

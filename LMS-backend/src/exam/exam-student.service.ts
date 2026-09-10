@@ -11,12 +11,28 @@ import { ExamAttempt, AttemptStatus } from '../entities/exam-attempt.entity';
 import { ExamCodingSubmission, SubmissionStatus } from '../entities/exam-coding-submission.entity';
 import { Question, QuestionType } from '../entities/question.entity';
 import { UserRole } from '../entities/user.entity';
-import { SaveMcqAnswersDto, RunCodeDto } from './exam.dto';
+import { SaveMcqAnswersDto, RunCodeDto, SubmitExamDto } from './exam.dto';
 import { ExamRunnerService } from './exam-runner.service';
 import { CompilerQueueService } from '../compiler/compiler-queue.service';
-import { CodeJobPayload, ExecutionStatus } from '../compiler/compiler.constants';
+import { CodeJobPayload } from '../compiler/compiler.constants';
+import { isMcqCorrect, normalizeMcqLetter } from '../common/mcq-answer.util';
 
 interface RequestUser { sub: number; role: UserRole; collegeId?: number; }
+
+function isPublicTestCase(tc: any): boolean {
+  if (!tc || typeof tc !== 'object') return true;
+  if (typeof tc.isHidden === 'boolean') return !tc.isHidden;
+  if (typeof tc.isPublic === 'boolean') return tc.isPublic;
+  return true;
+}
+
+function publicTestCases(allCases: any[]): any[] {
+  if (!allCases?.length) return [];
+  const hasFlags = allCases.some((tc: any) => typeof tc?.isHidden === 'boolean' || typeof tc?.isPublic === 'boolean');
+  if (hasFlags) return allCases.filter(isPublicTestCase);
+  const limit = Math.max(1, Math.floor(allCases.length / 2));
+  return allCases.slice(0, limit);
+}
 
 // Columns returned to student — NO correct answers, NO hidden test cases
 function sanitizeQuestion(eq: ExamQuestion) {
@@ -32,9 +48,11 @@ function sanitizeQuestion(eq: ExamQuestion) {
     sortOrder: eq.sortOrder,
   };
   if (q.type === QuestionType.MCQ) {
-    return { ...base, options: q.options };
+    return { ...base, options: q.options, problemStatement: q.problemStatement };
   }
-  // Coding question
+  const samples = publicTestCases(q.testCases || []).slice(0, 2).map(tc => ({
+    input: tc.input, output: tc.output, explanation: tc.explanation,
+  }));
   return {
     ...base,
     problemStatement: q.problemStatement,
@@ -43,10 +61,7 @@ function sanitizeQuestion(eq: ExamQuestion) {
     constraints: q.constraints,
     allowedLanguages: q.allowedLanguages,
     codeSnippet: q.codeSnippet,
-    // Only public test cases (those without isHidden flag — we use index convention: first half = public)
-    sampleTestCases: (q.testCases || []).slice(0, 2).map(tc => ({
-      input: tc.input, output: tc.output, explanation: tc.explanation,
-    })),
+    sampleTestCases: samples,
   };
 }
 
@@ -143,7 +158,7 @@ export class ExamStudentService {
     const attempt = await this.getStudentAttempt(user, attemptId);
     // Auto-submit if deadline passed
     if (attempt.status === AttemptStatus.IN_PROGRESS && new Date() >= new Date(attempt.deadlineAt)) {
-      await this.submitAttempt(user, attemptId);
+      await this.submitAttempt(user, attemptId, { reason: 'TIMER' });
       attempt.status = AttemptStatus.SUBMITTED;
     }
     return this.buildAttemptResponse(user, attempt);
@@ -155,7 +170,7 @@ export class ExamStudentService {
     const attempt = await this.getStudentAttempt(user, attemptId);
     this.assertInProgress(attempt);
 
-    const merged = { ...attempt.mcqAnswers, ...dto.answers };
+    const merged = { ...attempt.mcqAnswers, ...(dto.answers || {}) };
     const timeSpent = dto.timeSpent
       ? { ...attempt.timeSpent, ...dto.timeSpent }
       : attempt.timeSpent;
@@ -179,22 +194,16 @@ export class ExamStudentService {
     });
     if (!eq) throw new NotFoundException('Coding question not found in this exam');
     const q = await this.questionRepo.findOneBy({ id: dto.questionId });
-    if (!q || !q.testCases?.length) throw new BadRequestException('No test cases configured');
+    if (!q) throw new NotFoundException('Question not found');
 
     const allCases = q.testCases || [];
-    const publicCases = allCases.filter((tc: any) => tc.isPublic === true);
-    const hiddenCases = allCases.filter((tc: any) => tc.isPublic === false);
+    const visible = publicTestCases(allCases);
+    if (dto.isFinal && !allCases.length) throw new BadRequestException('No test cases configured');
 
-    // If isPublic flag is not explicitly stored on objects, fallback to first-half convention
-    const hasExplicitPublicFlags = publicCases.length > 0 || hiddenCases.length > 0;
-    const defaultPublicLimit = Math.max(1, Math.floor(allCases.length / 2));
-
-    let casesToRun = allCases;
+    let casesToRun: Array<{ input: string; output: string; explanation?: string; isPublic?: boolean; isHidden?: boolean }> = allCases;
     if (!dto.isFinal) {
-      // Run Code only executes public test cases
-      casesToRun = hasExplicitPublicFlags
-        ? publicCases
-        : allCases.slice(0, defaultPublicLimit);
+      const stdin = dto.stdin != null && dto.stdin !== '' ? dto.stdin : (visible[0]?.input ?? '');
+      casesToRun = [{ input: stdin, output: visible[0]?.output ?? '', isPublic: true }];
     }
 
     const jobId = `code-${attemptId}-${dto.questionId}-${Date.now()}`;
@@ -205,15 +214,14 @@ export class ExamStudentService {
       userId: user.sub,
       language: dto.language,
       code: dto.code,
+      stdin: dto.stdin,
       executionType: dto.isFinal ? 'SUBMIT' : 'RUN',
       isFinal: !!dto.isFinal,
       totalMarks: Number(eq.marks) || 10,
-      testCases: casesToRun.map((tc, idx) => ({
+      testCases: casesToRun.map((tc) => ({
         input: tc.input,
         output: tc.output,
-        isPublic: dto.isFinal
-          ? (hasExplicitPublicFlags ? (tc as any).isPublic !== false : idx < defaultPublicLimit)
-          : true,
+        isPublic: dto.isFinal ? isPublicTestCase(tc) : true,
         explanation: tc.explanation,
       })),
     };
@@ -232,28 +240,60 @@ export class ExamStudentService {
 
   /** Retrieve job status and live queue position or execution result */
   async getJobStatus(user: RequestUser, attemptId: number, jobId: string) {
-    const attempt = await this.getStudentAttempt(user, attemptId);
+    await this.getStudentAttempt(user, attemptId);
+    if (!jobId?.startsWith(`code-${attemptId}-`)) {
+      throw new ForbiddenException('Job does not belong to this attempt');
+    }
     return this.queueService.getJobStatus(jobId);
+  }
+
+  async recordTabSwitch(user: RequestUser, attemptId: number) {
+    const attempt = await this.getStudentAttempt(user, attemptId);
+    this.assertInProgress(attempt);
+    const exam = await this.examRepo.findOneBy({ id: attempt.examId });
+    if (!exam?.tabSwitchMonitoring) {
+      return { count: attempt.tabSwitchCount || 0, autoSubmit: false };
+    }
+    const count = (attempt.tabSwitchCount || 0) + 1;
+    await this.attemptRepo.update(attemptId, { tabSwitchCount: count });
+    return { count, autoSubmit: count >= 3 };
   }
 
   // ─── Final Submit ─────────────────────────────────────────────────────────
 
-  async submitAttempt(user: RequestUser, attemptId: number) {
+  async submitAttempt(user: RequestUser, attemptId: number, dto?: SubmitExamDto) {
     const attempt = await this.getStudentAttempt(user, attemptId);
     if (attempt.status === AttemptStatus.SUBMITTED || attempt.status === AttemptStatus.EVALUATED)
       return { message: 'Already submitted' };
 
+    if (dto?.answers && Object.keys(dto.answers).length) {
+      attempt.mcqAnswers = { ...attempt.mcqAnswers, ...dto.answers };
+    }
+    if (dto?.markedReview) {
+      attempt.markedReview = dto.markedReview;
+    }
+
     const exam = await this.examRepo.findOneBy({ id: attempt.examId });
     if (!exam) throw new NotFoundException('Exam not found');
+
+    const autoSubmit = dto?.reason === 'TIMER' || dto?.reason === 'TAB_SWITCH';
+    const waitMs = autoSubmit ? 45000 : 15000;
+    const codingReady = await this.queueService.waitForAttemptJobs(attemptId, waitMs);
+    if (!codingReady && !autoSubmit) {
+      throw new ConflictException(
+        'Coding evaluation is still in progress. Wait for your code to finish, then submit the exam. Your exam was not submitted.',
+      );
+    }
     const questions = await this.eqRepo.find({ where: { examId: attempt.examId }, order: { section: 'ASC', sortOrder: 'ASC' } });
 
-    // Score MCQs
+    // Score MCQs (accept stored letter A–D or option text)
     let mcqScore = 0;
     for (const eq of questions.filter(q => q.section === 'A')) {
       const q = eq.question || await this.questionRepo.findOneBy({ id: eq.questionId });
+      if (!q) continue;
       const given = attempt.mcqAnswers?.[String(eq.questionId)];
       if (!given) continue;
-      if (given === q.correctAnswer) {
+      if (isMcqCorrect(given, q.correctAnswer, q.options)) {
         mcqScore += Number(eq.marks);
       } else if (exam.negativeMarking) {
         mcqScore -= Number(eq.negativeMarks || exam.negativeMarksValue || 0);
@@ -267,11 +307,15 @@ export class ExamStudentService {
 
     const totalScore = mcqScore + codingScore;
     const passed = totalScore >= exam.passingMarks;
+    const reason = dto?.reason && ['TAB_SWITCH', 'TIMER'].includes(dto.reason) ? dto.reason : attempt.autoSubmittedReason;
 
     await this.attemptRepo.update(attemptId, {
       status: AttemptStatus.SUBMITTED,
       endTime: new Date(),
+      mcqAnswers: attempt.mcqAnswers,
+      markedReview: attempt.markedReview,
       mcqScore, codingScore, totalScore, passed,
+      autoSubmittedReason: reason || null,
     });
 
     return { message: 'Submitted successfully', totalScore, passed };
@@ -300,13 +344,15 @@ export class ExamStudentService {
       .map(eq => {
         const q = eq.question;
         const given = attempt.mcqAnswers?.[String(eq.questionId)];
-        const correct = given === q.correctAnswer;
+        const correct = isMcqCorrect(given, q.correctAnswer, q.options);
+        const correctLetter = normalizeMcqLetter(q.correctAnswer, q.options);
         return {
           questionId: eq.questionId,
           questionText: q.questionText,
+          problemStatement: q.problemStatement,
           options: q.options,
           yourAnswer: given || null,
-          correctAnswer: exam.showCorrectAnswers ? q.correctAnswer : undefined,
+          correctAnswer: exam.showCorrectAnswers ? correctLetter : undefined,
           explanation: exam.showExplanations ? q.explanation : undefined,
           marks: eq.marks, negativeMarks: eq.negativeMarks,
           correct, earned: correct ? eq.marks : (given ? -eq.negativeMarks : 0),
@@ -415,6 +461,7 @@ export class ExamStudentService {
       durationMinutes: exam.durationMinutes,
       negativeMarking: exam.negativeMarking,
       tabSwitchMonitoring: exam.tabSwitchMonitoring,
+      tabSwitchCount: attempt.tabSwitchCount || 0,
       totalMarks: exam.totalMarks,
       passingMarks: exam.passingMarks,
       mcqAnswers: attempt.mcqAnswers || {},

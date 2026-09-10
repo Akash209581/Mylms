@@ -30,6 +30,8 @@ export default function ExamListPage() {
     endAt: '',
     passingMarks: 0,
     status: 'DRAFT',
+    showCorrectAnswers: true,
+    showExplanations: true,
   })
   const [savingEdit, setSavingEdit] = useState(false)
   const [editMsg, setEditMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
@@ -64,6 +66,8 @@ export default function ExamListPage() {
       endAt: exam.endAt ? new Date(exam.endAt).toISOString().slice(0, 16) : '',
       passingMarks: exam.passingMarks || 0,
       status: exam.status || 'DRAFT',
+      showCorrectAnswers: exam.showCorrectAnswers !== false,
+      showExplanations: exam.showExplanations !== false,
     })
   }
 
@@ -80,6 +84,8 @@ export default function ExamListPage() {
         endAt: editForm.endAt ? new Date(editForm.endAt).toISOString() : null,
         passingMarks: Number(editForm.passingMarks),
         status: editForm.status,
+        showCorrectAnswers: editForm.showCorrectAnswers,
+        showExplanations: editForm.showExplanations,
       })
       setEditMsg({ type: 'success', text: 'Exam timings & settings updated!' })
       await loadExams()
@@ -91,7 +97,7 @@ export default function ExamListPage() {
     }
   }
 
-  const role = user?.role === 'SUPERADMIN' ? 'superadmin' : user?.role === 'ADMIN' ? 'admin' : 'instructor'
+  const examBase = '/dashboard/superadmin/exams'
 
   const filtered = filter === 'ALL' ? exams : exams.filter(e => e.status === filter)
 
@@ -132,7 +138,7 @@ export default function ExamListPage() {
             <span className="ml-2 text-sm role-text-muted font-normal">({filtered.length})</span>
           </h2>
           <button
-            onClick={() => router.push(`/dashboard/${role}/exams/create`)}
+            onClick={() => router.push(`${examBase}/create`)}
             className="btn-primary flex items-center gap-2 shadow-lg shadow-indigo-500/20"
             id="create-exam-btn"
           >
@@ -150,7 +156,7 @@ export default function ExamListPage() {
             <div className="text-center py-16">
               <div className="text-5xl mb-3">📋</div>
               <p className="role-text-muted">No exams found. Create your first exam!</p>
-              <button onClick={() => router.push(`/dashboard/${role}/exams/create`)} className="btn-primary mt-4">
+              <button onClick={() => router.push(`${examBase}/create`)} className="btn-primary mt-4">
                 Create Exam
               </button>
             </div>
@@ -209,21 +215,21 @@ export default function ExamListPage() {
                           </button>
                           <span className="role-text-muted">|</span>
                           <button
-                            onClick={() => router.push(`/dashboard/${role}/exams/${exam.id}/questions`)}
+                            onClick={() => router.push(`${examBase}/${exam.id}/questions`)}
                             className="text-xs font-semibold text-[var(--accent-text)] hover:underline"
                           >
                             Questions
                           </button>
                           <span className="role-text-muted">|</span>
                           <button
-                            onClick={() => router.push(`/dashboard/${role}/exams/${exam.id}/assign`)}
+                            onClick={() => router.push(`${examBase}/${exam.id}/assign`)}
                             className="text-xs font-semibold text-[var(--accent-text)] hover:underline"
                           >
                             Assign
                           </button>
                           <span className="role-text-muted">|</span>
                           <button
-                            onClick={() => router.push(`/dashboard/${role}/exams/${exam.id}/analytics`)}
+                            onClick={() => router.push(`${examBase}/${exam.id}/analytics`)}
                             className="text-xs font-semibold text-[var(--accent-text)] hover:underline"
                           >
                             Analytics
@@ -333,6 +339,25 @@ export default function ExamListPage() {
                     <option value="COMPLETED">COMPLETED</option>
                     <option value="ARCHIVED">ARCHIVED</option>
                   </select>
+                </div>
+
+                <div className="space-y-2 pt-1">
+                  <label className="flex items-center justify-between text-sm">
+                    <span className="role-text-primary">Show correct answers to students</span>
+                    <input
+                      type="checkbox"
+                      checked={editForm.showCorrectAnswers}
+                      onChange={e => setEditForm({ ...editForm, showCorrectAnswers: e.target.checked })}
+                    />
+                  </label>
+                  <label className="flex items-center justify-between text-sm">
+                    <span className="role-text-primary">Show explanations to students</span>
+                    <input
+                      type="checkbox"
+                      checked={editForm.showExplanations}
+                      onChange={e => setEditForm({ ...editForm, showExplanations: e.target.checked })}
+                    />
+                  </label>
                 </div>
 
                 <div className="flex justify-end gap-3 pt-3 border-t" style={{ borderColor: 'var(--border)' }}>

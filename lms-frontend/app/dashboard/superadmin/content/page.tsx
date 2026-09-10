@@ -29,13 +29,16 @@ export default function ContentCreationPage() {
 
     useEffect(() => {
         const stored = localStorage.getItem('user')
-        if (stored) {
-            try {
-                const u = JSON.parse(stored)
-                if (u?.role) setUserRole(u.role)
-            } catch (e) {
-                console.error(e)
+        if (!stored) { router.push('/login'); return }
+        try {
+            const u = JSON.parse(stored)
+            if (u?.role) setUserRole(u.role)
+            if (u?.role && !['SUPERADMIN', 'ADMIN', 'INSTRUCTOR', 'CONTENT_CREATOR'].includes(u.role)) {
+                router.push('/login')
+                return
             }
+        } catch (e) {
+            console.error(e)
         }
         fetchCourses()
     }, [])

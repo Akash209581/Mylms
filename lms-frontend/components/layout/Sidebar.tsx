@@ -36,15 +36,15 @@ const adminNav: NavItem[] = [
     { label: 'Reports', href: '/dashboard/admin/reports', icon: <ChartIcon /> },
 ]
 const questionCreatorNav: NavItem[] = [
-    { label: 'Question Bank', href: '/dashboard/instructor/question-bank', icon: <QuizIcon /> },
-    { label: 'Add Question', href: '/dashboard/instructor/question-bank/create', icon: <PlusIcon /> },
-    { label: 'Bulk Import', href: '/dashboard/instructor/question-bank/bulk-import', icon: <ChartIcon /> },
+    { label: 'Question Bank', href: '/dashboard/question_creator/question-bank', icon: <QuizIcon /> },
+    { label: 'Add Question', href: '/dashboard/question_creator/question-bank/create', icon: <PlusIcon /> },
+    { label: 'Bulk Import', href: '/dashboard/question_creator/question-bank/bulk-import', icon: <ChartIcon /> },
 ]
 
 const contentCreatorNav: NavItem[] = [
-    { label: 'My Courses', href: '/dashboard/instructor/courses', icon: <BookIcon /> },
-    { label: 'Create Course', href: '/dashboard/instructor/courses/create', icon: <PlusIcon /> },
-    { label: 'Content Studio', href: '/dashboard/superadmin/content', icon: <EditorIcon /> },
+    { label: 'My Courses', href: '/dashboard/content_creator/courses', icon: <BookIcon /> },
+    { label: 'Create Course', href: '/dashboard/content_creator/courses/create', icon: <PlusIcon /> },
+    { label: 'Content Studio', href: '/dashboard/content_creator/content', icon: <EditorIcon /> },
 ]
 
 const superadminNav: NavItem[] = [

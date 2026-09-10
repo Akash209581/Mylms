@@ -139,11 +139,15 @@ export class CompilerWorker implements OnModuleInit, OnModuleDestroy {
           score: 0,
           executionTimeMs: Date.now() - startTime,
           compilationError: compileRes.compilationError,
+          stderr: compileRes.compilationError,
+          executionType: payload.executionType,
           publicResults: [],
           submittedAt: new Date().toISOString(),
         };
 
-        await this.persistSubmissionRecord(payload, overallResult);
+        if (payload.isFinal) {
+          await this.persistSubmissionRecord(payload, overallResult);
+        }
         const sanitized = this.grading.sanitizeResultsForClient(overallResult);
         this.queueService.setJobCompleted(jobId, sanitized);
         this.gateway.emitJobCompleted(jobId, sanitized);
@@ -153,22 +157,32 @@ export class CompilerWorker implements OnModuleInit, OnModuleDestroy {
       // 5. Run Test Cases Sequentially (One Job owns all its test cases)
       const caseResults: SingleCaseResult[] = [];
       const casesToRun = testCases || [];
+      let firstStdout = '';
+      let firstStderr = '';
+      let firstExitCode = 0;
 
       for (let i = 0; i < casesToRun.length; i++) {
         const tc = casesToRun[i];
         this.gateway.emitJobProgress(jobId, i + 1, casesToRun.length);
 
         const raw = await this.sandbox.executeTestCase(langConfig, workspaceDir, tc.input);
+        if (i === 0) {
+          firstStdout = raw.stdout || '';
+          firstStderr = raw.stderr || '';
+          firstExitCode = raw.exitCode;
+        }
         const actual = raw.stdout || '';
         const expected = tc.output || '';
-        const passed = raw.status === ExecutionStatus.ACCEPTED && this.grading.compareOutput(actual, expected);
+        const passed = payload.executionType === 'RUN'
+          ? raw.status === ExecutionStatus.ACCEPTED
+          : raw.status === ExecutionStatus.ACCEPTED && this.grading.compareOutput(actual, expected);
 
         caseResults.push({
           testCaseIndex: i + 1,
           passed,
           isPublic: tc.isPublic !== false,
           input: tc.isPublic !== false ? tc.input : undefined,
-          expected: tc.isPublic !== false ? expected : undefined,
+          expected: payload.executionType === 'RUN' || tc.isPublic !== false ? expected : undefined,
           actual: tc.isPublic !== false ? actual.trim() : undefined,
           stderr: tc.isPublic !== false ? raw.stderr : undefined,
           execTimeMs: raw.execTimeMs,
@@ -177,10 +191,13 @@ export class CompilerWorker implements OnModuleInit, OnModuleDestroy {
       }
 
       // 6. Grade and Calculate Final Score
+      const isRun = payload.executionType === 'RUN';
       const passedCount = caseResults.filter((r) => r.passed).length;
       const totalCount = caseResults.length;
-      const score = this.grading.calculateScore(passedCount, totalCount, totalMarks);
-      const overallStatus = this.grading.determineOverallStatus(caseResults);
+      const score = isRun ? 0 : this.grading.calculateScore(passedCount, totalCount, totalMarks);
+      const overallStatus = isRun
+        ? (caseResults[0]?.status || ExecutionStatus.ACCEPTED)
+        : this.grading.determineOverallStatus(caseResults);
 
       const overallResult: ExecutionJobResult = {
         jobId,
@@ -191,12 +208,18 @@ export class CompilerWorker implements OnModuleInit, OnModuleDestroy {
         totalCases: totalCount,
         score,
         executionTimeMs: Date.now() - startTime,
-        publicResults: caseResults,
+        stdout: firstStdout,
+        stderr: firstStderr,
+        exitCode: firstExitCode,
+        executionType: payload.executionType,
+        publicResults: isRun ? [] : caseResults,
         submittedAt: new Date().toISOString(),
       };
 
-      // 7. Persist to PostgreSQL
-      await this.persistSubmissionRecord(payload, overallResult);
+      // 7. Persist graded submissions only (Run Code does not affect exam score)
+      if (payload.isFinal) {
+        await this.persistSubmissionRecord(payload, overallResult);
+      }
 
       // 8. Sanitize (mask hidden cases) and Broadcast to Client
       const sanitized = this.grading.sanitizeResultsForClient(overallResult);

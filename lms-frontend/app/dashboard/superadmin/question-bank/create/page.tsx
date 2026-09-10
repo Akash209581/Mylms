@@ -9,6 +9,8 @@ import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
 import QuestionPreview from '@/components/question-bank/QuestionPreview'
 import MarkdownToolbar from '@/components/editor/MarkdownToolbar'
+import { normalizeMcqLetter } from '@/lib/mcq-answer'
+import { getRoleBasePath } from '@/lib/roleUtils'
 
 const COMPANIES = ['Accenture', 'CapGemini', 'Infosys', 'TCS', 'Wipro', 'Amazon', 'Google', 'Microsoft', 'Adobe', 'Flipkart', 'Other']
 const LANGUAGES = ['Python', 'Java', 'C', 'C++', 'JavaScript', 'Any']
@@ -80,7 +82,7 @@ function CreateQuestionForm() {
         fetchDomains()
     }, [])
 
-    const dashboardBase = currentRole === 'QUESTION_CREATOR' ? '/dashboard/instructor' : `/dashboard/${currentRole.toLowerCase()}`
+    const dashboardBase = getRoleBasePath(currentRole)
     const returnTo = searchParams.get('returnTo')
 
     useEffect(() => {
@@ -170,7 +172,12 @@ function CreateQuestionForm() {
                 credentials: 'include',
                 body: JSON.stringify(submitData),
             })
-            if (!res.ok) { const e = await res.json(); setError(e.message || 'Error saving'); return }
+            if (!res.ok) {
+                const e = await res.json().catch(() => ({}))
+                const msg = Array.isArray(e.message) ? e.message.join(', ') : e.message
+                setError(msg || 'Error saving')
+                return
+            }
             router.push(returnTo || `${dashboardBase}/question-bank`)
         } catch (e: any) { setError(e.message) }
         finally { setSaving(false) }
@@ -396,9 +403,9 @@ function CreateQuestionForm() {
                                     </div>
                                     <div>
                                         <label className="text-gray-400 text-sm mb-2 block">Correct Answer</label>
-                                        <select value={form.correctAnswer} onChange={e => set('correctAnswer', e.target.value)} className="input-field max-w-xs">
+                                        <select value={normalizeMcqLetter(form.correctAnswer, form.options) || ''} onChange={e => set('correctAnswer', e.target.value)} className="input-field max-w-xs">
                                             <option value="">Select correct option</option>
-                                            {form.options.map((o: string, i: number) => o && <option key={i} value={o}>{String.fromCharCode(65 + i)}. {o}</option>)}
+                                            {form.options.map((o: string, i: number) => o && <option key={i} value={String.fromCharCode(65 + i)}>{String.fromCharCode(65 + i)}. {o}</option>)}
                                         </select>
                                     </div>
                                 </div>

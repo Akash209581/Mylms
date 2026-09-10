@@ -21,8 +21,8 @@ export default function CreateExamPage() {
     attemptLimit: 1,
     randomizeQuestions: false, randomizeOptions: false,
     autoSubmit: true, showResults: true,
-    showCorrectAnswers: false, showExplanations: false,
-    rankingEnabled: false, tabSwitchMonitoring: false,
+    showCorrectAnswers: true, showExplanations: true,
+      rankingEnabled: false, tabSwitchMonitoring: true,
   })
 
   useEffect(() => {
@@ -45,8 +45,7 @@ export default function CreateExamPage() {
       }
       const res = await api.post('/exams', payload)
       const examId = res.data.id
-      const role = user?.role === 'SUPERADMIN' ? 'superadmin' : user?.role === 'ADMIN' ? 'admin' : 'instructor'
-      router.push(`/dashboard/${role}/exams/${examId}/questions`)
+      router.push(`/dashboard/superadmin/exams/${examId}/questions`)
     } catch (e: any) {
       alert(e.response?.data?.message || 'Failed to create exam')
     } finally {
@@ -54,14 +53,14 @@ export default function CreateExamPage() {
     }
   }
 
-  const role = user?.role === 'SUPERADMIN' ? 'superadmin' : 'admin'
+  const examBase = '/dashboard/superadmin/exams'
 
   return (
     <div className="min-h-screen bg-mesh">
       <Sidebar role={user?.role || 'SUPERADMIN'} />
       <Navbar title="Create Exam" />
       <main className="page-content max-w-3xl">
-        <button onClick={() => router.push(`/dashboard/${role}/exams`)} className="btn-secondary mb-6 inline-flex items-center gap-2 text-sm">
+        <button onClick={() => router.push(examBase)} className="btn-secondary mb-6 inline-flex items-center gap-2 text-sm">
           ← Back to Exams
         </button>
 
@@ -257,6 +256,8 @@ export default function CreateExamPage() {
                   ['Randomize Questions', form.randomizeQuestions ? 'Yes' : 'No'],
                   ['Tab-Switch Monitoring', form.tabSwitchMonitoring ? 'Enabled' : 'Disabled'],
                   ['Show Results', form.showResults ? 'Yes' : 'No'],
+                  ['Show Correct Answers', form.showCorrectAnswers ? 'Yes' : 'No'],
+                  ['Show Explanations', form.showExplanations ? 'Yes' : 'No'],
                 ].map(([k, v]) => (
                   <div key={k} className="flex justify-between text-sm">
                     <span className="role-text-muted">{k}</span>

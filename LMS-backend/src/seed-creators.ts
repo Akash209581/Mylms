@@ -37,6 +37,9 @@ async function seed() {
   } else {
     qCreator.role = UserRole.QUESTION_CREATOR;
     qCreator.passwordHash = defaultPassword;
+    qCreator.isActive = true;
+    qCreator.collegeId = college.id;
+    qCreator.collegeName = college.name;
     await userRepo.save(qCreator);
     console.log('🔄 Updated Question Bank Creator: question_creator@eduverse.com / Creator@123456');
   }
@@ -58,6 +61,9 @@ async function seed() {
   } else {
     cCreator.role = UserRole.CONTENT_CREATOR;
     cCreator.passwordHash = defaultPassword;
+    cCreator.isActive = true;
+    cCreator.collegeId = college.id;
+    cCreator.collegeName = college.name;
     await userRepo.save(cCreator);
     console.log('🔄 Updated Content Creator: content_creator@eduverse.com / Creator@123456');
   }

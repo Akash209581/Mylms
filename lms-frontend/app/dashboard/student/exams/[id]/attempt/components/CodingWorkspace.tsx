@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import TestCasesPanel from './TestCasesPanel'
 
@@ -44,7 +44,7 @@ interface CodingWorkspaceProps {
   codeResult?: any
   jobState?: any
   isRunning: boolean
-  onRunCode: () => void
+  onRunCode: (stdin?: string) => void
   onSubmitCode: () => void
   isMarkedForReview: boolean
   onToggleReview: () => void
@@ -84,7 +84,38 @@ export default function CodingWorkspace({
 }: CodingWorkspaceProps) {
   const [activeLeftTab, setActiveLeftTab] = useState<'problem' | 'constraints'>('problem')
   const [consoleHeight, setConsoleHeight] = useState(260)
+  const [leftWidth, setLeftWidth] = useState(480)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const dragH = useRef(false)
+  const dragV = useRef(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (!containerRef.current) return
+      const rect = containerRef.current.getBoundingClientRect()
+      if (dragH.current) {
+        const w = e.clientX - rect.left
+        setLeftWidth(Math.min(Math.max(280, w), Math.max(320, rect.width - 360)))
+      }
+      if (dragV.current) {
+        const h = rect.bottom - e.clientY
+        setConsoleHeight(Math.min(Math.max(120, h), Math.max(180, rect.height - 160)))
+      }
+    }
+    const onUp = () => {
+      dragH.current = false
+      dragV.current = false
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    return () => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+  }, [])
 
   // Keyboard shortcut: Ctrl+Enter or Cmd+Enter to Run Code
   useEffect(() => {
@@ -114,12 +145,16 @@ export default function CodingWorkspace({
 
   return (
     <div
+      ref={containerRef}
       className={`flex-1 flex flex-col md:flex-row overflow-hidden bg-slate-950 ${
         isFullscreen ? 'fixed inset-0 top-14 z-40' : ''
       }`}
     >
       {/* ── LEFT PANEL: Problem Description ── */}
-      <div className="w-full md:w-[45%] lg:w-[40%] flex flex-col border-r border-slate-800 bg-slate-900 overflow-hidden shrink-0">
+      <div
+        className="w-full md:w-[var(--lw)] flex flex-col border-r border-slate-800 bg-slate-900 overflow-hidden shrink-0 md:h-full"
+        style={{ ['--lw' as string]: `${leftWidth}px` } as React.CSSProperties}
+      >
         {/* Panel Header / Tabs */}
         <div className="h-10 px-4 bg-slate-950/80 border-b border-slate-800 flex items-center justify-between gap-2 shrink-0 select-none">
           <div className="flex items-center gap-1.5">
@@ -257,6 +292,16 @@ export default function CodingWorkspace({
         </div>
       </div>
 
+      <div
+        className="hidden md:block w-1.5 cursor-col-resize bg-slate-800 hover:bg-indigo-500 shrink-0 z-10"
+        onMouseDown={() => {
+          dragH.current = true
+          document.body.style.cursor = 'col-resize'
+          document.body.style.userSelect = 'none'
+        }}
+        title="Drag to resize"
+      />
+
       {/* ── RIGHT PANEL: Monaco Editor + Console ── */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-950">
         {/* Editor Toolbar */}
@@ -323,6 +368,16 @@ export default function CodingWorkspace({
             }}
           />
         </div>
+
+        <div
+          className="h-1.5 cursor-row-resize bg-slate-800 hover:bg-indigo-500 shrink-0"
+          onMouseDown={() => {
+            dragV.current = true
+            document.body.style.cursor = 'row-resize'
+            document.body.style.userSelect = 'none'
+          }}
+          title="Drag to resize console"
+        />
 
         {/* Test Cases / Results Console Panel */}
         <div style={{ height: `${consoleHeight}px` }} className="shrink-0 flex flex-col overflow-hidden">

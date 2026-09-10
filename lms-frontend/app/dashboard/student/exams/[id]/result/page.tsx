@@ -5,6 +5,8 @@ import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
 import { api } from '@/lib/api'
+import MarkdownRenderer from '@/components/editor/MarkdownRenderer'
+import { normalizeMcqLetter, optionTextForLetter } from '@/lib/mcq-answer'
 
 export default function ExamResultPage() {
   const router = useRouter()
@@ -149,24 +151,48 @@ export default function ExamResultPage() {
         {/* MCQ Detail */}
         {activeTab === 'mcq' && (
           <div className="space-y-3">
-            {result.mcqDetails?.map((q: any, i: number) => (
+            {result.mcqDetails?.map((q: any, i: number) => {
+              const yourLetter = normalizeMcqLetter(q.yourAnswer, q.options)
+              const correctLetter = q.correctAnswer ? normalizeMcqLetter(q.correctAnswer, q.options) : null
+              const title = q.questionText?.trim() || ''
+              const body = q.problemStatement?.trim() || ''
+              const showTitle = !!title && !!body && title !== body
+              const statement = body || title
+              const correctText = correctLetter ? optionTextForLetter(correctLetter, q.options) : null
+              return (
               <div key={q.questionId} className={`glass-card p-5 border ${q.correct ? 'border-green-500/20' : q.yourAnswer ? 'border-red-500/20' : 'border-[var(--border)]'}`}>
                 <div className="flex items-start gap-3">
                   <span className={`text-xl shrink-0 ${q.correct ? 'text-green-400' : q.yourAnswer ? 'text-red-400' : 'text-gray-500'}`}>
                     {q.correct ? '✓' : q.yourAnswer ? '✗' : '—'}
                   </span>
                   <div className="flex-1">
-                    <p className="text-sm role-text-primary font-medium mb-3">Q{i + 1}. {q.questionText}</p>
+                    <p className="text-xs role-text-muted mb-1">Q{i + 1}</p>
+                    {showTitle && <p className="text-sm font-semibold role-text-primary mb-2">{title}</p>}
+                    {statement && (
+                      <div className="text-sm role-text-primary font-medium mb-3">
+                        <MarkdownRenderer content={statement} className="text-sm role-text-primary" />
+                      </div>
+                    )}
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       {['A', 'B', 'C', 'D'].map((opt, idx) => (
                         <div key={opt} className={`p-2 rounded-lg border
-                          ${q.correctAnswer === opt && q.yourAnswer === opt ? 'bg-green-500/20 border-green-500/30 text-green-400' :
-                            q.correctAnswer === opt ? 'bg-green-500/10 border-green-500/20 text-green-300' :
-                            q.yourAnswer === opt ? 'bg-red-500/15 border-red-500/30 text-red-400' :
+                          ${correctLetter === opt && yourLetter === opt ? 'bg-green-500/20 border-green-500/30 text-green-400' :
+                            correctLetter === opt ? 'bg-green-500/10 border-green-500/20 text-green-300' :
+                            yourLetter === opt ? 'bg-red-500/15 border-red-500/30 text-red-400' :
                             'border-[var(--border)] role-text-muted'}`}>
                           <span className="font-bold mr-1">{opt}.</span>{q.options?.[idx]}
                         </div>
                       ))}
+                    </div>
+                    <div className="flex flex-wrap gap-2 mt-3 text-xs">
+                      <span className="px-2 py-1 rounded bg-[var(--bg-raised)] role-text-muted">
+                        Your answer: {yourLetter ? `${yourLetter}${q.options?.[['A','B','C','D'].indexOf(yourLetter)] ? ` — ${q.options[['A','B','C','D'].indexOf(yourLetter)]}` : ''}` : 'Skipped'}
+                      </span>
+                      {correctLetter && (
+                        <span className="px-2 py-1 rounded bg-green-500/15 text-green-300 border border-green-500/20">
+                          Correct answer: {correctLetter}{correctText ? ` — ${correctText}` : ''}
+                        </span>
+                      )}
                     </div>
                     {q.explanation && (
                       <div className="mt-3 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
@@ -181,7 +207,8 @@ export default function ExamResultPage() {
                   </div>
                 </div>
               </div>
-            ))}
+              )
+            })}
           </div>
         )}
 

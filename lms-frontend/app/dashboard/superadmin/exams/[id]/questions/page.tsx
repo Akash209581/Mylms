@@ -1,12 +1,14 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
 import { api } from '@/lib/api'
 
 type Tab = 'bank-mcq' | 'bank-coding' | 'excel-import' | 'manage'
+
+const EXAM_BASE = '/dashboard/superadmin/exams'
 
 export default function ExamQuestionsPage() {
   const router = useRouter()
@@ -17,6 +19,7 @@ export default function ExamQuestionsPage() {
   const [exam, setExam] = useState<any>(null)
   const [tab, setTab] = useState<Tab>('bank-mcq')
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
   // Question bank state
   const [bankQuestions, setBankQuestions] = useState<any[]>([])
@@ -24,6 +27,7 @@ export default function ExamQuestionsPage() {
   const [bankDifficulty, setBankDifficulty] = useState('')
   const [bankLoading, setBankLoading] = useState(false)
   const [selected, setSelected] = useState<Set<number>>(new Set())
+  const [adding, setAdding] = useState(false)
 
   // Excel import state
   const [excelFile, setExcelFile] = useState<File | null>(null)
@@ -42,22 +46,43 @@ export default function ExamQuestionsPage() {
   }, [examId])
 
   useEffect(() => {
-    if (tab === 'bank-mcq' || tab === 'bank-coding') fetchBankQuestions()
+    if (tab !== 'bank-mcq' && tab !== 'bank-coding') return
+    const t = setTimeout(() => { fetchBankQuestions() }, 300)
+    return () => clearTimeout(t)
   }, [tab, bankSearch, bankDifficulty])
 
-  const fetchExam = async () => {
-    setLoading(true)
-    const r = await api.get(`/exams/${examId}`)
-    setExam(r.data)
-    setLoading(false)
+  const fetchExam = async (silent = false) => {
+    if (!silent) setLoading(true)
+    setError('')
+    try {
+      const r = await api.get(`/exams/${examId}`)
+      setExam(r.data)
+    } catch (e: any) {
+      setError(e.response?.data?.message || 'Failed to load exam')
+    } finally {
+      if (!silent) setLoading(false)
+    }
   }
 
   const fetchBankQuestions = async () => {
     setBankLoading(true)
-    const type = tab === 'bank-mcq' ? 'MCQ' : 'PQ'
-    const r = await api.get('/question-bank', { params: { type, difficulty: bankDifficulty || undefined, topic: bankSearch || undefined } })
-    setBankQuestions(r.data)
-    setBankLoading(false)
+    try {
+      const type = tab === 'bank-mcq' ? 'MCQ' : 'PQ'
+      const r = await api.get('/question-bank', {
+        params: {
+          type,
+          difficulty: bankDifficulty || undefined,
+          search: bankSearch.trim() || undefined,
+          limit: 50,
+        },
+      })
+      setBankQuestions(r.data || [])
+    } catch (e: any) {
+      setError(e.response?.data?.message || 'Failed to load question bank')
+      setBankQuestions([])
+    } finally {
+      setBankLoading(false)
+    }
   }
 
   const toggleSelect = (id: number) => {
@@ -69,40 +94,62 @@ export default function ExamQuestionsPage() {
   }
 
   const addSelected = async () => {
-    if (!selected.size) return
+    if (!selected.size || adding) return
     const section = tab === 'bank-mcq' ? 'mcq' : 'coding'
     const questions = Array.from(selected).map(qId => ({ questionId: qId, marks: 1, negativeMarks: 0 }))
-    await api.post(`/exams/${examId}/questions/${section}`, { questions })
-    setSelected(new Set())
-    fetchExam()
-    alert(`Added ${questions.length} questions!`)
+    setAdding(true)
+    setError('')
+    try {
+      const r = await api.post(`/exams/${examId}/questions/${section}`, { questions })
+      setSelected(new Set())
+      await fetchExam(true)
+      alert(`Added ${r.data?.added ?? questions.length} questions!`)
+    } catch (e: any) {
+      alert(e.response?.data?.message || 'Failed to add questions')
+    } finally {
+      setAdding(false)
+    }
   }
 
   const removeQuestion = async (questionId: number) => {
     if (!confirm('Remove this question from the exam?')) return
-    await api.delete(`/exams/${examId}/questions/${questionId}`)
-    fetchExam()
+    try {
+      await api.delete(`/exams/${examId}/questions/${questionId}`)
+      await fetchExam(true)
+    } catch (e: any) {
+      alert(e.response?.data?.message || 'Failed to remove question')
+    }
   }
 
   const handleFileUpload = async () => {
     if (!excelFile) return
     setImporting(true)
-    const formData = new FormData()
-    formData.append('file', excelFile)
-    const r = await api.post(`/exams/${examId}/import-mcq/validate`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    })
-    setImportResult(r.data)
-    setImporting(false)
+    try {
+      const formData = new FormData()
+      formData.append('file', excelFile)
+      const r = await api.post(`/exams/${examId}/import-mcq/validate`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+      setImportResult(r.data)
+    } catch (e: any) {
+      alert(e.response?.data?.message || 'Failed to validate file')
+    } finally {
+      setImporting(false)
+    }
   }
 
   const confirmImport = async (saveToBank: boolean) => {
     if (!importResult?.valid?.length) return
-    await api.post(`/exams/${examId}/import-mcq/confirm`, { rows: importResult.valid, saveToBank })
-    setImportResult(null)
-    setExcelFile(null)
-    fetchExam()
-    alert(`Imported ${importResult.valid.length} MCQ questions!`)
+    try {
+      await api.post(`/exams/${examId}/import-mcq/confirm`, { rows: importResult.valid, saveToBank })
+      const count = importResult.valid.length
+      setImportResult(null)
+      setExcelFile(null)
+      await fetchExam(true)
+      alert(`Imported ${count} MCQ questions!`)
+    } catch (e: any) {
+      alert(e.response?.data?.message || 'Failed to import questions')
+    }
   }
 
   const downloadTemplate = () => {
@@ -114,16 +161,20 @@ export default function ExamQuestionsPage() {
     try {
       const r = await api.post(`/exams/${examId}/publish`)
       alert(r.data.message)
-      fetchExam()
+      fetchExam(true)
     } catch (e: any) {
       alert(e.response?.data?.message || 'Failed to publish')
     }
     setPublishing(false)
   }
 
-  const role = user?.role === 'SUPERADMIN' ? 'superadmin' : 'admin'
+  const examBase = EXAM_BASE
   const mcqQuestions = exam?.questions?.filter((q: any) => q.section === 'A') || []
   const codingQuestions = exam?.questions?.filter((q: any) => q.section === 'B') || []
+  const alreadyAddedIds = useMemo(
+    () => new Set((exam?.questions || []).map((eq: any) => eq.questionId)),
+    [exam],
+  )
 
   if (loading) return (
     <div className="min-h-screen bg-mesh">
@@ -139,7 +190,10 @@ export default function ExamQuestionsPage() {
       <Navbar title="Question Manager" />
       <main className="page-content">
         {/* Back + Exam Header */}
-        <button onClick={() => router.push(`/dashboard/${role}/exams`)} className="btn-secondary mb-4 text-sm">← Back</button>
+        <button onClick={() => router.push(examBase)} className="btn-secondary mb-4 text-sm">← Back</button>
+        {error && (
+          <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-sm text-rose-400">{error}</div>
+        )}
         <div className="glass-card p-6 mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
@@ -153,7 +207,7 @@ export default function ExamQuestionsPage() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <button onClick={() => router.push(`/dashboard/${role}/exams/${examId}/assign`)} className="btn-secondary text-sm">
+              <button onClick={() => router.push(`${examBase}/${examId}/assign`)} className="btn-secondary text-sm">
                 👥 Assign Students
               </button>
               {exam?.status === 'DRAFT' && (
@@ -189,7 +243,7 @@ export default function ExamQuestionsPage() {
             <div className="flex flex-col sm:flex-row gap-3 mb-6">
               <input
                 className="input-field flex-1"
-                placeholder="Search by topic..."
+                placeholder="Search by question text or topic..."
                 value={bankSearch}
                 onChange={e => setBankSearch(e.target.value)}
               />
@@ -200,8 +254,8 @@ export default function ExamQuestionsPage() {
                 ))}
               </select>
               {selected.size > 0 && (
-                <button onClick={addSelected} className="btn-primary shrink-0">
-                  ＋ Add {selected.size} Selected
+                <button onClick={addSelected} disabled={adding} className="btn-primary shrink-0">
+                  {adding ? 'Adding...' : `＋ Add ${selected.size} Selected`}
                 </button>
               )}
             </div>
@@ -211,7 +265,7 @@ export default function ExamQuestionsPage() {
             ) : (
               <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
                 {bankQuestions.map(q => {
-                  const alreadyAdded = exam?.questions?.some((eq: any) => eq.questionId === q.id)
+                  const alreadyAdded = alreadyAddedIds.has(q.id)
                   return (
                     <div
                       key={q.id}

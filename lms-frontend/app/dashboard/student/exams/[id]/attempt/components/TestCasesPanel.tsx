@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 interface SampleTestCase {
   input: string
@@ -26,6 +26,9 @@ interface CodeResult {
   executionTimeMs?: number
   error?: string
   compilationError?: string
+  stdout?: string
+  stderr?: string
+  executionType?: 'RUN' | 'SUBMIT'
   publicResults?: PublicResult[]
   hiddenResultsSummary?: {
     passed: number
@@ -48,7 +51,7 @@ interface TestCasesPanelProps {
   codeResult?: CodeResult | null
   jobState?: JobState | null
   isRunning: boolean
-  onRunCode: () => void
+  onRunCode: (stdin?: string) => void
   onSubmitCode: () => void
 }
 
@@ -60,12 +63,20 @@ export default function TestCasesPanel({
   onRunCode,
   onSubmitCode,
 }: TestCasesPanelProps) {
-  const [activeTab, setActiveTab] = useState<'cases' | 'results' | 'console'>('cases')
+  const [activeTab, setActiveTab] = useState<'cases' | 'results' | 'output'>('cases')
   const [selectedCaseIndex, setSelectedCaseIndex] = useState(0)
+  const [customStdin, setCustomStdin] = useState(sampleTestCases[0]?.input || '')
 
-  // Switch to results tab automatically when job starts or completes
   const hasResults = Boolean(codeResult)
   const isQueuedOrRunning = Boolean(jobState && ['QUEUED', 'RUNNING'].includes(jobState.status))
+
+  useEffect(() => {
+    const type = codeResult?.executionType || jobState?.executionType
+    if (isQueuedOrRunning && type === 'RUN') setActiveTab('output')
+    else if (isQueuedOrRunning && type === 'SUBMIT') setActiveTab('results')
+    else if (codeResult && type === 'RUN') setActiveTab('output')
+    else if (codeResult && (type === 'SUBMIT' || codeResult.publicResults?.length)) setActiveTab('results')
+  }, [codeResult, jobState, isQueuedOrRunning])
 
   return (
     <div className="flex flex-col h-full bg-slate-900 border-t border-slate-800 select-none">
@@ -113,19 +124,19 @@ export default function TestCasesPanel({
             )}
           </button>
 
-          {(codeResult?.compilationError || codeResult?.error) && (
-            <button
-              onClick={() => setActiveTab('console')}
-              className={`px-3 py-1 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 ${
-                activeTab === 'console'
-                  ? 'bg-slate-800 text-rose-300 shadow-sm border border-rose-500/30'
-                  : 'text-rose-400 hover:text-rose-300'
-              }`}
-            >
-              <span>Output / Errors</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-            </button>
-          )}
+          <button
+            onClick={() => setActiveTab('output')}
+            className={`px-3 py-1 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 ${
+              activeTab === 'output'
+                ? 'bg-slate-800 text-slate-100 shadow-sm border border-slate-700'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <span>Output</span>
+            {(codeResult?.stdout || codeResult?.stderr || codeResult?.compilationError || codeResult?.error) && (
+              <span className="w-2 h-2 rounded-full bg-indigo-400" />
+            )}
+          </button>
         </div>
 
         {/* Live Queue / Status Badge in tab bar */}
@@ -281,7 +292,7 @@ export default function TestCasesPanel({
                     {codeResult.executionTimeMs !== undefined && (
                       <span>Time: {(codeResult.executionTimeMs / 1000).toFixed(2)}s</span>
                     )}
-                    {codeResult.score !== undefined && (
+                    {codeResult.score !== undefined && codeResult.executionType !== 'RUN' && (
                       <span className="text-indigo-400 font-bold">Score: {codeResult.score} Marks</span>
                     )}
                   </div>
@@ -393,25 +404,57 @@ export default function TestCasesPanel({
 
             {!hasResults && !isQueuedOrRunning && (
               <div className="text-center py-6 text-slate-500">
-                <p>Run or Submit your code to see execution results here.</p>
+                <p>Submit Code to grade public and hidden test cases. Use Run Code for stdout.</p>
               </div>
             )}
           </div>
         )}
 
-        {/* TAB 3: Console / Errors */}
-        {activeTab === 'console' && (
-          <div className="space-y-2">
-            {codeResult?.compilationError ? (
-              <pre className="p-3 bg-black/60 text-rose-300 rounded-xl border border-rose-700/50 overflow-x-auto whitespace-pre-wrap text-[11px]">
-                {codeResult.compilationError}
-              </pre>
-            ) : codeResult?.error ? (
-              <pre className="p-3 bg-black/60 text-rose-300 rounded-xl border border-rose-700/50 overflow-x-auto whitespace-pre-wrap text-[11px]">
-                {codeResult.error}
-              </pre>
-            ) : (
-              <p className="text-slate-500 italic">No console errors reported.</p>
+        {/* TAB 3: Output (Run Code) */}
+        {activeTab === 'output' && (
+          <div className="space-y-3">
+            <div>
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Custom input (stdin)</p>
+              <textarea
+                value={customStdin}
+                onChange={(e) => setCustomStdin(e.target.value)}
+                disabled={isRunning}
+                rows={4}
+                className="w-full p-3 bg-slate-950 rounded-xl border border-slate-800 text-slate-100 text-xs font-mono resize-y"
+                placeholder="Optional stdin for Run Code"
+              />
+            </div>
+            {isQueuedOrRunning && jobState?.executionType === 'RUN' && (
+              <p className="text-amber-300 text-xs">Running your code…</p>
+            )}
+            {codeResult?.compilationError && (
+              <div>
+                <p className="text-[11px] font-bold text-rose-400 uppercase tracking-wider mb-1">Compilation error</p>
+                <pre className="p-3 bg-black/60 text-rose-300 rounded-xl border border-rose-700/50 whitespace-pre-wrap">
+                  {codeResult.compilationError}
+                </pre>
+              </div>
+            )}
+            {(codeResult?.stdout != null || codeResult?.stderr || codeResult?.error) && !codeResult?.compilationError && (
+              <>
+                <div>
+                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Stdout</p>
+                  <pre className="p-3 bg-slate-950 rounded-xl border border-slate-800 text-emerald-300 whitespace-pre-wrap min-h-[4rem]">
+                    {codeResult.stdout || '(empty)'}
+                  </pre>
+                </div>
+                {(codeResult.stderr || codeResult.error) && (
+                  <div>
+                    <p className="text-[11px] font-bold text-rose-400 uppercase tracking-wider mb-1">Stderr</p>
+                    <pre className="p-3 bg-black/60 text-rose-300 rounded-xl border border-rose-700/50 whitespace-pre-wrap">
+                      {codeResult.stderr || codeResult.error}
+                    </pre>
+                  </div>
+                )}
+              </>
+            )}
+            {!hasResults && !isQueuedOrRunning && (
+              <p className="text-slate-500 italic">Run Code to see program output here. Submit Code grades hidden and public test cases.</p>
             )}
           </div>
         )}
@@ -427,10 +470,10 @@ export default function TestCasesPanel({
           {/* Secondary: ▶ Run Code */}
           <button
             type="button"
-            onClick={onRunCode}
+            onClick={() => onRunCode(customStdin)}
             disabled={isRunning}
             className="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 active:bg-slate-750 text-slate-100 font-semibold text-xs transition-all border border-slate-700 disabled:opacity-50 flex items-center gap-1.5"
-            title="Execute sample public test cases"
+            title="Run once and show stdout (does not grade test cases)"
           >
             <span>▶</span>
             <span>Run Code</span>

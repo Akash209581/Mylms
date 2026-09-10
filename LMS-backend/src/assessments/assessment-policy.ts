@@ -1,5 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { randomInt } from 'crypto';
+import { normalizeMcqLetter, optionTextForLetter } from '../common/mcq-answer.util';
 
 export type SnapshotQuestion = { id: number; type: string; text: string; options: string[]; marks: number; correct: string | null };
 export type AssessmentSnapshot = { version: 1; title: string; passPercentage: number; questions: SnapshotQuestion[] };
@@ -18,8 +19,11 @@ export function snapshotQuestion(question: any, marks: number, shuffleOptions: b
   const options = Array.isArray(question.options) ? question.options.map(String) : [];
   let correct: string | null = null;
   if (question.type === 'MCQ') {
-    if (!options.length || !options.includes(question.correctAnswer)) throw new BadRequestException(`Question ${question.id} has an invalid answer key`);
-    correct = question.correctAnswer;
+    if (!options.length) throw new BadRequestException(`Question ${question.id} has an invalid answer key`);
+    const letter = normalizeMcqLetter(question.correctAnswer, options);
+    const resolved = optionTextForLetter(letter, options);
+    if (!resolved) throw new BadRequestException(`Question ${question.id} has an invalid answer key`);
+    correct = resolved;
   } else if (question.type === 'OP' && typeof question.expectedOutput === 'string') correct = question.expectedOutput;
   // Free-text, ordering, matching and programming responses require instructor review.
   const details: string[] = [question.questionText || question.problemStatement || ''];
