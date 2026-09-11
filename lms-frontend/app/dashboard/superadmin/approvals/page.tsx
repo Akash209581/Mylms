@@ -329,7 +329,7 @@ export default function ApprovalsPage() {
                                                             </div>
                                                             <div>
                                                                 <p className="text-xs font-semibold text-white">{q.creator?.name || 'Question Creator'}</p>
-                                                                <p className="text-[10px] text-slate-400">{q.creator?.email || 'creator@eduverse.com'}</p>
+                                                                <p className="text-[10px] text-slate-400">{q.creator?.email || 'creator@appliedstemlabs.com'}</p>
                                                             </div>
                                                         </div>
                                                     </td>
@@ -416,7 +416,7 @@ export default function ApprovalsPage() {
                                                         </div>
                                                         <div>
                                                             <p className="text-xs font-semibold text-white">{c.instructor?.name || 'Content Creator'}</p>
-                                                            <p className="text-[10px] text-slate-400">{c.instructor?.email || 'instructor@eduverse.com'}</p>
+                                                            <p className="text-[10px] text-slate-400">{c.instructor?.email || 'instructor@appliedstemlabs.com'}</p>
                                                         </div>
                                                     </div>
                                                 </td>

@@ -109,7 +109,7 @@ export default function Sidebar({ role }: { role?: string }) {
                     </svg>
                 </div>
                 <div>
-                    <p className="text-[var(--text-primary)] font-black text-xl tracking-tight leading-none">EduVerse</p>
+                    <p className="text-[var(--text-primary)] font-black text-xl tracking-tight leading-none">Applied Stem labs</p>
                     <p className="text-[11px] text-indigo-400/80 font-medium mt-1">Learn. Grow. Succeed.</p>
                 </div>
             </Link>

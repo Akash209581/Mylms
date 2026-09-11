@@ -19,7 +19,7 @@ export default function Navbar({ title }: { title?: string }) {
   }, [router])
   if (user?.role === 'STUDENT') return null
   return <header className="navbar portal-role-header">
-    <div><p className="portal-role-title">{title || 'Workspace'}</p><small>{user?.collegeName || (user?.role === 'SUPERADMIN' ? 'Platform administration' : 'EduVerse')}</small></div>
+    <div><p className="portal-role-title">{title || 'Workspace'}</p><small>{user?.collegeName || (user?.role === 'SUPERADMIN' ? 'Platform administration' : 'Applied Stem labs')}</small></div>
     <div className="portal-role-account"><ThemeToggle /><div><strong>{user?.name || 'Your account'}</strong><small>{user?.role?.toLowerCase().replace('superadmin', 'super admin')}</small></div></div>
   </header>
 }

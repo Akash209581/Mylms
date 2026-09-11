@@ -11,7 +11,7 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'EduVerse LMS | Professional Learning Platform',
+  title: 'Applied Stem labs LMS | Professional Learning Platform',
   description: 'Premium Learning Management System — Build skills. Grow careers.',
 }
 

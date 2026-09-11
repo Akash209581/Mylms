@@ -26,9 +26,9 @@ const Skeleton = ({ className = '' }: { className?: string }) => (
 export default function SuperAdminSettingsPage() {
     const router = useRouter()
     const [settings, setSettings] = useState<PlatformSettings>({
-        platformName: 'EduVerse LMS',
+        platformName: 'Applied Stem labs',
         platformLogo: '',
-        supportEmail: 'support@eduverse.in',
+        supportEmail: 'support@appliedstemlabs.com',
         maintenanceMode: false,
         allowRegistrations: true,
         maxCoursesPerInstructor: 20,

@@ -655,7 +655,7 @@ export default function SignupPage() {
                             Lead Tomorrow.
                         </h1>
                         <p className="text-[#64748b] text-sm sm:text-[15px] mt-4 font-normal leading-relaxed">
-                            EduVerse is your space to learn,<br className="hidden sm:inline" /> grow, and achieve beyond limits.
+                            Applied Stem labs is your space to learn,<br className="hidden sm:inline" /> grow, and achieve beyond limits.
                         </p>
                     </div>
 

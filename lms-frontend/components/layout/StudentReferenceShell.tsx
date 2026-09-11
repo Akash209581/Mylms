@@ -43,7 +43,7 @@ export default function StudentReferenceShell(_props: { active?: ActivePage }) {
     router.push(`/dashboard/student/courses?q=${encodeURIComponent(query.trim())}`)
   }
   const navigation = <>
-    <Link href="/dashboard/student" className={styles.brand}><BookOpen aria-hidden="true" /><span>EduVerse<small>Student workspace</small></span></Link>
+    <Link href="/dashboard/student" className={styles.brand}><BookOpen aria-hidden="true" /><span>Applied Stem labs<small>Student workspace</small></span></Link>
     <nav aria-label="Student navigation" className={styles.navigation}>
       {studentNavigation.map(({ label, href, icon: Icon }) => <Link key={href} href={href} aria-current={isStudentRouteActive(pathname, href) ? 'page' : undefined} onClick={() => drawer.current?.close()}><Icon aria-hidden="true" /><span>{label}</span></Link>)}
     </nav>
