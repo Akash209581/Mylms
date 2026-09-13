@@ -136,6 +136,10 @@ export class ExamStudentService {
       attemptLimit: exam.attemptLimit,
       negativeMarking: exam.negativeMarking,
       tabSwitchMonitoring: exam.tabSwitchMonitoring,
+      maxTabSwitches: exam.maxTabSwitches ?? 3,
+      timingMode: exam.timingMode || 'TOTAL',
+      sectionDurations: exam.sectionDurations,
+      questionDurationSeconds: exam.questionDurationSeconds,
       showResults: exam.showResults,
       rankingEnabled: exam.rankingEnabled,
       sections,
@@ -291,7 +295,8 @@ export class ExamStudentService {
     }
     const count = (attempt.tabSwitchCount || 0) + 1;
     await this.attemptRepo.update(attemptId, { tabSwitchCount: count });
-    if (count >= 3) {
+    const maxAllowed = exam?.maxTabSwitches ?? 3;
+    if (count >= maxAllowed) {
       await this.submitAttempt(user, attemptId, { reason: 'TAB_SWITCH' });
       return { count, autoSubmit: true, submitted: true };
     }
@@ -522,6 +527,10 @@ export class ExamStudentService {
       durationMinutes: exam.durationMinutes,
       negativeMarking: exam.negativeMarking,
       tabSwitchMonitoring: exam.tabSwitchMonitoring,
+      maxTabSwitches: exam.maxTabSwitches ?? 3,
+      timingMode: exam.timingMode || 'TOTAL',
+      sectionDurations: exam.sectionDurations,
+      questionDurationSeconds: exam.questionDurationSeconds,
       tabSwitchCount: attempt.tabSwitchCount || 0,
       totalMarks: exam.totalMarks,
       passingMarks: exam.passingMarks,

@@ -8,8 +8,37 @@ interface QuestionPreviewProps {
     onClose: () => void
 }
 
+function renderOptionContent(opt: string) {
+    if (!opt) return null;
+    const trimmed = opt.trim();
+    // Check if it's a direct image URL or Data URI
+    const isDirectImg = /^(https?:\/\/|data:image\/).+(\.(png|jpg|jpeg|gif|webp|svg)|;base64)/i.test(trimmed) ||
+                        /\.(png|jpg|jpeg|gif|webp|svg)(\?.*)?$/i.test(trimmed);
+    const isMarkdownImg = /^!\[.*?\]\(.*?\)$/.test(trimmed);
+
+    if (isDirectImg) {
+        return (
+            <div className="space-y-1.5">
+                <img
+                    src={trimmed}
+                    alt="Option visual"
+                    className="max-h-48 max-w-full rounded-xl object-contain border border-gray-200 bg-white p-1.5 shadow-sm hover:scale-[1.02] transition-transform"
+                    onError={(e: any) => {
+                        e.target.style.display = 'none';
+                        e.target.parentElement.innerHTML = `<span class="text-xs text-rose-500 font-mono break-all">[Image load failed: ${trimmed}]</span>`;
+                    }}
+                />
+            </div>
+        );
+    }
+    if (isMarkdownImg || trimmed.includes('\n') || trimmed.includes('`') || trimmed.includes('**')) {
+        return <MarkdownRenderer content={trimmed} className="text-sm font-medium" />;
+    }
+    return <span className="font-medium text-sm sm:text-base leading-relaxed break-words">{trimmed}</span>;
+}
+
 export default function QuestionPreview({ form, onClose }: QuestionPreviewProps) {
-    const [previewTab, setPreviewTab] = useState<'explanation' | 'problem' | 'testcases' | 'predefined'>('explanation')
+    const [previewTab, setPreviewTab] = useState<'explanation' | 'problem' | 'testcases' | 'predefined'>('problem')
     const [previewLang, setPreviewLang] = useState<string>('')
     const renderContent = () => {
         switch (form.type) {
@@ -18,27 +47,29 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                     <div className="space-y-6">
                         {form.problemStatement && (
                             <div className="bg-slate-50 p-6 rounded-2xl border border-gray-100 mb-6">
-                                <h4 className="text-primary-600 text-[10px] font-bold uppercase mb-2 tracking-wider">Problem Statement</h4>
+                                <h4 className="text-primary-600 text-[10px] font-bold uppercase mb-2 tracking-wider">Problem Statement / Context</h4>
                                 <MarkdownRenderer content={form.problemStatement} className="text-slate-700 text-sm" />
                             </div>
                         )}
                         <div className="grid gap-4">
-                            <h4 className="text-gray-400 text-[10px] font-bold uppercase mb-2 tracking-[0.2em]">Select Correct Option</h4>
+                            <h4 className="text-gray-400 text-[10px] font-bold uppercase mb-1 tracking-[0.2em]">Options & Correct Answer</h4>
                             {(form.options || []).map((opt: string, i: number) => {
                                 const letter = String.fromCharCode(65 + i)
                                 const isCorrect = normalizeMcqLetter(form.correctAnswer, form.options) === letter || form.correctAnswer === opt
                                 return opt && (
                                 <div key={i} className={`p-5 rounded-2xl border-2 transition-all ${isCorrect
-                                    ? 'bg-primary-50 border-primary-500 text-slate-900 shadow-sm'
-                                    : 'bg-white border-gray-100 text-slate-500 hover:border-gray-200'
+                                    ? 'bg-primary-50/70 border-primary-500 text-slate-900 shadow-sm ring-2 ring-primary-500/20'
+                                    : 'bg-white border-gray-100 text-slate-600 hover:border-gray-200'
                                     }`}>
-                                    <div className="flex items-center gap-4">
-                                        <div className={`w-8 h-8 rounded-xl border-2 flex items-center justify-center text-sm font-bold ${isCorrect ? 'border-primary-500 bg-primary-500 text-white' : 'border-gray-200'
+                                    <div className="flex items-start gap-4">
+                                        <div className={`w-8 h-8 rounded-xl border-2 flex items-center justify-center text-sm font-bold shrink-0 mt-0.5 ${isCorrect ? 'border-primary-500 bg-primary-500 text-white' : 'border-gray-200 text-gray-500'
                                             }`}>
                                             {letter}
                                         </div>
-                                        <span className="font-medium">{opt}</span>
-                                        {isCorrect && <span className="ml-auto text-[10px] font-bold bg-primary-500 text-white px-3 py-1 rounded-full uppercase tracking-wider">Correct</span>}
+                                        <div className="flex-1 min-w-0">
+                                            {renderOptionContent(opt)}
+                                        </div>
+                                        {isCorrect && <span className="ml-auto text-[10px] font-bold bg-primary-500 text-white px-3 py-1 rounded-full uppercase tracking-wider shrink-0">Correct Answer</span>}
                                     </div>
                                 </div>
                                 )
@@ -483,19 +514,89 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
 
                 {/* Modal Body */}
                 <div className="p-8 overflow-y-auto flex-1 min-h-0">
-                    <div className="mb-8 pb-6 border-b border-gray-100">
-                        <p className="text-[10px] text-primary-500 font-bold uppercase tracking-[0.2em] mb-2">Question Title</p>
+                    <div className="mb-6 pb-6 border-b border-gray-100">
+                        <div className="flex flex-wrap items-center gap-2 mb-3">
+                            {form.questionNumber && (
+                                <span className="px-2.5 py-0.5 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-mono font-bold">
+                                    {form.questionNumber}
+                                </span>
+                            )}
+                            <span className="px-2.5 py-0.5 rounded-lg bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold uppercase tracking-wider">
+                                {form.type || 'QUESTION'}
+                            </span>
+                            {form.difficulty && (
+                                <span className={`px-2.5 py-0.5 rounded-lg text-xs font-bold uppercase tracking-wider border ${
+                                    form.difficulty === 'EASY' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                    form.difficulty === 'HARD' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                                    'bg-amber-50 text-amber-700 border-amber-200'
+                                }`}>
+                                    {form.difficulty}
+                                </span>
+                            )}
+                            {(form.domain || form.domainName) && (
+                                <span className="px-2.5 py-0.5 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold">
+                                    📁 {form.domain || form.domainName}
+                                </span>
+                            )}
+                            {(form.topicNames || form.topic) && (
+                                <span className="px-2.5 py-0.5 rounded-lg bg-purple-50 border border-purple-200 text-purple-700 text-xs font-semibold">
+                                    🏷️ {Array.isArray(form.topicNames) ? form.topicNames.join(', ') : form.topicNames || form.topic}
+                                </span>
+                            )}
+                        </div>
+
                         <h1 className="text-2xl font-black text-slate-900 leading-tight">
-                            {form.questionText || "Untitled Question"}
+                            {form.questionText || form.problemStatement || "Untitled Question"}
                         </h1>
+
+                        {/* Extra metadata grid */}
+                        {((form.targetCompanies || form.companiesAppeared || form.companies) ||
+                          (form.recentYearAppearing || form.recentYear) ||
+                          form.bestPracticeFor ||
+                          (form.allowedLanguages && form.allowedLanguages.length > 0)) && (
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-gray-100 text-xs">
+                                {(form.targetCompanies || form.companiesAppeared || form.companies) && (
+                                    <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                                        <p className="text-[10px] text-slate-400 font-bold uppercase">Companies</p>
+                                        <p className="font-semibold text-slate-800 truncate mt-0.5" title={form.targetCompanies || form.companiesAppeared || form.companies}>
+                                            🏢 {form.targetCompanies || form.companiesAppeared || form.companies}
+                                        </p>
+                                    </div>
+                                )}
+                                {(form.recentYearAppearing || form.recentYear) && (
+                                    <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                                        <p className="text-[10px] text-slate-400 font-bold uppercase">Recent Year</p>
+                                        <p className="font-semibold text-slate-800 mt-0.5">
+                                            📅 {form.recentYearAppearing || form.recentYear}
+                                        </p>
+                                    </div>
+                                )}
+                                {form.bestPracticeFor && (
+                                    <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                                        <p className="text-[10px] text-slate-400 font-bold uppercase">Best Practice For</p>
+                                        <p className="font-semibold text-slate-800 truncate mt-0.5" title={form.bestPracticeFor}>
+                                            🎯 {form.bestPracticeFor}
+                                        </p>
+                                    </div>
+                                )}
+                                {form.allowedLanguages && form.allowedLanguages.length > 0 && (
+                                    <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                                        <p className="text-[10px] text-slate-400 font-bold uppercase">Languages</p>
+                                        <p className="font-semibold text-slate-800 truncate mt-0.5">
+                                            💻 {form.allowedLanguages.join(', ')}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     {form.description && (
-                        <div className="bg-indigo-50/30 p-8 rounded-3xl border border-indigo-100/50 shadow-sm mb-8 relative overflow-hidden group">
+                        <div className="bg-indigo-50/30 p-6 rounded-2xl border border-indigo-100/50 shadow-sm mb-6 relative overflow-hidden group">
                             <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                                 <span className="text-6xl text-indigo-500/20">🧠</span>
                             </div>
-                            <h4 className="text-indigo-600 text-[10px] font-black uppercase mb-4 tracking-[0.2em] flex items-center gap-2">
+                            <h4 className="text-indigo-600 text-[10px] font-black uppercase mb-3 tracking-[0.2em] flex items-center gap-2">
                                 <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
                                 Topic Intelligence & Applications
                             </h4>

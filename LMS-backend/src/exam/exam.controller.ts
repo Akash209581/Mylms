@@ -14,6 +14,7 @@ import { ExamExcelService } from './exam-excel.service';
 import {
   CreateExamDto, UpdateExamDto, AddManyExamQuestionsDto,
   AssignStudentsDto, AssignCollegesDto, ImportMcqConfirmDto,
+  CloneExamDto, UpdateQuestionMarksDto,
 } from './exam.dto';
 
 @Controller('exams')
@@ -31,6 +32,15 @@ export class ExamController {
   @Post()
   create(@Request() req, @Body() dto: CreateExamDto) {
     return this.service.create(req.user, dto);
+  }
+
+  @Post(':id/clone')
+  clone(
+    @Request() req,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: CloneExamDto,
+  ) {
+    return this.service.cloneExam(req.user, id, dto);
   }
 
   @Get('colleges')
@@ -81,6 +91,16 @@ export class ExamController {
     @Body() dto: AddManyExamQuestionsDto,
   ) {
     return this.service.addQuestions(req.user, id, dto, 'B');
+  }
+
+  @Put(':id/questions/:questionId/marks')
+  updateQuestionMarks(
+    @Request() req,
+    @Param('id', ParseIntPipe) id: number,
+    @Param('questionId', ParseIntPipe) questionId: number,
+    @Body() dto: UpdateQuestionMarksDto,
+  ) {
+    return this.service.updateQuestionMarks(req.user, id, questionId, dto);
   }
 
   @Delete(':id/questions/:questionId')

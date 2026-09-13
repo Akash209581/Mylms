@@ -14,6 +14,7 @@ import { College } from '../entities/college.entity';
 import {
   CreateExamDto, UpdateExamDto, AddManyExamQuestionsDto,
   AssignStudentsDto, AssignCollegesDto, ImportMcqConfirmDto,
+  CloneExamDto, UpdateQuestionMarksDto,
 } from './exam.dto';
 
 /** Shape of the JWT payload stored on req.user */
@@ -106,6 +107,12 @@ export class ExamService implements OnModuleInit, OnModuleDestroy {
     const exam = this.examRepo.create({
       ...dto,
       tabSwitchMonitoring: dto.tabSwitchMonitoring ?? true,
+      maxTabSwitches: dto.maxTabSwitches ?? 3,
+      timingMode: dto.timingMode || 'TOTAL',
+      sectionDurations: dto.sectionDurations,
+      questionDurationSeconds: dto.questionDurationSeconds,
+      targetBranches: dto.targetBranches,
+      targetBatches: dto.targetBatches,
       collegeId: user.role === UserRole.SUPERADMIN ? undefined : user.collegeId,
       createdById: user.sub,
       status: ExamStatus.DRAFT,
@@ -119,7 +126,9 @@ export class ExamService implements OnModuleInit, OnModuleDestroy {
     const qb = this.examRepo.createQueryBuilder('e')
       .select(['e.id','e.title','e.status','e.durationMinutes','e.startAt','e.endAt',
                'e.totalMarks','e.passingMarks','e.createdAt',
-               'e.showCorrectAnswers','e.showExplanations'])
+               'e.showCorrectAnswers','e.showExplanations','e.maxTabSwitches',
+               'e.timingMode','e.sectionDurations','e.questionDurationSeconds',
+               'e.targetBranches','e.targetBatches'])
       .orderBy('e.createdAt','DESC');
     if (user.role !== UserRole.SUPERADMIN) {
       if (!user.collegeId) throw new ForbiddenException('College required');
@@ -136,6 +145,7 @@ export class ExamService implements OnModuleInit, OnModuleDestroy {
     const questions = await this.eqRepo.find({
       where: { examId: id },
       order: { section: 'ASC', sortOrder: 'ASC' },
+      relations: ['question'],
     });
     const assignedCount = await this.assignRepo.count({ where: { examId: id } });
     const attemptsCount = await this.attemptRepo.count({ where: { examId: id } });
@@ -168,6 +178,12 @@ export class ExamService implements OnModuleInit, OnModuleDestroy {
     if (dto.showExplanations !== undefined) exam.showExplanations = dto.showExplanations;
     if (dto.rankingEnabled !== undefined) exam.rankingEnabled = dto.rankingEnabled;
     if (dto.tabSwitchMonitoring !== undefined) exam.tabSwitchMonitoring = dto.tabSwitchMonitoring;
+    if (dto.maxTabSwitches !== undefined) exam.maxTabSwitches = dto.maxTabSwitches;
+    if (dto.timingMode !== undefined) exam.timingMode = dto.timingMode;
+    if (dto.sectionDurations !== undefined) exam.sectionDurations = dto.sectionDurations;
+    if (dto.questionDurationSeconds !== undefined) exam.questionDurationSeconds = dto.questionDurationSeconds;
+    if (dto.targetBranches !== undefined) exam.targetBranches = dto.targetBranches;
+    if (dto.targetBatches !== undefined) exam.targetBatches = dto.targetBatches;
     if (dto.status !== undefined) exam.status = dto.status;
 
     return this.examRepo.save(exam);
@@ -373,15 +389,26 @@ export class ExamService implements OnModuleInit, OnModuleDestroy {
       return { assigned: 0, message: 'No institutions selected' };
     }
 
-    const students = await this.userRepo
+    const qb = this.userRepo
       .createQueryBuilder('u')
       .select(['u.id', 'u.collegeId'])
       .where('u.role = :role', { role: UserRole.STUDENT })
-      .andWhere('u.collegeId IN (:...cids)', { cids: dto.collegeIds })
-      .getMany();
+      .andWhere('u.collegeId IN (:...cids)', { cids: dto.collegeIds });
+
+    const branches = dto.branches?.length ? dto.branches : exam.targetBranches;
+    if (branches && branches.length > 0) {
+      qb.andWhere('u.branch IN (:...branches)', { branches });
+    }
+
+    const batches = dto.batches?.length ? dto.batches : exam.targetBatches;
+    if (batches && batches.length > 0) {
+      qb.andWhere('(CAST(u.pursuingYear AS text) IN (:...batches) OR u.course IN (:...batches))', { batches });
+    }
+
+    const students = await qb.getMany();
 
     if (students.length === 0) {
-      return { assigned: 0, message: 'No registered students found in selected institutions' };
+      return { assigned: 0, message: 'No registered students found in selected institutions matching criteria' };
     }
 
     const rows = students.map(s => this.assignRepo.create({ examId: id, studentId: s.id }));
@@ -394,6 +421,96 @@ export class ExamService implements OnModuleInit, OnModuleDestroy {
       .execute();
 
     return { assigned: rows.length, collegeCount: dto.collegeIds.length, totalStudents: students.length };
+  }
+
+  async updateQuestionMarks(user: RequestUser, examId: number, questionId: number, dto: UpdateQuestionMarksDto) {
+    this.assertAdmin(user);
+    const exam = await this.getExamOrFail(examId);
+    await this.assertOwns(user, exam);
+    if (exam.status !== ExamStatus.DRAFT)
+      throw new ConflictException('Can only modify marks on DRAFT exams');
+
+    const eq = await this.eqRepo.findOne({ where: { examId, questionId } });
+    if (!eq) throw new NotFoundException('Question not assigned to this exam');
+
+    if (dto.marks !== undefined) eq.marks = dto.marks;
+    if (dto.negativeMarks !== undefined) eq.negativeMarks = dto.negativeMarks;
+    await this.eqRepo.save(eq);
+    await this.recalcTotalMarks(examId);
+
+    return eq;
+  }
+
+  async cloneExam(user: RequestUser, examId: number, dto: CloneExamDto) {
+    this.assertAdmin(user);
+    const original = await this.getExamOrFail(examId);
+    await this.assertOwns(user, original);
+
+    let targetCollegeId: number | undefined = original.collegeId;
+    if (user.role === UserRole.SUPERADMIN) {
+      targetCollegeId = dto.collegeId !== undefined ? dto.collegeId : original.collegeId;
+    } else {
+      targetCollegeId = user.collegeId;
+    }
+
+    const cloned = this.examRepo.create({
+      title: dto.title || `${original.title} (Copy)`,
+      description: original.description,
+      instructions: original.instructions,
+      durationMinutes: original.durationMinutes,
+      totalMarks: original.totalMarks,
+      passingMarks: original.passingMarks,
+      negativeMarking: original.negativeMarking,
+      negativeMarksValue: original.negativeMarksValue,
+      attemptLimit: original.attemptLimit,
+      randomizeQuestions: original.randomizeQuestions,
+      randomizeOptions: original.randomizeOptions,
+      autoSubmit: original.autoSubmit,
+      showResults: original.showResults,
+      showCorrectAnswers: original.showCorrectAnswers,
+      showExplanations: original.showExplanations,
+      rankingEnabled: original.rankingEnabled,
+      tabSwitchMonitoring: original.tabSwitchMonitoring,
+      maxTabSwitches: original.maxTabSwitches,
+      timingMode: original.timingMode,
+      sectionDurations: original.sectionDurations,
+      questionDurationSeconds: original.questionDurationSeconds,
+      targetBranches: dto.targetBranches || original.targetBranches,
+      targetBatches: dto.targetBatches || original.targetBatches,
+      startAt: dto.startAt ? new Date(dto.startAt) : (null as any),
+      endAt: dto.endAt ? new Date(dto.endAt) : (null as any),
+      collegeId: targetCollegeId || undefined,
+      createdById: user.sub,
+      status: ExamStatus.DRAFT,
+    });
+
+    const savedExam = await this.examRepo.save(cloned);
+
+    const originalQuestions = await this.eqRepo.find({ where: { examId } });
+    if (originalQuestions.length > 0) {
+      const clonedQuestions = originalQuestions.map((q) =>
+        this.eqRepo.create({
+          examId: savedExam.id,
+          questionId: q.questionId,
+          section: q.section,
+          marks: q.marks,
+          negativeMarks: q.negativeMarks,
+          sortOrder: q.sortOrder,
+        }),
+      );
+      await this.eqRepo.save(clonedQuestions);
+      await this.recalcTotalMarks(savedExam.id);
+    }
+
+    if (targetCollegeId) {
+      await this.assignColleges(user, savedExam.id, {
+        collegeIds: [targetCollegeId],
+        branches: dto.targetBranches || savedExam.targetBranches,
+        batches: dto.targetBatches || savedExam.targetBatches,
+      }).catch(() => {});
+    }
+
+    return savedExam;
   }
 
   async unassignCollege(user: RequestUser, id: number, collegeId: number) {

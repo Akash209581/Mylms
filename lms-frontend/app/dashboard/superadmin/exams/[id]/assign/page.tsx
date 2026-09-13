@@ -19,6 +19,8 @@ export default function ExamAssignPage() {
   const [collegeSearch, setCollegeSearch] = useState('')
   const [selectedColleges, setSelectedColleges] = useState<Set<number>>(new Set())
   const [assigningColleges, setAssigningColleges] = useState(false)
+  const [assignBranches, setAssignBranches] = useState('')
+  const [assignBatches, setAssignBatches] = useState('')
 
   // Individual Students State (Tab)
   const [activeTab, setActiveTab] = useState<'institutions' | 'students'>('institutions')
@@ -56,13 +58,20 @@ export default function ExamAssignPage() {
         api.get(`/exams/${examId}/assigned-colleges`),
         api.get(`/exams/${examId}/assigned`),
       ])
-      setExam(examRes.data)
+      const e = examRes.data
+      setExam(e)
       setColleges(collegesRes.data || [])
       setAssignedColleges(assignedCollegesRes.data || [])
       setAssignedStudents(assignedStudentsRes.data || [])
 
+      if (e.targetBranches && Array.isArray(e.targetBranches)) {
+        setAssignBranches(e.targetBranches.join(', '))
+      }
+      if (e.targetBatches && Array.isArray(e.targetBatches)) {
+        setAssignBatches(e.targetBatches.join(', '))
+      }
+
       // Pre-fill edit form
-      const e = examRes.data
       setEditForm({
         title: e.title || '',
         durationMinutes: e.durationMinutes || 60,
@@ -89,11 +98,17 @@ export default function ExamAssignPage() {
     if (!selectedColleges.size) return
     setAssigningColleges(true)
     try {
-      await api.post(`/exams/${examId}/assign/colleges`, {
+      const branches = assignBranches ? assignBranches.split(',').map(s => s.trim()).filter(Boolean) : undefined
+      const batches = assignBatches ? assignBatches.split(',').map(s => s.trim()).filter(Boolean) : undefined
+
+      const r = await api.post(`/exams/${examId}/assign/colleges`, {
         collegeIds: Array.from(selectedColleges),
+        branches,
+        batches,
       })
       setSelectedColleges(new Set())
       await fetchData()
+      alert(`Assigned ${r.data?.assigned ?? 0} students across selected institution(s)!`)
     } catch (err: any) {
       alert(err?.response?.data?.message || 'Failed to assign institutions')
     } finally {
@@ -280,11 +295,39 @@ export default function ExamAssignPage() {
                 <span className="text-xs role-text-muted">{filteredColleges.length} colleges</span>
               </div>
               <input
-                className="input-field w-full mb-4"
+                className="input-field w-full mb-3"
                 placeholder="Search institution by name, city, state..."
                 value={collegeSearch}
                 onChange={e => setCollegeSearch(e.target.value)}
               />
+
+              {/* Branch / Batch Filtering when assigning institutions */}
+              <div className="p-3 bg-[var(--bg-raised)] rounded-xl border border-[var(--border)] mb-4 space-y-2">
+                <p className="text-xs font-bold role-text-primary">Filter Target Audience (Optional):</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] uppercase font-bold role-text-muted">Batches / Years</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 2025, 2026"
+                      className="input-field w-full text-xs"
+                      value={assignBatches}
+                      onChange={e => setAssignBatches(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] uppercase font-bold role-text-muted">Branches</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. CSE, IT, ECE"
+                      className="input-field w-full text-xs"
+                      value={assignBranches}
+                      onChange={e => setAssignBranches(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <p className="text-[10px] role-text-muted">Leave empty to assign all registered students in selected institutions.</p>
+              </div>
 
               {selectedColleges.size > 0 && (
                 <button

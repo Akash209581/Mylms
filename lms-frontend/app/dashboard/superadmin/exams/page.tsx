@@ -21,7 +21,6 @@ export default function ExamListPage() {
   const [filter, setFilter] = useState('ALL')
   const [user, setUser] = useState<any>(null)
 
-  // Edit Timings Modal
   const [editingExam, setEditingExam] = useState<any | null>(null)
   const [editForm, setEditForm] = useState({
     title: '',
@@ -30,11 +29,29 @@ export default function ExamListPage() {
     endAt: '',
     passingMarks: 0,
     status: 'DRAFT',
+    timingMode: 'TOTAL',
+    maxTabSwitches: 3,
+    targetBranches: '',
+    targetBatches: '',
     showCorrectAnswers: true,
     showExplanations: true,
   })
   const [savingEdit, setSavingEdit] = useState(false)
   const [editMsg, setEditMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  // Clone Exam Modal State
+  const [colleges, setColleges] = useState<any[]>([])
+  const [cloningExam, setCloningExam] = useState<any | null>(null)
+  const [cloneForm, setCloneForm] = useState({
+    title: '',
+    collegeId: '',
+    startAt: '',
+    endAt: '',
+    targetBranches: '',
+    targetBatches: '',
+  })
+  const [cloning, setCloning] = useState(false)
+  const [cloneMsg, setCloneMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   useEffect(() => {
     const stored = localStorage.getItem('user')
@@ -43,6 +60,7 @@ export default function ExamListPage() {
     if (u.role === 'STUDENT') { router.push('/dashboard/student'); return }
     setUser(u)
     loadExams()
+    loadColleges()
   }, [])
 
   const loadExams = async () => {
@@ -56,6 +74,15 @@ export default function ExamListPage() {
     }
   }
 
+  const loadColleges = async () => {
+    try {
+      const r = await api.get('/exams/colleges')
+      setColleges(r.data || [])
+    } catch (err) {
+      console.error('Failed to load colleges', err)
+    }
+  }
+
   const openEditModal = (exam: any) => {
     setEditingExam(exam)
     setEditMsg(null)
@@ -66,6 +93,10 @@ export default function ExamListPage() {
       endAt: exam.endAt ? new Date(exam.endAt).toISOString().slice(0, 16) : '',
       passingMarks: exam.passingMarks || 0,
       status: exam.status || 'DRAFT',
+      timingMode: exam.timingMode || 'TOTAL',
+      maxTabSwitches: exam.maxTabSwitches ?? 3,
+      targetBranches: Array.isArray(exam.targetBranches) ? exam.targetBranches.join(', ') : '',
+      targetBatches: Array.isArray(exam.targetBatches) ? exam.targetBatches.join(', ') : '',
       showCorrectAnswers: exam.showCorrectAnswers !== false,
       showExplanations: exam.showExplanations !== false,
     })
@@ -77,6 +108,9 @@ export default function ExamListPage() {
     setSavingEdit(true)
     setEditMsg(null)
     try {
+      const branches = editForm.targetBranches ? editForm.targetBranches.split(',').map(s => s.trim()).filter(Boolean) : undefined
+      const batches = editForm.targetBatches ? editForm.targetBatches.split(',').map(s => s.trim()).filter(Boolean) : undefined
+
       await api.put(`/exams/${editingExam.id}`, {
         title: editForm.title,
         durationMinutes: Number(editForm.durationMinutes),
@@ -84,6 +118,10 @@ export default function ExamListPage() {
         endAt: editForm.endAt ? new Date(editForm.endAt).toISOString() : null,
         passingMarks: Number(editForm.passingMarks),
         status: editForm.status,
+        timingMode: editForm.timingMode,
+        maxTabSwitches: Number(editForm.maxTabSwitches),
+        targetBranches: branches,
+        targetBatches: batches,
         showCorrectAnswers: editForm.showCorrectAnswers,
         showExplanations: editForm.showExplanations,
       })
@@ -94,6 +132,49 @@ export default function ExamListPage() {
       setEditMsg({ type: 'error', text: err?.response?.data?.message || 'Failed to update exam' })
     } finally {
       setSavingEdit(false)
+    }
+  }
+
+  const openCloneModal = (exam: any) => {
+    setCloningExam(exam)
+    setCloneMsg(null)
+    setCloneForm({
+      title: `${exam.title} (Copy)`,
+      collegeId: exam.collegeId ? String(exam.collegeId) : '',
+      startAt: exam.startAt ? new Date(exam.startAt).toISOString().slice(0, 16) : '',
+      endAt: exam.endAt ? new Date(exam.endAt).toISOString().slice(0, 16) : '',
+      targetBranches: Array.isArray(exam.targetBranches) ? exam.targetBranches.join(', ') : '',
+      targetBatches: Array.isArray(exam.targetBatches) ? exam.targetBatches.join(', ') : '',
+    })
+  }
+
+  const handleCloneSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!cloningExam) return
+    setCloning(true)
+    setCloneMsg(null)
+    try {
+      const branches = cloneForm.targetBranches ? cloneForm.targetBranches.split(',').map(s => s.trim()).filter(Boolean) : undefined
+      const batches = cloneForm.targetBatches ? cloneForm.targetBatches.split(',').map(s => s.trim()).filter(Boolean) : undefined
+
+      const payload = {
+        title: cloneForm.title.trim(),
+        collegeId: cloneForm.collegeId ? Number(cloneForm.collegeId) : undefined,
+        startAt: cloneForm.startAt ? new Date(cloneForm.startAt).toISOString() : undefined,
+        endAt: cloneForm.endAt ? new Date(cloneForm.endAt).toISOString() : undefined,
+        targetBranches: branches,
+        targetBatches: batches,
+      }
+      const r = await api.post(`/exams/${cloningExam.id}/clone`, payload)
+      setCloneMsg({ type: 'success', text: `Exam cloned successfully as "${r.data?.title}"!` })
+      await loadExams()
+      setTimeout(() => {
+        setCloningExam(null)
+      }, 1200)
+    } catch (err: any) {
+      setCloneMsg({ type: 'error', text: err?.response?.data?.message || 'Failed to clone exam' })
+    } finally {
+      setCloning(false)
     }
   }
 
@@ -205,7 +286,15 @@ export default function ExamListPage() {
                         )}
                       </td>
                       <td className="py-4 px-6">
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            onClick={() => openCloneModal(exam)}
+                            className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 hover:underline flex items-center gap-1"
+                            title="Clone exam for another college / batch"
+                          >
+                            📋 Clone
+                          </button>
+                          <span className="role-text-muted">|</span>
                           <button
                             onClick={() => openEditModal(exam)}
                             className="text-xs font-semibold text-amber-400 hover:text-amber-300 hover:underline flex items-center gap-1"
@@ -247,7 +336,7 @@ export default function ExamListPage() {
         {/* EDIT TIMINGS & SCHEDULE MODAL */}
         {editingExam && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <div className="glass-card max-w-lg w-full p-6 relative animate-in fade-in zoom-in-95 duration-200">
+            <div className="glass-card max-w-xl w-full p-6 max-h-[90vh] overflow-y-auto relative animate-in fade-in zoom-in-95 duration-200">
               <div className="flex justify-between items-center mb-5">
                 <div>
                   <h2 className="text-lg font-bold role-text-primary">Edit Timings & Settings</h2>
@@ -301,6 +390,55 @@ export default function ExamListPage() {
                       value={editForm.passingMarks}
                       onChange={e => setEditForm({ ...editForm, passingMarks: Number(e.target.value) })}
                       required
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold role-text-muted mb-1">Timing Mode</label>
+                    <select
+                      className="input-field w-full text-xs"
+                      value={editForm.timingMode}
+                      onChange={e => setEditForm({ ...editForm, timingMode: e.target.value })}
+                    >
+                      <option value="TOTAL">Total Exam Timer</option>
+                      <option value="SECTION">Section-Wise Timer</option>
+                      <option value="QUESTION">Question-Wise Timer</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold role-text-muted mb-1">Max Tab Switches</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={20}
+                      className="input-field w-full text-xs"
+                      value={editForm.maxTabSwitches}
+                      onChange={e => setEditForm({ ...editForm, maxTabSwitches: Number(e.target.value) })}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold role-text-muted mb-1">Target Batches / Years</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 2024, 2025, 2026"
+                      className="input-field w-full text-xs"
+                      value={editForm.targetBatches}
+                      onChange={e => setEditForm({ ...editForm, targetBatches: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold role-text-muted mb-1">Target Branches</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. CSE, ECE, IT, MECH"
+                      className="input-field w-full text-xs"
+                      value={editForm.targetBranches}
+                      onChange={e => setEditForm({ ...editForm, targetBranches: e.target.value })}
                     />
                   </div>
                 </div>
@@ -374,6 +512,130 @@ export default function ExamListPage() {
                     className="btn-primary text-sm font-semibold"
                   >
                     {savingEdit ? 'Saving...' : 'Save Changes'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* CLONE EXAM MODAL */}
+        {cloningExam && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <div className="glass-card max-w-lg w-full p-6 relative animate-in fade-in zoom-in-95 duration-200">
+              <div className="flex justify-between items-center mb-5">
+                <div>
+                  <h2 className="text-lg font-bold role-text-primary flex items-center gap-2">
+                    <span>📋</span> Clone Assessment
+                  </h2>
+                  <p className="text-xs role-text-muted">Duplicate "{cloningExam.title}" with all questions</p>
+                </div>
+                <button
+                  onClick={() => setCloningExam(null)}
+                  className="w-8 h-8 rounded-full bg-[var(--bg-raised)] flex items-center justify-center text-gray-400 hover:text-white"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {cloneMsg && (
+                <div className={`p-3 rounded-xl text-xs mb-4 ${cloneMsg.type === 'success' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/10 text-rose-400 border border-rose-500/30'}`}>
+                  {cloneMsg.text}
+                </div>
+              )}
+
+              <form onSubmit={handleCloneSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold role-text-muted mb-1">Cloned Exam Title *</label>
+                  <input
+                    type="text"
+                    className="input-field w-full font-semibold"
+                    value={cloneForm.title}
+                    onChange={e => setCloneForm({ ...cloneForm, title: e.target.value })}
+                    required
+                  />
+                </div>
+
+                {user?.role === 'SUPERADMIN' && (
+                  <div>
+                    <label className="block text-xs font-semibold role-text-muted mb-1">Destination Institution / College (Optional)</label>
+                    <select
+                      className="input-field w-full text-xs"
+                      value={cloneForm.collegeId}
+                      onChange={e => setCloneForm({ ...cloneForm, collegeId: e.target.value })}
+                    >
+                      <option value="">Global Assessment (All / Multi-tenant)</option>
+                      {colleges.map(c => (
+                        <option key={c.id} value={c.id}>
+                          {c.name} ({c.city || c.state || 'College'})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold role-text-muted mb-1">Target Batches / Years</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 2025, 2026"
+                      className="input-field w-full text-xs"
+                      value={cloneForm.targetBatches}
+                      onChange={e => setCloneForm({ ...cloneForm, targetBatches: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold role-text-muted mb-1">Target Branches</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. CSE, IT, ECE"
+                      className="input-field w-full text-xs"
+                      value={cloneForm.targetBranches}
+                      onChange={e => setCloneForm({ ...cloneForm, targetBranches: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold role-text-muted mb-1">Start Date & Time (Optional)</label>
+                    <input
+                      type="datetime-local"
+                      className="input-field w-full text-xs"
+                      value={cloneForm.startAt}
+                      onChange={e => setCloneForm({ ...cloneForm, startAt: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold role-text-muted mb-1">End Date & Time (Optional)</label>
+                    <input
+                      type="datetime-local"
+                      className="input-field w-full text-xs"
+                      value={cloneForm.endAt}
+                      onChange={e => setCloneForm({ ...cloneForm, endAt: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-xs text-indigo-300">
+                  💡 All MCQ and Coding questions, predefined code, marks, and settings will be copied into the new draft exam.
+                </div>
+
+                <div className="flex justify-end gap-3 pt-3 border-t" style={{ borderColor: 'var(--border)' }}>
+                  <button
+                    type="button"
+                    onClick={() => setCloningExam(null)}
+                    className="btn-secondary text-sm"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={cloning}
+                    className="btn-success text-sm font-semibold"
+                  >
+                    {cloning ? 'Cloning Assessment...' : '🚀 Clone & Create Test'}
                   </button>
                 </div>
               </form>

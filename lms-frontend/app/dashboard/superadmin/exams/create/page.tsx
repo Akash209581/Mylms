@@ -17,12 +17,18 @@ export default function CreateExamPage() {
     title: '', description: '', instructions: '',
     durationMinutes: 60, passingMarks: 40,
     startAt: '', endAt: '',
+    timingMode: 'TOTAL' as 'TOTAL' | 'SECTION' | 'QUESTION',
+    sectionDurations: { A: 30, B: 30 },
+    questionDurationSeconds: 60,
     negativeMarking: false, negativeMarksValue: 0.25,
     attemptLimit: 1,
     randomizeQuestions: false, randomizeOptions: false,
     autoSubmit: true, showResults: true,
     showCorrectAnswers: true, showExplanations: true,
-      rankingEnabled: false, tabSwitchMonitoring: true,
+    rankingEnabled: false, tabSwitchMonitoring: true,
+    maxTabSwitches: 3,
+    targetBranches: '',
+    targetBatches: '',
   })
 
   useEffect(() => {
@@ -35,13 +41,22 @@ export default function CreateExamPage() {
 
   const handleCreate = async () => {
     if (!form.title.trim()) { alert('Exam title is required'); return }
-    if (form.durationMinutes < 10) { alert('Duration must be at least 10 minutes'); return }
+    if (form.durationMinutes < 10 && form.timingMode !== 'QUESTION') {
+      alert('Duration must be at least 10 minutes'); return
+    }
     setSaving(true)
     try {
+      const branches = form.targetBranches ? form.targetBranches.split(',').map(s => s.trim()).filter(Boolean) : undefined
+      const batches = form.targetBatches ? form.targetBatches.split(',').map(s => s.trim()).filter(Boolean) : undefined
+
       const payload = {
         ...form,
         startAt: form.startAt || undefined,
         endAt: form.endAt || undefined,
+        targetBranches: branches,
+        targetBatches: batches,
+        sectionDurations: form.timingMode === 'SECTION' ? form.sectionDurations : undefined,
+        questionDurationSeconds: form.timingMode === 'QUESTION' ? form.questionDurationSeconds : undefined,
       }
       const res = await api.post('/exams', payload)
       const examId = res.data.id
@@ -137,17 +152,89 @@ export default function CreateExamPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold role-text-primary mb-2">Duration (minutes) *</label>
-                  <input
-                    id="exam-duration"
-                    type="number" min={10} max={360}
-                    className="input-field"
-                    value={form.durationMinutes}
-                    onChange={e => set('durationMinutes', parseInt(e.target.value))}
-                  />
+              {/* Timing Mode */}
+              <div className="p-4 rounded-xl bg-[var(--bg-raised)] border border-[var(--border)] space-y-3">
+                <label className="block text-sm font-semibold role-text-primary">Timing & Duration Mode</label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {[
+                    ['TOTAL', '⏱ Total Exam Duration', 'One continuous countdown for the whole exam'],
+                    ['SECTION', '📑 Section-Wise Timing', 'Separate timers for Section A (MCQ) & Section B (Coding)'],
+                    ['QUESTION', '⏳ Question-Wise Timing', 'Fixed countdown timer per question (e.g. 60s)'],
+                  ].map(([mode, label, desc]) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => set('timingMode', mode)}
+                      className={`p-3 rounded-xl text-left border transition-all ${
+                        form.timingMode === mode
+                          ? 'border-[var(--accent)] bg-[var(--accent-soft)] shadow-sm'
+                          : 'border-[var(--border)] bg-[var(--bg-surface)] hover:border-[var(--border-strong)]'
+                      }`}
+                    >
+                      <p className="text-xs font-bold role-text-primary">{label}</p>
+                      <p className="text-[10px] role-text-muted mt-1 leading-snug">{desc}</p>
+                    </button>
+                  ))}
                 </div>
+
+                {form.timingMode === 'TOTAL' && (
+                  <div className="pt-2">
+                    <label className="block text-xs font-semibold role-text-muted mb-1">Total Duration (minutes) *</label>
+                    <input
+                      id="exam-duration"
+                      type="number" min={10} max={360}
+                      className="input-field"
+                      value={form.durationMinutes}
+                      onChange={e => set('durationMinutes', parseInt(e.target.value) || 60)}
+                    />
+                  </div>
+                )}
+
+                {form.timingMode === 'SECTION' && (
+                  <div className="grid grid-cols-2 gap-3 pt-2">
+                    <div>
+                      <label className="block text-xs font-semibold role-text-muted mb-1">Section A Duration (MCQs - mins)</label>
+                      <input
+                        type="number" min={5} max={180}
+                        className="input-field"
+                        value={form.sectionDurations.A || 30}
+                        onChange={e => {
+                          const a = parseInt(e.target.value) || 30
+                          set('sectionDurations', { ...form.sectionDurations, A: a })
+                          set('durationMinutes', a + (form.sectionDurations.B || 30))
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold role-text-muted mb-1">Section B Duration (Coding - mins)</label>
+                      <input
+                        type="number" min={5} max={240}
+                        className="input-field"
+                        value={form.sectionDurations.B || 30}
+                        onChange={e => {
+                          const b = parseInt(e.target.value) || 30
+                          set('sectionDurations', { ...form.sectionDurations, B: b })
+                          set('durationMinutes', (form.sectionDurations.A || 30) + b)
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {form.timingMode === 'QUESTION' && (
+                  <div className="pt-2">
+                    <label className="block text-xs font-semibold role-text-muted mb-1">Time Per Question (Seconds)</label>
+                    <input
+                      type="number" min={15} max={600} step={5}
+                      className="input-field"
+                      value={form.questionDurationSeconds || 60}
+                      onChange={e => set('questionDurationSeconds', parseInt(e.target.value) || 60)}
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-semibold role-text-primary mb-2">Passing Marks *</label>
                   <input
@@ -155,9 +242,28 @@ export default function CreateExamPage() {
                     type="number" min={0}
                     className="input-field"
                     value={form.passingMarks}
-                    onChange={e => set('passingMarks', parseInt(e.target.value))}
+                    onChange={e => set('passingMarks', parseInt(e.target.value) || 0)}
                   />
                 </div>
+                <div>
+                  <label className="block text-sm font-semibold role-text-primary mb-2">Target Batches / Years (Optional)</label>
+                  <input
+                    className="input-field"
+                    placeholder="e.g. 2024, 2025, 2026"
+                    value={form.targetBatches}
+                    onChange={e => set('targetBatches', e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold role-text-primary mb-2">Target Branches (Optional)</label>
+                <input
+                  className="input-field"
+                  placeholder="e.g. CSE, IT, ECE, MECH"
+                  value={form.targetBranches}
+                  onChange={e => set('targetBranches', e.target.value)}
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -190,6 +296,34 @@ export default function CreateExamPage() {
           {step === 1 && (
             <div className="space-y-6">
               <h2 className="text-xl font-bold role-text-primary">Exam Settings</h2>
+
+              {/* Tab Switch Monitoring & Limit */}
+              <div className="glass-subtle rounded-xl p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-semibold role-text-primary text-sm">Tab-Switch Monitoring</p>
+                    <p className="text-xs role-text-muted">Track when student leaves test tab & auto-submit after limit</p>
+                  </div>
+                  <button
+                    id="toggle-tabSwitchMonitoring"
+                    onClick={() => set('tabSwitchMonitoring', !form.tabSwitchMonitoring)}
+                    className={`relative w-12 h-6 rounded-full transition-all ${form.tabSwitchMonitoring ? 'bg-[var(--accent)]' : 'bg-[var(--bg-hover)]'}`}
+                  >
+                    <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${form.tabSwitchMonitoring ? 'left-6' : 'left-0.5'}`} />
+                  </button>
+                </div>
+                {form.tabSwitchMonitoring && (
+                  <div>
+                    <label className="text-xs role-text-muted">Max Allowed Tab Switches Before Auto-Submit</label>
+                    <input
+                      type="number" min={1} max={20}
+                      className="input-field mt-1 w-32"
+                      value={form.maxTabSwitches}
+                      onChange={e => set('maxTabSwitches', parseInt(e.target.value) || 3)}
+                    />
+                  </div>
+                )}
+              </div>
 
               {/* Negative Marking */}
               <div className="glass-subtle rounded-xl p-4 space-y-4">
@@ -232,7 +366,6 @@ export default function CreateExamPage() {
                 ['showCorrectAnswers', 'Show Correct Answers', 'Reveal correct answers in result page'],
                 ['showExplanations', 'Show Explanations', 'Show question explanations in results'],
                 ['rankingEnabled', 'Enable Ranking', 'Show student rank in results'],
-                ['tabSwitchMonitoring', 'Tab-Switch Monitoring', 'Warn / flag when student switches browser tab'],
               ] as [string, string, string][]).map(([field, label, desc]) => (
                 <div key={field} className="flex items-center justify-between py-2 border-b" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
                   <div>
@@ -258,16 +391,16 @@ export default function CreateExamPage() {
               <div className="bg-[var(--bg-raised)] rounded-xl p-5 space-y-3">
                 {[
                   ['Title', form.title],
-                  ['Duration', `${form.durationMinutes} minutes`],
+                  ['Timing Mode', form.timingMode === 'TOTAL' ? 'Total Exam Timer' : form.timingMode === 'SECTION' ? 'Section-Wise Timing' : 'Question-Wise Timing'],
+                  ['Duration', form.timingMode === 'SECTION' ? `Section A: ${form.sectionDurations.A}m, Section B: ${form.sectionDurations.B}m` : form.timingMode === 'QUESTION' ? `${form.questionDurationSeconds}s / question` : `${form.durationMinutes} minutes`],
                   ['Passing Marks', String(form.passingMarks)],
                   ['Start', form.startAt ? new Date(form.startAt).toLocaleString() : 'Immediately (LIVE)'],
+                  ['Target Batches', form.targetBatches || 'All Batches'],
+                  ['Target Branches', form.targetBranches || 'All Branches'],
+                  ['Tab-Switch Monitoring', form.tabSwitchMonitoring ? `Enabled (Max ${form.maxTabSwitches} switches)` : 'Disabled'],
                   ['Negative Marking', form.negativeMarking ? `Yes (−${form.negativeMarksValue} per wrong)` : 'No'],
                   ['Attempt Limit', String(form.attemptLimit)],
-                  ['Randomize Questions', form.randomizeQuestions ? 'Yes' : 'No'],
-                  ['Tab-Switch Monitoring', form.tabSwitchMonitoring ? 'Enabled' : 'Disabled'],
                   ['Show Results', form.showResults ? 'Yes' : 'No'],
-                  ['Show Correct Answers', form.showCorrectAnswers ? 'Yes' : 'No'],
-                  ['Show Explanations', form.showExplanations ? 'Yes' : 'No'],
                 ].map(([k, v]) => (
                   <div key={k} className="flex justify-between text-sm">
                     <span className="role-text-muted">{k}</span>

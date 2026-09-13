@@ -92,6 +92,24 @@ export class Exam {
   @Column({ name: 'tab_switch_monitoring', default: true })
   tabSwitchMonitoring: boolean;
 
+  @Column({ name: 'max_tab_switches', default: 3 })
+  maxTabSwitches: number;
+
+  @Column({ name: 'timing_mode', length: 20, default: 'TOTAL' })
+  timingMode: string; // 'TOTAL' | 'SECTION' | 'QUESTION'
+
+  @Column({ name: 'section_durations', type: 'jsonb', nullable: true })
+  sectionDurations?: { A?: number; B?: number };
+
+  @Column({ name: 'question_duration_seconds', type: 'int', nullable: true })
+  questionDurationSeconds?: number;
+
+  @Column({ name: 'target_branches', type: 'jsonb', nullable: true })
+  targetBranches?: string[];
+
+  @Column({ name: 'target_batches', type: 'jsonb', nullable: true })
+  targetBatches?: string[];
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

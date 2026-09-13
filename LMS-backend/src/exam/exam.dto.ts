@@ -25,6 +25,12 @@ export class CreateExamDto {
   @IsBoolean() @IsOptional() showExplanations?: boolean;
   @IsBoolean() @IsOptional() rankingEnabled?: boolean;
   @IsBoolean() @IsOptional() tabSwitchMonitoring?: boolean;
+  @IsInt() @Min(1) @Max(20) @IsOptional() maxTabSwitches?: number;
+  @IsString() @IsOptional() timingMode?: string;
+  @IsObject() @IsOptional() sectionDurations?: { A?: number; B?: number };
+  @IsInt() @IsOptional() questionDurationSeconds?: number;
+  @IsArray() @IsOptional() targetBranches?: string[];
+  @IsArray() @IsOptional() targetBatches?: string[];
 }
 
 export class UpdateExamDto {
@@ -46,13 +52,41 @@ export class UpdateExamDto {
   @IsBoolean() @IsOptional() showExplanations?: boolean;
   @IsBoolean() @IsOptional() rankingEnabled?: boolean;
   @IsBoolean() @IsOptional() tabSwitchMonitoring?: boolean;
+  @IsInt() @Min(1) @Max(20) @IsOptional() maxTabSwitches?: number;
+  @IsString() @IsOptional() timingMode?: string;
+  @IsObject() @IsOptional() sectionDurations?: { A?: number; B?: number };
+  @IsInt() @IsOptional() questionDurationSeconds?: number;
+  @IsArray() @IsOptional() targetBranches?: string[];
+  @IsArray() @IsOptional() targetBatches?: string[];
   @IsEnum(ExamStatus) @IsOptional() status?: ExamStatus;
+}
+
+export class CloneExamDto {
+  @IsString() @IsOptional() title?: string;
+  @IsInt() @IsOptional() collegeId?: number;
+  @IsDateString() @IsOptional() startAt?: string;
+  @IsDateString() @IsOptional() endAt?: string;
+  @IsArray() @IsOptional() targetBranches?: string[];
+  @IsArray() @IsOptional() targetBatches?: string[];
+}
+
+export class UpdateQuestionMarksDto {
+  @IsNumber() @Min(0) marks: number;
+  @IsNumber() @Min(0) @IsOptional() negativeMarks?: number;
 }
 
 export class AssignCollegesDto {
   @IsArray()
   @IsInt({ each: true })
   collegeIds: number[];
+
+  @IsArray()
+  @IsOptional()
+  branches?: string[];
+
+  @IsArray()
+  @IsOptional()
+  batches?: string[];
 }
 
 // ─── Add Questions ───────────────────────────────────────────────────────────

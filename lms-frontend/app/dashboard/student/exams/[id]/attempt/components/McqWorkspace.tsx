@@ -24,6 +24,41 @@ interface McqWorkspaceProps {
   onToggleReview: () => void
 }
 
+function renderOptionContent(opt: string, isSelected?: boolean) {
+  if (!opt) return null
+  const trimmed = opt.trim()
+  const isDirectImg =
+    /^(https?:\/\/|data:image\/).+(\.(png|jpg|jpeg|gif|webp|svg)|;base64)/i.test(trimmed) ||
+    /\.(png|jpg|jpeg|gif|webp|svg)(\?.*)?$/i.test(trimmed)
+  const isMarkdownImg = /^!\[.*?\]\(.*?\)$/.test(trimmed)
+
+  if (isDirectImg) {
+    return (
+      <div className="space-y-1.5 py-1">
+        <img
+          src={trimmed}
+          alt="Option illustration"
+          className="max-h-48 max-w-full rounded-xl object-contain border border-slate-700 bg-slate-950/80 p-2 shadow-inner"
+          onError={(e: any) => {
+            e.target.style.display = 'none'
+            e.target.parentElement.innerHTML = `<span class="text-xs text-rose-400 font-mono break-all">[Image load error: ${trimmed}]</span>`
+          }}
+        />
+      </div>
+    )
+  }
+
+  if (isMarkdownImg || trimmed.includes('\n') || trimmed.includes('`') || trimmed.includes('**')) {
+    return <MarkdownRenderer content={trimmed} className="text-sm font-medium" />
+  }
+
+  return (
+    <span className={`text-sm sm:text-base leading-relaxed break-words ${isSelected ? 'text-slate-50 font-semibold' : 'text-slate-200 group-hover:text-white'}`}>
+      {trimmed}
+    </span>
+  )
+}
+
 const OPTION_KEYS = ['A', 'B', 'C', 'D', 'E', 'F']
 
 export default function McqWorkspace({
@@ -162,16 +197,10 @@ export default function McqWorkspace({
                 </span>
               </div>
 
-              {/* Option Text */}
-              <span
-                className={`text-sm sm:text-base leading-relaxed flex-1 ${
-                  isSelected
-                    ? 'text-slate-50 font-semibold'
-                    : 'text-slate-200 group-hover:text-white'
-                }`}
-              >
-                {optionText}
-              </span>
+              {/* Option Text / Visual */}
+              <div className="flex-1 min-w-0">
+                {renderOptionContent(optionText, isSelected)}
+              </div>
             </button>
           )
         })}
