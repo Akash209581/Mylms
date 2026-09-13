@@ -72,6 +72,7 @@ export interface ParsedQuestionRow {
   inputFormat?: string;
   outputFormat?: string;
   constraints?: string;
+  allowedLanguages?: string;
   timeLimit?: string;
   memoryLimit?: string;
   testInput1?: string;
@@ -111,6 +112,7 @@ export interface ValidatedQuestion {
   inputFormat?: string;
   outputFormat?: string;
   constraints?: string;
+  allowedLanguages?: string[];
   testCases?: { input: string; output: string; explanation?: string }[];
   codeSnippet?: string;
   expectedOutput?: string;

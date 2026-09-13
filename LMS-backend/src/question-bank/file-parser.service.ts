@@ -191,6 +191,12 @@ export class FileParserService {
       inputFormat: this.getValue(row, ['inputformat', 'input_format']),
       outputFormat: this.getValue(row, ['outputformat', 'output_format']),
       constraints: this.getValue(row, ['constraints']),
+      allowedLanguages: this.getValue(row, [
+        'allowedlanguages',
+        'allowed_languages',
+        'languages',
+        'language',
+      ]),
       testInput1: this.getValue(row, [
         'testinput1',
         'test_input_1',
@@ -215,9 +221,59 @@ export class FileParserService {
         'testcase2output',
         'test_case_2_output',
       ]),
+      testInput3: this.getValue(row, [
+        'testinput3',
+        'test_input_3',
+        'testcase3input',
+        'test_case_3_input',
+      ]),
+      testOutput3: this.getValue(row, [
+        'testoutput3',
+        'test_output_3',
+        'testcase3output',
+        'test_case_3_output',
+      ]),
+      testInput4: this.getValue(row, [
+        'testinput4',
+        'test_input_4',
+        'testcase4input',
+        'test_case_4_input',
+      ]),
+      testOutput4: this.getValue(row, [
+        'testoutput4',
+        'test_output_4',
+        'testcase4output',
+        'test_case_4_output',
+      ]),
+      testInput5: this.getValue(row, [
+        'testinput5',
+        'test_input_5',
+        'testcase5input',
+        'test_case_5_input',
+      ]),
+      testOutput5: this.getValue(row, [
+        'testoutput5',
+        'test_output_5',
+        'testcase5output',
+        'test_case_5_output',
+      ]),
 
-      // Output Prediction fields
-      codeSnippet: this.getValue(row, ['codesnippet', 'code_snippet', 'code']),
+      // Pre-code / Starter Code / Output Prediction fields
+      codeSnippet: this.getValue(row, [
+        'codesnippet',
+        'code_snippet',
+        'code',
+        'precode',
+        'pre_code',
+        'precodestartercode',
+        'pre_code_starter_code',
+        'startercode',
+        'starter_code',
+        'initialcode',
+        'initial_code',
+        'predefinedcode',
+        'template',
+      ]),
       expectedOutput: this.getValue(row, [
         'expectedoutput',
         'expected_output',

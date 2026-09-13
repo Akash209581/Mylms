@@ -367,6 +367,21 @@ export class QuestionBankController {
     res.send(csv);
   }
 
+  @Get('bulk-import/template')
+  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.INSTRUCTOR, UserRole.QUESTION_CREATOR)
+  async downloadTemplate(@Res() res: Response) {
+    const buffer = await this.bulkImportService.generateTemplate();
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename=question_bank_import_template.xlsx',
+    );
+    res.send(buffer);
+  }
+
   @Get(':id')
   async getOne(@Param('id', ParseIntPipe) id: number, @Request() req?: any) {
     try {

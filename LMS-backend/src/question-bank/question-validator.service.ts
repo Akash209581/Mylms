@@ -285,6 +285,10 @@ export class QuestionValidatorService {
       };
     }
 
+    const allowedLanguages = row.allowedLanguages
+      ? row.allowedLanguages.split(/[,;|]/).map((s) => s.trim().toLowerCase()).filter(Boolean)
+      : undefined;
+
     const question: ValidatedQuestion = {
       type: QuestionType.PQ,
       topicNames: row.topic,
@@ -294,6 +298,8 @@ export class QuestionValidatorService {
       inputFormat: row.inputFormat,
       outputFormat: row.outputFormat,
       constraints: row.constraints,
+      codeSnippet: row.codeSnippet ? this.sanitizeText(row.codeSnippet) : undefined,
+      allowedLanguages,
       testCases,
       companiesAppeared: row.companiesAppeared,
       programmingLanguage: row.programmingLanguage,

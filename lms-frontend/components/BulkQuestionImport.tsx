@@ -148,6 +148,11 @@ export default function BulkQuestionImport() {
     }
   };
 
+  // Download sample template
+  const handleDownloadTemplate = () => {
+    window.open(`${API_BASE_URL}/question-bank/bulk-import/template`, '_blank');
+  };
+
   // Reset upload
   const resetUpload = () => {
     setFile(null);
@@ -158,21 +163,31 @@ export default function BulkQuestionImport() {
   return (
     <div className="max-w-4xl mx-auto p-6">
       <div className="bg-[var(--bg-surface)] rounded-lg shadow-lg p-6">
-        <h2 className="text-2xl font-bold mb-6 text-[var(--text-primary)]">
-          Bulk Question Import
-        </h2>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold text-[var(--text-primary)]">
+            Bulk Question Import
+          </h2>
+          <button
+            onClick={handleDownloadTemplate}
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold flex items-center gap-2 transition-colors shadow-sm"
+          >
+            <span>📥</span> Download Sample Template (Excel)
+          </button>
+        </div>
 
         {/* Instructions */}
-        <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-          <h3 className="font-semibold text-blue-900 mb-2">Instructions:</h3>
-          <ul className="list-disc list-inside text-sm text-blue-800 space-y-1">
-            <li>Prepare your Excel or CSV file with the required columns</li>
+        <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-900/50">
+          <h3 className="font-semibold text-blue-900 dark:text-blue-300 mb-2">Instructions & Columns:</h3>
+          <ul className="list-disc list-inside text-sm text-blue-800 dark:text-blue-200 space-y-1.5">
+            <li>Prepare your Excel (.xlsx, .xls) or CSV file with the required columns.</li>
+            <li>Supported question types: <strong>MCQ, FIB, MQ, JC, PQ (Programming), OP (Output Prediction)</strong>.</li>
             <li>
-              Supported question types: MCQ, FIB, MQ, JC, PQ, OP
+              <strong>For Coding (PQ) Questions:</strong> You can define the initial boilerplate code that will appear in the students editor when they open the test using the <strong><code>Pre Code / Starter Code</code></strong> (or <code>codeSnippet</code> / <code>preCode</code>) column.
             </li>
-            <li>Maximum file size: 10MB</li>
-            <li>Maximum rows per upload: 1000</li>
-            <li>File format: Excel (.xlsx, .xls) or CSV</li>
+            <li>
+              <strong>Allowed Languages:</strong> Specify comma-separated languages like <code>python, java, cpp, c</code> in the <strong><code>Allowed Languages</code></strong> column.
+            </li>
+            <li>Maximum file size: 10MB | Maximum rows per upload: 1000.</li>
           </ul>
         </div>
 

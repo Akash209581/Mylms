@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
+import * as ExcelJS from 'exceljs';
 import { Question } from '../entities/question.entity';
 import {
   BulkImportResponseDto,
@@ -153,6 +154,78 @@ export class BulkImportService {
       sanitized.problemStatement = row.problemStatement.substring(0, 100);
 
     return sanitized;
+  }
+
+  async generateTemplate(): Promise<Buffer> {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Question Import Template');
+
+    worksheet.columns = [
+      { header: 'Type', key: 'type', width: 12 },
+      { header: 'Question Text', key: 'questionText', width: 25 },
+      { header: 'Problem Statement', key: 'problemStatement', width: 40 },
+      { header: 'Topic', key: 'topic', width: 18 },
+      { header: 'Difficulty', key: 'difficulty', width: 14 },
+      { header: 'Pre Code / Starter Code', key: 'codeSnippet', width: 35 },
+      { header: 'Allowed Languages', key: 'allowedLanguages', width: 24 },
+      { header: 'Input Format', key: 'inputFormat', width: 25 },
+      { header: 'Output Format', key: 'outputFormat', width: 25 },
+      { header: 'Constraints', key: 'constraints', width: 25 },
+      { header: 'Test Input 1', key: 'testInput1', width: 20 },
+      { header: 'Test Output 1', key: 'testOutput1', width: 20 },
+      { header: 'Test Input 2', key: 'testInput2', width: 20 },
+      { header: 'Test Output 2', key: 'testOutput2', width: 20 },
+      { header: 'Option A', key: 'optionA', width: 18 },
+      { header: 'Option B', key: 'optionB', width: 18 },
+      { header: 'Option C', key: 'optionC', width: 18 },
+      { header: 'Option D', key: 'optionD', width: 18 },
+      { header: 'Correct Option', key: 'correctOption', width: 15 },
+      { header: 'Companies Appeared', key: 'companiesAppeared', width: 22 },
+    ];
+
+    // Style header
+    worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    worksheet.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF4F46E5' },
+    };
+
+    // Example 1: Programming Question (PQ) with pre-code
+    worksheet.addRow({
+      type: 'PQ',
+      questionText: 'Two Sum',
+      problemStatement: 'Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.',
+      topic: 'Arrays',
+      difficulty: 'EASY',
+      codeSnippet: 'def two_sum(nums, target):\n    # Write your solution here\n    pass',
+      allowedLanguages: 'python, java, cpp, c',
+      inputFormat: 'First line: array elements, Second line: target sum',
+      outputFormat: 'Array indices [i, j]',
+      constraints: '2 <= nums.length <= 10^4',
+      testInput1: '2 7 11 15\n9',
+      testOutput1: '0 1',
+      testInput2: '3 2 4\n6',
+      testOutput2: '1 2',
+      companiesAppeared: 'Amazon, Google, TCS',
+    });
+
+    // Example 2: Multiple Choice Question (MCQ)
+    worksheet.addRow({
+      type: 'MCQ',
+      questionText: 'What is the average time complexity of quicksort?',
+      topic: 'Algorithms',
+      difficulty: 'MEDIUM',
+      optionA: 'O(n)',
+      optionB: 'O(n log n)',
+      optionC: 'O(n^2)',
+      optionD: 'O(log n)',
+      correctOption: 'B',
+      companiesAppeared: 'Infosys, Wipro',
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    return Buffer.from(buffer);
   }
 }
 
