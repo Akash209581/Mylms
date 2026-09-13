@@ -146,7 +146,8 @@ export class QuestionBankController {
         .createQueryBuilder('q')
         .select(['q.id', 'q.type', 'q.questionText'])
         .where('q.collegeId = :collegeId', { collegeId })
-        .andWhere('q.type = :type', { type });
+        .andWhere('q.type = :type', { type })
+        .andWhere('(q.isActive IS NULL OR q.isActive = true)');
       if (excludeId) qb.andWhere('q.id != :excludeId', { excludeId });
       const matches = await qb.getMany();
       if (matches.some((q) => questionDuplicateKey(q.type, q.questionText) === incoming)) {
@@ -161,7 +162,8 @@ export class QuestionBankController {
     const qb = this.questionRepo.createQueryBuilder('q')
       .leftJoinAndSelect('q.creator', 'creator')
       .leftJoinAndSelect('q.college', 'college')
-      .where('q.status = :status', { status: QuestionStatus.PENDING_APPROVAL });
+      .where('q.status = :status', { status: QuestionStatus.PENDING_APPROVAL })
+      .andWhere('(q.isActive IS NULL OR q.isActive = true)');
 
     if (req.user?.role === UserRole.ADMIN && req.user?.collegeId) {
       qb.andWhere('q.collegeId = :cid', { cid: req.user.collegeId });
@@ -224,7 +226,8 @@ export class QuestionBankController {
 
     const qb = this.questionRepo.createQueryBuilder('q')
       .leftJoinAndSelect('q.creator', 'creator')
-      .leftJoinAndSelect('q.approver', 'approver');
+      .leftJoinAndSelect('q.approver', 'approver')
+      .where('(q.isActive IS NULL OR q.isActive = true)');
 
     // Apply organization filter (SUPERADMIN bypasses, others filtered by org)
     if (collegeFilter.collegeId) {
@@ -274,8 +277,11 @@ export class QuestionBankController {
       userCollegeId,
     );
 
+    const activeCond = '(q.isActive IS NULL OR q.isActive = true)';
+
     // Build base query with organization filter
-    const baseQuery = this.questionRepo.createQueryBuilder('q');
+    const baseQuery = this.questionRepo.createQueryBuilder('q')
+      .where(activeCond);
     if (collegeFilter.collegeId) {
       baseQuery.andWhere('q.collegeId = :collegeId', {
         collegeId: collegeFilter.collegeId
@@ -288,7 +294,8 @@ export class QuestionBankController {
       .createQueryBuilder('q')
       .select('q.type', 'type')
       .addSelect('COUNT(*)', 'count')
-      .where(collegeFilter.collegeId ? 'q.collegeId = :collegeId' : '1=1',
+      .where(activeCond)
+      .andWhere(collegeFilter.collegeId ? 'q.collegeId = :collegeId' : '1=1',
         collegeFilter.collegeId ? { collegeId: collegeFilter.collegeId } : {})
       .groupBy('q.type')
       .getRawMany();
@@ -297,7 +304,8 @@ export class QuestionBankController {
       .createQueryBuilder('q')
       .select('q.difficulty', 'difficulty')
       .addSelect('COUNT(*)', 'count')
-      .where(collegeFilter.collegeId ? 'q.collegeId = :collegeId' : '1=1',
+      .where(activeCond)
+      .andWhere(collegeFilter.collegeId ? 'q.collegeId = :collegeId' : '1=1',
         collegeFilter.collegeId ? { collegeId: collegeFilter.collegeId } : {})
       .groupBy('q.difficulty')
       .getRawMany();
@@ -516,7 +524,7 @@ export class QuestionBankController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
+  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.INSTRUCTOR, UserRole.QUESTION_CREATOR)
   async delete(@Param('id', ParseIntPipe) id: number, @Request() req?: any) {
     const question = await this.questionRepo.findOneBy({ id });
 
@@ -526,21 +534,30 @@ export class QuestionBankController {
 
     const userRole = req?.user?.role;
     const userCollegeId = req?.user?.collegeId;
+    const userId = req?.user?.sub;
 
-    // SUPERADMIN can delete any question
-    if (userRole !== UserRole.SUPERADMIN) {
-      // ADMIN can only delete questions within their college
+    if (userRole === UserRole.QUESTION_CREATOR) {
+      if (question.createdBy !== userId) {
+        throw new BadRequestException('Cannot delete questions created by other users');
+      }
+    } else if (userRole !== UserRole.SUPERADMIN) {
       if (!this.CollegeFilterService.canAccessCollege(
         userRole,
         userCollegeId,
         question.collegeId
       )) {
-        return { message: 'Cannot delete question from different college' };
+        throw new BadRequestException('Cannot delete question from different college');
       }
     }
 
-    await this.questionRepo.delete(id);
-    return { message: 'Question deleted' };
+    try {
+      await this.questionRepo.delete(id);
+    } catch (err) {
+      // If foreign key constraint or references prevent hard deletion, mark inactive
+      await this.questionRepo.update(id, { isActive: false });
+    }
+
+    return { success: true, message: 'Question deleted' };
   }
 }
 

@@ -98,7 +98,7 @@ export default function ExamSubmitModal({
 
           <button
             type="button"
-            onClick={onConfirmSubmit}
+            onClick={() => onConfirmSubmit()}
             disabled={isSubmitting}
             className="flex-1 py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white font-bold text-xs transition-all shadow-md shadow-rose-950/50 disabled:opacity-50 flex items-center justify-center gap-2"
           >

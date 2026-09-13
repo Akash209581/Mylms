@@ -53,8 +53,17 @@ export default function QuestionBankPage() {
 
     const handleDelete = async (id: number) => {
         if (!confirm('Delete this question?')) return
-        await apiFetch(`${API_URL}/question-bank/${id}`, { method: 'DELETE', credentials: 'include' })
-        setQuestions(prev => prev.filter(q => q.id !== id))
+        try {
+            const res = await apiFetch(`${API_URL}/question-bank/${id}`, { method: 'DELETE', credentials: 'include' })
+            if (res.ok) {
+                setQuestions(prev => prev.filter(q => q.id !== id))
+            } else {
+                const data = await res.json().catch(() => ({}))
+                alert(data.message || 'Failed to delete question')
+            }
+        } catch (e: any) {
+            alert(e.message || 'Failed to delete question')
+        }
     }
 
     const diffColors: Record<string, string> = {

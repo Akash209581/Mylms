@@ -497,10 +497,11 @@ export default function ExamAttemptPage() {
     }
   }
 
-  const submitExam = async (reason?: string) => {
+  const submitExam = async (rawReason?: any) => {
     if (submittingRef.current) return
     submittingRef.current = true
     setSubmitting(true)
+    const reason = typeof rawReason === 'string' ? rawReason : undefined
     const auto = reason === 'TIMER' || reason === 'TAB_SWITCH'
     try {
       await flushAnswers().catch(() => {})
@@ -724,7 +725,7 @@ export default function ExamAttemptPage() {
       <ExamSubmitModal
         isOpen={showSubmitModal}
         onClose={() => setShowSubmitModal(false)}
-        onConfirmSubmit={submitExam}
+        onConfirmSubmit={() => submitExam('MANUAL')}
         isSubmitting={submitting}
         totalQuestions={totalQuestions}
         mcqTotal={mcqs.length}

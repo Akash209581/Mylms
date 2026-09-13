@@ -206,10 +206,10 @@ export default function CodingWorkspace({
           {/* Title & Metadata */}
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-purple-500/15 border border-purple-500/30 text-purple-300">
+              <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-purple-500/10 border border-purple-500/30 text-purple-600 dark:text-purple-300">
                 Problem {questionIndex + 1}
               </span>
-              <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/30 text-emerald-300">
+              <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-300">
                 {question.marks} Marks
               </span>
             </div>
@@ -223,24 +223,19 @@ export default function CodingWorkspace({
             {(() => {
               const qText = question.questionText?.trim() || ''
               const pStmt = question.problemStatement?.trim() || ''
-              const hasBoth = qText && pStmt && qText !== pStmt
+              const isQTextShortTitle = qText.length < 80 && !qText.includes('\n') && Boolean(pStmt)
+              const showQTextSnippet = qText && pStmt && qText !== pStmt && !isQTextShortTitle
 
               return (
                 <>
-                  {hasBoth ? (
-                    <>
-                      <div className="text-sm font-semibold text-indigo-200 bg-indigo-950/20 border border-indigo-500/20 p-3 rounded-xl">
-                        <MarkdownRenderer content={qText} />
-                      </div>
-                      <div className="text-sm text-[var(--text-primary)] leading-relaxed font-sans">
-                        <MarkdownRenderer content={pStmt} />
-                      </div>
-                    </>
-                  ) : (
-                    <div className="text-sm text-[var(--text-primary)] leading-relaxed font-sans">
-                      <MarkdownRenderer content={pStmt || qText || 'Problem statement unavailable.'} />
+                  {showQTextSnippet && (
+                    <div className="text-sm font-medium text-[var(--text-primary)] bg-[var(--bg-raised)] border border-[var(--border)] p-3.5 rounded-xl">
+                      <MarkdownRenderer content={qText} />
                     </div>
                   )}
+                  <div className="text-sm text-[var(--text-primary)] leading-relaxed font-sans">
+                    <MarkdownRenderer content={pStmt || qText || 'Problem statement unavailable.'} />
+                  </div>
                 </>
               )
             })()}
