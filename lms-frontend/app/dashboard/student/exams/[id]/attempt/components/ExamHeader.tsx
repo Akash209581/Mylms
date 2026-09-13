@@ -17,6 +17,7 @@ interface ExamHeaderProps {
   // Timer props
   deadlineAt: string
   serverTime: string
+  remainingSeconds?: number
   onExpire: () => void
   // Tab monitoring
   tabWarnings: number
@@ -48,6 +49,7 @@ export default function ExamHeader({
   isLanguageDisabled = false,
   deadlineAt,
   serverTime,
+  remainingSeconds,
   onExpire,
   tabWarnings,
   onToggleNavigator,
@@ -56,7 +58,7 @@ export default function ExamHeader({
   onSubmitExamClick,
 }: ExamHeaderProps) {
   return (
-    <header className="h-14 bg-slate-900/95 border-b border-slate-800 px-4 md:px-6 flex items-center justify-between gap-3 shrink-0 z-30 select-none backdrop-blur-md">
+    <header className="h-14 bg-[var(--bg-surface)] border-b border-[var(--border)] px-4 md:px-6 flex items-center justify-between gap-3 shrink-0 z-50 select-none">
       {/* ── Left: Exam / Problem Identity ── */}
       <div className="flex items-center gap-3 min-w-0">
         <button
@@ -64,13 +66,13 @@ export default function ExamHeader({
           className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all flex items-center gap-1.5 shrink-0 ${
             isNavigatorOpen
               ? 'bg-indigo-600/20 border-indigo-500/50 text-indigo-300'
-              : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:text-white hover:border-slate-600'
+              : 'bg-[var(--bg-raised)] border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)]'
           }`}
           title="Toggle Questions Panel"
         >
           <span className="text-sm">☰</span>
           <span className="hidden sm:inline">Questions</span>
-          <span className="bg-slate-700/80 text-slate-200 text-[10px] px-1.5 py-0.5 rounded-full font-mono font-bold">
+          <span className="bg-[var(--bg-hover)] text-[var(--text-primary)] text-[10px] px-1.5 py-0.5 rounded-full font-mono font-bold">
             {answeredCount}/{totalQuestions}
           </span>
         </button>
@@ -79,7 +81,7 @@ export default function ExamHeader({
 
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <h1 className="text-sm font-bold text-slate-100 truncate max-w-[200px] sm:max-w-xs md:max-w-md" title={examTitle}>
+            <h1 className="text-sm font-bold text-[var(--text-primary)] truncate max-w-[200px] sm:max-w-xs md:max-w-md" title={examTitle}>
               {examTitle}
             </h1>
             <span
@@ -92,16 +94,16 @@ export default function ExamHeader({
               Sec {currentSection} {isCoding ? '· Code' : '· MCQ'}
             </span>
           </div>
-          <p className="text-[11px] text-slate-400 font-medium">
-            {isCoding ? 'Problem' : 'Question'} <span className="text-slate-200 font-semibold">{currentIndex + 1}</span> of {totalQuestions}
+          <p className="text-[11px] text-[var(--text-muted)] font-medium">
+            {isCoding ? 'Problem' : 'Question'} <span className="text-[var(--text-primary)] font-semibold">{currentIndex + 1}</span> of {totalQuestions}
           </p>
         </div>
       </div>
 
       {/* ── Center: Language Selector (When in Coding Mode) ── */}
       {isCoding && onLanguageChange && (
-        <div className="hidden md:flex items-center gap-2 bg-slate-950/60 border border-slate-800 px-3 py-1 rounded-lg">
-          <span className="text-xs text-slate-400 font-medium">Language:</span>
+        <div className="hidden md:flex items-center gap-2 bg-[var(--bg-raised)] border border-[var(--border)] px-3 py-1 rounded-lg">
+          <span className="text-xs text-[var(--text-muted)] font-medium">Language:</span>
           <select
             value={language}
             onChange={(e) => onLanguageChange(e.target.value)}
@@ -135,7 +137,7 @@ export default function ExamHeader({
           </div>
         )}
 
-        <ExamTimer deadlineAt={deadlineAt} serverTime={serverTime} onExpire={onExpire} />
+        <ExamTimer deadlineAt={deadlineAt} serverTime={serverTime} remainingSeconds={remainingSeconds} onExpire={onExpire} />
 
         <button
           onClick={onSubmitExamClick}

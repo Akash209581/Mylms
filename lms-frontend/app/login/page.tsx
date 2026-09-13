@@ -92,7 +92,7 @@ export default function LoginPage() {
 
                 {/* Right Side: Auth Card */}
                 <div className="lg:col-span-6 xl:col-span-5 flex justify-center w-full">
-                    <div className="w-full max-w-[420px] bg-white rounded-[32px] sm:rounded-[36px] p-8 sm:p-10 shadow-[0_20px_50px_rgba(79,70,229,0.07)] border border-slate-100/90 backdrop-blur-sm">
+                    <div className="w-full max-w-[420px] bg-white rounded-[32px] sm:rounded-[36px] p-8 sm:p-10 shadow-[0_20px_50px_rgba(79,70,229,0.07)] border border-slate-100/90">
                         
                         {/* Top Logo Icon */}
                         <div className="text-center mb-7">

@@ -97,15 +97,15 @@ export interface TestCasePayload {
 
 export interface CodeJobPayload {
   jobId: string;
-  attemptId: number;
-  questionId: number;
-  userId: number;
+  attemptId?: number;
+  questionId?: number;
+  userId?: number;
   language: string;
   code: string;
   stdin?: string;
   executionType: 'RUN' | 'SUBMIT';
-  isFinal: boolean;
-  totalMarks: number;
+  isFinal?: boolean;
+  totalMarks?: number;
   testCases: TestCasePayload[];
 }
 
@@ -123,8 +123,8 @@ export interface SingleCaseResult {
 
 export interface ExecutionJobResult {
   jobId: string;
-  attemptId: number;
-  questionId: number;
+  attemptId?: number;
+  questionId?: number;
   status: ExecutionStatus;
   passedCases: number;
   totalCases: number;
@@ -139,3 +139,4 @@ export interface ExecutionJobResult {
   publicResults: SingleCaseResult[];
   submittedAt: string;
 }
+

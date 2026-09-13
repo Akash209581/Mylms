@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
-import Sidebar from '@/components/layout/Sidebar'
-import Navbar from '@/components/layout/Navbar'
+import StudentReferenceShell from '@/components/layout/StudentReferenceShell'
 import { api } from '@/lib/api'
 import MarkdownRenderer from '@/components/editor/MarkdownRenderer'
 import { normalizeMcqLetter, optionTextForLetter } from '@/lib/mcq-answer'
@@ -27,16 +26,16 @@ export default function ExamResultPage() {
   }, [attemptId])
 
   if (loading) return (
-    <div className="min-h-screen bg-mesh"><Sidebar role="STUDENT" /><Navbar title="Results" />
-      <main className="page-content flex items-center justify-center">
+    <div className="portal-page"><StudentReferenceShell active="exams" />
+      <main id="student-main" tabIndex={-1} className="portal-main flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
       </main>
     </div>
   )
 
   if (!result || result.message) return (
-    <div className="min-h-screen bg-mesh"><Sidebar role="STUDENT" /><Navbar title="Results" />
-      <main className="page-content max-w-2xl">
+    <div className="portal-page"><StudentReferenceShell active="exams" />
+      <main id="student-main" tabIndex={-1} className="portal-main max-w-2xl">
         <div className="glass-card p-12 text-center">
           <div className="text-5xl mb-4">📊</div>
           <h1 className="text-xl font-bold role-text-primary mb-2">Results Not Yet Available</h1>
@@ -50,10 +49,9 @@ export default function ExamResultPage() {
   const percentage = Math.round((result.totalScore / result.totalMarks) * 100)
 
   return (
-    <div className="min-h-screen bg-mesh">
-      <Sidebar role="STUDENT" />
-      <Navbar title="Exam Results" />
-      <main className="page-content max-w-4xl">
+    <div className="portal-page">
+      <StudentReferenceShell active="exams" />
+      <main id="student-main" tabIndex={-1} className="portal-main max-w-4xl">
         <button onClick={() => router.push('/dashboard/student/exams')} className="btn-secondary mb-6 text-sm">← Back to Exams</button>
 
         {/* Hero Result Card */}

@@ -337,5 +337,17 @@ describe('Secure Code Execution Module Tests', () => {
       expect(done).toBe(true);
       await queueService.onModuleDestroy();
     });
+
+    it('does not count practice jobs in hasPendingJobs(attemptId)', async () => {
+      const queueService = new CompilerQueueService();
+      (queueService as any).isRedisOnline = false;
+      queueService.setFallbackProcessor(async () => new Promise(() => {}));
+      await queueService.enqueueJob({
+        jobId: 'practice-9-1', userId: 9, language: 'python', code: 'print(1)',
+        executionType: 'RUN', isFinal: false, totalMarks: 0, testCases: [],
+      });
+      expect(queueService.hasPendingJobs(42)).toBe(false);
+      await queueService.onModuleDestroy();
+    });
   });
 });

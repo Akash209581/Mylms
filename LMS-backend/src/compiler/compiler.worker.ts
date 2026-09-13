@@ -194,7 +194,7 @@ export class CompilerWorker implements OnModuleInit, OnModuleDestroy {
       const isRun = payload.executionType === 'RUN';
       const passedCount = caseResults.filter((r) => r.passed).length;
       const totalCount = caseResults.length;
-      const score = isRun ? 0 : this.grading.calculateScore(passedCount, totalCount, totalMarks);
+      const score = isRun ? 0 : this.grading.calculateScore(passedCount, totalCount, totalMarks || 0);
       const overallStatus = isRun
         ? (caseResults[0]?.status || ExecutionStatus.ACCEPTED)
         : this.grading.determineOverallStatus(caseResults);

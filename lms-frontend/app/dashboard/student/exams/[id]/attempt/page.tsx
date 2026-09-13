@@ -10,6 +10,7 @@ import QuestionNavigator from './components/QuestionNavigator'
 import McqWorkspace from './components/McqWorkspace'
 import CodingWorkspace from './components/CodingWorkspace'
 import ExamSubmitModal from './components/ExamSubmitModal'
+import { starterForLanguage, toRuntimeLang } from '@/lib/starter-code'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 interface SampleTestCase {
@@ -44,6 +45,7 @@ interface Attempt {
   startTime: string
   deadlineAt: string
   serverTime: string
+  remainingSeconds?: number
   durationMinutes: number
   negativeMarking: boolean
   tabSwitchMonitoring: boolean
@@ -72,6 +74,7 @@ export default function ExamAttemptPage() {
   const [showSubmitModal, setShowSubmitModal] = useState(false)
   const [tabWarnings, setTabWarnings] = useState(0)
   const [isNavigatorOpen, setIsNavigatorOpen] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(true)
 
   // Coding State
   const [code, setCode] = useState<Record<number, string>>({})
@@ -93,11 +96,85 @@ export default function ExamAttemptPage() {
   const codeRef = useRef(code)
   const languageRef = useRef(language)
   const submittingRef = useRef(false)
+  const lastExpireTry = useRef(0)
+  const tabIdRef = useRef(`${Date.now()}-${Math.random().toString(36).slice(2)}`)
+  const isLeaderRef = useRef(true)
   const submitExamRef = useRef<(reason?: string) => Promise<void>>(async () => {})
   answersRef.current = answers
   markedRef.current = markedReview
   codeRef.current = code
   languageRef.current = language
+
+  // Compulsory Fullscreen Monitoring
+  useEffect(() => {
+    const checkFullscreen = () => {
+      const isFs = !!(
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).mozFullScreenElement ||
+        (document as any).msFullscreenElement
+      )
+      setIsFullscreen(isFs)
+    }
+
+    checkFullscreen()
+
+    document.addEventListener('fullscreenchange', checkFullscreen)
+    document.addEventListener('webkitfullscreenchange', checkFullscreen)
+    document.addEventListener('mozfullscreenchange', checkFullscreen)
+    document.addEventListener('MSFullscreenChange', checkFullscreen)
+
+    return () => {
+      document.removeEventListener('fullscreenchange', checkFullscreen)
+      document.removeEventListener('webkitfullscreenchange', checkFullscreen)
+      document.removeEventListener('mozfullscreenchange', checkFullscreen)
+      document.removeEventListener('MSFullscreenChange', checkFullscreen)
+    }
+  }, [])
+
+  const enterFullscreen = async () => {
+    try {
+      const el = document.documentElement as any
+      if (el.requestFullscreen) {
+        await el.requestFullscreen()
+      } else if (el.webkitRequestFullscreen) {
+        await el.webkitRequestFullscreen()
+      } else if (el.mozRequestFullScreen) {
+        await el.mozRequestFullScreen()
+      } else if (el.msRequestFullscreen) {
+        await el.msRequestFullscreen()
+      }
+    } catch (e) {
+      console.warn('Fullscreen entry error:', e)
+    }
+  }
+
+  // Global paste, context menu, and Ctrl+V / Cmd+V disable (zero overhead, capture phase)
+  useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'v' || e.key === 'V' || e.code === 'KeyV')) {
+        e.preventDefault()
+        e.stopPropagation()
+      }
+    }
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault()
+    }
+
+    window.addEventListener('paste', handlePaste, true)
+    window.addEventListener('keydown', handleKeyDown, true)
+    window.addEventListener('contextmenu', handleContextMenu, true)
+
+    return () => {
+      window.removeEventListener('paste', handlePaste, true)
+      window.removeEventListener('keydown', handleKeyDown, true)
+      window.removeEventListener('contextmenu', handleContextMenu, true)
+    }
+  }, [])
 
   useEffect(() => {
     if (!attemptId) {
@@ -107,11 +184,62 @@ export default function ExamAttemptPage() {
     fetchAttempt()
   }, [attemptId])
 
+  // Cross-tab: one leader drives submit / tab-count
+  useEffect(() => {
+    if (!attemptId) return
+    let channel: BroadcastChannel | null = null
+    try {
+      channel = new BroadcastChannel(`exam-attempt-${attemptId}`)
+      channel.onmessage = (ev) => {
+        if (ev.data?.type === 'ping' && typeof ev.data.tabId === 'string') {
+          isLeaderRef.current = tabIdRef.current <= ev.data.tabId
+          if (tabIdRef.current < ev.data.tabId) {
+            channel?.postMessage({ type: 'ping', tabId: tabIdRef.current })
+          }
+        }
+        if (ev.data?.type === 'submitted' && !submittingRef.current) {
+          router.push(`/dashboard/student/exams/${examId}/result?attemptId=${attemptId}`)
+        }
+      }
+      channel.postMessage({ type: 'ping', tabId: tabIdRef.current })
+    } catch {
+      isLeaderRef.current = true
+    }
+    return () => channel?.close()
+  }, [attemptId, examId, router])
+
+  // Server-authoritative clock + TIMER submit via GET (not client-only)
+  useEffect(() => {
+    if (!attemptId) return
+    const resync = async () => {
+      try {
+        const r = await api.get(`/student/exams/attempts/${attemptId}`)
+        setAttempt((prev) => prev ? {
+          ...prev,
+          deadlineAt: r.data.deadlineAt,
+          serverTime: r.data.serverTime,
+          remainingSeconds: r.data.remainingSeconds,
+          status: r.data.status,
+          tabSwitchCount: r.data.tabSwitchCount,
+        } : prev)
+        if (typeof r.data.tabSwitchCount === 'number') setTabWarnings(r.data.tabSwitchCount)
+        if (r.data.status && r.data.status !== 'IN_PROGRESS') {
+          router.push(`/dashboard/student/exams/${examId}/result?attemptId=${attemptId}`)
+        }
+      } catch {
+        /* keep local clock until the next beat */
+      }
+    }
+    const id = setInterval(resync, 20000)
+    return () => clearInterval(id)
+  }, [attemptId, examId, router])
+
   // Tab switch monitoring — persist + auto-submit on 3rd switch
   useEffect(() => {
     if (!attempt?.tabSwitchMonitoring || !attemptId) return
     const handleVisibility = async () => {
       if (document.visibilityState !== 'hidden') return
+      if (!isLeaderRef.current) return
       try {
         const r = await api.post(`/student/exams/attempts/${attemptId}/tab-switch`)
         const count = r.data?.count ?? 0
@@ -148,10 +276,11 @@ export default function ExamAttemptPage() {
         if (q.section === 'B') {
           if (data.latestCoding && data.latestCoding[q.id]) {
             codes[q.id] = data.latestCoding[q.id].code
-            langs[q.id] = data.latestCoding[q.id].language || 'python'
+            langs[q.id] = toRuntimeLang(data.latestCoding[q.id].language || q.allowedLanguages?.[0])
           } else {
-            codes[q.id] = q.codeSnippet || ''
-            langs[q.id] = (q.allowedLanguages && q.allowedLanguages[0]) || 'python'
+            const lang = toRuntimeLang(q.allowedLanguages?.[0])
+            langs[q.id] = lang
+            codes[q.id] = starterForLanguage(q.codeSnippet, lang)
           }
         }
       })
@@ -212,7 +341,17 @@ export default function ExamAttemptPage() {
   }
 
   const handleLanguageChange = (questionId: number, newLang: string) => {
-    setLanguage((prev) => ({ ...prev, [questionId]: newLang }))
+    const runtime = toRuntimeLang(newLang)
+    const question = attempt?.questions.find((q) => q.id === questionId)
+    const nextStarter = starterForLanguage(question?.codeSnippet, runtime)
+    const current = codeRef.current[questionId] || ''
+    const previousLang = languageRef.current[questionId]
+    const previousStarter = starterForLanguage(question?.codeSnippet, previousLang)
+    const untouched = !current.trim() || current.trim() === previousStarter.trim()
+    setLanguage((prev) => ({ ...prev, [questionId]: runtime }))
+    if (untouched) {
+      setCode((prev) => ({ ...prev, [questionId]: nextStarter }))
+    }
   }
 
   // Run Code or Submit Code
@@ -358,22 +497,24 @@ export default function ExamAttemptPage() {
     }
   }
 
-  // Final Exam Submission
   const submitExam = async (reason?: string) => {
     if (submittingRef.current) return
     submittingRef.current = true
     setSubmitting(true)
+    const auto = reason === 'TIMER' || reason === 'TAB_SWITCH'
     try {
       await flushAnswers().catch(() => {})
-      const codingQs = attempt?.questions.filter((q) => q.section === 'B') || []
-      for (const q of codingQs) {
-        if (codeRef.current[q.id]?.trim()) {
-          const finished = await runCode(q.id, true, { wait: true }).catch(() => false)
-          if (!finished && reason !== 'TIMER' && reason !== 'TAB_SWITCH') {
-            submittingRef.current = false
-            setSubmitting(false)
-            window.alert('Your code is still being evaluated. The exam was not submitted. Wait a few seconds and submit again.')
-            return
+      if (!auto) {
+        const codingQs = attempt?.questions.filter((q) => q.section === 'B') || []
+        for (const q of codingQs) {
+          if (codeRef.current[q.id]?.trim()) {
+            const finished = await runCode(q.id, true, { wait: true }).catch(() => false)
+            if (!finished) {
+              submittingRef.current = false
+              setSubmitting(false)
+              window.alert('Your code is still being evaluated. The exam was not submitted. Wait a few seconds and submit again.')
+              return
+            }
           }
         }
       }
@@ -382,18 +523,24 @@ export default function ExamAttemptPage() {
         markedReview: markedRef.current,
         reason,
       })
+      try { new BroadcastChannel(`exam-attempt-${attemptId}`).postMessage({ type: 'submitted' }) } catch { /* ignore */ }
       router.push(`/dashboard/student/exams/${examId}/result?attemptId=${attemptId}`)
-    } catch (err) {
-      console.error('Failed to submit exam:', err)
+    } catch (err: any) {
+      const message = err?.response?.data?.message || 'Failed to submit exam'
+      if (!auto) window.alert(Array.isArray(message) ? message.join(', ') : message)
       submittingRef.current = false
       setSubmitting(false)
     }
   }
   submitExamRef.current = submitExam
 
-  const handleExpire = () => {
-    if (!submittingRef.current) submitExam('TIMER')
-  }
+  const handleExpire = useCallback(() => {
+    if (submittingRef.current) return
+    if (!isLeaderRef.current) return
+    if (Date.now() - lastExpireTry.current < 4000) return
+    lastExpireTry.current = Date.now()
+    submitExamRef.current('TIMER')
+  }, [])
 
   const currentQuestion = attempt?.questions.find((q) => q.id === currentQuestionId)
   const currentIndex = attempt?.questions.findIndex((q) => q.id === currentQuestionId) ?? -1
@@ -422,10 +569,10 @@ export default function ExamAttemptPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-[var(--bg-base)] flex items-center justify-center">
         <div className="text-center space-y-4">
-          <div className="w-10 h-10 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-slate-400 text-sm font-medium">Preparing examination workspace...</p>
+          <div className="w-10 h-10 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-[var(--text-muted)] text-sm font-medium">Preparing examination workspace...</p>
         </div>
       </div>
     )
@@ -433,11 +580,11 @@ export default function ExamAttemptPage() {
 
   if (!attempt || attempt.status !== 'IN_PROGRESS') {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-        <div className="bg-slate-900 border border-slate-800 p-8 rounded-2xl max-w-md text-center space-y-4">
+      <div className="min-h-screen bg-[var(--bg-base)] flex items-center justify-center p-4">
+        <div className="bg-[var(--bg-surface)] border border-[var(--border)] p-8 rounded-2xl max-w-md text-center space-y-4">
           <div className="text-3xl">📋</div>
-          <h2 className="text-lg font-bold text-slate-100">Exam Not Active</h2>
-          <p className="text-slate-400 text-xs">
+          <h2 className="text-lg font-bold text-[var(--text-primary)]">Exam Not Active</h2>
+          <p className="text-[var(--text-muted)] text-xs">
             This examination attempt is no longer in progress or has already been submitted.
           </p>
           <button
@@ -454,7 +601,7 @@ export default function ExamAttemptPage() {
   const isCodingQuestion = currentQuestion?.section === 'B'
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-slate-950 text-slate-100 overflow-hidden font-sans select-none">
+    <div className="h-screen w-screen flex flex-col bg-[var(--bg-base)] text-[var(--text-primary)] overflow-hidden font-sans select-none">
       {/* ── 1. Top Exam Header ── */}
       <ExamHeader
         examTitle={attempt.examTitle}
@@ -464,11 +611,12 @@ export default function ExamAttemptPage() {
         currentType={currentQuestion?.type || 'MCQ'}
         isCoding={isCodingQuestion}
         language={currentQuestion ? language[currentQuestion.id] : 'python'}
-        allowedLanguages={currentQuestion?.allowedLanguages}
+        allowedLanguages={(currentQuestion?.allowedLanguages || []).map((lang) => toRuntimeLang(lang))}
         onLanguageChange={(lang) => currentQuestion && handleLanguageChange(currentQuestion.id, lang)}
         isLanguageDisabled={currentQuestion ? running[currentQuestion.id] : false}
         deadlineAt={attempt.deadlineAt}
         serverTime={attempt.serverTime}
+        remainingSeconds={attempt.remainingSeconds}
         onExpire={handleExpire}
         tabWarnings={tabWarnings}
         onToggleNavigator={() => setIsNavigatorOpen(!isNavigatorOpen)}
@@ -493,7 +641,7 @@ export default function ExamAttemptPage() {
         />
 
         {/* Question Workspace Area */}
-        <main className="flex-1 flex flex-col overflow-hidden bg-slate-950">
+        <main className="flex-1 flex flex-col overflow-hidden bg-[var(--bg-base)]">
           {currentQuestion && (
             <>
               {currentQuestion.section === 'A' ? (
@@ -585,6 +733,33 @@ export default function ExamAttemptPage() {
         codingAttempted={codingAttempted}
         markedReviewCount={markedReview.length}
       />
+
+      {/* ── 5. Compulsory Fullscreen Enforcement Modal ── */}
+      {!isFullscreen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center select-none">
+          <div className="max-w-md w-full bg-slate-900 border border-indigo-500/40 rounded-2xl p-8 shadow-2xl shadow-indigo-950/60 space-y-6">
+            <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center mx-auto text-3xl">
+              ⤢
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-slate-100">Fullscreen Mode Required</h2>
+              <p className="text-sm text-slate-400 mt-2 leading-relaxed">
+                This examination is conducted in mandatory full screen mode. Leaving full screen or switching applications is strictly monitored.
+              </p>
+            </div>
+            <div className="p-3.5 bg-slate-950/80 rounded-xl border border-slate-800 text-xs text-amber-300 font-medium">
+              ⚠️ Clipboard paste (Ctrl+V) and right-click are disabled during this exam.
+            </div>
+            <button
+              onClick={enterFullscreen}
+              className="w-full py-3 px-6 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-semibold text-sm transition-all shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2"
+            >
+              <span>Enter Fullscreen to Continue</span>
+              <span>→</span>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

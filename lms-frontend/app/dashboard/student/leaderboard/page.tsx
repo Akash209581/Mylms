@@ -5,8 +5,7 @@ import { apiFetch } from '@/lib/apiFetch'
 import { API_URL } from '@/lib/api'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Sidebar from '@/components/layout/Sidebar'
-import Navbar from '@/components/layout/Navbar'
+import StudentReferenceShell from '@/components/layout/StudentReferenceShell'
 import { getAuthHeaders } from '@/lib/authHeaders'
 
 interface LeaderboardEntry {
@@ -78,10 +77,9 @@ export default function StudentLeaderboardPage() {
     }
 
     return (
-        <div className="min-h-screen bg-[var(--bg-base)]">
-            <Sidebar role="STUDENT" />
-            <Navbar title="Leaderboard" />
-            <main className="page-content pt-24 pb-12">
+        <div className="portal-page">
+            <StudentReferenceShell active="leaderboard" />
+            <main id="student-main" tabIndex={-1} className="portal-main">
 
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">

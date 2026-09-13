@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Sidebar from '@/components/layout/Sidebar'
-import Navbar from '@/components/layout/Navbar'
+import StudentReferenceShell from '@/components/layout/StudentReferenceShell'
 import { api } from '@/lib/api'
 
 const statusStyle: Record<string, string> = {
@@ -32,11 +31,32 @@ export default function StudentExamsPage() {
     return h > 0 ? `${h}h ${m}m left` : `${m}m left`
   }
 
+  const getTimeUntilStart = (startAt?: string) => {
+    if (!startAt) return null
+    const diff = new Date(startAt).getTime() - Date.now()
+    if (diff <= 0) return null
+    const d = Math.floor(diff / 86400000)
+    const h = Math.floor((diff % 86400000) / 3600000)
+    const m = Math.floor((diff % 3600000) / 60000)
+    if (d > 0) return `Opens in ${d}d ${h}h`
+    if (h > 0) return `Opens in ${h}h ${m}m`
+    return `Opens in ${m}m`
+  }
+
+  const formatDateTime = (d?: string) => {
+    if (!d) return ''
+    return new Date(d).toLocaleString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  }
+
   return (
-    <div className="min-h-screen bg-mesh">
-      <Sidebar role="STUDENT" />
-      <Navbar title="My Exams" />
-      <main className="page-content">
+    <div className="portal-page">
+      <StudentReferenceShell active="exams" />
+      <main id="student-main" tabIndex={-1} className="portal-main">
         <div className="role-page-header mb-8">
           <div className="relative z-10">
             <p className="role-eyebrow">Assessment Center</p>
@@ -59,11 +79,16 @@ export default function StudentExamsPage() {
               const isInProgress = exam.attemptStatus === 'IN_PROGRESS'
               const isSubmitted = exam.attemptStatus === 'SUBMITTED' || exam.attemptStatus === 'EVALUATED'
               const timeLeft = getTimeLeft(exam.endAt)
+              const timeUntilStart = getTimeUntilStart(exam.startAt)
+              const isScheduled = exam.status === 'SCHEDULED' || (timeUntilStart && exam.status !== 'COMPLETED')
+
               return (
                 <div key={exam.id} className="glass-card p-6 flex flex-col gap-4">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1">
-                      <span className={`badge border text-xs ${statusStyle[exam.status] || ''}`}>{exam.status}</span>
+                      <span className={`badge border text-xs ${statusStyle[exam.status] || ''}`}>
+                        {exam.status}
+                      </span>
                       <h3 className="text-base font-bold role-text-primary mt-2 leading-snug">{exam.title}</h3>
                     </div>
                     <div className="text-2xl shrink-0">📝</div>
@@ -75,6 +100,13 @@ export default function StudentExamsPage() {
                     <span>✓ Pass: {exam.passingMarks}</span>
                     {timeLeft && <span className={timeLeft === 'Ended' ? 'text-red-400' : 'text-yellow-400'}>{timeLeft}</span>}
                   </div>
+
+                  {exam.startAt && isScheduled && (
+                    <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs flex items-center justify-between text-amber-300 font-medium">
+                      <span>📅 Starts: {formatDateTime(exam.startAt)}</span>
+                      {timeUntilStart && <span className="font-bold">{timeUntilStart}</span>}
+                    </div>
+                  )}
 
                   {isSubmitted && (
                     <div className={`rounded-xl p-3 text-center ${exam.passed ? 'bg-green-500/10 border border-green-500/20' : 'bg-red-500/10 border border-red-500/20'}`}>
@@ -100,13 +132,26 @@ export default function StudentExamsPage() {
                       >
                         📊 View Results
                       </button>
+                    ) : exam.status === 'LIVE' ? (
+                      <button
+                        onClick={() => router.push(`/dashboard/student/exams/${exam.id}`)}
+                        className="btn-primary flex-1 text-sm shadow-md shadow-indigo-600/20"
+                      >
+                        🚀 Start Exam
+                      </button>
+                    ) : exam.status === 'SCHEDULED' ? (
+                      <button
+                        onClick={() => router.push(`/dashboard/student/exams/${exam.id}`)}
+                        className="btn-secondary flex-1 text-sm border-amber-500/30 text-amber-300 hover:bg-amber-500/10 flex items-center justify-center gap-1.5"
+                      >
+                        <span>⏳ Scheduled — View Details</span>
+                      </button>
                     ) : (
                       <button
                         onClick={() => router.push(`/dashboard/student/exams/${exam.id}`)}
-                        className="btn-primary flex-1 text-sm"
-                        disabled={exam.status !== 'LIVE'}
+                        className="btn-secondary flex-1 text-sm opacity-50"
                       >
-                        {exam.status === 'LIVE' ? '🚀 Start Exam' : '⏳ Not Yet Live'}
+                        Exam Concluded
                       </button>
                     )}
                   </div>

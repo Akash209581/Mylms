@@ -1,6 +1,6 @@
 import {
   BadRequestException, ConflictException, ForbiddenException,
-  Injectable, NotFoundException,
+  Injectable, NotFoundException, OnModuleInit, OnModuleDestroy,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, In } from 'typeorm';
@@ -24,7 +24,9 @@ interface RequestUser {
 }
 
 @Injectable()
-export class ExamService {
+export class ExamService implements OnModuleInit, OnModuleDestroy {
+  private syncTimer?: NodeJS.Timeout;
+
   constructor(
     @InjectRepository(Exam) private examRepo: Repository<Exam>,
     @InjectRepository(ExamQuestion) private eqRepo: Repository<ExamQuestion>,
@@ -35,6 +37,46 @@ export class ExamService {
     @InjectRepository(College) private collegeRepo: Repository<College>,
     private readonly db: DataSource,
   ) {}
+
+  onModuleInit() {
+    this.syncExamStatuses().catch(() => {});
+    this.syncTimer = setInterval(() => {
+      this.syncExamStatuses().catch(() => {});
+    }, 30000);
+  }
+
+  onModuleDestroy() {
+    if (this.syncTimer) {
+      clearInterval(this.syncTimer);
+    }
+  }
+
+  /** Automatically transition SCHEDULED exams to LIVE and expired exams to COMPLETED */
+  async syncExamStatuses() {
+    try {
+      const now = new Date();
+      // 1. SCHEDULED -> LIVE (startAt reached, and endAt not yet passed)
+      await this.examRepo
+        .createQueryBuilder()
+        .update(Exam)
+        .set({ status: ExamStatus.LIVE })
+        .where('status = :scheduled', { scheduled: ExamStatus.SCHEDULED })
+        .andWhere('start_at IS NOT NULL AND start_at <= :now', { now })
+        .andWhere('(end_at IS NULL OR end_at > :now)', { now })
+        .execute();
+
+      // 2. SCHEDULED or LIVE -> COMPLETED (endAt passed)
+      await this.examRepo
+        .createQueryBuilder()
+        .update(Exam)
+        .set({ status: ExamStatus.COMPLETED })
+        .where('status IN (:...statuses)', { statuses: [ExamStatus.LIVE, ExamStatus.SCHEDULED] })
+        .andWhere('end_at IS NOT NULL AND end_at <= :now', { now })
+        .execute();
+    } catch (err) {
+      console.warn('syncExamStatuses failed:', err);
+    }
+  }
 
   // ─── Access helpers ───────────────────────────────────────────────────────
 
@@ -51,6 +93,7 @@ export class ExamService {
   }
 
   private async getExamOrFail(id: number): Promise<Exam> {
+    await this.syncExamStatuses();
     const exam = await this.examRepo.findOne({ where: { id } });
     if (!exam) throw new NotFoundException(`Exam #${id} not found`);
     return exam;
@@ -72,6 +115,7 @@ export class ExamService {
 
   async list(user: RequestUser) {
     this.assertAdmin(user);
+    await this.syncExamStatuses();
     const qb = this.examRepo.createQueryBuilder('e')
       .select(['e.id','e.title','e.status','e.durationMinutes','e.startAt','e.endAt',
                'e.totalMarks','e.passingMarks','e.createdAt',

@@ -11,6 +11,7 @@ import QuestionPreview from '@/components/question-bank/QuestionPreview'
 import MarkdownToolbar from '@/components/editor/MarkdownToolbar'
 import { normalizeMcqLetter } from '@/lib/mcq-answer'
 import { getRoleBasePath } from '@/lib/roleUtils'
+import { ADMIN_STARTERS } from '@/lib/starter-code'
 
 const COMPANIES = ['Accenture', 'CapGemini', 'Infosys', 'TCS', 'Wipro', 'Amazon', 'Google', 'Microsoft', 'Adobe', 'Flipkart', 'Other']
 const LANGUAGES = ['Python', 'Java', 'C', 'C++', 'JavaScript', 'Any']
@@ -58,13 +59,7 @@ function CreateQuestionForm() {
     const [showPreview, setShowPreview] = useState(false)
     const [error, setError] = useState('')
     const [pqTab, setPqTab] = useState<'explanation' | 'problem' | 'testcases' | 'predefined'>('explanation')
-    const [predefinedCodes, setPredefinedCodes] = useState<Record<string, string>>({
-        'Python': 'def solve():\n    # Write your Python code here\n    pass',
-        'Java': 'public class Solution {\n    public static void main(String[] args) {\n        // Write your Java code here\n    }\n}',
-        'C++': '#include <iostream>\nusing namespace std;\n\nint main() {\n    // Write your C++ code here\n    return 0;\n}',
-        'C': '#include <stdio.h>\n\nint main() {\n    // Write your C code here\n    return 0;\n}',
-        'JavaScript': 'function solve() {\n    // Write your JavaScript code here\n}',
-    })
+    const [predefinedCodes, setPredefinedCodes] = useState<Record<string, string>>({ ...ADMIN_STARTERS })
 
     const problemStatementRef = useRef<HTMLTextAreaElement>(null)
     const explanationRef = useRef<HTMLTextAreaElement>(null)
@@ -194,7 +189,7 @@ function CreateQuestionForm() {
                         ← Back
                     </button>
                     <div>
-                        <h1 className="text-2xl font-bold text-white">Create New Question</h1>
+                        <h1 className="text-2xl font-bold role-text-primary">Create New Question</h1>
                         <p className="text-gray-400 text-sm">Fill in the question details</p>
                     </div>
                 </div>
@@ -208,14 +203,14 @@ function CreateQuestionForm() {
                 {/* Step 1: Select Type */}
                 {step === 1 && (
                     <div className="glass-card p-8">
-                        <h2 className="text-lg font-semibold text-white mb-6">Step 1: Choose Question Type</h2>
+                        <h2 className="text-lg font-semibold role-text-primary mb-6">Step 1: Choose Question Type</h2>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                             {QUESTION_TYPES.map(t => (
                                 <div key={t.key} onClick={() => { set('type', t.key); setStep(2) }}
                                     className="p-5 rounded-2xl cursor-pointer border transition-all duration-200 hover:scale-105 hover:border-primary-500"
                                     style={{ background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }}>
                                     <div className="text-3xl mb-3">{t.icon}</div>
-                                    <p className="text-white font-semibold mb-1">{t.label}</p>
+                                    <p className="role-text-primary font-semibold mb-1">{t.label}</p>
                                     <p className="text-gray-400 text-xs">{t.desc}</p>
                                 </div>
                             ))}
@@ -227,7 +222,7 @@ function CreateQuestionForm() {
                 {step === 2 && (
                     <div className="space-y-6">
                         <div className="glass-card p-6">
-                            <h2 className="text-lg font-semibold text-white mb-5">Step 2: Question Details
+                            <h2 className="text-lg font-semibold role-text-primary mb-5">Step 2: Question Details
                                 <span className="text-primary-400 ml-2 text-sm">({form.type})</span>
                             </h2>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -380,7 +375,7 @@ function CreateQuestionForm() {
                         {form.type === 'MCQ' && (
                             <div className="glass-card p-6 space-y-6">
                                 <div>
-                                    <h3 className="text-white font-semibold mb-2">📄 Problem Statement *</h3>
+                                    <h3 className="role-text-primary font-semibold mb-2">📄 Problem Statement *</h3>
                                     <MarkdownToolbar textareaRef={problemStatementRef} onChange={(val) => set('problemStatement', val)} />
                                     <textarea
                                         ref={problemStatementRef}
@@ -391,7 +386,7 @@ function CreateQuestionForm() {
                                 </div>
 
                                 <div className="pt-6 border-t border-white/5">
-                                    <h3 className="text-white font-semibold mb-4">🔘 Options</h3>
+                                    <h3 className="role-text-primary font-semibold mb-4">🔘 Options</h3>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                                         {(form.options || ['', '', '', '']).map((opt: string, i: number) => (
                                             <div key={i} className="flex gap-2 items-center">
@@ -427,7 +422,7 @@ function CreateQuestionForm() {
                         {form.type === 'FIB' && (
                             <div className="glass-card p-6 space-y-6">
                                 <div>
-                                    <h3 className="text-white font-semibold mb-2">📄 Problem Statement *</h3>
+                                    <h3 className="role-text-primary font-semibold mb-2">📄 Problem Statement *</h3>
                                     <p className="text-gray-400 text-xs mb-4">Provide the problem statement or code snippet. Use <span className="text-primary-400 font-mono font-bold">[BLANK]</span> where you want students to fill in the answers.</p>
                                     <MarkdownToolbar textareaRef={problemStatementRef} onChange={(val) => set('problemStatement', val)} />
                                     <textarea
@@ -439,7 +434,7 @@ function CreateQuestionForm() {
                                 </div>
 
                                 <div className="pt-6 border-t border-white/5">
-                                    <h3 className="text-white font-semibold mb-4">✏️ Blank Answers</h3>
+                                    <h3 className="role-text-primary font-semibold mb-4">✏️ Blank Answers</h3>
                                     <div className="space-y-4">
                                         {form.blanks.map((b: string, i: number) => (
                                             <div key={i} className="flex gap-3 mb-3 items-center">
@@ -477,7 +472,7 @@ function CreateQuestionForm() {
                         {form.type === 'MQ' && (
                             <div className="glass-card p-6 space-y-6">
                                 <div>
-                                    <h3 className="text-white font-semibold mb-2 flex items-center gap-2">📄 Problem Statement *</h3>
+                                    <h3 className="role-text-primary font-semibold mb-2 flex items-center gap-2">📄 Problem Statement *</h3>
                                     <MarkdownToolbar textareaRef={problemStatementRef} onChange={(val) => set('problemStatement', val)} />
                                     <textarea
                                         ref={problemStatementRef}
@@ -488,7 +483,7 @@ function CreateQuestionForm() {
                                 </div>
 
                                 <div className="pt-6 border-t border-white/5">
-                                    <h3 className="text-white font-semibold mb-4">🔗 Matching Pairs</h3>
+                                    <h3 className="role-text-primary font-semibold mb-4">🔗 Matching Pairs</h3>
                                     <div className="space-y-4">
                                         {form.matchingPairs.map((p: any, i: number) => (
                                             <div key={i} className="flex gap-4 items-start relative group">
@@ -557,7 +552,7 @@ function CreateQuestionForm() {
 
                             <div className="glass-card p-6 space-y-6">
                                 <div>
-                                    <h3 className="text-white font-semibold mb-2 flex items-center gap-2">📄 Problem Statement *</h3>
+                                    <h3 className="role-text-primary font-semibold mb-2 flex items-center gap-2">📄 Problem Statement *</h3>
                                     <MarkdownToolbar textareaRef={problemStatementRef} onChange={(val) => set('problemStatement', val)} />
                                     <textarea
                                         ref={problemStatementRef}
@@ -568,7 +563,7 @@ function CreateQuestionForm() {
                                 </div>
 
                                 <div className="pt-6 border-t border-white/5">
-                                    <h3 className="text-white font-semibold mb-4">🔀 Jumbled Statements (One per line)</h3>
+                                    <h3 className="role-text-primary font-semibold mb-4">🔀 Jumbled Statements (One per line)</h3>
                                     <p className="text-gray-400 text-xs mb-4 text-primary-400/80">Enter statements in the CORRECT order — they will be automatically shuffled for students</p>
                                     <div className="space-y-4">
                                         {form.jumbledStatements.map((s: string, i: number) => (
@@ -657,7 +652,7 @@ function CreateQuestionForm() {
                                             pqTab === 'predefined' ? 'text-primary-400' : 'text-gray-400 hover:text-white'
                                         }`}
                                     >
-                                        💻 Predefined Code
+                                        💻 Pre-code / Starter code
                                         {pqTab === 'predefined' && (
                                             <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-400 rounded-full" />
                                         )}
@@ -811,7 +806,8 @@ function CreateQuestionForm() {
                                 {pqTab === 'predefined' && (
                                     <div className="space-y-6 animate-in fade-in duration-200">
                                         <div>
-                                            <h4 className="text-white text-sm font-semibold mb-2">Predefined Boilerplate Code</h4>
+                                            <h4 className="role-text-primary text-sm font-semibold mb-2">Pre-code / Starter code</h4>
+                                            <p className="role-text-muted text-xs mb-3">Students see this template when they open the question. They can edit all of it. Use normal input() / cin / Scanner / scanf — stdin is provided automatically.</p>
                                             <p className="text-xs text-gray-500 mb-4">
                                                 Provide boilerplate/starter code for students. Only languages selected as "Allowed Languages" will be shown here.
                                             </p>
@@ -848,7 +844,7 @@ function CreateQuestionForm() {
                             <div className="space-y-6">
                                 <div className="glass-card p-6">
                                     <div className="flex justify-between items-center mb-6">
-                                        <h3 className="text-white font-semibold">🎯 Output Prediction</h3>
+                                        <h3 className="role-text-primary font-semibold">🎯 Output Prediction</h3>
                                         <div className="flex gap-2 bg-[var(--bg-surface)]/5 p-1 rounded-xl border border-white/10">
                                             <button onClick={() => { set('opMode', 'typing'); set('options', ['', '', '', '']) }}
                                                 className={`px-4 py-1.5 rounded-lg text-[10px] font-bold transition-all ${(form.opMode || (form.options && form.options.some((o: any) => o) ? 'mcq' : 'typing')) !== 'mcq' ? 'bg-primary-500 text-white' : 'text-gray-400 hover:text-white'}`}>
@@ -863,7 +859,7 @@ function CreateQuestionForm() {
 
                                     <div className="space-y-6">
                                         <div>
-                                            <h3 className="text-white font-semibold mb-2 flex items-center gap-2">📄 Problem Statement *</h3>
+                                            <h3 className="role-text-primary font-semibold mb-2 flex items-center gap-2">📄 Problem Statement *</h3>
                                             <MarkdownToolbar textareaRef={problemStatementRef} onChange={(val) => set('problemStatement', val)} />
                                             <textarea
                                                 ref={problemStatementRef}
@@ -907,7 +903,7 @@ function CreateQuestionForm() {
 
                                 {(form.opMode || (form.options && form.options.some((o: any) => o) ? 'mcq' : 'typing')) === 'mcq' && (
                                     <div className="glass-card p-6 border-t-0 rounded-t-none -mt-6 bg-primary-500/5">
-                                        <h3 className="text-white font-semibold mb-4 text-sm">🔘 Setup Options</h3>
+                                        <h3 className="role-text-primary font-semibold mb-4 text-sm">🔘 Setup Options</h3>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                                             {(form.options || ['', '', '', '']).map((opt: string, i: number) => (
                                                 <div key={i} className="flex gap-3 items-center">
@@ -960,7 +956,7 @@ function CreateQuestionForm() {
             {showAddDomain && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
                     <div className="glass-card p-8 w-full max-w-md border-primary-500/30">
-                        <h3 className="text-xl font-bold text-white mb-2">➕ Add New Domain</h3>
+                        <h3 className="text-xl font-bold role-text-primary mb-2">➕ Add New Domain</h3>
                         <p className="text-gray-400 text-sm mb-6">Create a new category for the question bank.</p>
 
                         <div className="space-y-4">
@@ -983,7 +979,7 @@ function CreateQuestionForm() {
             {showAddTopic && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
                     <div className="glass-card p-8 w-full max-w-md border-primary-500/30">
-                        <h3 className="text-xl font-bold text-white mb-2">➕ Add New Topic</h3>
+                        <h3 className="text-xl font-bold role-text-primary mb-2">➕ Add New Topic</h3>
                         <p className="text-gray-400 text-sm mb-6">Add a new topic to <span className="text-primary-400">{form.domain}</span>.</p>
 
                         <div className="space-y-4">

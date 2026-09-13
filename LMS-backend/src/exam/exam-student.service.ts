@@ -13,6 +13,7 @@ import { Question, QuestionType } from '../entities/question.entity';
 import { UserRole } from '../entities/user.entity';
 import { SaveMcqAnswersDto, RunCodeDto, SubmitExamDto } from './exam.dto';
 import { ExamRunnerService } from './exam-runner.service';
+import { ExamService } from './exam.service';
 import { CompilerQueueService } from '../compiler/compiler-queue.service';
 import { CodeJobPayload } from '../compiler/compiler.constants';
 import { isMcqCorrect, normalizeMcqLetter } from '../common/mcq-answer.util';
@@ -37,9 +38,11 @@ function publicTestCases(allCases: any[]): any[] {
 // Columns returned to student — NO correct answers, NO hidden test cases
 function sanitizeQuestion(eq: ExamQuestion) {
   const q = eq.question;
+  const qText = q.questionText || q.problemStatement || '';
+  const pStmt = q.problemStatement || q.questionText || '';
   const base = {
     id: q.id,
-    questionText: q.questionText,
+    questionText: qText,
     type: q.type,
     difficulty: q.difficulty,
     marks: eq.marks,
@@ -48,14 +51,14 @@ function sanitizeQuestion(eq: ExamQuestion) {
     sortOrder: eq.sortOrder,
   };
   if (q.type === QuestionType.MCQ) {
-    return { ...base, options: q.options, problemStatement: q.problemStatement };
+    return { ...base, options: q.options, problemStatement: pStmt };
   }
   const samples = publicTestCases(q.testCases || []).slice(0, 2).map(tc => ({
     input: tc.input, output: tc.output, explanation: tc.explanation,
   }));
   return {
     ...base,
-    problemStatement: q.problemStatement,
+    problemStatement: pStmt,
     inputFormat: q.inputFormat,
     outputFormat: q.outputFormat,
     constraints: q.constraints,
@@ -77,11 +80,13 @@ export class ExamStudentService {
     private readonly db: DataSource,
     private readonly runner: ExamRunnerService,
     private readonly queueService: CompilerQueueService,
+    private readonly examService: ExamService,
   ) {}
 
   // ─── My Exams ─────────────────────────────────────────────────────────────
 
   async myExams(user: RequestUser) {
+    await this.examService.syncExamStatuses();
     return this.db.query(`
       SELECT e.id, e.title, e.description, e.duration_minutes AS "durationMinutes",
         e.start_at AS "startAt", e.end_at AS "endAt",
@@ -98,7 +103,7 @@ export class ExamStudentService {
         WHERE exam_id = ea.exam_id AND student_id = $1
         ORDER BY attempt_number DESC LIMIT 1
       ) a ON true
-      WHERE ea.student_id = $1 AND e.status IN ('LIVE','COMPLETED')
+      WHERE ea.student_id = $1 AND e.status IN ('SCHEDULED','LIVE','COMPLETED')
       ORDER BY e.start_at DESC NULLS LAST
     `, [user.sub]);
   }
@@ -106,6 +111,7 @@ export class ExamStudentService {
   // ─── Exam Instructions ────────────────────────────────────────────────────
 
   async instructions(user: RequestUser, examId: number) {
+    await this.examService.syncExamStatuses();
     const exam = await this.getAssignedExam(user, examId);
     const sections = await this.eqRepo.query(`
       SELECT section, COUNT(*) AS count, SUM(marks) AS marks
@@ -116,12 +122,22 @@ export class ExamStudentService {
       order: { attemptNumber: 'DESC' },
     });
     return {
-      id: exam.id, title: exam.title, description: exam.description,
-      instructions: exam.instructions, durationMinutes: exam.durationMinutes,
-      totalMarks: exam.totalMarks, passingMarks: exam.passingMarks,
-      attemptLimit: exam.attemptLimit, negativeMarking: exam.negativeMarking,
+      id: exam.id,
+      title: exam.title,
+      description: exam.description,
+      status: exam.status,
+      startAt: exam.startAt,
+      endAt: exam.endAt,
+      serverTime: new Date().toISOString(),
+      instructions: exam.instructions,
+      durationMinutes: exam.durationMinutes,
+      totalMarks: exam.totalMarks,
+      passingMarks: exam.passingMarks,
+      attemptLimit: exam.attemptLimit,
+      negativeMarking: exam.negativeMarking,
       tabSwitchMonitoring: exam.tabSwitchMonitoring,
-      showResults: exam.showResults, rankingEnabled: exam.rankingEnabled,
+      showResults: exam.showResults,
+      rankingEnabled: exam.rankingEnabled,
       sections,
       existingAttempt: existing ? { id: existing.id, status: existing.status } : null,
     };
@@ -130,7 +146,26 @@ export class ExamStudentService {
   // ─── Start Attempt ────────────────────────────────────────────────────────
 
   async start(user: RequestUser, examId: number) {
+    await this.examService.syncExamStatuses();
     const exam = await this.getAssignedExam(user, examId);
+    const now = new Date();
+
+    if (exam.status === ExamStatus.SCHEDULED) {
+      if (exam.startAt && new Date(exam.startAt) <= now) {
+        exam.status = ExamStatus.LIVE;
+        await this.examRepo.update(exam.id, { status: ExamStatus.LIVE });
+      } else {
+        const timeStr = exam.startAt ? new Date(exam.startAt).toLocaleString() : 'scheduled time';
+        throw new ConflictException(`This exam is scheduled and will open at ${timeStr}`);
+      }
+    }
+
+    if (exam.endAt && new Date(exam.endAt) < now) {
+      exam.status = ExamStatus.COMPLETED;
+      await this.examRepo.update(exam.id, { status: ExamStatus.COMPLETED });
+      throw new ConflictException('This exam has already ended');
+    }
+
     if (exam.status !== ExamStatus.LIVE)
       throw new ConflictException('This exam is not currently live');
 
@@ -141,7 +176,7 @@ export class ExamStudentService {
     if (attempts.length >= exam.attemptLimit)
       throw new ConflictException('Attempt limit reached');
 
-    const deadline = new Date(Date.now() + exam.durationMinutes * 60 * 1000);
+    const deadline = this.computeDeadline(exam);
     const attempt = this.attemptRepo.create({
       examId, studentId: user.sub,
       attemptNumber: attempts.length + 1,
@@ -256,7 +291,11 @@ export class ExamStudentService {
     }
     const count = (attempt.tabSwitchCount || 0) + 1;
     await this.attemptRepo.update(attemptId, { tabSwitchCount: count });
-    return { count, autoSubmit: count >= 3 };
+    if (count >= 3) {
+      await this.submitAttempt(user, attemptId, { reason: 'TAB_SWITCH' });
+      return { count, autoSubmit: true, submitted: true };
+    }
+    return { count, autoSubmit: false, submitted: false };
   }
 
   // ─── Final Submit ─────────────────────────────────────────────────────────
@@ -309,14 +348,23 @@ export class ExamStudentService {
     const passed = totalScore >= exam.passingMarks;
     const reason = dto?.reason && ['TAB_SWITCH', 'TIMER'].includes(dto.reason) ? dto.reason : attempt.autoSubmittedReason;
 
-    await this.attemptRepo.update(attemptId, {
-      status: AttemptStatus.SUBMITTED,
-      endTime: new Date(),
-      mcqAnswers: attempt.mcqAnswers,
-      markedReview: attempt.markedReview,
-      mcqScore, codingScore, totalScore, passed,
-      autoSubmittedReason: reason || null,
-    });
+    const locked = await this.attemptRepo.createQueryBuilder()
+      .update(ExamAttempt)
+      .set({
+        status: AttemptStatus.SUBMITTED,
+        endTime: new Date(),
+        mcqAnswers: attempt.mcqAnswers,
+        markedReview: attempt.markedReview,
+        mcqScore,
+        codingScore,
+        totalScore,
+        passed,
+        autoSubmittedReason: reason || null,
+      })
+      .where('id = :id AND status = :status', { id: attemptId, status: AttemptStatus.IN_PROGRESS })
+      .execute();
+
+    if (!locked.affected) return { message: 'Already submitted', totalScore, passed };
 
     return { message: 'Submitted successfully', totalScore, passed };
   }
@@ -416,6 +464,18 @@ export class ExamStudentService {
     return attempt;
   }
 
+  private computeDeadline(exam: Exam): Date {
+    const fromDuration = new Date(Date.now() + exam.durationMinutes * 60 * 1000);
+    if (exam.endAt && new Date(exam.endAt).getTime() < fromDuration.getTime()) {
+      return new Date(exam.endAt);
+    }
+    return fromDuration;
+  }
+
+  private remainingSeconds(attempt: ExamAttempt): number {
+    return Math.max(0, Math.floor((new Date(attempt.deadlineAt).getTime() - Date.now()) / 1000));
+  }
+
   private assertInProgress(attempt: ExamAttempt) {
     if (attempt.status !== AttemptStatus.IN_PROGRESS)
       throw new ConflictException('Exam is not in progress');
@@ -458,6 +518,7 @@ export class ExamStudentService {
       startTime: attempt.startTime,
       deadlineAt: attempt.deadlineAt,
       serverTime: new Date().toISOString(),
+      remainingSeconds: this.remainingSeconds(attempt),
       durationMinutes: exam.durationMinutes,
       negativeMarking: exam.negativeMarking,
       tabSwitchMonitoring: exam.tabSwitchMonitoring,

@@ -9,7 +9,7 @@ import { ThemeToggle } from '@/components/ThemeToggle'
 import { isStudentRouteActive, studentNavigation } from './studentNavigation'
 import styles from './StudentShell.module.css'
 
-type ActivePage = 'dashboard' | 'courses' | 'progress' | 'settings' | 'certificates' | 'discussions' | 'my-learning' | 'saved'
+type ActivePage = 'dashboard' | 'courses' | 'progress' | 'settings' | 'certificates' | 'discussions' | 'my-learning' | 'saved' | 'exams' | 'grades' | 'leaderboard'
 
 export default function StudentReferenceShell(_props: { active?: ActivePage }) {
   const router = useRouter(), pathname = usePathname()

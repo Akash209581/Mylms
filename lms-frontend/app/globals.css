@@ -196,15 +196,13 @@ body {
   left: 0;
   height: 100vh;
   width: 256px;
-  background: rgba(var(--bg-surface-rgb, 30, 41, 59), 0.85);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--bg-surface);
+  border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   overflow-y: auto;
   z-index: 40;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-sm);
 }
 
 .navbar {
@@ -213,15 +211,13 @@ body {
   left: 256px;
   right: 0;
   height: 64px;
-  background: rgba(var(--bg-surface-rgb, 30, 41, 59), 0.80);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
   padding: 0 24px;
   z-index: 30;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-sm);
 }
 
 .page-content {
@@ -273,13 +269,10 @@ body {
    CARDS
    ============================================================ */
 .glass-card {
-  background: rgba(var(--bg-surface-rgb, 30, 41, 59), 0.70);
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
   border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.10), 0 2px 8px rgba(0, 0, 0, 0.06);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--shadow-sm);
   color: var(--text-primary);
 }
 
@@ -297,14 +290,11 @@ body {
 }
 
 .stat-card {
-  background: rgba(var(--bg-surface-rgb, 30, 41, 59), 0.65);
-  backdrop-filter: blur(12px) saturate(160%);
-  -webkit-backdrop-filter: blur(12px) saturate(160%);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
   border-radius: 16px;
   padding: 24px;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--shadow-sm);
   position: relative;
   overflow: hidden;
 }
@@ -326,10 +316,8 @@ body {
 }
 
 .course-card {
-  background: rgba(var(--bg-surface-rgb, 30, 41, 59), 0.70);
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
   border-radius: 20px;
   overflow: hidden;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.10), 0 2px 12px rgba(0, 0, 0, 0.06);
@@ -610,27 +598,21 @@ body {
    GLASSMORPHISM UTILITIES
    ============================================================ */
 .glass {
-  background: rgba(var(--bg-surface-rgb, 30, 41, 59), 0.70);
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.10);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
 }
 
 .glass-strong {
-  background: rgba(var(--bg-surface-rgb, 30, 41, 59), 0.85);
-  backdrop-filter: blur(24px) saturate(200%);
-  -webkit-backdrop-filter: blur(24px) saturate(200%);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.15);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
 }
 
 .glass-subtle {
-  background: rgba(var(--bg-surface-rgb, 30, 41, 59), 0.50);
-  backdrop-filter: blur(12px) saturate(160%);
-  -webkit-backdrop-filter: blur(12px) saturate(160%);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  box-shadow: none;
 }
 
 .glass-border {
@@ -701,10 +683,8 @@ body {
    ============================================================ */
 .input-field {
   width: 100%;
-  background: rgba(var(--bg-surface-rgb, 30, 41, 59), 0.60);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
   border-radius: 10px;
   padding: 10px 14px;
   color: var(--text-primary);
@@ -721,9 +701,7 @@ body {
 .input-field:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(var(--accent-rgb, 99, 102, 241), 0.15), 0 4px 12px rgba(0, 0, 0, 0.08);
-  background: rgba(var(--bg-surface-rgb, 30, 41, 59), 0.80);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: var(--bg-surface);
 }
 
 select.input-field {
@@ -3059,7 +3037,7 @@ tr:hover td {
 .reference-nav-label { margin: 21px 10px 9px; color: #64748b !important; font-size: 11px; font-weight: 700; letter-spacing: .08em; }
 .reference-signout { display: flex; align-items: center; gap: 14px; width: 100%; margin-top: auto; border: 0; border-top: 1px solid #d8e0ed; background: #fff; color: #ff4862; font-size: 17px; font-weight: 700; padding: 27px 36px; cursor: pointer; }
 .reference-signout svg { width: 21px; height: 21px; }
-.reference-student-header { position: fixed; top: 0; right: 0; left: 320px; z-index: 45; display: flex; height: 84px; align-items: center; justify-content: space-between; border-bottom: 1px solid #d8e0ed; background: rgba(255,255,255,.96); padding: 0 30px; backdrop-filter: blur(14px); }
+.reference-student-header { position: fixed; top: 0; right: 0; left: 320px; z-index: 45; display: flex; height: 84px; align-items: center; justify-content: space-between; border-bottom: 1px solid #d8e0ed; background: #fff; padding: 0 30px; }
 .reference-search { position: relative; width: min(560px,48%); }
 .reference-search svg { position: absolute; top: 50%; left: 19px; width: 21px; height: 21px; transform: translateY(-50%); color: #1a2740; }
 .reference-search input { width: 100%; height: 52px; border: 1px solid #cbd7e8; border-radius: 20px; background: #f9fbff; color: #16213a; font-size: 16px; padding: 0 76px 0 50px; outline: none; }

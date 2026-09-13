@@ -115,6 +115,16 @@ export default function CreateExamPage() {
                 />
               </div>
 
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-raised)] p-4 space-y-2">
+                <p className="text-sm font-semibold role-text-primary">Exam structure</p>
+                <p className="text-xs role-text-muted leading-relaxed">
+                  After you create this exam, the Question Manager adds two sections only:
+                  <strong className="role-text-primary"> Section A — MCQs</strong> and
+                  <strong className="role-text-primary"> Section B — coding</strong>.
+                  Coding questions include statement, input/output format, constraints, visible and hidden cases, marks, allowed languages, and per-language pre-code. There are no aptitude sections.
+                </p>
+              </div>
+
               <div>
                 <label className="block text-sm font-semibold role-text-primary mb-2">Instructions for Students</label>
                 <textarea

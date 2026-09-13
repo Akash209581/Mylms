@@ -302,7 +302,7 @@ export default function LearningPathPage() {
             {/* Main Learning Content Area */}
             <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden bg-mesh">
                 {/* Header Bar */}
-                <header className="flex h-20 items-center justify-between border-b border-white/5 bg-[#0f172a]/50 backdrop-blur-3xl px-4 sm:px-8 z-40">
+                <header className="flex h-20 items-center justify-between border-b border-white/5 bg-[#0f172a] px-4 sm:px-8 z-40">
                     <div className="flex items-center gap-4">
                         <button aria-label="Open lesson outline" onClick={() => setIsSidebarOpen(true)} className="text-gray-400 hover:text-white lg:hidden">
                             <Menu size={24} />
@@ -446,7 +446,7 @@ export default function LearningPathPage() {
                 </div>
 
                 {/* Footer Navigation Bar */}
-                <footer className="flex h-20 items-center justify-between border-t border-white/5 bg-[#0f172a]/80 backdrop-blur-3xl px-4 sm:px-8 z-40">
+                <footer className="flex h-20 items-center justify-between border-t border-white/5 bg-[#0f172a] px-4 sm:px-8 z-40">
                     <button 
                       onClick={() => setCurrentLessonIndex(prev => Math.max(0, prev - 1))}
                       disabled={completing !== null || currentLessonIndex === 0}

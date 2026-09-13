@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
 import { api } from '@/lib/api'
+import { hasPerLanguageStarters } from '@/lib/starter-code'
 
 type Tab = 'bank-mcq' | 'bank-coding' | 'excel-import' | 'manage'
 
@@ -240,6 +241,14 @@ export default function ExamQuestionsPage() {
         {/* Tab: MCQ/Coding from Bank */}
         {(tab === 'bank-mcq' || tab === 'bank-coding') && (
           <div className="glass-card p-6">
+            {tab === 'bank-coding' && (
+              <p className="text-xs role-text-muted mb-4">
+                Section B coding questions: statement, input/output format, constraints, visible and hidden cases, marks, allowed languages, and per-language pre-code. Hidden cases and expected outputs stay hidden from students.
+              </p>
+            )}
+            {tab === 'bank-mcq' && (
+              <p className="text-xs role-text-muted mb-4">Section A MCQs only. There is no aptitude section on exams.</p>
+            )}
             <div className="flex flex-col sm:flex-row gap-3 mb-6">
               <input
                 className="input-field flex-1"
@@ -286,6 +295,9 @@ export default function ExamQuestionsPage() {
                             <span className="text-xs role-text-muted">{q.questionNumber}</span>
                             <span className="text-xs badge bg-[var(--bg-raised)]">{q.difficulty}</span>
                             <span className="text-xs role-text-muted">{q.topicNames}</span>
+                            {tab === 'bank-coding' && hasPerLanguageStarters(q.codeSnippet) && (
+                              <span className="text-xs badge bg-[var(--accent-soft)] text-[var(--accent-text)]">Per-language starters</span>
+                            )}
                             {alreadyAdded && <span className="text-xs text-green-400 font-semibold">✓ Added</span>}
                           </div>
                         </div>
@@ -434,6 +446,9 @@ export default function ExamQuestionsPage() {
                     <div key={eq.id} className="flex items-center gap-3 p-3 bg-[var(--bg-raised)] rounded-xl">
                       <span className="text-xs role-text-muted w-6 text-center">{i + 1}</span>
                       <p className="text-sm role-text-primary flex-1 line-clamp-1">{eq.question?.problemStatement}</p>
+                      {hasPerLanguageStarters(eq.question?.codeSnippet) && (
+                        <span className="text-[10px] badge bg-[var(--accent-soft)] text-[var(--accent-text)] shrink-0">Starters</span>
+                      )}
                       <span className="text-xs role-text-muted shrink-0">{eq.marks}m</span>
                       <button onClick={() => removeQuestion(eq.questionId)} className="text-xs text-red-400 hover:text-red-300 shrink-0">Remove</button>
                     </div>

@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import TestCasesPanel from './TestCasesPanel'
+import MarkdownRenderer from '@/components/editor/MarkdownRenderer'
+import { starterForLanguage, toRuntimeLang } from '@/lib/starter-code'
 
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), {
   ssr: false,
@@ -24,6 +26,7 @@ interface Question {
   type: string
   section: string
   marks: number
+  questionText?: string
   problemStatement?: string
   inputFormat?: string
   outputFormat?: string
@@ -129,13 +132,14 @@ export default function CodingWorkspace({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [isRunning, onRunCode])
 
-  const allowedLangs = question.allowedLanguages?.length
+  const allowedLangs = (question.allowedLanguages?.length
     ? question.allowedLanguages
     : ['python', 'javascript', 'c', 'cpp', 'java']
+  ).map((lang) => toRuntimeLang(lang))
 
   const handleResetCode = () => {
     if (confirm('Reset your code to the original starter template? Current edits will be replaced.')) {
-      onCodeChange(question.codeSnippet || '')
+      onCodeChange(starterForLanguage(question.codeSnippet, language))
     }
   }
 
@@ -146,27 +150,27 @@ export default function CodingWorkspace({
   return (
     <div
       ref={containerRef}
-      className={`flex-1 flex flex-col md:flex-row overflow-hidden bg-slate-950 ${
+      className={`flex-1 flex flex-col md:flex-row overflow-hidden bg-[var(--bg-base)] ${
         isFullscreen ? 'fixed inset-0 top-14 z-40' : ''
       }`}
     >
-      {/* ── LEFT PANEL: Problem Description ── */}
+      {/* ── LEFT PANEL: Problem Statement & Details ── */}
       <div
-        className="w-full md:w-[var(--lw)] flex flex-col border-r border-slate-800 bg-slate-900 overflow-hidden shrink-0 md:h-full"
+        className="w-full md:w-[var(--lw)] flex flex-col border-r border-[var(--border)] bg-[var(--bg-surface)] overflow-hidden shrink-0 md:h-full"
         style={{ ['--lw' as string]: `${leftWidth}px` } as React.CSSProperties}
       >
         {/* Panel Header / Tabs */}
-        <div className="h-10 px-4 bg-slate-950/80 border-b border-slate-800 flex items-center justify-between gap-2 shrink-0 select-none">
+        <div className="h-10 px-4 bg-[var(--bg-raised)] border-b border-[var(--border)] flex items-center justify-between gap-2 shrink-0 select-none">
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => setActiveLeftTab('problem')}
               className={`px-3 py-1 rounded-md text-xs font-semibold transition-all ${
                 activeLeftTab === 'problem'
-                  ? 'bg-slate-800 text-slate-100 border border-slate-700'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-[var(--bg-surface)] text-[var(--text-primary)] border border-[var(--border)]'
+                  : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
               }`}
             >
-              Description
+              Problem Statement
             </button>
             {question.constraints && (
               <button
@@ -174,7 +178,7 @@ export default function CodingWorkspace({
                 className={`px-3 py-1 rounded-md text-xs font-semibold transition-all ${
                   activeLeftTab === 'constraints'
                     ? 'bg-slate-800 text-slate-100 border border-slate-700'
-                    : 'text-slate-400 hover:text-slate-200'
+                    : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
                 }`}
               >
                 Constraints
@@ -209,25 +213,48 @@ export default function CodingWorkspace({
                 {question.marks} Marks
               </span>
             </div>
-            <h2 className="text-lg font-bold text-slate-100 leading-snug">
-              {question.problemStatement?.split('\n')[0] || `Coding Problem ${questionIndex + 1}`}
+            <h2 className="text-lg font-bold text-[var(--text-primary)] leading-snug">
+              {question.questionText?.trim() || question.problemStatement?.split('\n')[0] || `Coding Problem ${questionIndex + 1}`}
             </h2>
           </div>
 
-          {/* Description Text */}
-          <div className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap font-sans space-y-3">
-            {question.problemStatement}
+          {/* Question & Problem Statement Text */}
+          <div className="space-y-4">
+            {(() => {
+              const qText = question.questionText?.trim() || ''
+              const pStmt = question.problemStatement?.trim() || ''
+              const hasBoth = qText && pStmt && qText !== pStmt
+
+              return (
+                <>
+                  {hasBoth ? (
+                    <>
+                      <div className="text-sm font-semibold text-indigo-200 bg-indigo-950/20 border border-indigo-500/20 p-3 rounded-xl">
+                        <MarkdownRenderer content={qText} />
+                      </div>
+                      <div className="text-sm text-[var(--text-primary)] leading-relaxed font-sans">
+                        <MarkdownRenderer content={pStmt} />
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-sm text-[var(--text-primary)] leading-relaxed font-sans">
+                      <MarkdownRenderer content={pStmt || qText || 'Problem statement unavailable.'} />
+                    </div>
+                  )}
+                </>
+              )
+            })()}
           </div>
 
           {/* Input & Output Format */}
           {(question.inputFormat || question.outputFormat) && (
-            <div className="space-y-4 pt-4 border-t border-slate-800">
+            <div className="space-y-4 pt-4 border-t border-[var(--border)]">
               {question.inputFormat && (
                 <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] mb-1.5">
                     Input Format
                   </h3>
-                  <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 text-xs font-mono text-slate-200">
+                  <div className="p-3 bg-[var(--bg-raised)] rounded-xl border border-[var(--border)] text-xs font-mono text-[var(--text-primary)]">
                     {question.inputFormat}
                   </div>
                 </div>
@@ -235,10 +262,10 @@ export default function CodingWorkspace({
 
               {question.outputFormat && (
                 <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] mb-1.5">
                     Output Format
                   </h3>
-                  <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 text-xs font-mono text-indigo-300">
+                  <div className="p-3 bg-[var(--bg-raised)] rounded-xl border border-[var(--border)] text-xs font-mono text-[var(--accent-text)]">
                     {question.outputFormat}
                   </div>
                 </div>
@@ -248,22 +275,22 @@ export default function CodingWorkspace({
 
           {/* Examples */}
           {question.sampleTestCases && question.sampleTestCases.length > 0 && (
-            <div className="space-y-3 pt-4 border-t border-slate-800">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+            <div className="space-y-3 pt-4 border-t border-[var(--border)]">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
                 Examples
               </h3>
               {question.sampleTestCases.map((tc, idx) => (
-                <div key={idx} className="p-3.5 bg-slate-950/80 rounded-xl border border-slate-800 space-y-2 text-xs font-mono">
-                  <p className="font-bold text-slate-300 font-sans text-xs">Example {idx + 1}:</p>
+                <div key={idx} className="p-3.5 bg-[var(--bg-raised)] rounded-xl border border-[var(--border)] space-y-2 text-xs font-mono">
+                  <p className="font-bold text-[var(--text-secondary)] font-sans text-xs">Example {idx + 1}:</p>
                   <div>
-                    <span className="text-slate-500 block mb-0.5">Input:</span>
-                    <pre className="p-2 bg-slate-900 rounded text-slate-200 whitespace-pre-wrap border border-slate-850">
+                    <span className="text-[var(--text-muted)] block mb-0.5">Input:</span>
+                    <pre className="p-2 bg-[var(--bg-surface)] rounded text-[var(--text-primary)] whitespace-pre-wrap border border-[var(--border)]">
                       {tc.input}
                     </pre>
                   </div>
                   <div>
-                    <span className="text-slate-500 block mb-0.5">Output:</span>
-                    <pre className="p-2 bg-slate-900 rounded text-indigo-300 whitespace-pre-wrap border border-slate-850">
+                    <span className="text-[var(--text-muted)] block mb-0.5">Output:</span>
+                    <pre className="p-2 bg-[var(--bg-surface)] rounded text-[var(--accent-text)] whitespace-pre-wrap border border-[var(--border)]">
                       {tc.output}
                     </pre>
                   </div>
@@ -280,11 +307,11 @@ export default function CodingWorkspace({
 
           {/* Constraints */}
           {question.constraints && (
-            <div className="space-y-2 pt-4 border-t border-slate-800">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+            <div className="space-y-2 pt-4 border-t border-[var(--border)]">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
                 Constraints
               </h3>
-              <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 text-xs font-mono text-slate-300 whitespace-pre-wrap">
+              <div className="p-3 bg-[var(--bg-raised)] rounded-xl border border-[var(--border)] text-xs font-mono text-[var(--text-secondary)] whitespace-pre-wrap">
                 {question.constraints}
               </div>
             </div>
@@ -293,7 +320,7 @@ export default function CodingWorkspace({
       </div>
 
       <div
-        className="hidden md:block w-1.5 cursor-col-resize bg-slate-800 hover:bg-indigo-500 shrink-0 z-10"
+        className="hidden md:block w-1.5 cursor-col-resize bg-[var(--border)] hover:bg-[var(--accent)] shrink-0 z-10"
         onMouseDown={() => {
           dragH.current = true
           document.body.style.cursor = 'col-resize'
@@ -303,16 +330,16 @@ export default function CodingWorkspace({
       />
 
       {/* ── RIGHT PANEL: Monaco Editor + Console ── */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-950">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-[var(--bg-base)]">
         {/* Editor Toolbar */}
-        <div className="h-10 px-4 bg-slate-900 border-b border-slate-800 flex items-center justify-between gap-3 shrink-0 select-none">
+        <div className="h-10 px-4 bg-[var(--bg-surface)] border-b border-[var(--border)] flex items-center justify-between gap-3 shrink-0 select-none">
           <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-400 font-medium hidden sm:inline">Language:</span>
+            <span className="text-xs text-[var(--text-muted)] font-medium hidden sm:inline">Language:</span>
             <select
               value={language}
               onChange={(e) => onLanguageChange(e.target.value)}
               disabled={isRunning}
-              className="bg-slate-950 border border-slate-700 text-xs font-semibold text-indigo-300 hover:text-indigo-200 px-2.5 py-1 rounded-md cursor-pointer disabled:opacity-50"
+              className="bg-[var(--bg-raised)] border border-[var(--border)] text-xs font-semibold text-[var(--accent-text)] px-2.5 py-1 rounded-md cursor-pointer disabled:opacity-50"
             >
               {allowedLangs.map((l) => (
                 <option key={l} value={l} className="bg-slate-900 text-slate-100">
@@ -326,7 +353,7 @@ export default function CodingWorkspace({
             <button
               onClick={handleResetCode}
               disabled={isRunning}
-              className="px-2.5 py-1 rounded text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
+              className="px-2.5 py-1 rounded text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)] transition-colors"
               title="Reset code to starter template"
             >
               Reset
@@ -350,11 +377,28 @@ export default function CodingWorkspace({
             theme="vs-dark"
             value={code}
             onChange={(val) => onCodeChange(val || '')}
+            onMount={(editor, monaco) => {
+              // Block paste command in Monaco (Ctrl+V / Cmd+V)
+              editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyV, () => {
+                // Paste disabled in exam mode
+              })
+              editor.onKeyDown((e) => {
+                if ((e.ctrlKey || e.metaKey) && (e.code === 'KeyV' || e.keyCode === monaco.KeyCode.KeyV)) {
+                  e.preventDefault()
+                  e.stopPropagation()
+                }
+              })
+            }}
             options={{
               minimap: { enabled: false },
               fontSize: 14,
-              fontFamily: "'JetBrains Mono', 'Fira Code', 'Menlo', 'Monaco', monospace",
-              fontLigatures: true,
+              fontFamily: "Consolas, 'Courier New', monospace",
+              fontLigatures: false,
+              formatOnType: false,
+              formatOnPaste: false,
+              cursorBlinking: 'solid',
+              cursorSmoothCaretAnimation: 'off',
+              smoothScrolling: false,
               scrollBeyondLastLine: false,
               automaticLayout: true,
               tabSize: 4,
@@ -365,12 +409,13 @@ export default function CodingWorkspace({
               folding: true,
               lineDecorationsWidth: 6,
               lineNumbersMinChars: 3,
+              contextmenu: false,
             }}
           />
         </div>
 
         <div
-          className="h-1.5 cursor-row-resize bg-slate-800 hover:bg-indigo-500 shrink-0"
+          className="h-1.5 cursor-row-resize bg-[var(--border)] hover:bg-[var(--accent)] shrink-0"
           onMouseDown={() => {
             dragV.current = true
             document.body.style.cursor = 'row-resize'

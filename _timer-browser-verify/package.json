@@ -1,0 +1,10 @@
+{
+  "name": "timer-browser-verify",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "pg": "^8.23.0",
+    "playwright": "^1.63.0"
+  }
+}

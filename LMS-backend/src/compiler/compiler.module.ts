@@ -8,10 +8,13 @@ import { CompilerWorker } from './compiler.worker';
 import { ExamCodingSubmission } from '../entities/exam-coding-submission.entity';
 import { ExamAttempt } from '../entities/exam-attempt.entity';
 
+import { CompilerController } from './compiler.controller';
+
 @Module({
   imports: [
     TypeOrmModule.forFeature([ExamCodingSubmission, ExamAttempt]),
   ],
+  controllers: [CompilerController],
   providers: [
     DockerSandboxService,
     GradingService,

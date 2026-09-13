@@ -1,0 +1,21 @@
+{
+  "start": "PASS",
+  "refresh": "PASS",
+  "navigation": "PASS",
+  "naturalExpiry": "PASS",
+  "mcqAutoSubmit": "PASS",
+  "codingAutoSubmit": "PASS",
+  "expiryDuringDocker": "PASS",
+  "duplicate": "PASS",
+  "multiTab": "PASS",
+  "thirdTab": "PASS",
+  "notes": [
+    "Fresh exams {\"examNatural\":26,\"examCoding\":27,\"examTabs\":28}",
+    "UI login as student succeeded",
+    "Skipping already-passed natural expiry block",
+    "Skipping already-passed coding expiry block",
+    "Shortened attempt 18 to 2026-09-12T07:39:14.279Z db={\"deadline_at\":\"2026-09-12T07:39:14.279Z\",\"status\":\"IN_PROGRESS\",\"remaining\":\"-6.933496\"}",
+    "Attempt C {\"id\":18,\"status\":\"SUBMITTED\",\"mcq_answers\":{},\"total_score\":\"0.00\",\"auto_submitted_reason\":\"TAB_SWITCH\"}",
+    "Second tab observed submitted/inactive state or DB finalized"
+  ]
+}
