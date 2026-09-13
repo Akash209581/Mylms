@@ -214,11 +214,18 @@ export class ExamStudentService {
       ? { ...attempt.timeSpent, ...dto.timeSpent }
       : attempt.timeSpent;
 
-    await this.attemptRepo.update(attemptId, {
+    const updatePayload: Partial<ExamAttempt> = {
       mcqAnswers: merged,
       timeSpent,
       markedReview: dto.markedReview ?? attempt.markedReview,
-    });
+    };
+    if (dto.faceCoveragePercent !== undefined) updatePayload.faceCoveragePercent = dto.faceCoveragePercent;
+    if (dto.faceViolationsCount !== undefined) updatePayload.faceViolationsCount = dto.faceViolationsCount;
+    if (dto.inactivityDurationSeconds !== undefined) updatePayload.inactivityDurationSeconds = dto.inactivityDurationSeconds;
+    if (dto.tabSwitchCount !== undefined) updatePayload.tabSwitchCount = dto.tabSwitchCount;
+    if (dto.tabSwitchLog) updatePayload.tabSwitchLog = dto.tabSwitchLog;
+
+    await this.attemptRepo.update(attemptId, updatePayload);
     return { saved: true, serverTime: new Date().toISOString() };
   }
 
@@ -286,7 +293,7 @@ export class ExamStudentService {
     return this.queueService.getJobStatus(jobId);
   }
 
-  async recordTabSwitch(user: RequestUser, attemptId: number) {
+  async recordTabSwitch(user: RequestUser, attemptId: number, questionId?: number) {
     const attempt = await this.getStudentAttempt(user, attemptId);
     this.assertInProgress(attempt);
     const exam = await this.examRepo.findOneBy({ id: attempt.examId });
@@ -294,10 +301,19 @@ export class ExamStudentService {
       return { count: attempt.tabSwitchCount || 0, autoSubmit: false };
     }
     const count = (attempt.tabSwitchCount || 0) + 1;
-    await this.attemptRepo.update(attemptId, { tabSwitchCount: count });
+    const elapsedSeconds = attempt.startTime
+      ? Math.max(0, Math.floor((Date.now() - new Date(attempt.startTime).getTime()) / 1000))
+      : 0;
+    const tabSwitchLog = Array.isArray(attempt.tabSwitchLog) ? [...attempt.tabSwitchLog] : [];
+    tabSwitchLog.push({
+      timestamp: new Date().toISOString(),
+      elapsedSeconds,
+      questionId,
+    });
+    await this.attemptRepo.update(attemptId, { tabSwitchCount: count, tabSwitchLog });
     const maxAllowed = exam?.maxTabSwitches ?? 3;
     if (count >= maxAllowed) {
-      await this.submitAttempt(user, attemptId, { reason: 'TAB_SWITCH' });
+      await this.submitAttempt(user, attemptId, { reason: 'TAB_SWITCH', tabSwitchCount: count, tabSwitchLog });
       return { count, autoSubmit: true, submitted: true };
     }
     return { count, autoSubmit: false, submitted: false };
@@ -364,6 +380,11 @@ export class ExamStudentService {
         codingScore,
         totalScore,
         passed,
+        faceCoveragePercent: dto?.faceCoveragePercent ?? attempt.faceCoveragePercent ?? 100,
+        faceViolationsCount: dto?.faceViolationsCount ?? attempt.faceViolationsCount ?? 0,
+        inactivityDurationSeconds: dto?.inactivityDurationSeconds ?? attempt.inactivityDurationSeconds ?? 0,
+        tabSwitchCount: dto?.tabSwitchCount ?? attempt.tabSwitchCount ?? 0,
+        tabSwitchLog: dto?.tabSwitchLog ?? attempt.tabSwitchLog ?? [],
         autoSubmittedReason: reason || null,
       })
       .where('id = :id AND status = :status', { id: attemptId, status: AttemptStatus.IN_PROGRESS })

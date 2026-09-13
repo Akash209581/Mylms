@@ -130,12 +130,22 @@ export class SaveMcqAnswersDto {
   @IsObject() @IsOptional() timeSpent?: Record<string, number>;
   /** Ids to add/remove from review list */
   @IsArray() @IsInt({ each: true }) @IsOptional() markedReview?: number[];
+  @IsNumber() @IsOptional() faceCoveragePercent?: number;
+  @IsInt() @IsOptional() faceViolationsCount?: number;
+  @IsInt() @IsOptional() inactivityDurationSeconds?: number;
+  @IsInt() @IsOptional() tabSwitchCount?: number;
+  @IsArray() @IsOptional() tabSwitchLog?: Array<{ timestamp: string; elapsedSeconds: number; questionId?: number }>;
 }
 
 export class SubmitExamDto {
   @IsObject() @IsOptional() answers?: Record<string, string | null>;
   @IsArray() @IsInt({ each: true }) @IsOptional() markedReview?: number[];
   @IsString() @IsOptional() reason?: string;
+  @IsNumber() @IsOptional() faceCoveragePercent?: number;
+  @IsInt() @IsOptional() faceViolationsCount?: number;
+  @IsInt() @IsOptional() inactivityDurationSeconds?: number;
+  @IsInt() @IsOptional() tabSwitchCount?: number;
+  @IsArray() @IsOptional() tabSwitchLog?: Array<{ timestamp: string; elapsedSeconds: number; questionId?: number }>;
 }
 
 // ─── Student: code run / submit ──────────────────────────────────────────────

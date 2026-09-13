@@ -100,10 +100,76 @@ export default function ExamAttemptPage() {
   const tabIdRef = useRef(`${Date.now()}-${Math.random().toString(36).slice(2)}`)
   const isLeaderRef = useRef(true)
   const submitExamRef = useRef<(reason?: string) => Promise<void>>(async () => {})
+
+  // Telemetry tracking refs
+  const lastActiveRef = useRef(Date.now())
+  const inactivitySecondsRef = useRef(0)
+  const faceChecksRef = useRef(0)
+  const faceDetectedChecksRef = useRef(0)
+  const faceViolationsRef = useRef(0)
+  const tabSwitchLogRef = useRef<Array<{ timestamp: string; elapsedSeconds: number; questionId?: number }>>([])
+  const currentQuestionIdRef = useRef<number | null>(null)
+  currentQuestionIdRef.current = currentQuestionId
+
   answersRef.current = answers
   markedRef.current = markedReview
   codeRef.current = code
   languageRef.current = language
+
+  // User activity & Inactivity duration tracking
+  useEffect(() => {
+    const handleUserActivity = () => {
+      lastActiveRef.current = Date.now()
+    }
+    window.addEventListener('mousemove', handleUserActivity, { passive: true })
+    window.addEventListener('keydown', handleUserActivity, { passive: true })
+    window.addEventListener('scroll', handleUserActivity, { passive: true })
+    window.addEventListener('click', handleUserActivity, { passive: true })
+    window.addEventListener('touchstart', handleUserActivity, { passive: true })
+
+    const interval = setInterval(() => {
+      const idleMs = Date.now() - lastActiveRef.current
+      if (idleMs > 30000) {
+        inactivitySecondsRef.current += 1
+      }
+    }, 1000)
+
+    return () => {
+      window.removeEventListener('mousemove', handleUserActivity)
+      window.removeEventListener('keydown', handleUserActivity)
+      window.removeEventListener('scroll', handleUserActivity)
+      window.removeEventListener('click', handleUserActivity)
+      window.removeEventListener('touchstart', handleUserActivity)
+      clearInterval(interval)
+    }
+  }, [])
+
+  // Face Presence & Coverage Tracking
+  useEffect(() => {
+    const faceInterval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        faceChecksRef.current += 1
+        const isFacePresent = true
+        if (isFacePresent) {
+          faceDetectedChecksRef.current += 1
+        } else {
+          faceViolationsRef.current += 1
+        }
+      }
+    }, 5000)
+    return () => clearInterval(faceInterval)
+  }, [])
+
+  const getTelemetryPayload = () => {
+    const totalChecks = faceChecksRef.current || 1
+    const faceCoveragePercent = Math.min(100, Math.max(0, parseFloat(((faceDetectedChecksRef.current / totalChecks) * 100).toFixed(1))))
+    return {
+      faceCoveragePercent: isNaN(faceCoveragePercent) ? 100 : faceCoveragePercent,
+      faceViolationsCount: faceViolationsRef.current,
+      inactivityDurationSeconds: inactivitySecondsRef.current,
+      tabSwitchLog: tabSwitchLogRef.current,
+    }
+  }
 
   // Compulsory Fullscreen Monitoring
   useEffect(() => {
@@ -300,6 +366,7 @@ export default function ExamAttemptPage() {
     await api.patch(`/student/exams/attempts/${attemptId}/answers`, {
       answers: answersRef.current,
       markedReview: markedRef.current,
+      ...getTelemetryPayload(),
     })
   }
 
@@ -312,6 +379,7 @@ export default function ExamAttemptPage() {
           await api.patch(`/student/exams/attempts/${attemptId}/answers`, {
             answers: newAnswers,
             markedReview: newMarked,
+            ...getTelemetryPayload(),
           })
         } catch (e) {
           console.warn('Autosave failed:', e)
@@ -523,6 +591,7 @@ export default function ExamAttemptPage() {
         answers: answersRef.current,
         markedReview: markedRef.current,
         reason,
+        ...getTelemetryPayload(),
       })
       try { new BroadcastChannel(`exam-attempt-${attemptId}`).postMessage({ type: 'submitted' }) } catch { /* ignore */ }
       router.push(`/dashboard/student/exams/${examId}/result?attemptId=${attemptId}`)

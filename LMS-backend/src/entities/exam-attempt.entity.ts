@@ -60,6 +60,30 @@ export class ExamAttempt {
   @Column({ name: 'tab_switch_count', type: 'int', default: 0 })
   tabSwitchCount: number;
 
+  @Column({ name: 'face_coverage_percent', type: 'decimal', precision: 5, scale: 2, default: 100 })
+  faceCoveragePercent: number;
+
+  @Column({ name: 'face_violations_count', type: 'int', default: 0 })
+  faceViolationsCount: number;
+
+  @Column({ name: 'inactivity_duration_seconds', type: 'int', default: 0 })
+  inactivityDurationSeconds: number;
+
+  @Column({ name: 'tab_switch_log', type: 'jsonb', default: [] })
+  tabSwitchLog: Array<{ timestamp: string; elapsedSeconds: number; questionId?: number }>;
+
+  @Column({ name: 'coding_timeline', type: 'jsonb', default: [] })
+  codingTimeline: Array<{
+    questionId: number;
+    type: 'RUN' | 'SUBMIT';
+    status: string;
+    passedCases?: number;
+    totalCases?: number;
+    score?: number;
+    timestamp: string;
+    elapsedSeconds: number;
+  }>;
+
   @Column({ name: 'auto_submitted_reason', type: 'varchar', length: 32, nullable: true })
   autoSubmittedReason: string | null;
 

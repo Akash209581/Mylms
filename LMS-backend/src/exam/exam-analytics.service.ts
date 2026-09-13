@@ -18,7 +18,13 @@ export class ExamAnalyticsService {
         ROUND(MIN(total_score) FILTER (WHERE status != 'IN_PROGRESS')::numeric, 2) AS "minScore",
         ROUND(AVG(mcq_score)::numeric, 2) AS "avgMcqScore",
         ROUND(AVG(coding_score)::numeric, 2) AS "avgCodingScore",
-        ROUND(100.0 * COUNT(*) FILTER (WHERE passed = true) / NULLIF(COUNT(*) FILTER (WHERE status != 'IN_PROGRESS'), 0), 1) AS "passRate"
+        ROUND(100.0 * COUNT(*) FILTER (WHERE passed = true) / NULLIF(COUNT(*) FILTER (WHERE status != 'IN_PROGRESS'), 0), 1) AS "passRate",
+        ROUND(AVG(COALESCE(face_coverage_percent, 100))::numeric, 1) AS "avgFaceCoverage",
+        COALESCE(SUM(face_violations_count), 0)::int AS "totalFaceViolations",
+        COALESCE(SUM(tab_switch_count), 0)::int AS "totalTabSwitches",
+        COUNT(*) FILTER (WHERE tab_switch_count > 0)::int AS "studentsWithTabSwitches",
+        ROUND(AVG(COALESCE(inactivity_duration_seconds, 0))::numeric, 0)::int AS "avgInactivitySeconds",
+        COALESCE(MAX(inactivity_duration_seconds), 0)::int AS "maxInactivitySeconds"
       FROM exam_attempts WHERE exam_id = $1
     `, [examId]);
 
@@ -55,10 +61,16 @@ export class ExamAnalyticsService {
     const offset = (page - 1) * limit;
     const rows = await this.db.query(`
       SELECT u.id AS "studentId", u.name, u.email, u.registration_number AS "regNo",
+        a.id AS "attemptId",
         a.attempt_number AS "attemptNumber",
         a.mcq_score AS "mcqScore", a.coding_score AS "codingScore",
         a.total_score AS "totalScore", a.passed,
-        a.tab_switch_count AS "tabSwitchCount",
+        COALESCE(a.tab_switch_count, 0) AS "tabSwitchCount",
+        a.tab_switch_log AS "tabSwitchLog",
+        COALESCE(a.face_coverage_percent, 100) AS "faceCoveragePercent",
+        COALESCE(a.face_violations_count, 0) AS "faceViolationsCount",
+        COALESCE(a.inactivity_duration_seconds, 0) AS "inactivityDurationSeconds",
+        a.coding_timeline AS "codingTimeline",
         a.auto_submitted_reason AS "autoSubmittedReason",
         a.start_time AS "startTime", a.end_time AS "endTime",
         EXTRACT(EPOCH FROM (a.end_time - a.start_time)) / 60 AS "timeTakenMinutes",
@@ -70,11 +82,22 @@ export class ExamAnalyticsService {
       LIMIT $2 OFFSET $3
     `, [examId, limit, offset]);
 
+    const formattedRows = rows.map((r: any) => {
+      const timeline: any[] = Array.isArray(r.codingTimeline) ? r.codingTimeline : (typeof r.codingTimeline === 'string' ? JSON.parse(r.codingTimeline || '[]') : []);
+      const wrongCount = timeline.filter(t => t.status && t.status !== 'ACCEPTED').length;
+      const correctCount = timeline.filter(t => t.status === 'ACCEPTED').length;
+      return {
+        ...r,
+        wrongSubmissionsCount: wrongCount,
+        correctSubmissionsCount: correctCount,
+      };
+    });
+
     const [{ total }] = await this.db.query(
       `SELECT COUNT(*) AS total FROM exam_attempts WHERE exam_id = $1 AND status != 'IN_PROGRESS'`, [examId]
     );
 
-    return { rows, total: parseInt(total), page, limit };
+    return { rows: formattedRows, total: parseInt(total), page, limit };
   }
 
   async questionAnalytics(examId: number) {
@@ -94,9 +117,10 @@ export class ExamAnalyticsService {
     `, [examId]);
 
     const attempts = await this.db.query(`
-      SELECT mcq_answers AS "mcqAnswers"
-      FROM exam_attempts
-      WHERE exam_id = $1 AND status != 'IN_PROGRESS'
+      SELECT mcq_answers AS "mcqAnswers", coding_timeline AS "codingTimeline", u.name AS "studentName"
+      FROM exam_attempts a
+      JOIN users u ON u.id = a.student_id
+      WHERE a.exam_id = $1 AND a.status != 'IN_PROGRESS'
     `, [examId]);
 
     const mcq = (mcqMeta || []).map((q: any) => {
@@ -160,12 +184,44 @@ export class ExamAnalyticsService {
       ORDER BY eq.sort_order ASC
     `, [examId]);
 
-    return { mcq, coding: codingRows };
+    // Aggregate timeline correct timestamps and wrong submissions per question
+    const enhancedCoding = (codingRows || []).map((cr: any) => {
+      let wrongCount = 0;
+      let totalRuns = 0;
+      const correctTimeline: Array<{ studentName: string; timestamp: string; elapsedSeconds: number; score: number }> = [];
+
+      for (const a of attempts) {
+        const rawTl = a.codingTimeline ?? a.coding_timeline;
+        const tl: any[] = Array.isArray(rawTl) ? rawTl : (typeof rawTl === 'string' ? JSON.parse(rawTl || '[]') : []);
+        const questionEvents = tl.filter((ev: any) => Number(ev.questionId) === Number(cr.questionId));
+        totalRuns += questionEvents.length;
+        wrongCount += questionEvents.filter((ev: any) => ev.status !== 'ACCEPTED').length;
+
+        const firstAccept = questionEvents.find((ev: any) => ev.status === 'ACCEPTED');
+        if (firstAccept) {
+          correctTimeline.push({
+            studentName: a.studentName || 'Student',
+            timestamp: firstAccept.timestamp,
+            elapsedSeconds: firstAccept.elapsedSeconds || 0,
+            score: firstAccept.score || cr.marks || 10,
+          });
+        }
+      }
+
+      return {
+        ...cr,
+        wrongSubmissions: wrongCount,
+        totalRuns,
+        correctTimeline,
+      };
+    });
+
+    return { mcq, coding: enhancedCoding };
   }
 
   async studentDetail(examId: number, studentId: number) {
     const attempt = await this.db.query(`
-      SELECT a.*, u.name, u.email FROM exam_attempts a
+      SELECT a.*, u.name, u.email, u.registration_number AS "regNo" FROM exam_attempts a
       JOIN users u ON u.id = a.student_id
       WHERE a.exam_id = $1 AND a.student_id = $2
       ORDER BY a.attempt_number DESC LIMIT 1
@@ -175,13 +231,25 @@ export class ExamAnalyticsService {
     const att = attempt[0];
 
     const codingSubs = await this.db.query(`
-      SELECT s.*, q."problemStatement" AS "problemStatement"
+      SELECT s.*, q."questionText" AS "questionText", q."problemStatement" AS "problemStatement"
       FROM exam_coding_submissions s
       JOIN questions q ON q.id = s.question_id
-      WHERE s.attempt_id = $1 AND s.is_final = true
+      WHERE s.attempt_id = $1
+      ORDER BY s.submitted_at DESC
     `, [att.id]);
 
-    return { attempt: att, codingSubmissions: codingSubs };
+    return {
+      attempt: {
+        ...att,
+        faceCoveragePercent: Number(att.face_coverage_percent ?? att.faceCoveragePercent ?? 100),
+        faceViolationsCount: Number(att.face_violations_count ?? att.faceViolationsCount ?? 0),
+        inactivityDurationSeconds: Number(att.inactivity_duration_seconds ?? att.inactivityDurationSeconds ?? 0),
+        tabSwitchCount: Number(att.tab_switch_count ?? att.tabSwitchCount ?? 0),
+        tabSwitchLog: att.tab_switch_log ?? att.tabSwitchLog ?? [],
+        codingTimeline: att.coding_timeline ?? att.codingTimeline ?? [],
+      },
+      codingSubmissions: codingSubs,
+    };
   }
 
   async rankings(examId: number) {
@@ -190,6 +258,9 @@ export class ExamAnalyticsService {
         RANK() OVER (ORDER BY total_score DESC NULLS LAST) AS rank,
         u.id AS "studentId", u.name, u.email, u.registration_number AS "regNo",
         a.total_score AS "totalScore", a.mcq_score AS "mcqScore", a.coding_score AS "codingScore",
+        a.face_coverage_percent AS "faceCoveragePercent",
+        a.inactivity_duration_seconds AS "inactivityDurationSeconds",
+        a.tab_switch_count AS "tabSwitchCount",
         a.passed, a.end_time AS "submittedAt"
       FROM exam_attempts a
       JOIN users u ON u.id = a.student_id

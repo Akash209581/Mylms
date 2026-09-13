@@ -286,6 +286,32 @@ export class CompilerWorker implements OnModuleInit, OnModuleDestroy {
 
       await this.submissionRepo.save(sub);
       this.logger.log(`Persisted submission record for Attempt ${payload.attemptId}, Question ${payload.questionId}, Score: ${sub.score}`);
+
+      // Update attempt coding timeline
+      if (payload.attemptId) {
+        try {
+          const attempt = await this.attemptRepo.findOne({ where: { id: payload.attemptId } });
+          if (attempt) {
+            const elapsedSeconds = attempt.startTime
+              ? Math.max(0, Math.floor((Date.now() - new Date(attempt.startTime).getTime()) / 1000))
+              : 0;
+            const timeline = Array.isArray(attempt.codingTimeline) ? [...attempt.codingTimeline] : [];
+            timeline.push({
+              questionId: payload.questionId,
+              type: payload.isFinal ? 'SUBMIT' : 'RUN',
+              status: mappedStatus,
+              passedCases: result.passedCases,
+              totalCases: result.totalCases,
+              score: payload.isFinal ? result.score : 0,
+              timestamp: new Date().toISOString(),
+              elapsedSeconds,
+            });
+            await this.attemptRepo.update(payload.attemptId, { codingTimeline: timeline });
+          }
+        } catch (tlErr: any) {
+          this.logger.warn(`Failed to update coding timeline: ${tlErr?.message}`);
+        }
+      }
     } catch (err) {
       this.logger.error(`Failed to persist submission record: ${err.message}`);
     }

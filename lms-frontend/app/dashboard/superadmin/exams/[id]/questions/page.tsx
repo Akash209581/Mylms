@@ -6,11 +6,12 @@ import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
 import QuestionPreview from '@/components/question-bank/QuestionPreview'
 import { api } from '@/lib/api'
-import { hasPerLanguageStarters } from '@/lib/starter-code'
+import { hasPerLanguageStarters, parseStarterMap, ADMIN_STARTERS } from '@/lib/starter-code'
 
 type Tab = 'bank-mcq' | 'bank-coding' | 'excel-import' | 'manage'
 
 const EXAM_BASE = '/dashboard/superadmin/exams'
+const ALL_SUPPORTED_LANGS = ['Python', 'Java', 'C', 'C++', 'JavaScript']
 
 export default function ExamQuestionsPage() {
   const router = useRouter()
@@ -38,6 +39,13 @@ export default function ExamQuestionsPage() {
 
   // Question Preview State
   const [previewQuestion, setPreviewQuestion] = useState<any | null>(null)
+
+  // Pre-defined Starter Code Modal State
+  const [preCodeModalQuestion, setPreCodeModalQuestion] = useState<any | null>(null)
+  const [preCodeLanguage, setPreCodeLanguage] = useState<string>('Python')
+  const [preCodeMap, setPreCodeMap] = useState<Record<string, string>>({})
+  const [preCodeAllowedLangs, setPreCodeAllowedLangs] = useState<string[]>(ALL_SUPPORTED_LANGS)
+  const [savingPreCode, setSavingPreCode] = useState(false)
 
   // Inline Marks Edit state (Manage tab)
   const [editingMarksId, setEditingMarksId] = useState<number | null>(null)
@@ -100,6 +108,61 @@ export default function ExamQuestionsPage() {
       setBankQuestions([])
     } finally {
       setBankLoading(false)
+    }
+  }
+
+  const selectedTotalMarks = useMemo(() => {
+    let sum = 0
+    const fallbackMarks = tab === 'bank-coding' ? 10 : 1
+    selected.forEach(id => {
+      sum += Number(customMarks[id]?.marks ?? defaultMarks ?? fallbackMarks)
+    })
+    return sum
+  }, [selected, customMarks, defaultMarks, tab])
+
+  const openPreCodeConfig = (q: any) => {
+    setPreCodeModalQuestion(q)
+    const existingMap = parseStarterMap(q.codeSnippet)
+    const allowed = Array.isArray(q.allowedLanguages) && q.allowedLanguages.length > 0
+      ? q.allowedLanguages
+      : ALL_SUPPORTED_LANGS
+    setPreCodeAllowedLangs(allowed)
+
+    const initialMap: Record<string, string> = {}
+    ALL_SUPPORTED_LANGS.forEach(lang => {
+      if (existingMap[lang]?.trim()) {
+        initialMap[lang] = existingMap[lang]
+      } else if (existingMap._plain && (lang === 'Python' || lang === (q.allowedLanguages?.[0] || 'Python'))) {
+        initialMap[lang] = existingMap._plain
+      } else {
+        initialMap[lang] = ADMIN_STARTERS[lang] || ''
+      }
+    })
+    setPreCodeMap(initialMap)
+    setPreCodeLanguage(allowed[0] || 'Python')
+  }
+
+  const savePreCodeConfig = async () => {
+    if (!preCodeModalQuestion) return
+    setSavingPreCode(true)
+    try {
+      const updatedSnippet = JSON.stringify(preCodeMap)
+      await api.put(`/question-bank/${preCodeModalQuestion.id}`, {
+        codeSnippet: updatedSnippet,
+        allowedLanguages: preCodeAllowedLangs,
+      })
+      // Update local state in bankQuestions
+      setBankQuestions(prev => prev.map(item =>
+        item.id === preCodeModalQuestion.id
+          ? { ...item, codeSnippet: updatedSnippet, allowedLanguages: preCodeAllowedLangs }
+          : item
+      ))
+      setPreCodeModalQuestion(null)
+      alert('Pre-defined code saved successfully for all languages!')
+    } catch (e: any) {
+      alert(e.response?.data?.message || 'Failed to save pre-defined code')
+    } finally {
+      setSavingPreCode(false)
     }
   }
 
@@ -360,9 +423,19 @@ export default function ExamQuestionsPage() {
               </div>
 
               {selected.size > 0 && (
-                <button onClick={addSelected} disabled={adding} className="btn-primary shrink-0 font-bold">
-                  {adding ? 'Adding...' : `＋ Add ${selected.size} Selected`}
-                </button>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[var(--accent-soft)] border border-[var(--accent)]/40 shadow-sm">
+                    <span className="text-xs font-bold text-[var(--accent-text)]">
+                      Total: <span className="text-sm font-black">{selectedTotalMarks}</span> Marks
+                    </span>
+                    <span className="text-[10px] opacity-75 font-semibold text-[var(--accent-text)]">
+                      ({selected.size} Q{selected.size > 1 ? 's' : ''})
+                    </span>
+                  </div>
+                  <button onClick={addSelected} disabled={adding} className="btn-primary shrink-0 font-bold flex items-center gap-1.5">
+                    {adding ? 'Adding...' : `＋ Add ${selected.size} Selected (${selectedTotalMarks} M)`}
+                  </button>
+                </div>
               )}
             </div>
 
@@ -453,6 +526,20 @@ export default function ExamQuestionsPage() {
                                 </div>
                               )}
                             </div>
+                          )}
+
+                          {tab === 'bank-coding' && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                openPreCodeConfig(q)
+                              }}
+                              className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-[var(--accent-soft)] hover:bg-[var(--accent-soft)]/80 border border-[var(--accent)]/30 text-[var(--accent-text)] transition-all flex items-center gap-1"
+                              title="Configure pre-defined starter code for all languages"
+                            >
+                              <span>⚙️</span> Pre-defined Code
+                            </button>
                           )}
 
                           <button
@@ -741,6 +828,15 @@ export default function ExamQuestionsPage() {
                         )}
 
                         <button
+                          type="button"
+                          onClick={() => openPreCodeConfig(eq.question)}
+                          className="text-xs text-[var(--accent-text)] hover:underline px-2 flex items-center gap-1"
+                          title="Configure pre-defined starter code for all languages"
+                        >
+                          <span>⚙️</span> Pre-defined Code
+                        </button>
+
+                        <button
                           onClick={() => setPreviewQuestion(eq.question)}
                           className="text-xs text-[var(--accent-text)] hover:underline px-2"
                         >
@@ -768,6 +864,148 @@ export default function ExamQuestionsPage() {
             form={previewQuestion}
             onClose={() => setPreviewQuestion(null)}
           />
+        )}
+
+        {/* Pre-defined Starter Code Modal */}
+        {preCodeModalQuestion && (
+          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+            <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 my-8">
+              <div className="p-6 border-b border-[var(--border)] flex items-start justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-[var(--bg-raised)] border border-[var(--border)]">
+                      {preCodeModalQuestion.questionNumber || 'CODING'}
+                    </span>
+                    <span className="text-xs badge bg-[var(--accent-soft)] text-[var(--accent-text)] font-semibold">
+                      Pre-defined Starter Code
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-bold role-text-primary">
+                    {preCodeModalQuestion.questionText || preCodeModalQuestion.problemStatement}
+                  </h3>
+                  <p className="text-xs role-text-muted mt-1">
+                    Configure the default code template that appears when students open this question in the code editor for each available language.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setPreCodeModalQuestion(null)}
+                  className="w-8 h-8 rounded-xl flex items-center justify-center text-gray-400 hover:text-white hover:bg-[var(--bg-raised)] transition-all"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4">
+                {/* Language Tabs & Allowed Checkboxes */}
+                <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-[var(--border)]">
+                  <div className="flex flex-wrap gap-1.5">
+                    {ALL_SUPPORTED_LANGS.map(lang => {
+                      const isAllowed = preCodeAllowedLangs.includes(lang)
+                      const hasCode = !!preCodeMap[lang]?.trim()
+                      const isActive = preCodeLanguage === lang
+                      return (
+                        <button
+                          key={lang}
+                          type="button"
+                          onClick={() => setPreCodeLanguage(lang)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 ${
+                            isActive
+                              ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-md'
+                              : 'bg-[var(--bg-raised)] border-[var(--border)] text-gray-300 hover:border-gray-400'
+                          }`}
+                        >
+                          <span>{lang}</span>
+                          {hasCode && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" title="Has code template" />}
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <label className="flex items-center gap-1.5 text-xs role-text-muted cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={preCodeAllowedLangs.includes(preCodeLanguage)}
+                        onChange={e => {
+                          if (e.target.checked) {
+                            setPreCodeAllowedLangs(prev => Array.from(new Set([...prev, preCodeLanguage])))
+                          } else {
+                            if (preCodeAllowedLangs.length <= 1) {
+                              alert('At least one language must remain allowed.')
+                              return
+                            }
+                            setPreCodeAllowedLangs(prev => prev.filter(l => l !== preCodeLanguage))
+                          }
+                        }}
+                        className="rounded border-[var(--border)] accent-[var(--accent)]"
+                      />
+                      <span className="font-medium">Enable {preCodeLanguage}</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPreCodeMap(prev => ({
+                          ...prev,
+                          [preCodeLanguage]: ADMIN_STARTERS[preCodeLanguage] || '',
+                        }))
+                      }}
+                      className="text-[11px] text-amber-400 hover:underline font-semibold ml-2"
+                    >
+                      🔄 Reset to Default
+                    </button>
+                  </div>
+                </div>
+
+                {/* Code Editor / Area */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-gray-400 font-mono">
+                      // {preCodeLanguage} Pre-defined Starter Code
+                    </span>
+                    <span className="text-[11px] text-gray-500">
+                      Students will see this when selecting {preCodeLanguage}
+                    </span>
+                  </div>
+                  <div className="relative rounded-xl overflow-hidden border border-[var(--border)] bg-gray-950">
+                    <textarea
+                      value={preCodeMap[preCodeLanguage] || ''}
+                      onChange={e => {
+                        const val = e.target.value
+                        setPreCodeMap(prev => ({ ...prev, [preCodeLanguage]: val }))
+                      }}
+                      rows={12}
+                      className="w-full bg-transparent p-4 text-emerald-400 font-mono text-xs focus:outline-none resize-y selection:bg-emerald-500/30 leading-relaxed"
+                      placeholder={`Write or paste ${preCodeLanguage} pre-defined starter code here...`}
+                      spellCheck={false}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 bg-[var(--bg-raised)]/50 border-t border-[var(--border)] flex items-center justify-between gap-3">
+                <span className="text-xs role-text-muted">
+                  Configuring <span className="font-bold text-[var(--accent-text)]">{preCodeAllowedLangs.length}</span> allowed language(s)
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPreCodeModalQuestion(null)}
+                    className="btn-secondary text-xs"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={savePreCodeConfig}
+                    disabled={savingPreCode}
+                    className="btn-primary text-xs font-bold flex items-center gap-1.5"
+                  >
+                    {savingPreCode ? 'Saving...' : '💾 Save Pre-defined Code'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
       </main>
     </div>

@@ -60,6 +60,11 @@ export class ExamService implements OnModuleInit, OnModuleDestroy {
         ALTER TABLE exam_questions ADD COLUMN IF NOT EXISTS marks numeric(7,2) DEFAULT 1;
         ALTER TABLE exam_questions ADD COLUMN IF NOT EXISTS negative_marks numeric(7,2) DEFAULT 0;
         ALTER TABLE exam_questions ADD COLUMN IF NOT EXISTS section varchar(1) DEFAULT 'A';
+        ALTER TABLE exam_attempts ADD COLUMN IF NOT EXISTS face_coverage_percent numeric(5,2) DEFAULT 100;
+        ALTER TABLE exam_attempts ADD COLUMN IF NOT EXISTS face_violations_count integer DEFAULT 0;
+        ALTER TABLE exam_attempts ADD COLUMN IF NOT EXISTS inactivity_duration_seconds integer DEFAULT 0;
+        ALTER TABLE exam_attempts ADD COLUMN IF NOT EXISTS tab_switch_log jsonb DEFAULT '[]';
+        ALTER TABLE exam_attempts ADD COLUMN IF NOT EXISTS coding_timeline jsonb DEFAULT '[]';
       `);
     } catch (err: any) {
       console.warn('Exam self-healing migration warning:', err?.message || err);
@@ -269,7 +274,12 @@ export class ExamService implements OnModuleInit, OnModuleDestroy {
     const qIds = dto.questions.map(q => q.questionId);
     await this.validateQuestionsAccess(user, exam, qIds, section);
 
-    const maxOrder = await this.eqRepo.maximum('sortOrder', { examId: id, section }) ?? -1;
+    const maxOrderRow = await this.eqRepo
+      .createQueryBuilder('eq')
+      .select('MAX(eq.sortOrder)', 'max')
+      .where('eq.examId = :id AND eq.section = :section', { id, section })
+      .getRawOne();
+    const maxOrder = maxOrderRow?.max != null ? Number(maxOrderRow.max) : -1;
     const existing = await this.eqRepo.find({
       where: { examId: id, questionId: In(qIds) },
       select: ['questionId'],
