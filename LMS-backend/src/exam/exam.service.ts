@@ -39,11 +39,31 @@ export class ExamService implements OnModuleInit, OnModuleDestroy {
     private readonly db: DataSource,
   ) {}
 
-  onModuleInit() {
+  async onModuleInit() {
+    await this.runSelfHealingMigrations();
     this.syncExamStatuses().catch(() => {});
     this.syncTimer = setInterval(() => {
       this.syncExamStatuses().catch(() => {});
     }, 30000);
+  }
+
+  private async runSelfHealingMigrations() {
+    try {
+      await this.db.query(`
+        ALTER TABLE exams ADD COLUMN IF NOT EXISTS max_tab_switches integer DEFAULT 3;
+        ALTER TABLE exams ADD COLUMN IF NOT EXISTS timing_mode varchar(20) DEFAULT 'TOTAL';
+        ALTER TABLE exams ADD COLUMN IF NOT EXISTS section_durations jsonb;
+        ALTER TABLE exams ADD COLUMN IF NOT EXISTS question_duration_seconds integer;
+        ALTER TABLE exams ADD COLUMN IF NOT EXISTS target_branches jsonb;
+        ALTER TABLE exams ADD COLUMN IF NOT EXISTS target_batches jsonb;
+        ALTER TABLE exams ADD COLUMN IF NOT EXISTS tab_switch_monitoring boolean DEFAULT true;
+        ALTER TABLE exam_questions ADD COLUMN IF NOT EXISTS marks numeric(7,2) DEFAULT 1;
+        ALTER TABLE exam_questions ADD COLUMN IF NOT EXISTS negative_marks numeric(7,2) DEFAULT 0;
+        ALTER TABLE exam_questions ADD COLUMN IF NOT EXISTS section varchar(1) DEFAULT 'A';
+      `);
+    } catch (err: any) {
+      console.warn('Exam self-healing migration warning:', err?.message || err);
+    }
   }
 
   onModuleDestroy() {
@@ -123,18 +143,24 @@ export class ExamService implements OnModuleInit, OnModuleDestroy {
   async list(user: RequestUser) {
     this.assertAdmin(user);
     await this.syncExamStatuses();
-    const qb = this.examRepo.createQueryBuilder('e')
-      .select(['e.id','e.title','e.status','e.durationMinutes','e.startAt','e.endAt',
-               'e.totalMarks','e.passingMarks','e.createdAt',
-               'e.showCorrectAnswers','e.showExplanations','e.maxTabSwitches',
-               'e.timingMode','e.sectionDurations','e.questionDurationSeconds',
-               'e.targetBranches','e.targetBatches'])
-      .orderBy('e.createdAt','DESC');
-    if (user.role !== UserRole.SUPERADMIN) {
-      if (!user.collegeId) throw new ForbiddenException('College required');
-      qb.where('e.collegeId = :cid', { cid: user.collegeId });
+    try {
+      const qb = this.examRepo.createQueryBuilder('e')
+        .orderBy('e.createdAt','DESC');
+      if (user.role !== UserRole.SUPERADMIN) {
+        if (!user.collegeId) throw new ForbiddenException('College required');
+        qb.where('e.collegeId = :cid', { cid: user.collegeId });
+      }
+      return await qb.getMany();
+    } catch (err: any) {
+      console.warn('Exam list query error, applying self-healing migration and retrying:', err?.message || err);
+      await this.runSelfHealingMigrations();
+      const qb = this.examRepo.createQueryBuilder('e')
+        .orderBy('e.createdAt','DESC');
+      if (user.role !== UserRole.SUPERADMIN && user.collegeId) {
+        qb.where('e.collegeId = :cid', { cid: user.collegeId });
+      }
+      return await qb.getMany();
     }
-    return qb.getMany();
   }
 
   async findOne(user: RequestUser, id: number) {

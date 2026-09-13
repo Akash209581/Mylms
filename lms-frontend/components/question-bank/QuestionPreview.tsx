@@ -463,7 +463,9 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                                                     }`}>
                                                     {String.fromCharCode(65 + i)}
                                                 </div>
-                                                <span className="text-sm font-mono font-medium">{opt}</span>
+                                                <div className="flex-1 min-w-0">
+                                                    {renderOptionContent(opt)}
+                                                </div>
                                             </div>
                                         </div>
                                     ))}

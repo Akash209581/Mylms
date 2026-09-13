@@ -9,6 +9,7 @@ import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
 import QuestionPreview from '@/components/question-bank/QuestionPreview'
 import MarkdownToolbar from '@/components/editor/MarkdownToolbar'
+import OptionField from '@/components/question-bank/OptionField'
 import { normalizeMcqLetter } from '@/lib/mcq-answer'
 import { getRoleBasePath } from '@/lib/roleUtils'
 import { ADMIN_STARTERS } from '@/lib/starter-code'
@@ -424,21 +425,30 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
                                 <h3 className="role-text-primary font-semibold mb-4">🔘 Options</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                                     {(form.options || ['', '', '', '']).map((opt: string, i: number) => (
-                                        <div key={i} className="flex gap-2 items-center">
-                                            <span className="text-gray-400 text-sm w-6">{String.fromCharCode(65 + i)}.</span>
-                                            <input value={opt} onChange={e => { const o = [...form.options]; o[i] = e.target.value; set('options', o) }}
-                                                placeholder={`Option ${String.fromCharCode(65 + i)}`} className="input-field flex-1" />
-                                        </div>
+                                        <OptionField
+                                            key={i}
+                                            index={i}
+                                            value={opt}
+                                            onChange={(newVal) => {
+                                                const o = [...(form.options || ['', '', '', ''])];
+                                                o[i] = newVal;
+                                                set('options', o);
+                                            }}
+                                        />
                                     ))}
                                 </div>
                                 <div>
-                                    <label className="text-gray-400 text-sm mb-2 block">Correct Answer</label>
+                                    <label className="text-gray-400 text-sm mb-2 block font-medium">Correct Answer</label>
                                     <select value={normalizeMcqLetter(form.correctAnswer, form.options) || ''} onChange={e => {
                                         set('correctAnswer', e.target.value);
                                         set('expectedOutput', e.target.value);
                                     }} className="input-field max-w-xs">
                                         <option value="">Select correct option</option>
-                                        {(form.options || []).map((o: string, i: number) => o && <option key={i} value={String.fromCharCode(65 + i)}>{String.fromCharCode(65 + i)}. {o}</option>)}
+                                        {(form.options || []).map((o: string, i: number) => o && (
+                                            <option key={i} value={String.fromCharCode(65 + i)}>
+                                                {String.fromCharCode(65 + i)}. {o.startsWith('data:image/') ? '[Attached Image]' : o.length > 30 ? o.substring(0, 30) + '...' : o}
+                                            </option>
+                                        ))}
                                     </select>
                                 </div>
                             </div>
@@ -938,11 +948,16 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
                                     <h3 className="role-text-primary font-semibold mb-4 text-sm">🔘 Setup Options</h3>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                                         {(form.options || ['', '', '', '']).map((opt: string, i: number) => (
-                                            <div key={i} className="flex gap-3 items-center">
-                                                <span className="text-gray-400 text-xs w-4">{String.fromCharCode(65 + i)}.</span>
-                                                <input value={opt} onChange={e => { const o = [...(form.options || ['', '', '', ''])]; o[i] = e.target.value; set('options', o) }}
-                                                    placeholder={`Option ${String.fromCharCode(65 + i)}`} className="input-field flex-1 text-sm" />
-                                            </div>
+                                            <OptionField
+                                                key={i}
+                                                index={i}
+                                                value={opt}
+                                                onChange={(newVal) => {
+                                                    const o = [...(form.options || ['', '', '', ''])];
+                                                    o[i] = newVal;
+                                                    set('options', o);
+                                                }}
+                                            />
                                         ))}
                                     </div>
                                     <div className="p-4 rounded-xl bg-[var(--bg-surface)]/5 border border-white/10">
@@ -951,12 +966,12 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
                                             {(form.options || []).map((o: string, i: number) => o && (
                                                 <button key={i} onClick={() => set('expectedOutput', o)}
                                                     className={`px-4 py-2 rounded-lg text-xs font-bold border transition-all ${form.expectedOutput === o ? 'bg-primary-500 border-primary-500 text-white' : 'border-white/10 text-gray-400 hover:border-white/30'}`}>
-                                                    {String.fromCharCode(65 + i)}: {o.length > 15 ? o.substring(0, 15) + '...' : o}
+                                                    {String.fromCharCode(65 + i)}: {o.startsWith('data:image/') ? '[Attached Image]' : o.length > 15 ? o.substring(0, 15) + '...' : o}
                                                 </button>
                                             ))}
                                         </div>
                                         {form.expectedOutput && (
-                                            <p className="mt-3 text-[10px] text-primary-400 font-mono">Current Result: {form.expectedOutput}</p>
+                                            <p className="mt-3 text-[10px] text-primary-400 font-mono">Current Result: {form.expectedOutput.startsWith('data:image/') ? '[Attached Image]' : form.expectedOutput}</p>
                                         )}
                                     </div>
                                 </div>

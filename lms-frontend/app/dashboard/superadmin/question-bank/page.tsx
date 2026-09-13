@@ -110,17 +110,19 @@ export default function QuestionBankPage() {
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
                     {QUESTION_TYPES.map(t => {
                         const count = stats?.byType?.find((b: any) => b.type === t.key)?.count ?? 0
+                        const isSelected = filterType === t.key
                         return (
-                            <div key={t.key} onClick={() => setFilterType(filterType === t.key ? 'ALL' : t.key)}
-                                className={`p-4 rounded-2xl cursor-pointer transition-all duration-200 hover:scale-105 border ${filterType === t.key ? 'scale-105' : 'border-transparent'
-                                    }`}
+                            <div key={t.key} onClick={() => setFilterType(isSelected ? 'ALL' : t.key)}
+                                className={`p-4 rounded-2xl cursor-pointer transition-all duration-200 hover:scale-105 border ${
+                                    isSelected ? 'scale-105 shadow-md' : 'shadow-sm hover:border-slate-300'
+                                }`}
                                 style={{
-                                    background: filterType === t.key ? `${t.color}25` : 'rgba(255,255,255,0.05)',
-                                    borderColor: filterType === t.key ? t.color : 'transparent'
+                                    background: isSelected ? `${t.color}15` : '#ffffff',
+                                    borderColor: isSelected ? t.color : '#e2e8f0'
                                 }}>
                                 <div className="text-2xl mb-2">{t.icon}</div>
-                                <p className="text-white font-semibold text-sm">{t.label}</p>
-                                <p className="text-[var(--text-secondary)] text-xs mb-2">{t.desc}</p>
+                                <p className="text-slate-900 font-semibold text-sm">{t.label}</p>
+                                <p className="text-slate-500 text-xs mb-2 font-medium">{t.desc}</p>
                                 <p className="text-2xl font-bold" style={{ color: t.color }}>{count}</p>
                             </div>
                         )
@@ -132,10 +134,12 @@ export default function QuestionBankPage() {
                     <div className="flex gap-2 flex-wrap">
                         {['ALL', 'VERY_EASY', 'EASY', 'MEDIUM', 'HARD', 'VERY_HARD'].map(d => (
                             <button key={d} onClick={() => setFilterDiff(d)}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${filterDiff === d ? 'text-white scale-105' : 'text-gray-400'}`}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                                    filterDiff === d ? 'text-white shadow-sm scale-105' : 'text-slate-700 bg-white hover:text-slate-900 border border-slate-200'
+                                }`}
                                 style={{
-                                    background: filterDiff === d ? (diffColors[d] || '#6366f1') : 'rgba(255,255,255,0.06)',
-                                    border: filterDiff === d ? 'none' : '1px solid rgba(255,255,255,0.1)'
+                                    background: filterDiff === d ? (diffColors[d] || '#6366f1') : '#ffffff',
+                                    borderColor: filterDiff === d ? (diffColors[d] || '#6366f1') : '#e2e8f0'
                                 }}>
                                 {d.replace('_', ' ')}
                             </button>
@@ -143,19 +147,19 @@ export default function QuestionBankPage() {
                     </div>
                     <div className="flex-1 flex gap-3">
                         <select value={filterDomain} onChange={e => setFilterDomain(e.target.value)}
-                            className="bg-[rgba(255,255,255,0.06)] border border-white/10 rounded-xl px-4 py-2 text-xs text-white outline-none focus:border-primary-500 transition-all min-w-[150px]">
-                            <option value="ALL">All Domains</option>
-                            <option value="Programming Domain">Programming Domain</option>
+                            className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-xs font-semibold text-slate-900 outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-all min-w-[160px] shadow-sm">
+                            <option value="ALL" className="bg-white text-slate-900">All Domains</option>
+                            <option value="Programming Domain" className="bg-white text-slate-900">Programming Domain</option>
                             {domains.filter(d => d.name !== 'Programming Domain').map(d => (
-                                <option key={d.id} value={d.name}>{d.name}</option>
+                                <option key={d.id} value={d.name} className="bg-white text-slate-900">{d.name}</option>
                             ))}
                         </select>
                         <div className="flex-1 relative">
-                            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-secondary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                             </svg>
                             <input type="text" placeholder="Search by topic or question title..." value={search}
-                                onChange={e => setSearch(e.target.value)} className="input-field pl-10 h-full" />
+                                onChange={e => setSearch(e.target.value)} className="input-field pl-10 h-full bg-white text-slate-900 placeholder:text-slate-400 border border-slate-200" />
                         </div>
                     </div>
                 </div>
