@@ -72,15 +72,17 @@ export default function QuestionBankPage() {
     }
 
     const filtered = questions.filter(q => {
+        const qStatus = q.status || 'APPROVED'
+        const matchStatus = qStatus === 'APPROVED'
         const matchType = filterType === 'ALL' || q.type === filterType
         const matchDiff = filterDiff === 'ALL' || q.difficulty === filterDiff
         const matchDomain = filterDomain === 'ALL' || (q.domain || 'Programming Domain') === filterDomain
-        const matchSearch = !search || q.questionText?.toLowerCase().includes(search.toLowerCase()) ||
-            q.topicNames?.toLowerCase().includes(search.toLowerCase()) ||
-            q.targetCompanies?.toLowerCase().includes(search.toLowerCase()) ||
-            q.companiesAppeared?.toLowerCase().includes(search.toLowerCase())
-        // Ensure the question has at least a type and text to be considered "valid" for the list
-        return matchType && matchDiff && matchDomain && matchSearch && q.questionText && q.type
+        const qText = (q.questionText || q.problemStatement || '').toLowerCase()
+        const matchSearch = !search || qText.includes(search.toLowerCase()) ||
+            (q.topicNames && q.topicNames.toLowerCase().includes(search.toLowerCase())) ||
+            (q.targetCompanies && q.targetCompanies.toLowerCase().includes(search.toLowerCase())) ||
+            (q.companiesAppeared && q.companiesAppeared.toLowerCase().includes(search.toLowerCase()))
+        return matchStatus && matchType && matchDiff && matchDomain && matchSearch && (q.questionText || q.problemStatement) && q.type
     })
 
     return (
@@ -238,7 +240,7 @@ export default function QuestionBankPage() {
                                                         {status === 'PENDING_APPROVAL' ? '⏳ PENDING' : status}
                                                     </span>
                                                 </td>
-                                                <td className="py-4 pr-4 role-text-secondary text-sm max-w-xs truncate">{q.questionText}</td>
+                                                <td className="py-4 pr-4 role-text-secondary text-sm max-w-xs truncate">{q.questionText || q.problemStatement}</td>
                                                 <td className="py-4">
                                                     <div className="flex gap-2">
                                                         <button onClick={() => { setSelectedQuestion(q); setShowPreview(true) }}

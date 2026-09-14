@@ -310,15 +310,36 @@ export default function ApprovalsPage() {
                                                         <p className="text-xs text-slate-400 mt-1">Topic: <span className="text-slate-300 font-medium">{q.topicNames}</span> ({q.domain})</p>
                                                     </td>
                                                     <td className="py-4 pr-4 max-w-[180px]">
-                                                        {companies ? (
-                                                            <div className="flex flex-wrap gap-1">
-                                                                {companies.split(',').map((c: string) => (
-                                                                    <span key={c} className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[11px] font-medium">
-                                                                        🏢 {c.trim()}
-                                                                    </span>
-                                                                ))}
-                                                            </div>
-                                                        ) : (
+                                                        {companies ? (() => {
+                                                            const compList = companies.split(',').map((c: string) => c.trim()).filter(Boolean)
+                                                            return (
+                                                                <div className="relative group/comp inline-block">
+                                                                    <div className="flex flex-wrap items-center gap-1">
+                                                                        {compList.slice(0, 1).map((c: string) => (
+                                                                            <span key={c} className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[11px] font-medium truncate max-w-[120px]" title="Hover to view all companies">
+                                                                                🏢 {c}
+                                                                            </span>
+                                                                        ))}
+                                                                        {compList.length > 1 && (
+                                                                            <span className="px-1.5 py-0.5 rounded-md bg-slate-800 text-slate-300 border border-slate-700 text-[10px] font-semibold cursor-pointer group-hover/comp:bg-blue-600 group-hover/comp:text-white transition-colors">
+                                                                                +{compList.length - 1} more
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                    {/* Tooltip on cursor hover showing all target companies */}
+                                                                    <div className="absolute left-0 bottom-full mb-2 z-50 hidden group-hover/comp:flex flex-col gap-1.5 p-3 bg-slate-900 border border-white/15 rounded-xl shadow-2xl min-w-[180px] max-w-xs pointer-events-none">
+                                                                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">All Target Companies ({compList.length})</p>
+                                                                        <div className="flex flex-wrap gap-1">
+                                                                            {compList.map((c: string, idx: number) => (
+                                                                                <span key={idx} className="px-2 py-0.5 rounded-md bg-blue-500/15 text-blue-300 border border-blue-500/30 text-[11px] font-medium whitespace-nowrap">
+                                                                                    🏢 {c}
+                                                                                </span>
+                                                                            ))}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            )
+                                                        })() : (
                                                             <span className="text-xs text-slate-500">General Practice</span>
                                                         )}
                                                     </td>

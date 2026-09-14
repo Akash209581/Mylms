@@ -14,7 +14,7 @@ import { College } from '../entities/college.entity';
 import {
   CreateExamDto, UpdateExamDto, AddManyExamQuestionsDto,
   AssignStudentsDto, AssignCollegesDto, ImportMcqConfirmDto,
-  CloneExamDto, UpdateQuestionMarksDto,
+  CloneExamDto, UpdateQuestionMarksDto, UpdateQuestionHintSettingsDto,
 } from './exam.dto';
 
 /** Shape of the JWT payload stored on req.user */
@@ -224,10 +224,12 @@ export class ExamService implements OnModuleInit, OnModuleDestroy {
     this.assertAdmin(user);
     const exam = await this.getExamOrFail(id);
     await this.assertOwns(user, exam);
-    if (exam.status !== ExamStatus.DRAFT)
-      throw new ConflictException('Only DRAFT exams can be deleted');
+    // Delete associated questions, assignments, attempts before deleting exam
+    await this.eqRepo.delete({ examId: id });
+    await this.assignRepo.delete({ examId: id });
+    await this.attemptRepo.delete({ examId: id });
     await this.examRepo.delete(id);
-    return { message: 'Exam deleted' };
+    return { message: 'Exam deleted successfully' };
   }
 
   async publish(user: RequestUser, id: number) {
@@ -251,13 +253,16 @@ export class ExamService implements OnModuleInit, OnModuleDestroy {
   // ─── Questions ────────────────────────────────────────────────────────────
 
   private async validateQuestionsAccess(user: RequestUser, exam: Exam, questionIds: number[], section: 'A' | 'B') {
-    const expectedType = section === 'A' ? QuestionType.MCQ : QuestionType.PQ;
     const questions = await this.questionRepo.findBy({ id: In(questionIds) });
     if (questions.length !== questionIds.length)
       throw new NotFoundException('One or more questions not found');
     for (const q of questions) {
-      if (q.type !== expectedType)
-        throw new BadRequestException(`Section ${section} only accepts ${expectedType} questions`);
+      if (section === 'B' && q.type !== QuestionType.PQ) {
+        throw new BadRequestException(`Section B only accepts programming/coding questions`);
+      }
+      if (section === 'A' && q.type === QuestionType.PQ) {
+        throw new BadRequestException(`Section A accepts all non-coding questions (MCQ, FIB, Matching, etc.)`);
+      }
       if (user.role !== UserRole.SUPERADMIN && q.collegeId && q.collegeId !== user.collegeId)
         throw new ForbiddenException(`Question #${q.id} belongs to a different college`);
     }
@@ -268,8 +273,6 @@ export class ExamService implements OnModuleInit, OnModuleDestroy {
     this.assertAdmin(user);
     const exam = await this.getExamOrFail(id);
     await this.assertOwns(user, exam);
-    if (exam.status !== ExamStatus.DRAFT)
-      throw new ConflictException('Can only modify questions on DRAFT exams');
 
     const qIds = dto.questions.map(q => q.questionId);
     await this.validateQuestionsAccess(user, exam, qIds, section);
@@ -292,6 +295,9 @@ export class ExamService implements OnModuleInit, OnModuleDestroy {
       rows.push(this.eqRepo.create({
         examId: id, questionId: d.questionId, section,
         marks: d.marks, negativeMarks: d.negativeMarks ?? 0,
+        hintsEnabled: d.hintsEnabled ?? true,
+        hintPenaltyType: d.hintPenaltyType ?? 'MARKS',
+        hintPenalties: d.hintPenalties ?? undefined,
         sortOrder: (maxOrder as number) + i + 1,
       }));
     }
@@ -306,8 +312,6 @@ export class ExamService implements OnModuleInit, OnModuleDestroy {
     this.assertAdmin(user);
     const exam = await this.getExamOrFail(examId);
     await this.assertOwns(user, exam);
-    if (exam.status !== ExamStatus.DRAFT)
-      throw new ConflictException('Can only modify questions on DRAFT exams');
     await this.eqRepo.delete({ examId, questionId: qId });
     await this.recalcTotalMarks(examId);
     return { message: 'Question removed' };
@@ -317,7 +321,6 @@ export class ExamService implements OnModuleInit, OnModuleDestroy {
     this.assertAdmin(user);
     const exam = await this.getExamOrFail(examId);
     await this.assertOwns(user, exam);
-    if (exam.status !== ExamStatus.DRAFT) throw new ConflictException('Exam must be DRAFT');
     for (let i = 0; i < orderedIds.length; i++) {
       await this.eqRepo.update({ examId, questionId: orderedIds[i] }, { sortOrder: i });
     }
@@ -431,40 +434,42 @@ export class ExamService implements OnModuleInit, OnModuleDestroy {
       .where('u.role = :role', { role: UserRole.STUDENT })
       .andWhere('u.collegeId IN (:...cids)', { cids: dto.collegeIds });
 
-    const branches = dto.branches?.length ? dto.branches : exam.targetBranches;
-    if (branches && branches.length > 0) {
-      qb.andWhere('u.branch IN (:...branches)', { branches });
+    if (dto.branches && dto.branches.length > 0) {
+      const lowerBranches = dto.branches.map(b => b.trim().toLowerCase());
+      qb.andWhere('LOWER(TRIM(u.branch)) IN (:...lowerBranches)', { lowerBranches });
     }
 
-    const batches = dto.batches?.length ? dto.batches : exam.targetBatches;
-    if (batches && batches.length > 0) {
-      qb.andWhere('(CAST(u.pursuingYear AS text) IN (:...batches) OR u.course IN (:...batches))', { batches });
+    if (dto.batches && dto.batches.length > 0) {
+      const batches = dto.batches.map(b => b.trim());
+      const lowerBatches = batches.map(b => b.toLowerCase());
+      qb.andWhere('(CAST(u.pursuingYear AS text) IN (:...batches) OR LOWER(TRIM(u.course)) IN (:...lowerBatches))', { batches, lowerBatches });
     }
 
     const students = await qb.getMany();
 
-    if (students.length === 0) {
-      return { assigned: 0, message: 'No registered students found in selected institutions matching criteria' };
+    if (dto.collegeIds.length === 1 && !exam.collegeId) {
+      exam.collegeId = dto.collegeIds[0];
+      await this.examRepo.save(exam);
     }
 
-    const rows = students.map(s => this.assignRepo.create({ examId: id, studentId: s.id }));
-    await this.assignRepo
-      .createQueryBuilder()
-      .insert()
-      .into(ExamAssignment)
-      .values(rows)
-      .orIgnore()
-      .execute();
+    if (students.length > 0) {
+      const rows = students.map(s => this.assignRepo.create({ examId: id, studentId: s.id }));
+      await this.assignRepo
+        .createQueryBuilder()
+        .insert()
+        .into(ExamAssignment)
+        .values(rows)
+        .orIgnore()
+        .execute();
+    }
 
-    return { assigned: rows.length, collegeCount: dto.collegeIds.length, totalStudents: students.length };
+    return { assigned: students.length, collegeCount: dto.collegeIds.length, totalStudents: students.length };
   }
 
   async updateQuestionMarks(user: RequestUser, examId: number, questionId: number, dto: UpdateQuestionMarksDto) {
     this.assertAdmin(user);
     const exam = await this.getExamOrFail(examId);
     await this.assertOwns(user, exam);
-    if (exam.status !== ExamStatus.DRAFT)
-      throw new ConflictException('Can only modify marks on DRAFT exams');
 
     const eq = await this.eqRepo.findOne({ where: { examId, questionId } });
     if (!eq) throw new NotFoundException('Question not assigned to this exam');
@@ -473,6 +478,22 @@ export class ExamService implements OnModuleInit, OnModuleDestroy {
     if (dto.negativeMarks !== undefined) eq.negativeMarks = dto.negativeMarks;
     await this.eqRepo.save(eq);
     await this.recalcTotalMarks(examId);
+
+    return eq;
+  }
+
+  async updateQuestionHintSettings(user: RequestUser, examId: number, questionId: number, dto: UpdateQuestionHintSettingsDto) {
+    this.assertAdmin(user);
+    const exam = await this.getExamOrFail(examId);
+    await this.assertOwns(user, exam);
+
+    const eq = await this.eqRepo.findOne({ where: { examId, questionId } });
+    if (!eq) throw new NotFoundException('Question not assigned to this exam');
+
+    if (dto.hintsEnabled !== undefined) eq.hintsEnabled = dto.hintsEnabled;
+    if (dto.hintPenaltyType !== undefined) eq.hintPenaltyType = dto.hintPenaltyType;
+    if (dto.hintPenalties !== undefined) eq.hintPenalties = dto.hintPenalties;
+    await this.eqRepo.save(eq);
 
     return eq;
   }
@@ -573,12 +594,13 @@ export class ExamService implements OnModuleInit, OnModuleDestroy {
     return this.db.query(`
       SELECT c.id, c.name, c.type, c.city, c.state,
         COUNT(DISTINCT ea.student_id)::int AS "assignedStudentCount",
-        MIN(ea.assigned_at) AS "assignedAt"
-      FROM exam_assignments ea
-      JOIN users u ON u.id = ea.student_id
-      JOIN colleges c ON c.id = u.college_id
-      WHERE ea.exam_id = $1
-      GROUP BY c.id, c.name, c.type, c.city, c.state
+        COALESCE(MIN(ea.assigned_at), e.created_at) AS "assignedAt"
+      FROM colleges c
+      LEFT JOIN users u ON u.college_id = c.id
+      LEFT JOIN exam_assignments ea ON ea.student_id = u.id AND ea.exam_id = $1
+      LEFT JOIN exams e ON e.id = $1
+      WHERE ea.exam_id = $1 OR c.id = e.college_id
+      GROUP BY c.id, c.name, c.type, c.city, c.state, e.created_at
       ORDER BY c.name ASC
     `, [id]);
   }

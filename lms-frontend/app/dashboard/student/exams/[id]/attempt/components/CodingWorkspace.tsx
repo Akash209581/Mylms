@@ -34,6 +34,14 @@ interface Question {
   allowedLanguages?: string[]
   codeSnippet?: string
   sampleTestCases?: SampleTestCase[]
+  hints?: {
+    totalHints: number
+    hintsEnabled: boolean
+    hintPenaltyType: 'MARKS' | 'TIME' | 'NONE'
+    hintPenalties: number[]
+    unlockedCount: number
+    unlockedHints: { index: number; text: string }[]
+  }
 }
 
 interface CodingWorkspaceProps {
@@ -51,6 +59,7 @@ interface CodingWorkspaceProps {
   onSubmitCode: () => void
   isMarkedForReview: boolean
   onToggleReview: () => void
+  onUnlockHint?: (questionId: number, hintIndex: number) => Promise<any>
 }
 
 const LANGUAGE_LABELS: Record<string, string> = {
@@ -84,11 +93,14 @@ export default function CodingWorkspace({
   onSubmitCode,
   isMarkedForReview,
   onToggleReview,
+  onUnlockHint,
 }: CodingWorkspaceProps) {
-  const [activeLeftTab, setActiveLeftTab] = useState<'problem' | 'constraints'>('problem')
+  const [activeLeftTab, setActiveLeftTab] = useState<'problem' | 'constraints' | 'hints'>('problem')
   const [consoleHeight, setConsoleHeight] = useState(260)
   const [leftWidth, setLeftWidth] = useState(480)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [confirmUnlockHintIndex, setConfirmUnlockHintIndex] = useState<number | null>(null)
+  const [unlockingHint, setUnlockingHint] = useState(false)
   const dragH = useRef(false)
   const dragV = useRef(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -182,6 +194,21 @@ export default function CodingWorkspace({
                 }`}
               >
                 Constraints
+              </button>
+            )}
+            {question.hints && question.hints.hintsEnabled && question.hints.totalHints > 0 && (
+              <button
+                onClick={() => setActiveLeftTab('hints')}
+                className={`px-3 py-1 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                  activeLeftTab === 'hints'
+                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm'
+                    : 'text-[var(--text-muted)] hover:text-amber-300'
+                }`}
+              >
+                <span>💡 Hints</span>
+                <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-500/25 font-mono font-bold text-amber-300">
+                  {question.hints.unlockedCount}/{question.hints.totalHints}
+                </span>
               </button>
             )}
           </div>
@@ -301,13 +328,146 @@ export default function CodingWorkspace({
           )}
 
           {/* Constraints */}
-          {question.constraints && (
+          {question.constraints && activeLeftTab !== 'hints' && (
             <div className="space-y-2 pt-4 border-t border-[var(--border)]">
               <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
                 Constraints
               </h3>
               <div className="p-3 bg-[var(--bg-raised)] rounded-xl border border-[var(--border)] text-xs font-mono text-[var(--text-secondary)] whitespace-pre-wrap">
                 {question.constraints}
+              </div>
+            </div>
+          )}
+
+          {/* Sequential Hints Panel */}
+          {activeLeftTab === 'hints' && question.hints && (
+            <div className="space-y-4 pt-4 border-t border-[var(--border)] animate-in fade-in duration-200">
+              {/* Header explanation banner */}
+              <div className="p-4 rounded-xl bg-gradient-to-r from-amber-500/10 via-yellow-500/5 to-transparent border border-amber-500/25">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-base">💡</span>
+                  <h3 className="text-sm font-bold text-amber-400">Sequential Problem Hints</h3>
+                </div>
+                <div className="text-xs text-[var(--text-secondary)] leading-relaxed space-y-1">
+                  <p>Hints must be unlocked sequentially (Hint 1 → Hint 2 → ...).</p>
+                  {question.hints.hintPenaltyType === 'MARKS' && (
+                    <p className="font-semibold text-rose-400">
+                      ⚠️ Note: Unlocking hints will deduct marks from your final score for this problem.
+                    </p>
+                  )}
+                  {question.hints.hintPenaltyType === 'TIME' && (
+                    <p className="font-semibold text-indigo-300">
+                      ⏳ Note: Unlocking hints will deduct minutes immediately from your total exam timer.
+                    </p>
+                  )}
+                  {question.hints.hintPenaltyType === 'NONE' && (
+                    <p className="font-semibold text-emerald-400">
+                      ✨ Unlocking hints is free for this problem.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Hints List */}
+              <div className="space-y-3">
+                {Array.from({ length: question.hints.totalHints }).map((_, idx) => {
+                  const unlockedObj = question.hints?.unlockedHints?.find(h => h.index === idx)
+                  const isUnlocked = Boolean(unlockedObj)
+                  const isNext = idx === (question.hints?.unlockedCount || 0)
+                  const penalty = question.hints?.hintPenalties?.[idx] !== undefined
+                    ? question.hints.hintPenalties[idx]
+                    : (question.hints?.hintPenaltyType === 'TIME' ? 2 : 1)
+
+                  if (isUnlocked) {
+                    return (
+                      <div
+                        key={idx}
+                        className="p-4 rounded-xl bg-[var(--bg-raised)] border border-amber-500/30 space-y-2 shadow-sm animate-in fade-in"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 text-xs font-bold uppercase">
+                              Hint {idx + 1}
+                            </span>
+                            <span className="text-[11px] text-emerald-400 font-semibold flex items-center gap-1">
+                              ✓ Unlocked
+                            </span>
+                          </div>
+                          {question.hints?.hintPenaltyType === 'MARKS' && penalty > 0 && (
+                            <span className="text-[11px] font-mono text-rose-400 font-bold">
+                              -{penalty} Marks
+                            </span>
+                          )}
+                          {question.hints?.hintPenaltyType === 'TIME' && penalty > 0 && (
+                            <span className="text-[11px] font-mono text-indigo-300 font-bold">
+                              -{penalty} Mins
+                            </span>
+                          )}
+                        </div>
+                        <div className="pt-1 text-sm text-[var(--text-primary)] leading-relaxed">
+                          <MarkdownRenderer content={unlockedObj?.text || ''} />
+                        </div>
+                      </div>
+                    )
+                  }
+
+                  if (isNext) {
+                    return (
+                      <div
+                        key={idx}
+                        className="p-4 rounded-xl bg-amber-500/5 border-2 border-dashed border-amber-500/40 space-y-3"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 text-xs font-bold uppercase">
+                            Hint {idx + 1} (Available to Unlock)
+                          </span>
+                          {question.hints?.hintPenaltyType === 'MARKS' && (
+                            <span className="text-xs font-bold text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20">
+                              -{penalty} Marks Penalty
+                            </span>
+                          )}
+                          {question.hints?.hintPenaltyType === 'TIME' && (
+                            <span className="text-xs font-bold text-indigo-300 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
+                              -{penalty} Mins Exam Timer Penalty
+                            </span>
+                          )}
+                          {question.hints?.hintPenaltyType === 'NONE' && (
+                            <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                              Free Hint
+                            </span>
+                          )}
+                        </div>
+
+                        <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+                          Click below to reveal this hint. {question.hints?.hintPenaltyType === 'MARKS' ? `This will deduct ${penalty} mark(s) from this question's score.` : question.hints?.hintPenaltyType === 'TIME' ? `This will deduct ${penalty} minute(s) from your exam timer immediately.` : 'No penalties will be applied.'}
+                        </p>
+
+                        <button
+                          type="button"
+                          onClick={() => setConfirmUnlockHintIndex(idx)}
+                          className="w-full py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-[0.99] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition-all"
+                        >
+                          <span>🔓</span> Reveal Hint {idx + 1}
+                        </button>
+                      </div>
+                    )
+                  }
+
+                  return (
+                    <div
+                      key={idx}
+                      className="p-3.5 rounded-xl bg-[var(--bg-raised)]/40 border border-[var(--border)] opacity-60 flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-400 text-sm">🔒</span>
+                        <span className="text-xs font-bold text-gray-400">Hint {idx + 1}</span>
+                      </div>
+                      <span className="text-[11px] text-gray-500 font-medium">
+                        Unlock Hint {idx} first
+                      </span>
+                    </div>
+                  )
+                })}
               </div>
             </div>
           )}
@@ -431,6 +591,87 @@ export default function CodingWorkspace({
           />
         </div>
       </div>
+
+      {/* Confirmation Modal to Reveal Hint */}
+      {confirmUnlockHintIndex !== null && question.hints && (() => {
+        const hintIdx = confirmUnlockHintIndex
+        const penalty = question.hints.hintPenalties?.[hintIdx] !== undefined
+          ? question.hints.hintPenalties[hintIdx]
+          : (question.hints.hintPenaltyType === 'TIME' ? 2 : 1)
+
+        const handleConfirm = async () => {
+          if (!onUnlockHint) return
+          setUnlockingHint(true)
+          try {
+            await onUnlockHint(question.id, hintIdx)
+            setConfirmUnlockHintIndex(null)
+          } catch {
+            // error handled in parent
+          } finally {
+            setUnlockingHint(false)
+          }
+        }
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in">
+            <div className="bg-[var(--bg-surface)] border border-[var(--border)] max-w-md w-full rounded-2xl p-6 shadow-2xl space-y-4">
+              <div className="flex items-center gap-3 pb-2 border-b border-[var(--border)]">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-xl font-bold">
+                  💡
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-[var(--text-primary)]">
+                    Reveal Hint {hintIdx + 1}?
+                  </h3>
+                  <p className="text-xs text-[var(--text-muted)]">
+                    Sequential hint for {question.questionText?.trim() || `Problem ${questionIndex + 1}`}
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 space-y-2 text-xs">
+                {question.hints.hintPenaltyType === 'MARKS' && (
+                  <p className="text-rose-400 font-semibold leading-relaxed">
+                    ⚠️ Revealing this hint will permanently deduct <strong className="underline font-bold text-rose-300">{penalty} Mark(s)</strong> from your score on this question.
+                  </p>
+                )}
+                {question.hints.hintPenaltyType === 'TIME' && (
+                  <p className="text-indigo-300 font-semibold leading-relaxed">
+                    ⏳ Revealing this hint will immediately deduct <strong className="underline font-bold text-white">{penalty} Minute(s)</strong> from your total exam timer.
+                  </p>
+                )}
+                {question.hints.hintPenaltyType === 'NONE' && (
+                  <p className="text-emerald-400 font-semibold leading-relaxed">
+                    ✨ This hint is free. No marks or time will be deducted.
+                  </p>
+                )}
+                <p className="text-[var(--text-muted)] text-[11px]">
+                  This action cannot be undone once confirmed.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-2">
+                <button
+                  type="button"
+                  disabled={unlockingHint}
+                  onClick={() => setConfirmUnlockHintIndex(null)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold bg-[var(--bg-raised)] hover:bg-[var(--bg-surface)] border border-[var(--border)] text-[var(--text-secondary)] transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={unlockingHint}
+                  onClick={handleConfirm}
+                  className="px-5 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white shadow-md transition-all flex items-center gap-1.5"
+                >
+                  {unlockingHint ? 'Unlocking...' : `Confirm & Reveal Hint`}
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }

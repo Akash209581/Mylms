@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
 import { api } from '@/lib/api'
+import { toLocalDatetimeInput, fromLocalDatetimeInput } from '@/lib/date-utils'
 
 export default function ExamAssignPage() {
   const router = useRouter()
@@ -75,8 +76,8 @@ export default function ExamAssignPage() {
       setEditForm({
         title: e.title || '',
         durationMinutes: e.durationMinutes || 60,
-        startAt: e.startAt ? new Date(e.startAt).toISOString().slice(0, 16) : '',
-        endAt: e.endAt ? new Date(e.endAt).toISOString().slice(0, 16) : '',
+        startAt: toLocalDatetimeInput(e.startAt),
+        endAt: toLocalDatetimeInput(e.endAt),
         passingMarks: e.passingMarks || 0,
         status: e.status || 'DRAFT',
       })
@@ -148,6 +149,7 @@ export default function ExamAssignPage() {
       await api.post(`/exams/${examId}/assign`, { studentIds: Array.from(selectedStudents) })
       setSelectedStudents(new Set())
       await fetchData()
+      alert('Students assigned!')
     } catch (err: any) {
       alert(err?.response?.data?.message || 'Failed to assign students')
     } finally {
@@ -156,7 +158,6 @@ export default function ExamAssignPage() {
   }
 
   const unassignStudent = async (studentId: number) => {
-    if (!confirm('Remove this student from the exam?')) return
     try {
       await api.delete(`/exams/${examId}/assign/${studentId}`)
       await fetchData()
@@ -174,8 +175,8 @@ export default function ExamAssignPage() {
       await api.put(`/exams/${examId}`, {
         title: editForm.title,
         durationMinutes: Number(editForm.durationMinutes),
-        startAt: editForm.startAt ? new Date(editForm.startAt).toISOString() : null,
-        endAt: editForm.endAt ? new Date(editForm.endAt).toISOString() : null,
+        startAt: fromLocalDatetimeInput(editForm.startAt),
+        endAt: fromLocalDatetimeInput(editForm.endAt),
         passingMarks: Number(editForm.passingMarks),
         status: editForm.status,
       })

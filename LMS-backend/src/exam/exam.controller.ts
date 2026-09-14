@@ -14,7 +14,7 @@ import { ExamExcelService } from './exam-excel.service';
 import {
   CreateExamDto, UpdateExamDto, AddManyExamQuestionsDto,
   AssignStudentsDto, AssignCollegesDto, ImportMcqConfirmDto,
-  CloneExamDto, UpdateQuestionMarksDto,
+  CloneExamDto, UpdateQuestionMarksDto, UpdateQuestionHintSettingsDto,
 } from './exam.dto';
 
 @Controller('exams')
@@ -101,6 +101,16 @@ export class ExamController {
     @Body() dto: UpdateQuestionMarksDto,
   ) {
     return this.service.updateQuestionMarks(req.user, id, questionId, dto);
+  }
+
+  @Put(':id/questions/:questionId/hint-settings')
+  updateQuestionHintSettings(
+    @Request() req,
+    @Param('id', ParseIntPipe) id: number,
+    @Param('questionId', ParseIntPipe) questionId: number,
+    @Body() dto: UpdateQuestionHintSettingsDto,
+  ) {
+    return this.service.updateQuestionHintSettings(req.user, id, questionId, dto);
   }
 
   @Delete(':id/questions/:questionId')

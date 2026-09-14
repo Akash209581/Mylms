@@ -1,5 +1,7 @@
 'use client'
 import React, { useRef, useState } from 'react'
+import { API_URL } from '@/lib/api'
+import { apiFetch } from '@/lib/apiFetch'
 
 interface OptionFieldProps {
   index: number
@@ -8,10 +10,20 @@ interface OptionFieldProps {
   disabled?: boolean
 }
 
+export function resolveImageUrl(val: string): string {
+  if (!val) return ''
+  const trimmed = val.trim()
+  if (trimmed.startsWith('/uploads/')) {
+    return `${API_URL}${trimmed}`
+  }
+  return trimmed
+}
+
 export function isImageValue(val: string): boolean {
   if (!val) return false
   const trimmed = val.trim()
   return (
+    trimmed.startsWith('/uploads/') ||
     /^(https?:\/\/|data:image\/).+(\.(png|jpg|jpeg|gif|webp|svg)|;base64)/i.test(trimmed) ||
     /\.(png|jpg|jpeg|gif|webp|svg)(\?.*)?$/i.test(trimmed) ||
     /^!\[.*?\]\(.*?\)$/.test(trimmed)
@@ -22,26 +34,55 @@ export function extractImageUrl(val: string): string {
   if (!val) return ''
   const trimmed = val.trim()
   const match = trimmed.match(/^!\[.*?\]\((.*?)\)$/)
-  if (match && match[1]) return match[1]
-  return trimmed
+  const extracted = match && match[1] ? match[1] : trimmed
+  return resolveImageUrl(extracted)
 }
 
 export default function OptionField({ index, value, onChange, disabled }: OptionFieldProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [showUrlInput, setShowUrlInput] = useState(false)
   const [urlDraft, setUrlDraft] = useState('')
+  const [uploading, setUploading] = useState(false)
   const letter = String.fromCharCode(65 + index)
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = (evt) => {
-      const base64 = evt.target?.result as string
-      onChange(base64)
+    setUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await apiFetch(`${API_URL}/question-bank/upload-image`, {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      })
+      if (res.ok) {
+        const data = await res.json()
+        if (data.url) {
+          onChange(data.url)
+          return
+        }
+      }
+      // Fallback to local base64 if server upload fails
+      const reader = new FileReader()
+      reader.onload = (evt) => {
+        const base64 = evt.target?.result as string
+        onChange(base64)
+      }
+      reader.readAsDataURL(file)
+    } catch (err) {
+      console.error('Image upload failed, fallback to base64', err)
+      const reader = new FileReader()
+      reader.onload = (evt) => {
+        const base64 = evt.target?.result as string
+        onChange(base64)
+      }
+      reader.readAsDataURL(file)
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
     }
-    reader.readAsDataURL(file)
-    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   const handleSetUrl = () => {

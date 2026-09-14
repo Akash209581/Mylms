@@ -57,6 +57,14 @@ export class ExamAttempt {
   @Column({ name: 'marked_review', type: 'jsonb', default: [] })
   markedReview: number[];
 
+  /** { questionId: [hintIndex0, hintIndex1, ...] } */
+  @Column({ name: 'unlocked_hints', type: 'jsonb', default: {} })
+  unlockedHints: Record<string, number[]>;
+
+  /** Cumulative time in seconds reduced from exam timer due to hint reveals */
+  @Column({ name: 'time_deducted_seconds', type: 'int', default: 0 })
+  timeDeductedSeconds: number;
+
   @Column({ name: 'tab_switch_count', type: 'int', default: 0 })
   tabSwitchCount: number;
 

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
 import { api } from '@/lib/api'
+import { toLocalDatetimeInput, fromLocalDatetimeInput } from '@/lib/date-utils'
 
 const statusColors: Record<string, string> = {
   DRAFT:     'bg-slate-500/20 text-slate-400 border-slate-500/30',
@@ -53,6 +54,13 @@ export default function ExamListPage() {
   const [cloning, setCloning] = useState(false)
   const [cloneMsg, setCloneMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
+  // Two-Step Delete Exam Modal State
+  const [deletingExam, setDeletingExam] = useState<any | null>(null)
+  const [deleteStep, setDeleteStep] = useState<1 | 2>(1)
+  const [deleteInputText, setDeleteInputText] = useState('')
+  const [deletingLoading, setDeletingLoading] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+
   useEffect(() => {
     const stored = localStorage.getItem('user')
     if (!stored) { router.push('/login'); return }
@@ -89,8 +97,8 @@ export default function ExamListPage() {
     setEditForm({
       title: exam.title || '',
       durationMinutes: exam.durationMinutes || 60,
-      startAt: exam.startAt ? new Date(exam.startAt).toISOString().slice(0, 16) : '',
-      endAt: exam.endAt ? new Date(exam.endAt).toISOString().slice(0, 16) : '',
+      startAt: toLocalDatetimeInput(exam.startAt),
+      endAt: toLocalDatetimeInput(exam.endAt),
       passingMarks: exam.passingMarks || 0,
       status: exam.status || 'DRAFT',
       timingMode: exam.timingMode || 'TOTAL',
@@ -114,8 +122,8 @@ export default function ExamListPage() {
       await api.put(`/exams/${editingExam.id}`, {
         title: editForm.title,
         durationMinutes: Number(editForm.durationMinutes),
-        startAt: editForm.startAt ? new Date(editForm.startAt).toISOString() : null,
-        endAt: editForm.endAt ? new Date(editForm.endAt).toISOString() : null,
+        startAt: fromLocalDatetimeInput(editForm.startAt),
+        endAt: fromLocalDatetimeInput(editForm.endAt),
         passingMarks: Number(editForm.passingMarks),
         status: editForm.status,
         timingMode: editForm.timingMode,
@@ -141,8 +149,8 @@ export default function ExamListPage() {
     setCloneForm({
       title: `${exam.title} (Copy)`,
       collegeId: exam.collegeId ? String(exam.collegeId) : '',
-      startAt: exam.startAt ? new Date(exam.startAt).toISOString().slice(0, 16) : '',
-      endAt: exam.endAt ? new Date(exam.endAt).toISOString().slice(0, 16) : '',
+      startAt: toLocalDatetimeInput(exam.startAt),
+      endAt: toLocalDatetimeInput(exam.endAt),
       targetBranches: Array.isArray(exam.targetBranches) ? exam.targetBranches.join(', ') : '',
       targetBatches: Array.isArray(exam.targetBatches) ? exam.targetBatches.join(', ') : '',
     })
@@ -160,8 +168,8 @@ export default function ExamListPage() {
       const payload = {
         title: cloneForm.title.trim(),
         collegeId: cloneForm.collegeId ? Number(cloneForm.collegeId) : undefined,
-        startAt: cloneForm.startAt ? new Date(cloneForm.startAt).toISOString() : undefined,
-        endAt: cloneForm.endAt ? new Date(cloneForm.endAt).toISOString() : undefined,
+        startAt: fromLocalDatetimeInput(cloneForm.startAt),
+        endAt: fromLocalDatetimeInput(cloneForm.endAt),
         targetBranches: branches,
         targetBatches: batches,
       }
@@ -175,6 +183,28 @@ export default function ExamListPage() {
       setCloneMsg({ type: 'error', text: err?.response?.data?.message || 'Failed to clone exam' })
     } finally {
       setCloning(false)
+    }
+  }
+
+  const openDeleteModal = (exam: any) => {
+    setDeletingExam(exam)
+    setDeleteStep(1)
+    setDeleteInputText('')
+    setDeleteError(null)
+  }
+
+  const handleDeleteExam = async () => {
+    if (!deletingExam || deleteInputText.trim().toUpperCase() !== 'DELETE') return
+    setDeletingLoading(true)
+    setDeleteError(null)
+    try {
+      await api.delete(`/exams/${deletingExam.id}`)
+      await loadExams()
+      setDeletingExam(null)
+    } catch (err: any) {
+      setDeleteError(err?.response?.data?.message || 'Failed to delete exam')
+    } finally {
+      setDeletingLoading(false)
     }
   }
 
@@ -322,6 +352,14 @@ export default function ExamListPage() {
                             className="text-xs font-semibold text-[var(--accent-text)] hover:underline"
                           >
                             Analytics
+                          </button>
+                          <span className="role-text-muted">|</span>
+                          <button
+                            onClick={() => openDeleteModal(exam)}
+                            className="text-xs font-semibold text-rose-400 hover:text-rose-300 hover:underline flex items-center gap-1"
+                            title="Delete exam with two-step confirmation"
+                          >
+                            🗑️ Delete
                           </button>
                         </div>
                       </td>
@@ -639,6 +677,109 @@ export default function ExamListPage() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* TWO-STEP DELETE CONFIRMATION MODAL */}
+        {deletingExam && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+            <div className="glass-card max-w-md w-full p-6 relative border-rose-500/30 animate-in fade-in zoom-in-95 duration-200">
+              <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center font-bold">
+                    ⚠️
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-rose-400">Delete Assessment</h2>
+                    <p className="text-xs role-text-muted">Step {deleteStep} of 2</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setDeletingExam(null)}
+                  className="w-8 h-8 rounded-full bg-[var(--bg-raised)] flex items-center justify-center text-gray-400 hover:text-white"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {deleteError && (
+                <div className="p-3 rounded-xl text-xs mb-4 bg-rose-500/10 text-rose-400 border border-rose-500/30">
+                  {deleteError}
+                </div>
+              )}
+
+              {deleteStep === 1 ? (
+                <div className="space-y-4">
+                  <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-xs text-rose-300">
+                    <p className="font-semibold mb-1">Are you sure you want to delete this test?</p>
+                    <p className="opacity-90">
+                      Exam: <span className="font-bold text-white">"{deletingExam.title}"</span> (#{deletingExam.id})
+                    </p>
+                    <p className="opacity-90 mt-0.5">
+                      Status: <span className="font-semibold uppercase text-amber-300">{deletingExam.status}</span>
+                    </p>
+                  </div>
+
+                  <div className="text-xs role-text-muted space-y-1 bg-[var(--bg-raised)] p-3 rounded-xl border border-[var(--border)]">
+                    <p className="font-semibold role-text-primary mb-1">⚠️ The following data will be permanently deleted:</p>
+                    <p>• All linked test questions & configurations</p>
+                    <p>• Assigned college & student assignments</p>
+                    <p>• Student submissions, results, and proctoring logs</p>
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-3 border-t" style={{ borderColor: 'var(--border)' }}>
+                    <button
+                      type="button"
+                      onClick={() => setDeletingExam(null)}
+                      className="btn-secondary text-sm"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeleteStep(2)}
+                      className="px-4 py-2 rounded-xl text-sm font-bold bg-rose-600 hover:bg-rose-500 text-white transition-all shadow-lg shadow-rose-600/20 flex items-center gap-1.5"
+                    >
+                      Proceed to Step 2 →
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-xs text-rose-300">
+                    To confirm deletion of <strong className="text-white">"{deletingExam.title}"</strong>, type <span className="font-mono font-bold bg-rose-500/20 px-1.5 py-0.5 rounded text-rose-300">DELETE</span> below:
+                  </p>
+
+                  <input
+                    type="text"
+                    value={deleteInputText}
+                    onChange={e => setDeleteInputText(e.target.value)}
+                    placeholder="Type DELETE to confirm"
+                    className="input-field w-full font-mono text-center tracking-wider font-bold border-rose-500/40 focus:border-rose-500"
+                    autoFocus
+                  />
+
+                  <div className="flex justify-end gap-3 pt-3 border-t" style={{ borderColor: 'var(--border)' }}>
+                    <button
+                      type="button"
+                      onClick={() => setDeleteStep(1)}
+                      className="btn-secondary text-sm"
+                      disabled={deletingLoading}
+                    >
+                      ← Back
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDeleteExam}
+                      disabled={deleteInputText.trim().toUpperCase() !== 'DELETE' || deletingLoading}
+                      className="px-4 py-2 rounded-xl text-sm font-bold bg-rose-600 hover:bg-rose-500 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-all shadow-lg shadow-rose-600/20 flex items-center gap-1.5"
+                    >
+                      {deletingLoading ? 'Deleting...' : '🗑️ Confirm & Delete Permanently'}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

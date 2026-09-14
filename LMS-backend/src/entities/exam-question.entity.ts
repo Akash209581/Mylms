@@ -33,6 +33,17 @@ export class ExamQuestion {
   @Column({ name: 'negative_marks', type: 'decimal', precision: 7, scale: 2, default: 0 })
   negativeMarks: number;
 
+  @Column({ name: 'hints_enabled', default: true })
+  hintsEnabled: boolean;
+
+  /** 'MARKS' (deducts marks per hint), 'TIME' (deducts time from exam), 'NONE' (free hints) */
+  @Column({ name: 'hint_penalty_type', type: 'varchar', length: 16, default: 'MARKS' })
+  hintPenaltyType: 'MARKS' | 'TIME' | 'NONE';
+
+  /** Array of penalty amounts per hint index [hint0Penalty, hint1Penalty, ...] */
+  @Column({ name: 'hint_penalties', type: 'jsonb', nullable: true })
+  hintPenalties?: number[] | null;
+
   @Column({ name: 'sort_order', default: 0 })
   sortOrder: number;
 }

@@ -43,8 +43,9 @@ function CreateQuestionForm() {
         problemStatement: '', inputFormat: '', outputFormat: '', constraints: '',
         testCases: [{ input: '', output: '', explanation: '', isHidden: false }],
         codeSnippet: '', expectedOutput: '',
-        allowedLanguages: ['Python'],
+        allowedLanguages: [],
         extraRightMatches: [''],
+        hints: [''],
         explanation: '',
         correctCode: '',
         description: '',
@@ -59,7 +60,7 @@ function CreateQuestionForm() {
     const [saving, setSaving] = useState(false)
     const [showPreview, setShowPreview] = useState(false)
     const [error, setError] = useState('')
-    const [pqTab, setPqTab] = useState<'explanation' | 'problem' | 'testcases' | 'predefined'>('explanation')
+    const [pqTab, setPqTab] = useState<'explanation' | 'problem' | 'testcases' | 'predefined' | 'hints'>('explanation')
     const [predefinedCodes, setPredefinedCodes] = useState<Record<string, string>>({ ...ADMIN_STARTERS })
 
     const problemStatementRef = useRef<HTMLTextAreaElement>(null)
@@ -157,7 +158,10 @@ function CreateQuestionForm() {
         try {
             const submitData = {
                 ...form,
-                topicNames: Array.isArray(form.topicNames) ? form.topicNames.join(', ') : form.topicNames
+                topicNames: Array.isArray(form.topicNames) ? form.topicNames.join(', ') : form.topicNames,
+                allowedLanguages: form.type === 'PQ' ? (form.allowedLanguages?.length ? form.allowedLanguages : ['Python']) : undefined,
+                programmingLanguage: form.programmingLanguage || undefined,
+                hints: Array.isArray(form.hints) ? form.hints.map((h: string) => h.trim()).filter(Boolean) : [],
             }
             if (form.type === 'PQ') {
                 submitData.codeSnippet = JSON.stringify(predefinedCodes);
@@ -207,7 +211,14 @@ function CreateQuestionForm() {
                         <h2 className="text-lg font-semibold role-text-primary mb-6">Step 1: Choose Question Type</h2>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                             {QUESTION_TYPES.map(t => (
-                                <div key={t.key} onClick={() => { set('type', t.key); setStep(2) }}
+                                <div key={t.key} onClick={() => {
+                                    setForm((p: any) => ({
+                                        ...p,
+                                        type: t.key,
+                                        allowedLanguages: t.key === 'PQ' ? (p.allowedLanguages?.length ? p.allowedLanguages : ['Python']) : []
+                                    }))
+                                    setStep(2)
+                                }}
                                     className="p-5 rounded-2xl cursor-pointer border transition-all duration-200 hover:scale-105 hover:border-primary-500"
                                     style={{ background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }}>
                                     <div className="text-3xl mb-3">{t.icon}</div>
@@ -331,7 +342,7 @@ function CreateQuestionForm() {
                                 <div>
                                     <label className="text-gray-400 text-sm mb-2 block">Programming Language</label>
                                     <select value={form.programmingLanguage} onChange={e => set('programmingLanguage', e.target.value)} className="input-field">
-                                        <option value="">Any</option>
+                                        <option value="">None / Not Specified</option>
                                         {LANGUAGES.map(l => <option key={l}>{l}</option>)}
                                     </select>
                                 </div>
@@ -667,6 +678,18 @@ function CreateQuestionForm() {
                                             <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-400 rounded-full" />
                                         )}
                                     </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setPqTab('hints')}
+                                        className={`pb-2 text-sm font-semibold transition-all relative ${
+                                            pqTab === 'hints' ? 'text-primary-400' : 'text-gray-400 hover:text-white'
+                                        }`}
+                                    >
+                                        💡 Hints {form.hints?.filter((h: string) => h?.trim())?.length ? `(${form.hints.filter((h: string) => h?.trim()).length})` : ''}
+                                        {pqTab === 'hints' && (
+                                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-400 rounded-full" />
+                                        )}
+                                    </button>
                                 </div>
 
                                 {pqTab === 'explanation' && (
@@ -845,6 +868,58 @@ function CreateQuestionForm() {
                                                 ))}
                                             </div>
                                         )}
+                                    </div>
+                                )}
+
+                                {pqTab === 'hints' && (
+                                    <div className="space-y-4 animate-in fade-in duration-200">
+                                        <div>
+                                            <h4 className="text-white text-sm font-semibold">Sequential Problem Hints</h4>
+                                            <p className="text-xs text-gray-400 mt-1">
+                                                Add progressive hints that students can optionally unlock during tests. When creating assessments, you can configure negative mark penalties or test timer deductions for each revealed hint.
+                                            </p>
+                                        </div>
+
+                                        <div className="space-y-3">
+                                            {(form.hints || []).map((hint: string, i: number) => (
+                                                <div key={i} className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-2">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+                                                            <span>💡</span> Hint {i + 1}
+                                                        </span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                const nextHints = (form.hints || []).filter((_: any, idx: number) => idx !== i)
+                                                                set('hints', nextHints.length ? nextHints : [''])
+                                                            }}
+                                                            className="text-xs text-rose-400 hover:text-rose-300 transition-colors font-semibold"
+                                                        >
+                                                            ✕ Remove Hint
+                                                        </button>
+                                                    </div>
+                                                    <textarea
+                                                        value={hint}
+                                                        onChange={e => {
+                                                            const nextHints = [...(form.hints || [])]
+                                                            nextHints[i] = e.target.value
+                                                            set('hints', nextHints)
+                                                        }}
+                                                        rows={3}
+                                                        placeholder={`Provide Hint ${i + 1} guidance for solving the problem...`}
+                                                        className="input-field text-xs font-sans"
+                                                    />
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => set('hints', [...(form.hints || []), ''])}
+                                            className="px-4 py-2 rounded-xl bg-amber-500/10 text-amber-300 border border-amber-500/20 text-xs font-bold hover:bg-amber-500/20 transition-all flex items-center gap-1.5"
+                                        >
+                                            <span>+</span> Add Another Hint
+                                        </button>
                                     </div>
                                 )}
                             </div>

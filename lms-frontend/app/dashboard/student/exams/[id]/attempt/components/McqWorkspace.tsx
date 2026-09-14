@@ -24,19 +24,23 @@ interface McqWorkspaceProps {
   onToggleReview: () => void
 }
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3003'
+
 function renderOptionContent(opt: string, isSelected?: boolean) {
   if (!opt) return null
   const trimmed = opt.trim()
   const isDirectImg =
-    /^(https?:\/\/|data:image\/).+(\.(png|jpg|jpeg|gif|webp|svg)|;base64)/i.test(trimmed) ||
+    /^(https?:\/\/|data:image\/|\/uploads\/).+(\.(png|jpg|jpeg|gif|webp|svg)|;base64)/i.test(trimmed) ||
+    /^\/uploads\/questions\/.+/i.test(trimmed) ||
     /\.(png|jpg|jpeg|gif|webp|svg)(\?.*)?$/i.test(trimmed)
   const isMarkdownImg = /^!\[.*?\]\(.*?\)$/.test(trimmed)
 
   if (isDirectImg) {
+    const fullSrc = trimmed.startsWith('/uploads/') ? `${API_URL}${trimmed}` : trimmed
     return (
       <div className="space-y-1.5 py-1">
         <img
-          src={trimmed}
+          src={fullSrc}
           alt="Option illustration"
           className="max-h-48 max-w-full rounded-xl object-contain border border-slate-700 bg-slate-950/80 p-2 shadow-inner"
           onError={(e: any) => {

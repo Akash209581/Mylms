@@ -8,19 +8,23 @@ interface QuestionPreviewProps {
     onClose: () => void
 }
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3003';
+
 function renderOptionContent(opt: string) {
     if (!opt) return null;
     const trimmed = opt.trim();
-    // Check if it's a direct image URL or Data URI
-    const isDirectImg = /^(https?:\/\/|data:image\/).+(\.(png|jpg|jpeg|gif|webp|svg)|;base64)/i.test(trimmed) ||
+    // Check if it's a direct image URL, /uploads/ path, or Data URI
+    const isDirectImg = /^(https?:\/\/|data:image\/|\/uploads\/).+(\.(png|jpg|jpeg|gif|webp|svg)|;base64)/i.test(trimmed) ||
+                        /^\/uploads\/questions\/.+/i.test(trimmed) ||
                         /\.(png|jpg|jpeg|gif|webp|svg)(\?.*)?$/i.test(trimmed);
     const isMarkdownImg = /^!\[.*?\]\(.*?\)$/.test(trimmed);
 
     if (isDirectImg) {
+        const fullSrc = trimmed.startsWith('/uploads/') ? `${API_URL}${trimmed}` : trimmed;
         return (
             <div className="space-y-1.5">
                 <img
-                    src={trimmed}
+                    src={fullSrc}
                     alt="Option visual"
                     className="max-h-48 max-w-full rounded-xl object-contain border border-gray-200 bg-white p-1.5 shadow-sm hover:scale-[1.02] transition-transform"
                     onError={(e: any) => {
@@ -38,7 +42,7 @@ function renderOptionContent(opt: string) {
 }
 
 export default function QuestionPreview({ form, onClose }: QuestionPreviewProps) {
-    const [previewTab, setPreviewTab] = useState<'explanation' | 'problem' | 'testcases' | 'predefined'>('problem')
+    const [previewTab, setPreviewTab] = useState<'explanation' | 'problem' | 'testcases' | 'predefined' | 'hints'>('problem')
     const [previewLang, setPreviewLang] = useState<string>('')
     const renderContent = () => {
         switch (form.type) {
@@ -223,7 +227,7 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                 return (
                     <div className="space-y-6">
                         {/* Tab Switcher */}
-                        <div className="flex border-b border-gray-200 pb-3 gap-6">
+                        <div className="flex border-b border-gray-200 pb-3 gap-6 flex-wrap">
                             <button
                                 type="button"
                                 onClick={() => setPreviewTab('explanation')}
@@ -270,6 +274,18 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                                 💻 Predefined Code
                                 {previewTab === 'predefined' && (
                                     <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600 rounded-full animate-in fade-in" />
+                                )}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setPreviewTab('hints')}
+                                className={`pb-2 text-sm font-semibold transition-all relative ${
+                                    previewTab === 'hints' ? 'text-amber-600' : 'text-gray-400 hover:text-gray-600'
+                                }`}
+                            >
+                                💡 Hints {form.hints && form.hints.filter((h: any) => typeof h === 'string' ? h.trim() : h).length > 0 ? `(${form.hints.filter((h: any) => typeof h === 'string' ? h.trim() : h).length})` : ''}
+                                {previewTab === 'hints' && (
+                                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-amber-500 rounded-full animate-in fade-in" />
                                 )}
                             </button>
                         </div>
@@ -428,6 +444,35 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                                 </div>
                             );
                         })()}
+
+                        {previewTab === 'hints' && (
+                            <div className="space-y-4 animate-in fade-in duration-200">
+                                <h4 className="text-amber-600 text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                    <span>💡</span> Configured Sequential Hints ({(form.hints || []).filter((h: any) => typeof h === 'string' ? h.trim() : h).length})
+                                </h4>
+                                {(!form.hints || form.hints.filter((h: any) => typeof h === 'string' ? h.trim() : h).length === 0) ? (
+                                    <div className="p-8 bg-amber-50/50 rounded-2xl border border-dashed border-amber-200 text-center">
+                                        <p className="text-amber-700/70 text-sm font-medium">No hints configured for this programming question.</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {form.hints.filter((h: any) => typeof h === 'string' ? h.trim() : h).map((hint: string, i: number) => (
+                                            <div key={i} className="p-5 bg-gradient-to-r from-amber-50/80 to-yellow-50/50 rounded-2xl border border-amber-200/80 shadow-sm space-y-2">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="px-2.5 py-0.5 rounded-lg bg-amber-500 text-white text-[11px] font-black uppercase tracking-wider">
+                                                        Hint {i + 1}
+                                                    </span>
+                                                    <span className="text-[11px] text-amber-700 font-medium">Revealed sequentially in tests</span>
+                                                </div>
+                                                <div className="pt-1 text-slate-800 text-sm">
+                                                    <MarkdownRenderer content={typeof hint === 'string' ? hint : JSON.stringify(hint)} className="text-slate-800 text-sm" />
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 )
 
@@ -555,40 +600,64 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                         {((form.targetCompanies || form.companiesAppeared || form.companies) ||
                           (form.recentYearAppearing || form.recentYear) ||
                           form.bestPracticeFor ||
-                          (form.allowedLanguages && form.allowedLanguages.length > 0)) && (
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-gray-100 text-xs">
-                                {(form.targetCompanies || form.companiesAppeared || form.companies) && (
-                                    <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
-                                        <p className="text-[10px] text-slate-400 font-bold uppercase">Companies</p>
-                                        <p className="font-semibold text-slate-800 truncate mt-0.5" title={form.targetCompanies || form.companiesAppeared || form.companies}>
-                                            🏢 {form.targetCompanies || form.companiesAppeared || form.companies}
-                                        </p>
-                                    </div>
-                                )}
-                                {(form.recentYearAppearing || form.recentYear) && (
-                                    <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
-                                        <p className="text-[10px] text-slate-400 font-bold uppercase">Recent Year</p>
-                                        <p className="font-semibold text-slate-800 mt-0.5">
-                                            📅 {form.recentYearAppearing || form.recentYear}
-                                        </p>
-                                    </div>
-                                )}
-                                {form.bestPracticeFor && (
-                                    <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
-                                        <p className="text-[10px] text-slate-400 font-bold uppercase">Best Practice For</p>
-                                        <p className="font-semibold text-slate-800 truncate mt-0.5" title={form.bestPracticeFor}>
-                                            🎯 {form.bestPracticeFor}
-                                        </p>
-                                    </div>
-                                )}
-                                {form.allowedLanguages && form.allowedLanguages.length > 0 && (
-                                    <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
-                                        <p className="text-[10px] text-slate-400 font-bold uppercase">Languages</p>
-                                        <p className="font-semibold text-slate-800 truncate mt-0.5">
-                                            💻 {form.allowedLanguages.join(', ')}
-                                        </p>
-                                    </div>
-                                )}
+                          (form.type === 'PQ' && form.allowedLanguages && form.allowedLanguages.length > 0) ||
+                          (form.type !== 'PQ' && form.programmingLanguage && form.programmingLanguage.trim() !== '' && form.programmingLanguage !== 'Any')) && (
+                            <div className="flex flex-col gap-3 mt-4 pt-4 border-t border-gray-100 text-xs">
+                                {/* All Companies rendered in preview */}
+                                {(form.targetCompanies || form.companiesAppeared || form.companies) && (() => {
+                                    const rawComps = form.targetCompanies || form.companiesAppeared || form.companies || ''
+                                    const compList = (typeof rawComps === 'string' ? rawComps.split(',') : Array.isArray(rawComps) ? rawComps : [rawComps])
+                                        .map((c: any) => String(c).trim())
+                                        .filter(Boolean)
+                                    if (compList.length === 0) return null
+                                    return (
+                                        <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                            <p className="text-[10px] text-slate-400 font-bold uppercase mb-1.5">Target Companies ({compList.length})</p>
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {compList.map((c: string, idx: number) => (
+                                                    <span key={idx} className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 text-xs font-semibold">
+                                                        🏢 {c}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )
+                                })()}
+
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                    {(form.recentYearAppearing || form.recentYear) && (
+                                        <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                                            <p className="text-[10px] text-slate-400 font-bold uppercase">Recent Year</p>
+                                            <p className="font-semibold text-slate-800 mt-0.5">
+                                                📅 {form.recentYearAppearing || form.recentYear}
+                                            </p>
+                                        </div>
+                                    )}
+                                    {form.bestPracticeFor && (
+                                        <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                                            <p className="text-[10px] text-slate-400 font-bold uppercase">Best Practice For</p>
+                                            <p className="font-semibold text-slate-800 truncate mt-0.5" title={form.bestPracticeFor}>
+                                                🎯 {form.bestPracticeFor}
+                                            </p>
+                                        </div>
+                                    )}
+                                    {form.type === 'PQ' && form.allowedLanguages && form.allowedLanguages.length > 0 && (
+                                        <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                                            <p className="text-[10px] text-slate-400 font-bold uppercase">Allowed Languages</p>
+                                            <p className="font-semibold text-slate-800 truncate mt-0.5">
+                                                💻 {form.allowedLanguages.join(', ')}
+                                            </p>
+                                        </div>
+                                    )}
+                                    {form.type !== 'PQ' && form.programmingLanguage && form.programmingLanguage.trim() !== '' && form.programmingLanguage !== 'Any' && (
+                                        <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                                            <p className="text-[10px] text-slate-400 font-bold uppercase">Language</p>
+                                            <p className="font-semibold text-slate-800 truncate mt-0.5">
+                                                💻 {form.programmingLanguage}
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         )}
                     </div>

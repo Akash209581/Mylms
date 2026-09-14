@@ -37,10 +37,18 @@ export default function MarkdownRenderer({ content, className = '' }: MarkdownRe
     s = s.replace(/==(.*?)==/g, '<mark class="bg-yellow-200 text-black px-1 rounded">$1</mark>')
     s = s.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
     s = s.replace(/\*(.*?)\*/g, '<em>$1</em>')
-    s = s.replace(/~~(.*?)~~/g, '<del>$1</del>')
-    s = s.replace(/`([^`]+?)`/g, '<code class="bg-slate-800 text-blue-300 px-1 rounded font-mono text-sm">$1</code>')
-    s = s.replace(/!\[([^\]]*?)\]\(\s*([^\)]+?)\s*\)/g, '<img src="$2" alt="$1" referrerPolicy="no-referrer" class="max-w-full h-auto rounded-lg my-2 shadow-sm" />')
-    s = s.replace(/!\[([^\]]*?)\]\s*(https?:\/\/[^\s)]+)(?=\s|$)/g, '<img src="$2" alt="$1" referrerPolicy="no-referrer" class="max-w-full h-auto rounded-lg my-2 shadow-sm" />')
+    s = s.replace(/!\[([^\]]*?)\]\(\s*([^\)]+?)\s*\)/g, (_match, alt, src) => {
+      const cleanSrc = src.trim()
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3003'
+      const fullSrc = cleanSrc.startsWith('/uploads/') ? `${API_URL}${cleanSrc}` : cleanSrc
+      return `<img src="${fullSrc}" alt="${alt}" referrerPolicy="no-referrer" class="max-w-full h-auto rounded-lg my-2 shadow-sm" />`
+    })
+    s = s.replace(/!\[([^\]]*?)\]\s*(https?:\/\/[^\s)]+|\/uploads\/[^\s)]+)(?=\s|$)/g, (_match, alt, src) => {
+      const cleanSrc = src.trim()
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3003'
+      const fullSrc = cleanSrc.startsWith('/uploads/') ? `${API_URL}${cleanSrc}` : cleanSrc
+      return `<img src="${fullSrc}" alt="${alt}" referrerPolicy="no-referrer" class="max-w-full h-auto rounded-lg my-2 shadow-sm" />`
+    })
     s = s.replace(/\[([^\]]+?)\]\(([^)\s]+?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-primary-600 hover:text-primary-700 font-medium underline decoration-primary-500/30 underline-offset-4">$1</a>')
     return s
   }

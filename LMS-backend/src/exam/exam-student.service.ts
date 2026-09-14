@@ -11,7 +11,7 @@ import { ExamAttempt, AttemptStatus } from '../entities/exam-attempt.entity';
 import { ExamCodingSubmission, SubmissionStatus } from '../entities/exam-coding-submission.entity';
 import { Question, QuestionType } from '../entities/question.entity';
 import { UserRole } from '../entities/user.entity';
-import { SaveMcqAnswersDto, RunCodeDto, SubmitExamDto } from './exam.dto';
+import { SaveMcqAnswersDto, RunCodeDto, SubmitExamDto, UnlockHintDto } from './exam.dto';
 import { ExamRunnerService } from './exam-runner.service';
 import { ExamService } from './exam.service';
 import { CompilerQueueService } from '../compiler/compiler-queue.service';
@@ -35,11 +35,30 @@ function publicTestCases(allCases: any[]): any[] {
   return allCases.slice(0, limit);
 }
 
-// Columns returned to student — NO correct answers, NO hidden test cases
-function sanitizeQuestion(eq: ExamQuestion) {
+// Columns returned to student — NO correct answers, NO hidden test cases, secret hints revealed only if unlocked
+function sanitizeQuestion(eq: ExamQuestion, unlockedIndices: number[] = []) {
   const q = eq.question;
   const qText = q.questionText || q.problemStatement || '';
   const pStmt = q.problemStatement || q.questionText || '';
+
+  const hints = Array.isArray(q.hints) && q.hints.length > 0 && eq.hintsEnabled !== false
+    ? q.hints.map((hText, idx) => {
+        const isUnlocked = unlockedIndices.includes(idx);
+        const penaltyType = eq.hintPenaltyType || 'MARKS';
+        const defaultVal = penaltyType === 'TIME' ? 120 : 1;
+        const penaltyValue = Array.isArray(eq.hintPenalties) && eq.hintPenalties[idx] !== undefined
+          ? Number(eq.hintPenalties[idx])
+          : defaultVal;
+        return {
+          index: idx,
+          penaltyType,
+          penaltyValue,
+          isUnlocked,
+          text: isUnlocked ? hText : undefined,
+        };
+      })
+    : [];
+
   const base = {
     id: q.id,
     questionText: qText,
@@ -49,9 +68,22 @@ function sanitizeQuestion(eq: ExamQuestion) {
     negativeMarks: eq.negativeMarks,
     section: eq.section,
     sortOrder: eq.sortOrder,
+    domain: q.domain,
+    topicNames: q.topicNames,
+    hints,
+    hintPenaltyType: eq.hintPenaltyType || 'MARKS',
   };
-  if (q.type === QuestionType.MCQ) {
-    return { ...base, options: q.options, problemStatement: pStmt };
+  if (q.type === QuestionType.MCQ || q.type === QuestionType.OP) {
+    return { ...base, options: q.options, problemStatement: pStmt, codeSnippet: q.codeSnippet };
+  }
+  if (q.type === QuestionType.FIB) {
+    return { ...base, problemStatement: pStmt, blanks: q.blanks };
+  }
+  if (q.type === QuestionType.MQ) {
+    return { ...base, problemStatement: pStmt, matchingPairs: q.matchingPairs, extraRightMatches: q.extraRightMatches };
+  }
+  if (q.type === QuestionType.JC) {
+    return { ...base, problemStatement: pStmt, jumbledStatements: q.jumbledStatements };
   }
   const samples = publicTestCases(q.testCases || []).slice(0, 2).map(tc => ({
     input: tc.input, output: tc.output, explanation: tc.explanation,
@@ -88,24 +120,25 @@ export class ExamStudentService {
   async myExams(user: RequestUser) {
     await this.examService.syncExamStatuses();
     return this.db.query(`
-      SELECT e.id, e.title, e.description, e.duration_minutes AS "durationMinutes",
+      SELECT DISTINCT e.id, e.title, e.description, e.duration_minutes AS "durationMinutes",
         e.start_at AS "startAt", e.end_at AS "endAt",
         e.total_marks AS "totalMarks", e.passing_marks AS "passingMarks", e.status,
         e.tab_switch_monitoring AS "tabSwitchMonitoring",
         a.id AS "attemptId", a.status AS "attemptStatus",
         a.total_score AS "totalScore", a.passed,
         a.deadline_at AS "deadlineAt"
-      FROM exam_assignments ea
-      JOIN exams e ON e.id = ea.exam_id
+      FROM exams e
+      LEFT JOIN exam_assignments ea ON ea.exam_id = e.id AND ea.student_id = $1
       LEFT JOIN LATERAL (
         SELECT id, status, total_score, passed, deadline_at
         FROM exam_attempts
-        WHERE exam_id = ea.exam_id AND student_id = $1
+        WHERE exam_id = e.id AND student_id = $1
         ORDER BY attempt_number DESC LIMIT 1
       ) a ON true
-      WHERE ea.student_id = $1 AND e.status IN ('SCHEDULED','LIVE','COMPLETED')
+      WHERE (ea.student_id = $1 OR ($2::int IS NOT NULL AND e.college_id = $2::int))
+        AND e.status IN ('SCHEDULED','LIVE','COMPLETED')
       ORDER BY e.start_at DESC NULLS LAST
-    `, [user.sub]);
+    `, [user.sub, user.collegeId || null]);
   }
 
   // ─── Exam Instructions ────────────────────────────────────────────────────
@@ -319,6 +352,81 @@ export class ExamStudentService {
     return { count, autoSubmit: false, submitted: false };
   }
 
+  async unlockHint(user: RequestUser, attemptId: number, dto: UnlockHintDto) {
+    const attempt = await this.getStudentAttempt(user, attemptId);
+    this.assertInProgress(attempt);
+
+    const eq = await this.eqRepo.findOne({
+      where: { examId: attempt.examId, questionId: dto.questionId },
+    });
+    if (!eq) throw new NotFoundException('Question not found in this exam');
+    if (eq.hintsEnabled === false) throw new BadRequestException('Hints are disabled for this question');
+
+    const q = await this.questionRepo.findOneBy({ id: dto.questionId });
+    if (!q || !Array.isArray(q.hints) || q.hints[dto.hintIndex] === undefined) {
+      throw new NotFoundException('Hint not found');
+    }
+
+    const qKey = String(dto.questionId);
+    const currentUnlocked: number[] = attempt.unlockedHints?.[qKey] || [];
+    if (currentUnlocked.includes(dto.hintIndex)) {
+      return {
+        unlocked: true,
+        alreadyUnlocked: true,
+        hintIndex: dto.hintIndex,
+        hintText: q.hints[dto.hintIndex],
+        penaltyType: eq.hintPenaltyType || 'MARKS',
+        deadlineAt: attempt.deadlineAt,
+        remainingSeconds: this.remainingSeconds(attempt),
+      };
+    }
+
+    // Must unlock sequentially (e.g. Hint 0 before Hint 1)
+    if (dto.hintIndex > 0 && !currentUnlocked.includes(dto.hintIndex - 1)) {
+      throw new BadRequestException(`Please unlock Hint ${dto.hintIndex} before unlocking Hint ${dto.hintIndex + 1}`);
+    }
+
+    const penaltyType = eq.hintPenaltyType || 'MARKS';
+    const defaultVal = penaltyType === 'TIME' ? 120 : 1;
+    const penaltyValue = Array.isArray(eq.hintPenalties) && eq.hintPenalties[dto.hintIndex] !== undefined
+      ? Number(eq.hintPenalties[dto.hintIndex])
+      : defaultVal;
+
+    let updatedDeadlineAt = attempt.deadlineAt;
+    let newTimeDeducted = attempt.timeDeductedSeconds || 0;
+
+    if (penaltyType === 'TIME' && penaltyValue > 0) {
+      const penaltySeconds = Math.round(penaltyValue);
+      newTimeDeducted += penaltySeconds;
+      updatedDeadlineAt = new Date(new Date(attempt.deadlineAt).getTime() - penaltySeconds * 1000);
+    }
+
+    const nextUnlocked = {
+      ...(attempt.unlockedHints || {}),
+      [qKey]: [...currentUnlocked, dto.hintIndex],
+    };
+
+    await this.attemptRepo.update(attemptId, {
+      unlockedHints: nextUnlocked,
+      timeDeductedSeconds: newTimeDeducted,
+      deadlineAt: updatedDeadlineAt,
+    });
+
+    attempt.unlockedHints = nextUnlocked;
+    attempt.timeDeductedSeconds = newTimeDeducted;
+    attempt.deadlineAt = updatedDeadlineAt;
+
+    return {
+      unlocked: true,
+      hintIndex: dto.hintIndex,
+      hintText: q.hints[dto.hintIndex],
+      penaltyType,
+      penaltyValue,
+      deadlineAt: updatedDeadlineAt,
+      remainingSeconds: this.remainingSeconds(attempt),
+    };
+  }
+
   // ─── Final Submit ─────────────────────────────────────────────────────────
 
   async submitAttempt(user: RequestUser, attemptId: number, dto?: SubmitExamDto) {
@@ -353,17 +461,41 @@ export class ExamStudentService {
       if (!q) continue;
       const given = attempt.mcqAnswers?.[String(eq.questionId)];
       if (!given) continue;
+      let qEarned = 0;
       if (isMcqCorrect(given, q.correctAnswer, q.options)) {
-        mcqScore += Number(eq.marks);
+        qEarned = Number(eq.marks);
       } else if (exam.negativeMarking) {
-        mcqScore -= Number(eq.negativeMarks || exam.negativeMarksValue || 0);
+        qEarned = -Number(eq.negativeMarks || exam.negativeMarksValue || 0);
       }
+      if (qEarned > 0 && eq.hintPenaltyType === 'MARKS' && attempt.unlockedHints?.[String(eq.questionId)]) {
+        const hintsUnlocked = attempt.unlockedHints[String(eq.questionId)] || [];
+        const hintDeduction = hintsUnlocked.reduce((sum, hIdx) => {
+          const val = Array.isArray(eq.hintPenalties) && eq.hintPenalties[hIdx] !== undefined ? Number(eq.hintPenalties[hIdx]) : 1;
+          return sum + val;
+        }, 0);
+        qEarned = Math.max(0, qEarned - hintDeduction);
+      }
+      mcqScore += qEarned;
     }
     mcqScore = Math.max(0, mcqScore);
 
-    // Coding score = sum of final submissions
+    // Coding score = sum of final submissions minus MARKS hint penalties
     const codingSubs = await this.subRepo.find({ where: { attemptId, isFinal: true } });
-    const codingScore = codingSubs.reduce((sum, s) => sum + Number(s.score), 0);
+    let codingScore = 0;
+    for (const eq of questions.filter(q => q.section === 'B')) {
+      const sub = codingSubs.find(s => s.questionId === eq.questionId);
+      if (!sub) continue;
+      let rawScore = Number(sub.score || 0);
+      if (rawScore > 0 && eq.hintPenaltyType === 'MARKS' && attempt.unlockedHints?.[String(eq.questionId)]) {
+        const hintsUnlocked = attempt.unlockedHints[String(eq.questionId)] || [];
+        const hintDeduction = hintsUnlocked.reduce((sum, hIdx) => {
+          const val = Array.isArray(eq.hintPenalties) && eq.hintPenalties[hIdx] !== undefined ? Number(eq.hintPenalties[hIdx]) : 1;
+          return sum + val;
+        }, 0);
+        rawScore = Math.max(0, rawScore - hintDeduction);
+      }
+      codingScore += rawScore;
+    }
 
     const totalScore = mcqScore + codingScore;
     const passed = totalScore >= exam.passingMarks;
@@ -420,6 +552,10 @@ export class ExamStudentService {
         const given = attempt.mcqAnswers?.[String(eq.questionId)];
         const correct = isMcqCorrect(given, q.correctAnswer, q.options);
         const correctLetter = normalizeMcqLetter(q.correctAnswer, q.options);
+        const unlockedHints = attempt.unlockedHints?.[String(eq.questionId)] || [];
+        const hintDeduction = eq.hintPenaltyType === 'MARKS' && unlockedHints.length > 0
+          ? unlockedHints.reduce((sum, hIdx) => sum + (Array.isArray(eq.hintPenalties) && eq.hintPenalties[hIdx] !== undefined ? Number(eq.hintPenalties[hIdx]) : 1), 0)
+          : 0;
         return {
           questionId: eq.questionId,
           questionText: q.questionText,
@@ -429,7 +565,9 @@ export class ExamStudentService {
           correctAnswer: exam.showCorrectAnswers ? correctLetter : undefined,
           explanation: exam.showExplanations ? q.explanation : undefined,
           marks: eq.marks, negativeMarks: eq.negativeMarks,
-          correct, earned: correct ? eq.marks : (given ? -eq.negativeMarks : 0),
+          hintsUnlocked: unlockedHints.length,
+          hintDeduction,
+          correct, earned: correct ? Math.max(0, Number(eq.marks) - hintDeduction) : (given ? -eq.negativeMarks : 0),
         };
       });
 
@@ -437,12 +575,21 @@ export class ExamStudentService {
       .filter(eq => eq.section === 'B')
       .map(eq => {
         const sub = codingSubs.find(s => s.questionId === eq.questionId);
+        const unlockedHints = attempt.unlockedHints?.[String(eq.questionId)] || [];
+        const hintDeduction = eq.hintPenaltyType === 'MARKS' && unlockedHints.length > 0
+          ? unlockedHints.reduce((sum, hIdx) => sum + (Array.isArray(eq.hintPenalties) && eq.hintPenalties[hIdx] !== undefined ? Number(eq.hintPenalties[hIdx]) : 1), 0)
+          : 0;
+        const rawScore = Number(sub?.score || 0);
+        const finalScore = Math.max(0, rawScore - hintDeduction);
         return {
           questionId: eq.questionId,
           problemStatement: eq.question?.problemStatement,
           marks: eq.marks,
           status: sub?.status || 'NOT_ATTEMPTED',
-          score: sub?.score || 0,
+          score: finalScore,
+          rawScore,
+          hintsUnlocked: unlockedHints.length,
+          hintDeduction,
           passedPublic: sub?.passedCases || 0,
           totalPublic: sub?.totalCases || 0,
           language: sub?.language,
@@ -462,6 +609,7 @@ export class ExamStudentService {
       mcqScore: attempt.mcqScore, codingScore: attempt.codingScore,
       totalScore: attempt.totalScore, totalMarks: exam.totalMarks,
       passingMarks: exam.passingMarks, passed: attempt.passed,
+      timeDeductedSeconds: attempt.timeDeductedSeconds || 0,
       timeTaken: attempt.endTime && attempt.startTime
         ? Math.round((new Date(attempt.endTime).getTime() - new Date(attempt.startTime).getTime()) / 1000)
         : null,
@@ -473,10 +621,18 @@ export class ExamStudentService {
   // ─── Private helpers ──────────────────────────────────────────────────────
 
   private async getAssignedExam(user: RequestUser, examId: number): Promise<Exam> {
-    const assignment = await this.assignRepo.findOne({ where: { examId, studentId: user.sub } });
-    if (!assignment) throw new ForbiddenException('You are not assigned to this exam');
     const exam = await this.examRepo.findOneBy({ id: examId });
     if (!exam) throw new NotFoundException('Exam not found');
+
+    const assignment = await this.assignRepo.findOne({ where: { examId, studentId: user.sub } });
+    if (!assignment) {
+      if (user.collegeId && exam.collegeId === user.collegeId) {
+        // Auto-assign student
+        await this.assignRepo.save({ examId, studentId: user.sub });
+        return exam;
+      }
+      throw new ForbiddenException('You are not assigned to this exam');
+    }
     return exam;
   }
 
@@ -525,7 +681,7 @@ export class ExamStudentService {
       }
     }
 
-    const questions = eqs.map(eq => sanitizeQuestion(eq));
+    const questions = eqs.map(eq => sanitizeQuestion(eq, attempt.unlockedHints?.[String(eq.questionId)] || []));
 
     // Get saved coding submissions for this attempt
     const codingSubs = await this.subRepo.find({ where: { attemptId: attempt.id }, order: { submittedAt: 'DESC' } });
@@ -558,6 +714,8 @@ export class ExamStudentService {
       mcqAnswers: attempt.mcqAnswers || {},
       timeSpent: attempt.timeSpent || {},
       markedReview: attempt.markedReview || [],
+      unlockedHints: attempt.unlockedHints || {},
+      timeDeductedSeconds: attempt.timeDeductedSeconds || 0,
       questions,
       latestCoding,
     };

@@ -8,10 +8,20 @@ import QuestionPreview from '@/components/question-bank/QuestionPreview'
 import { api } from '@/lib/api'
 import { hasPerLanguageStarters, parseStarterMap, ADMIN_STARTERS } from '@/lib/starter-code'
 
-type Tab = 'bank-mcq' | 'bank-coding' | 'excel-import' | 'manage'
+type Tab = 'bank' | 'excel-import' | 'manage'
 
 const EXAM_BASE = '/dashboard/superadmin/exams'
 const ALL_SUPPORTED_LANGS = ['Python', 'Java', 'C', 'C++', 'JavaScript']
+
+const QUESTION_TYPES = [
+  { value: 'ALL', label: 'All Question Types' },
+  { value: 'MCQ', label: 'Multiple Choice (MCQ)' },
+  { value: 'FIB', label: 'Fill in the Blank (FIB)' },
+  { value: 'MQ', label: 'Matching Questions (MQ)' },
+  { value: 'JC', label: 'Jumbled Code (JC)' },
+  { value: 'OP', label: 'Output Prediction (OP)' },
+  { value: 'PQ', label: 'Programming (PQ)' },
+]
 
 export default function ExamQuestionsPage() {
   const router = useRouter()
@@ -20,12 +30,13 @@ export default function ExamQuestionsPage() {
 
   const [user, setUser] = useState<any>(null)
   const [exam, setExam] = useState<any>(null)
-  const [tab, setTab] = useState<Tab>('bank-mcq')
+  const [tab, setTab] = useState<Tab>('bank')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   // Question bank state
   const [bankQuestions, setBankQuestions] = useState<any[]>([])
+  const [bankType, setBankType] = useState<string>('ALL')
   const [bankSearch, setBankSearch] = useState('')
   const [bankDifficulty, setBankDifficulty] = useState('')
   const [bankLoading, setBankLoading] = useState(false)
@@ -47,11 +58,18 @@ export default function ExamQuestionsPage() {
   const [preCodeAllowedLangs, setPreCodeAllowedLangs] = useState<string[]>(ALL_SUPPORTED_LANGS)
   const [savingPreCode, setSavingPreCode] = useState(false)
 
-  // Inline Marks Edit state (Manage tab)
+  // Inline Marks Edit state (Manage tab & Bank list)
   const [editingMarksId, setEditingMarksId] = useState<number | null>(null)
   const [editMarksVal, setEditMarksVal] = useState<number>(1)
   const [editNegVal, setEditNegVal] = useState<number>(0)
   const [savingMarks, setSavingMarks] = useState(false)
+
+  // Hint Settings Modal State
+  const [hintModalEq, setHintModalEq] = useState<any | null>(null)
+  const [hintSettingsEnabled, setHintSettingsEnabled] = useState<boolean>(true)
+  const [hintPenaltyType, setHintPenaltyType] = useState<'MARKS' | 'TIME' | 'NONE'>('MARKS')
+  const [hintPenalties, setHintPenalties] = useState<number[]>([])
+  const [savingHintSettings, setSavingHintSettings] = useState(false)
 
   // Excel import state
   const [excelFile, setExcelFile] = useState<File | null>(null)
@@ -62,6 +80,34 @@ export default function ExamQuestionsPage() {
   // Publishing
   const [publishing, setPublishing] = useState(false)
 
+  // Two-Step Delete Exam Modal State
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleteStep, setDeleteStep] = useState<1 | 2>(1)
+  const [deleteInputText, setDeleteInputText] = useState('')
+  const [deletingLoading, setDeletingLoading] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+
+  const openDeleteModal = () => {
+    setShowDeleteModal(true)
+    setDeleteStep(1)
+    setDeleteInputText('')
+    setDeleteError(null)
+  }
+
+  const handleDeleteExam = async () => {
+    if (deleteInputText.trim().toUpperCase() !== 'DELETE') return
+    setDeletingLoading(true)
+    setDeleteError(null)
+    try {
+      await api.delete(`/exams/${examId}`)
+      router.push(EXAM_BASE)
+    } catch (err: any) {
+      setDeleteError(err?.response?.data?.message || 'Failed to delete exam')
+    } finally {
+      setDeletingLoading(false)
+    }
+  }
+
   useEffect(() => {
     const stored = localStorage.getItem('user')
     if (!stored) { router.push('/login'); return }
@@ -70,12 +116,10 @@ export default function ExamQuestionsPage() {
   }, [examId])
 
   useEffect(() => {
-    setDefaultMarks(tab === 'bank-coding' ? 10 : 1)
-    setDefaultNegMarks(0)
-    if (tab !== 'bank-mcq' && tab !== 'bank-coding') return
+    if (tab !== 'bank') return
     const t = setTimeout(() => { fetchBankQuestions() }, 300)
     return () => clearTimeout(t)
-  }, [tab, bankSearch, bankDifficulty])
+  }, [tab, bankType, bankSearch, bankDifficulty])
 
   const fetchExam = async (silent = false) => {
     if (!silent) setLoading(true)
@@ -93,13 +137,13 @@ export default function ExamQuestionsPage() {
   const fetchBankQuestions = async () => {
     setBankLoading(true)
     try {
-      const type = tab === 'bank-mcq' ? 'MCQ' : 'PQ'
       const r = await api.get('/question-bank', {
         params: {
-          type,
+          type: bankType === 'ALL' || !bankType ? undefined : bankType,
           difficulty: bankDifficulty || undefined,
           search: bankSearch.trim() || undefined,
-          limit: 50,
+          qStatus: 'APPROVED',
+          limit: 100,
         },
       })
       setBankQuestions(r.data || [])
@@ -113,12 +157,13 @@ export default function ExamQuestionsPage() {
 
   const selectedTotalMarks = useMemo(() => {
     let sum = 0
-    const fallbackMarks = tab === 'bank-coding' ? 10 : 1
     selected.forEach(id => {
+      const q = bankQuestions.find(bq => bq.id === id)
+      const fallbackMarks = q?.type === 'PQ' ? 10 : 1
       sum += Number(customMarks[id]?.marks ?? defaultMarks ?? fallbackMarks)
     })
     return sum
-  }, [selected, customMarks, defaultMarks, tab])
+  }, [selected, customMarks, defaultMarks, bankQuestions])
 
   const openPreCodeConfig = (q: any) => {
     setPreCodeModalQuestion(q)
@@ -151,7 +196,6 @@ export default function ExamQuestionsPage() {
         codeSnippet: updatedSnippet,
         allowedLanguages: preCodeAllowedLangs,
       })
-      // Update local state in bankQuestions
       setBankQuestions(prev => prev.map(item =>
         item.id === preCodeModalQuestion.id
           ? { ...item, codeSnippet: updatedSnippet, allowedLanguages: preCodeAllowedLangs }
@@ -166,6 +210,44 @@ export default function ExamQuestionsPage() {
     }
   }
 
+  const openHintSettings = (eqOrQ: any, isBankQuestion = false) => {
+    const existedEq = !isBankQuestion
+      ? eqOrQ
+      : (exam?.questions || []).find((eq: any) => eq.questionId === eqOrQ.id)
+
+    const questionObj = existedEq?.question || eqOrQ
+    const hintsCount = Array.isArray(questionObj?.hints) ? questionObj.hints.length : 0
+
+    setHintModalEq(existedEq || { questionId: eqOrQ.id, question: questionObj })
+    setHintSettingsEnabled(existedEq?.hintsEnabled ?? true)
+    setHintPenaltyType(existedEq?.hintPenaltyType || 'MARKS')
+    
+    const existingPens = Array.isArray(existedEq?.hintPenalties) ? existedEq.hintPenalties : []
+    const initialPens = Array.from({ length: hintsCount }).map((_, i) =>
+      existingPens[i] !== undefined ? existingPens[i] : (i + 1)
+    )
+    setHintPenalties(initialPens)
+  }
+
+  const saveHintSettings = async () => {
+    if (!hintModalEq) return
+    setSavingHintSettings(true)
+    try {
+      await api.put(`/exams/${examId}/questions/${hintModalEq.questionId}/hint-settings`, {
+        hintsEnabled: hintSettingsEnabled,
+        hintPenaltyType,
+        hintPenalties,
+      })
+      await fetchExam(true)
+      setHintModalEq(null)
+      alert('Hint penalties & settings saved successfully!')
+    } catch (e: any) {
+      alert(e.response?.data?.message || 'Failed to save hint settings')
+    } finally {
+      setSavingHintSettings(false)
+    }
+  }
+
   const toggleSelect = (id: number) => {
     setSelected(prev => {
       const next = new Set(prev)
@@ -174,9 +256,11 @@ export default function ExamQuestionsPage() {
       } else {
         next.add(id)
         if (!customMarks[id]) {
+          const q = bankQuestions.find(bq => bq.id === id)
+          const isCoding = q?.type === 'PQ'
           setCustomMarks(cm => ({
             ...cm,
-            [id]: { marks: defaultMarks, negativeMarks: defaultNegMarks },
+            [id]: { marks: isCoding ? 10 : defaultMarks, negativeMarks: isCoding ? 0 : defaultNegMarks },
           }))
         }
       }
@@ -186,20 +270,38 @@ export default function ExamQuestionsPage() {
 
   const addSelected = async () => {
     if (!selected.size || adding) return
-    const section = tab === 'bank-mcq' ? 'mcq' : 'coding'
-    const fallbackMarks = tab === 'bank-coding' ? 10 : 1
-    const questions = Array.from(selected).map(qId => ({
-      questionId: qId,
-      marks: customMarks[qId]?.marks ?? defaultMarks ?? fallbackMarks,
-      negativeMarks: customMarks[qId]?.negativeMarks ?? defaultNegMarks ?? 0,
-    }))
+    const selectedList = bankQuestions.filter(q => selected.has(q.id))
+    
+    const mcqQuestionsPayload: any[] = []
+    const codingQuestionsPayload: any[] = []
+
+    selectedList.forEach(q => {
+      const isCoding = q.type === 'PQ'
+      const marks = customMarks[q.id]?.marks ?? (isCoding ? 10 : defaultMarks)
+      const negativeMarks = customMarks[q.id]?.negativeMarks ?? (isCoding ? 0 : defaultNegMarks)
+      const item = { questionId: q.id, marks, negativeMarks }
+      if (isCoding) {
+        codingQuestionsPayload.push(item)
+      } else {
+        mcqQuestionsPayload.push(item)
+      }
+    })
+
     setAdding(true)
     setError('')
     try {
-      const r = await api.post(`/exams/${examId}/questions/${section}`, { questions })
+      let addedCount = 0
+      if (mcqQuestionsPayload.length > 0) {
+        const r1 = await api.post(`/exams/${examId}/questions/mcq`, { questions: mcqQuestionsPayload })
+        addedCount += r1.data?.added ?? mcqQuestionsPayload.length
+      }
+      if (codingQuestionsPayload.length > 0) {
+        const r2 = await api.post(`/exams/${examId}/questions/coding`, { questions: codingQuestionsPayload })
+        addedCount += r2.data?.added ?? codingQuestionsPayload.length
+      }
       setSelected(new Set())
       await fetchExam(true)
-      alert(`Added ${r.data?.added ?? questions.length} questions!`)
+      alert(`Successfully added ${addedCount} questions to the assessment!`)
     } catch (e: any) {
       alert(e.response?.data?.message || 'Failed to add questions')
     } finally {
@@ -280,6 +382,18 @@ export default function ExamQuestionsPage() {
     setPublishing(false)
   }
 
+  const renderTypeBadge = (type: string) => {
+    switch (type) {
+      case 'MCQ': return <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-blue-500/15 text-blue-400 border border-blue-500/30">MCQ</span>
+      case 'FIB': return <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-400 border border-amber-500/30">Fill Blank</span>
+      case 'MQ': return <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">Matching</span>
+      case 'JC': return <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-indigo-500/15 text-indigo-400 border border-indigo-500/30">Jumbled Code</span>
+      case 'OP': return <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-cyan-500/15 text-cyan-400 border border-cyan-500/30">Output Prediction</span>
+      case 'PQ': return <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-purple-500/15 text-purple-400 border border-purple-500/30">Coding</span>
+      default: return <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-slate-500/15 text-slate-400 border border-slate-500/30">{type || 'QUESTION'}</span>
+    }
+  }
+
   const examBase = EXAM_BASE
   const mcqQuestions = exam?.questions?.filter((q: any) => q.section === 'A') || []
   const codingQuestions = exam?.questions?.filter((q: any) => q.section === 'B') || []
@@ -314,11 +428,11 @@ export default function ExamQuestionsPage() {
                 <span className={`badge border text-xs ${exam?.status === 'DRAFT' ? 'bg-slate-500/20 text-slate-400 border-slate-500/30' : 'bg-green-500/20 text-green-400 border-green-500/30'}`}>{exam?.status}</span>
                 <span className="text-sm role-text-muted">⏱ {exam?.durationMinutes}m</span>
                 <span className="text-sm role-text-muted">📊 Total: {exam?.totalMarks} marks</span>
-                <span className="text-sm role-text-muted">🟦 MCQs: {mcqQuestions.length}</span>
-                <span className="text-sm role-text-muted">💻 Coding: {codingQuestions.length}</span>
+                <span className="text-sm role-text-muted">🟦 Section A (Objectives): {mcqQuestions.length}</span>
+                <span className="text-sm role-text-muted">💻 Section B (Coding): {codingQuestions.length}</span>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <button onClick={() => router.push(`${examBase}/${examId}/assign`)} className="btn-secondary text-sm">
                 👥 Assign Students
               </button>
@@ -327,17 +441,23 @@ export default function ExamQuestionsPage() {
                   {publishing ? 'Publishing...' : '🚀 Publish Exam'}
                 </button>
               )}
+              <button
+                onClick={openDeleteModal}
+                className="px-3 py-2 rounded-xl text-sm font-semibold bg-rose-600/10 hover:bg-rose-600/20 text-rose-400 border border-rose-500/30 transition-all flex items-center gap-1.5"
+                title="Delete this entire exam with two-step confirmation"
+              >
+                <span>🗑️</span> Delete Test
+              </button>
             </div>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 mb-6 p-1 glass-subtle rounded-xl w-fit">
+        <div className="flex flex-wrap gap-1 mb-6 p-1 glass-subtle rounded-xl w-fit">
           {([
-            ['bank-mcq', '📝 MCQ from Bank'],
-            ['bank-coding', '💻 Coding from Bank'],
-            ['excel-import', '📊 Excel Import'],
-            ['manage', '⚙️ Manage Questions'],
+            ['bank', '📚 Add from Question Bank (All Types)'],
+            ['excel-import', '📊 Excel Import (MCQ)'],
+            ['manage', `⚙️ Existed Questions in Test (${mcqQuestions.length + codingQuestions.length})`],
           ] as [Tab, string][]).map(([t, label]) => (
             <button
               key={t}
@@ -349,25 +469,37 @@ export default function ExamQuestionsPage() {
           ))}
         </div>
 
-        {/* Tab: MCQ/Coding from Bank */}
-        {(tab === 'bank-mcq' || tab === 'bank-coding') && (
+        {/* Tab: Question Bank (All Types) */}
+        {tab === 'bank' && (
           <div className="glass-card p-6">
-            {tab === 'bank-coding' && (
-              <p className="text-xs role-text-muted mb-4">
-                Section B coding questions: statement, input/output format, constraints, visible and hidden cases, marks, allowed languages, and per-language pre-code. Hidden cases and expected outputs stay hidden from students.
-              </p>
-            )}
-            {tab === 'bank-mcq' && (
-              <p className="text-xs role-text-muted mb-4">Section A MCQs only. There is no aptitude section on exams.</p>
-            )}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-6">
+            <p className="text-xs role-text-muted mb-4">
+              Search and add questions of any type (MCQ, Fill in Blank, Matching, Jumbled Code, Output Prediction, Programming) to this test. Non-coding types are automatically organized in Section A, and Programming problems in Section B.
+            </p>
+
+            <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3 mb-6">
+              {/* Type Filter */}
+              <select
+                className="input-field w-full lg:w-56 font-medium text-xs"
+                value={bankType}
+                onChange={e => setBankType(e.target.value)}
+              >
+                {QUESTION_TYPES.map(qt => (
+                  <option key={qt.value} value={qt.value}>{qt.label}</option>
+                ))}
+              </select>
+
               <input
-                className="input-field flex-1"
-                placeholder="Search by question text or topic..."
+                className="input-field flex-1 text-xs"
+                placeholder="Search by question text, topic, company..."
                 value={bankSearch}
                 onChange={e => setBankSearch(e.target.value)}
               />
-              <select className="input-field w-full sm:w-44" value={bankDifficulty} onChange={e => setBankDifficulty(e.target.value)}>
+
+              <select
+                className="input-field w-full sm:w-40 text-xs"
+                value={bankDifficulty}
+                onChange={e => setBankDifficulty(e.target.value)}
+              >
                 <option value="">All Difficulties</option>
                 {['VERY_EASY', 'EASY', 'MEDIUM', 'HARD', 'VERY_HARD'].map(d => (
                   <option key={d} value={d}>{d}</option>
@@ -375,9 +507,9 @@ export default function ExamQuestionsPage() {
               </select>
 
               {/* Default Marks / Neg Marks Selector */}
-              <div className="flex items-center gap-2 bg-[var(--bg-raised)] p-2 rounded-xl border border-[var(--border)]">
+              <div className="flex items-center gap-2 bg-[var(--bg-raised)] p-2 rounded-xl border border-[var(--border)] shrink-0">
                 <div className="flex items-center gap-1">
-                  <span className="text-[10px] font-bold role-text-muted uppercase">Marks:</span>
+                  <span className="text-[10px] font-bold role-text-muted uppercase">Default M:</span>
                   <input
                     type="number"
                     min="0.5"
@@ -390,40 +522,39 @@ export default function ExamQuestionsPage() {
                       setCustomMarks(cm => {
                         const updated = { ...cm }
                         selected.forEach(id => {
-                          updated[id] = { marks: v, negativeMarks: updated[id]?.negativeMarks ?? defaultNegMarks }
+                          const q = bankQuestions.find(bq => bq.id === id)
+                          updated[id] = { marks: q?.type === 'PQ' ? (updated[id]?.marks ?? 10) : v, negativeMarks: updated[id]?.negativeMarks ?? defaultNegMarks }
                         })
                         return updated
                       })
                     }}
                   />
                 </div>
-                {tab === 'bank-mcq' && (
-                  <div className="flex items-center gap-1 border-l pl-2 border-[var(--border)]">
-                    <span className="text-[10px] font-bold text-red-400 uppercase">Neg:</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.25"
-                      className="w-14 px-2 py-1 text-xs rounded-lg bg-[var(--bg-surface)] border border-[var(--border)] text-center font-bold text-red-400"
-                      value={defaultNegMarks}
-                      onChange={e => {
-                        const v = parseFloat(e.target.value) || 0
-                        setDefaultNegMarks(v)
-                        setCustomMarks(cm => {
-                          const updated = { ...cm }
-                          selected.forEach(id => {
-                            updated[id] = { marks: updated[id]?.marks ?? defaultMarks, negativeMarks: v }
-                          })
-                          return updated
+                <div className="flex items-center gap-1 border-l pl-2 border-[var(--border)]">
+                  <span className="text-[10px] font-bold text-red-400 uppercase">Neg:</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.25"
+                    className="w-14 px-2 py-1 text-xs rounded-lg bg-[var(--bg-surface)] border border-[var(--border)] text-center font-bold text-red-400"
+                    value={defaultNegMarks}
+                    onChange={e => {
+                      const v = parseFloat(e.target.value) || 0
+                      setDefaultNegMarks(v)
+                      setCustomMarks(cm => {
+                        const updated = { ...cm }
+                        selected.forEach(id => {
+                          updated[id] = { marks: updated[id]?.marks ?? defaultMarks, negativeMarks: v }
                         })
-                      }}
-                    />
-                  </div>
-                )}
+                        return updated
+                      })
+                    }}
+                  />
+                </div>
               </div>
 
               {selected.size > 0 && (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                   <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[var(--accent-soft)] border border-[var(--accent)]/40 shadow-sm">
                     <span className="text-xs font-bold text-[var(--accent-text)]">
                       Total: <span className="text-sm font-black">{selectedTotalMarks}</span> Marks
@@ -432,7 +563,7 @@ export default function ExamQuestionsPage() {
                       ({selected.size} Q{selected.size > 1 ? 's' : ''})
                     </span>
                   </div>
-                  <button onClick={addSelected} disabled={adding} className="btn-primary shrink-0 font-bold flex items-center gap-1.5">
+                  <button onClick={addSelected} disabled={adding} className="btn-primary shrink-0 font-bold flex items-center gap-1.5 text-xs">
                     {adding ? 'Adding...' : `＋ Add ${selected.size} Selected (${selectedTotalMarks} M)`}
                   </button>
                 </div>
@@ -445,48 +576,63 @@ export default function ExamQuestionsPage() {
               <div className="space-y-2.5 max-h-[60vh] overflow-y-auto pr-1">
                 {bankQuestions.map(q => {
                   const alreadyAdded = alreadyAddedIds.has(q.id)
+                  const existedEq = (exam?.questions || []).find((eq: any) => eq.questionId === q.id)
                   const isSel = selected.has(q.id)
-                  const qMarks = customMarks[q.id]?.marks ?? defaultMarks
-                  const qNeg = customMarks[q.id]?.negativeMarks ?? defaultNegMarks
+                  const isCoding = q.type === 'PQ'
+                  const qMarks = customMarks[q.id]?.marks ?? (isCoding ? 10 : defaultMarks)
+                  const qNeg = customMarks[q.id]?.negativeMarks ?? (isCoding ? 0 : defaultNegMarks)
+                  const isEditingThisMarks = editingMarksId === q.id
 
                   return (
                     <div
                       key={q.id}
                       className={`p-4 rounded-xl border transition-all
-                        ${alreadyAdded ? 'opacity-40 cursor-not-allowed border-[var(--border)]' :
+                        ${alreadyAdded ? 'border-emerald-500/40 bg-emerald-500/5' :
                           isSel ? 'border-[var(--accent)] bg-[var(--accent-soft)]/20 shadow-sm' :
                           'border-[var(--border)] hover:border-[var(--border-strong)] bg-[var(--bg-raised)]/50'}`}
                     >
                       <div className="flex items-start gap-3">
-                        <div
-                          onClick={() => !alreadyAdded && toggleSelect(q.id)}
-                          className={`w-5 h-5 rounded flex items-center justify-center shrink-0 mt-0.5 border-2 transition-all cursor-pointer
-                            ${isSel ? 'bg-[var(--accent)] border-[var(--accent)]' : 'border-[var(--border)]'}`}
-                        >
-                          {isSel && <span className="text-white text-xs">✓</span>}
-                        </div>
+                        {!alreadyAdded ? (
+                          <div
+                            onClick={() => toggleSelect(q.id)}
+                            className={`w-5 h-5 rounded flex items-center justify-center shrink-0 mt-0.5 border-2 transition-all cursor-pointer
+                              ${isSel ? 'bg-[var(--accent)] border-[var(--accent)]' : 'border-[var(--border)]'}`}
+                          >
+                            {isSel && <span className="text-white text-xs">✓</span>}
+                          </div>
+                        ) : (
+                          <div className="w-5 h-5 rounded flex items-center justify-center shrink-0 mt-0.5 bg-emerald-500/20 border border-emerald-500 text-emerald-400 text-xs font-bold" title="Already added to this test">
+                            ✓
+                          </div>
+                        )}
 
                         <div className="flex-1 min-w-0" onClick={() => !alreadyAdded && toggleSelect(q.id)}>
                           <p className="text-sm role-text-primary font-medium line-clamp-2 cursor-pointer">
                             {q.questionText || q.problemStatement}
                           </p>
                           <div className="flex flex-wrap items-center gap-2 mt-2">
+                            {renderTypeBadge(q.type)}
                             {q.questionNumber && (
                               <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-[var(--bg-surface)] border border-[var(--border)]">
                                 {q.questionNumber}
                               </span>
                             )}
-                            <span className="text-xs badge bg-[var(--bg-surface)]">{q.difficulty}</span>
+                            <span className="text-xs badge bg-[var(--bg-surface)]">{q.difficulty?.replace('_', ' ')}</span>
                             {q.topicNames && <span className="text-xs role-text-muted">🏷️ {q.topicNames}</span>}
-                            {tab === 'bank-coding' && hasPerLanguageStarters(q.codeSnippet) && (
+                            {isCoding && hasPerLanguageStarters(q.codeSnippet) && (
                               <span className="text-xs badge bg-[var(--accent-soft)] text-[var(--accent-text)]">Starters</span>
                             )}
-                            {alreadyAdded && <span className="text-xs text-green-400 font-semibold">✓ Already in Exam</span>}
+                            {alreadyAdded && (
+                              <span className="text-xs px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30 flex items-center gap-1">
+                                <span>✓ In Test</span>
+                                {existedEq && <span className="text-[11px] opacity-85">({existedEq.marks}M{existedEq.negativeMarks ? ` / -${existedEq.negativeMarks}` : ''})</span>}
+                              </span>
+                            )}
                           </div>
                         </div>
 
-                        {/* Marks Config & Preview Button */}
-                        <div className="flex items-center gap-2 shrink-0">
+                        {/* Marks Config & Action Buttons */}
+                        <div className="flex flex-wrap items-center gap-2 shrink-0">
                           {isSel && !alreadyAdded && (
                             <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-[var(--bg-surface)] border border-[var(--border)]" onClick={e => e.stopPropagation()}>
                               <div className="flex items-center gap-1">
@@ -500,13 +646,13 @@ export default function ExamQuestionsPage() {
                                     const v = parseFloat(e.target.value) || 1
                                     setCustomMarks(cm => ({
                                       ...cm,
-                                      [q.id]: { marks: v, negativeMarks: cm[q.id]?.negativeMarks ?? defaultNegMarks },
+                                      [q.id]: { marks: v, negativeMarks: cm[q.id]?.negativeMarks ?? (isCoding ? 0 : defaultNegMarks) },
                                     }))
                                   }}
                                   className="w-12 px-1.5 py-0.5 text-xs rounded bg-[var(--bg-raised)] border border-[var(--border)] text-center font-bold"
                                 />
                               </div>
-                              {tab === 'bank-mcq' && (
+                              {!isCoding && (
                                 <div className="flex items-center gap-1 border-l pl-1.5 border-[var(--border)]">
                                   <span className="text-[10px] text-red-400 font-bold">Neg:</span>
                                   <input
@@ -528,18 +674,102 @@ export default function ExamQuestionsPage() {
                             </div>
                           )}
 
-                          {tab === 'bank-coding' && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                openPreCodeConfig(q)
-                              }}
-                              className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-[var(--accent-soft)] hover:bg-[var(--accent-soft)]/80 border border-[var(--accent)]/30 text-[var(--accent-text)] transition-all flex items-center gap-1"
-                              title="Configure pre-defined starter code for all languages"
-                            >
-                              <span>⚙️</span> Pre-defined Code
-                            </button>
+                          {alreadyAdded && (
+                            <>
+                              {isEditingThisMarks ? (
+                                <div className="flex items-center gap-1.5 bg-[var(--bg-surface)] p-1 rounded-lg border border-[var(--accent)]" onClick={e => e.stopPropagation()}>
+                                  <span className="text-[10px] font-bold role-text-muted">M:</span>
+                                  <input
+                                    type="number"
+                                    min="0.5"
+                                    step="0.5"
+                                    value={editMarksVal}
+                                    onChange={e => setEditMarksVal(parseFloat(e.target.value) || 0)}
+                                    className="w-12 px-1 py-0.5 text-xs rounded bg-[var(--bg-raised)] border border-[var(--border)] font-bold text-center"
+                                  />
+                                  {!isCoding && (
+                                    <>
+                                      <span className="text-[10px] font-bold text-red-400">N:</span>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        step="0.25"
+                                        value={editNegVal}
+                                        onChange={e => setEditNegVal(parseFloat(e.target.value) || 0)}
+                                        className="w-12 px-1 py-0.5 text-xs rounded bg-[var(--bg-raised)] border border-[var(--border)] font-bold text-center text-red-400"
+                                      />
+                                    </>
+                                  )}
+                                  <button
+                                    onClick={() => saveUpdatedMarks(q.id)}
+                                    disabled={savingMarks}
+                                    className="px-2 py-0.5 rounded bg-emerald-500 text-white text-xs font-bold hover:bg-emerald-600"
+                                  >
+                                    {savingMarks ? '...' : 'Save'}
+                                  </button>
+                                  <button
+                                    onClick={() => setEditingMarksId(null)}
+                                    className="px-1.5 py-0.5 rounded bg-slate-700 text-slate-300 text-xs hover:bg-slate-600"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setEditingMarksId(q.id)
+                                    setEditMarksVal(Number(existedEq?.marks || (isCoding ? 10 : 1)))
+                                    setEditNegVal(Number(existedEq?.negativeMarks || 0))
+                                  }}
+                                  className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 transition-all flex items-center gap-1"
+                                  title="Edit Marks for this question in the test"
+                                >
+                                  <span>✏️</span> Edit Marks
+                                </button>
+                              )}
+
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  removeQuestion(q.id)
+                                }}
+                                className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 transition-all flex items-center gap-1"
+                                title="Remove question from this exam"
+                              >
+                                <span>🗑️</span> Remove
+                              </button>
+                            </>
+                          )}
+
+                          {isCoding && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  openHintSettings(q, true)
+                                }}
+                                className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 transition-all flex items-center gap-1"
+                                title="Configure sequential hints & penalties"
+                              >
+                                <span>💡</span> Hints {Array.isArray(q.hints) && q.hints.length > 0 ? `(${q.hints.length})` : ''}
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  openPreCodeConfig(q)
+                                }}
+                                className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-[var(--accent-soft)] hover:bg-[var(--accent-soft)]/80 border border-[var(--accent)]/30 text-[var(--accent-text)] transition-all flex items-center gap-1"
+                                title="Configure pre-defined starter code for all languages"
+                              >
+                                <span>⚙️</span> Pre-defined Code
+                              </button>
+                            </>
                           )}
 
                           <button
@@ -559,7 +789,7 @@ export default function ExamQuestionsPage() {
                   )
                 })}
                 {bankQuestions.length === 0 && (
-                  <p className="text-center py-8 role-text-muted">No questions found in the bank.</p>
+                  <p className="text-center py-8 role-text-muted">No questions found in the bank matching your criteria.</p>
                 )}
               </div>
             )}
@@ -660,13 +890,13 @@ export default function ExamQuestionsPage() {
             <div className="glass-card p-6">
               <h3 className="text-base font-bold role-text-primary mb-4 flex items-center gap-2">
                 <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded text-xs font-bold">SECTION A</span>
-                MCQ Questions ({mcqQuestions.length})
+                Objective & Concept Questions ({mcqQuestions.length})
                 <span className="text-xs role-text-muted font-normal ml-1">
                   — Total: {mcqQuestions.reduce((s: number, q: any) => s + Number(q.marks), 0)} marks
                 </span>
               </h3>
               {mcqQuestions.length === 0 ? (
-                <p className="text-sm role-text-muted">No MCQ questions added yet.</p>
+                <p className="text-sm role-text-muted">No Section A questions added yet. Use "Add from Question Bank" to select questions.</p>
               ) : (
                 <div className="space-y-2">
                   {mcqQuestions.map((eq: any, i: number) => {
@@ -674,6 +904,12 @@ export default function ExamQuestionsPage() {
                     return (
                       <div key={eq.id} className="flex flex-wrap items-center gap-3 p-3 bg-[var(--bg-raised)] rounded-xl border border-[var(--border)]">
                         <span className="text-xs role-text-muted w-6 text-center font-bold">{i + 1}</span>
+                        {renderTypeBadge(eq.question?.type)}
+                        {eq.question?.questionNumber && (
+                          <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-[var(--bg-surface)] border border-[var(--border)]">
+                            {eq.question?.questionNumber}
+                          </span>
+                        )}
                         <p className="text-sm role-text-primary flex-1 min-w-[200px] line-clamp-1">
                           {eq.question?.questionText || eq.question?.problemStatement}
                         </p>
@@ -729,7 +965,7 @@ export default function ExamQuestionsPage() {
                                 setEditMarksVal(Number(eq.marks))
                                 setEditNegVal(Number(eq.negativeMarks || 0))
                               }}
-                              className="text-xs text-amber-400 hover:text-amber-300 hover:underline px-1"
+                              className="text-xs text-amber-400 hover:text-amber-300 hover:underline px-1 font-semibold"
                               title="Edit question marks"
                             >
                               ✏️ Edit
@@ -746,9 +982,9 @@ export default function ExamQuestionsPage() {
 
                         <button
                           onClick={() => removeQuestion(eq.questionId)}
-                          className="text-xs text-red-400 hover:text-red-300 shrink-0"
+                          className="text-xs text-red-400 hover:text-red-300 shrink-0 font-semibold"
                         >
-                          Remove
+                          🗑️ Remove
                         </button>
                       </div>
                     )
@@ -761,13 +997,13 @@ export default function ExamQuestionsPage() {
             <div className="glass-card p-6">
               <h3 className="text-base font-bold role-text-primary mb-4 flex items-center gap-2">
                 <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 rounded text-xs font-bold">SECTION B</span>
-                Coding Questions ({codingQuestions.length})
+                Programming / Coding Questions ({codingQuestions.length})
                 <span className="text-xs role-text-muted font-normal ml-1">
                   — Total: {codingQuestions.reduce((s: number, q: any) => s + Number(q.marks), 0)} marks
                 </span>
               </h3>
               {codingQuestions.length === 0 ? (
-                <p className="text-sm role-text-muted">No coding questions added yet.</p>
+                <p className="text-sm role-text-muted">No coding questions added yet. Use "Add from Question Bank" to select programming problems.</p>
               ) : (
                 <div className="space-y-2">
                   {codingQuestions.map((eq: any, i: number) => {
@@ -775,6 +1011,12 @@ export default function ExamQuestionsPage() {
                     return (
                       <div key={eq.id} className="flex flex-wrap items-center gap-3 p-3 bg-[var(--bg-raised)] rounded-xl border border-[var(--border)]">
                         <span className="text-xs role-text-muted w-6 text-center font-bold">{i + 1}</span>
+                        {renderTypeBadge(eq.question?.type)}
+                        {eq.question?.questionNumber && (
+                          <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-[var(--bg-surface)] border border-[var(--border)]">
+                            {eq.question?.questionNumber}
+                          </span>
+                        )}
                         <p className="text-sm role-text-primary flex-1 min-w-[200px] line-clamp-1">
                           {eq.question?.problemStatement || eq.question?.questionText}
                         </p>
@@ -819,7 +1061,7 @@ export default function ExamQuestionsPage() {
                                 setEditMarksVal(Number(eq.marks))
                                 setEditNegVal(0)
                               }}
-                              className="text-xs text-amber-400 hover:text-amber-300 hover:underline px-1"
+                              className="text-xs text-amber-400 hover:text-amber-300 hover:underline px-1 font-semibold"
                               title="Edit question marks"
                             >
                               ✏️ Edit
@@ -829,8 +1071,17 @@ export default function ExamQuestionsPage() {
 
                         <button
                           type="button"
+                          onClick={() => openHintSettings(eq)}
+                          className="text-xs text-amber-400 hover:text-amber-300 hover:underline px-2 flex items-center gap-1 font-semibold"
+                          title="Configure sequential hints & penalties"
+                        >
+                          <span>💡</span> Hints {Array.isArray(eq.question?.hints) && eq.question.hints.length > 0 ? `(${eq.question.hints.length})` : ''}
+                        </button>
+
+                        <button
+                          type="button"
                           onClick={() => openPreCodeConfig(eq.question)}
-                          className="text-xs text-[var(--accent-text)] hover:underline px-2 flex items-center gap-1"
+                          className="text-xs text-[var(--accent-text)] hover:underline px-2 flex items-center gap-1 font-semibold"
                           title="Configure pre-defined starter code for all languages"
                         >
                           <span>⚙️</span> Pre-defined Code
@@ -845,9 +1096,9 @@ export default function ExamQuestionsPage() {
 
                         <button
                           onClick={() => removeQuestion(eq.questionId)}
-                          className="text-xs text-red-400 hover:text-red-300 shrink-0"
+                          className="text-xs text-red-400 hover:text-red-300 shrink-0 font-semibold"
                         >
-                          Remove
+                          🗑️ Remove
                         </button>
                       </div>
                     )
@@ -1004,6 +1255,307 @@ export default function ExamQuestionsPage() {
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Hint Settings Modal */}
+        {hintModalEq && (
+          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+            <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 my-8">
+              <div className="p-6 border-b border-[var(--border)] flex items-start justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-[var(--bg-raised)] border border-[var(--border)]">
+                      {hintModalEq.question?.questionNumber || 'PQ'}
+                    </span>
+                    <span className="text-xs badge bg-amber-500/10 text-amber-400 border border-amber-500/30 font-semibold">
+                      💡 Question Hints & Penalty Rules
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-bold role-text-primary">
+                    {hintModalEq.question?.questionText || hintModalEq.question?.problemStatement}
+                  </h3>
+                  <p className="text-xs role-text-muted mt-1">
+                    Configure sequential hints and the penalty applied when students unlock hints during the exam.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setHintModalEq(null)}
+                  className="w-8 h-8 rounded-xl flex items-center justify-center text-gray-400 hover:text-white hover:bg-[var(--bg-raised)] transition-all"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="p-6 space-y-6">
+                {(!hintModalEq.question?.hints || hintModalEq.question.hints.length === 0) ? (
+                  <div className="p-6 rounded-xl bg-amber-500/10 border border-amber-500/20 text-center space-y-2">
+                    <p className="text-sm font-semibold text-amber-300">No Hints Defined</p>
+                    <p className="text-xs role-text-muted max-w-md mx-auto">
+                      This programming problem currently does not have any hints added in the Question Bank. You can edit the question in Question Bank to add sequential hints.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Enable Toggle */}
+                    <div className="flex items-center justify-between p-4 bg-[var(--bg-raised)] rounded-xl border border-[var(--border)]">
+                      <div>
+                        <p className="text-sm font-bold role-text-primary">Enable Sequential Hints</p>
+                        <p className="text-xs role-text-muted">Allow students to unlock hints one-by-one in the coding workspace</p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={hintSettingsEnabled}
+                          onChange={e => setHintSettingsEnabled(e.target.checked)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                      </label>
+                    </div>
+
+                    {hintSettingsEnabled && (
+                      <div className="space-y-4">
+                        {/* Penalty Type Selection */}
+                        <div>
+                          <label className="block text-xs font-bold uppercase tracking-wider role-text-muted mb-2">
+                            Select Penalty Type
+                          </label>
+                          <div className="grid grid-cols-3 gap-3">
+                            <button
+                              type="button"
+                              onClick={() => setHintPenaltyType('MARKS')}
+                              className={`p-3 rounded-xl border text-left transition-all ${
+                                hintPenaltyType === 'MARKS'
+                                  ? 'bg-rose-500/10 border-rose-500 text-rose-300 shadow-sm'
+                                  : 'bg-[var(--bg-raised)] border-[var(--border)] text-gray-400 hover:border-gray-500'
+                              }`}
+                            >
+                              <div className="font-bold text-sm">🎯 Negative Marks</div>
+                              <div className="text-[11px] opacity-80 mt-1">Deduct marks from question score per hint</div>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setHintPenaltyType('TIME')}
+                              className={`p-3 rounded-xl border text-left transition-all ${
+                                hintPenaltyType === 'TIME'
+                                  ? 'bg-indigo-500/10 border-indigo-500 text-indigo-300 shadow-sm'
+                                  : 'bg-[var(--bg-raised)] border-[var(--border)] text-gray-400 hover:border-gray-500'
+                              }`}
+                            >
+                              <div className="font-bold text-sm">⏳ Time Penalty</div>
+                              <div className="text-[11px] opacity-80 mt-1">Deduct time from total test duration</div>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setHintPenaltyType('NONE')}
+                              className={`p-3 rounded-xl border text-left transition-all ${
+                                hintPenaltyType === 'NONE'
+                                  ? 'bg-emerald-500/10 border-emerald-500 text-emerald-300 shadow-sm'
+                                  : 'bg-[var(--bg-raised)] border-[var(--border)] text-gray-400 hover:border-gray-500'
+                              }`}
+                            >
+                              <div className="font-bold text-sm">✨ Free (No Penalty)</div>
+                              <div className="text-[11px] opacity-80 mt-1">Students reveal hints without deduction</div>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Per-Hint Penalty Configuration */}
+                        {hintPenaltyType !== 'NONE' && (
+                          <div className="space-y-3 pt-2">
+                            <div className="flex items-center justify-between">
+                              <label className="text-xs font-bold uppercase tracking-wider role-text-muted">
+                                Configure {hintPenaltyType === 'MARKS' ? 'Marks to Deduct per Hint' : 'Minutes to Deduct per Hint'}
+                              </label>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[11px] role-text-muted">
+                                  {hintPenaltyType === 'MARKS' ? 'Unit: Marks' : 'Unit: Minutes'}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="space-y-2.5 max-h-[30vh] overflow-y-auto pr-1">
+                              {hintModalEq.question?.hints?.map((hintText: string, idx: number) => {
+                                const currentPenalty = hintPenalties[idx] !== undefined ? hintPenalties[idx] : (hintPenaltyType === 'TIME' ? 2 : 1)
+                                return (
+                                  <div
+                                    key={idx}
+                                    className="p-3 rounded-xl bg-[var(--bg-raised)] border border-[var(--border)] flex items-center justify-between gap-4"
+                                  >
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2">
+                                        <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 text-xs font-bold">
+                                          Hint {idx + 1}
+                                        </span>
+                                        <span className="text-xs role-text-muted line-clamp-1">
+                                          {hintText}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                      <span className="text-xs font-semibold role-text-muted">
+                                        {hintPenaltyType === 'MARKS' ? 'Deduct Marks:' : 'Deduct (Mins):'}
+                                      </span>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        step={hintPenaltyType === 'MARKS' ? '0.5' : '1'}
+                                        value={currentPenalty}
+                                        onChange={e => {
+                                          const val = parseFloat(e.target.value) || 0
+                                          setHintPenalties(prev => {
+                                            const arr = [...prev]
+                                            arr[idx] = val
+                                            return arr
+                                          })
+                                        }}
+                                        className="w-20 px-2 py-1 text-xs rounded-lg bg-[var(--bg-surface)] border border-[var(--border)] font-bold text-center text-amber-400"
+                                      />
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+
+              <div className="p-4 bg-[var(--bg-raised)]/50 border-t border-[var(--border)] flex items-center justify-between gap-3">
+                <span className="text-xs role-text-muted">
+                  {hintModalEq.question?.hints?.length || 0} Hint(s) configured in Question Bank
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setHintModalEq(null)}
+                    className="btn-secondary text-xs"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={saveHintSettings}
+                    disabled={savingHintSettings}
+                    className="btn-primary text-xs font-bold flex items-center gap-1.5"
+                  >
+                    {savingHintSettings ? 'Saving...' : '💾 Save Hint Settings'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TWO-STEP DELETE CONFIRMATION MODAL */}
+        {showDeleteModal && exam && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+            <div className="glass-card max-w-md w-full p-6 relative border-rose-500/30 animate-in fade-in zoom-in-95 duration-200">
+              <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center font-bold">
+                    ⚠️
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-rose-400">Delete Assessment</h2>
+                    <p className="text-xs role-text-muted">Step {deleteStep} of 2</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowDeleteModal(false)}
+                  className="w-8 h-8 rounded-full bg-[var(--bg-raised)] flex items-center justify-center text-gray-400 hover:text-white"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {deleteError && (
+                <div className="p-3 rounded-xl text-xs mb-4 bg-rose-500/10 text-rose-400 border border-rose-500/30">
+                  {deleteError}
+                </div>
+              )}
+
+              {deleteStep === 1 ? (
+                <div className="space-y-4">
+                  <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-xs text-rose-300">
+                    <p className="font-semibold mb-1">Are you sure you want to delete this test?</p>
+                    <p className="opacity-90">
+                      Exam: <span className="font-bold text-white">"{exam.title}"</span> (#{exam.id})
+                    </p>
+                    <p className="opacity-90 mt-0.5">
+                      Status: <span className="font-semibold uppercase text-amber-300">{exam.status}</span>
+                    </p>
+                    <p className="opacity-90 mt-0.5">
+                      Questions linked: <span className="font-semibold text-white">{(exam.questions || []).length}</span>
+                    </p>
+                  </div>
+
+                  <div className="text-xs role-text-muted space-y-1 bg-[var(--bg-raised)] p-3 rounded-xl border border-[var(--border)]">
+                    <p className="font-semibold role-text-primary mb-1">⚠️ The following data will be permanently deleted:</p>
+                    <p>• All linked test questions & configurations</p>
+                    <p>• Assigned college & student assignments</p>
+                    <p>• Student submissions, results, and proctoring logs</p>
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-3 border-t" style={{ borderColor: 'var(--border)' }}>
+                    <button
+                      type="button"
+                      onClick={() => setShowDeleteModal(false)}
+                      className="btn-secondary text-sm"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeleteStep(2)}
+                      className="px-4 py-2 rounded-xl text-sm font-bold bg-rose-600 hover:bg-rose-500 text-white transition-all shadow-lg shadow-rose-600/20 flex items-center gap-1.5"
+                    >
+                      Proceed to Step 2 →
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-xs text-rose-300">
+                    To confirm deletion of <strong className="text-white">"{exam.title}"</strong>, type <span className="font-mono font-bold bg-rose-500/20 px-1.5 py-0.5 rounded text-rose-300">DELETE</span> below:
+                  </p>
+
+                  <input
+                    type="text"
+                    value={deleteInputText}
+                    onChange={e => setDeleteInputText(e.target.value)}
+                    placeholder="Type DELETE to confirm"
+                    className="input-field w-full font-mono text-center tracking-wider font-bold border-rose-500/40 focus:border-rose-500"
+                    autoFocus
+                  />
+
+                  <div className="flex justify-end gap-3 pt-3 border-t" style={{ borderColor: 'var(--border)' }}>
+                    <button
+                      type="button"
+                      onClick={() => setDeleteStep(1)}
+                      className="btn-secondary text-sm"
+                      disabled={deletingLoading}
+                    >
+                      ← Back
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDeleteExam}
+                      disabled={deleteInputText.trim().toUpperCase() !== 'DELETE' || deletingLoading}
+                      className="px-4 py-2 rounded-xl text-sm font-bold bg-rose-600 hover:bg-rose-500 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-all shadow-lg shadow-rose-600/20 flex items-center gap-1.5"
+                    >
+                      {deletingLoading ? 'Deleting...' : '🗑️ Confirm & Delete Permanently'}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

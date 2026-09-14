@@ -1,49 +1,55 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
 import { api } from '@/lib/api'
+import { fromLocalDatetimeInput } from '@/lib/date-utils'
 
-const steps = ['Basic Info', 'Settings', 'Review']
+const steps = ['Details & Schedule', 'Settings', 'Section Durations', 'Review']
 
 export default function CreateExamPage() {
   const router = useRouter()
   const [step, setStep] = useState(0)
-  const [user, setUser] = useState<any>(null)
   const [saving, setSaving] = useState(false)
+  const [user, setUser] = useState<any>(null)
+
   const [form, setForm] = useState({
-    title: '', description: '', instructions: '',
-    durationMinutes: 60, passingMarks: 40,
-    startAt: '', endAt: '',
-    timingMode: 'TOTAL' as 'TOTAL' | 'SECTION' | 'QUESTION',
-    sectionDurations: { A: 30, B: 30 },
-    questionDurationSeconds: 60,
-    negativeMarking: false, negativeMarksValue: 0.25,
-    attemptLimit: 1,
-    randomizeQuestions: false, randomizeOptions: false,
-    autoSubmit: true, showResults: true,
-    showCorrectAnswers: true, showExplanations: true,
-    rankingEnabled: false, tabSwitchMonitoring: true,
-    maxTabSwitches: 3,
+    title: '',
+    description: '',
+    durationMinutes: 60,
+    passingMarks: 40,
+    startAt: '',
+    endAt: '',
     targetBranches: '',
     targetBatches: '',
+    attemptLimit: 1,
+    negativeMarking: false,
+    negativeMarksValue: 0.25,
+    tabSwitchMonitoring: true,
+    maxTabSwitches: 3,
+    shuffleQuestions: false,
+    shuffleOptions: false,
+    showCorrectAnswers: true,
+    showExplanations: true,
+    instructions: '',
+    timingMode: 'TOTAL',
+    sectionDurations: { A: 30, B: 30 },
+    questionDurationSeconds: 60,
   })
 
   useEffect(() => {
     const stored = localStorage.getItem('user')
     if (!stored) { router.push('/login'); return }
-    setUser(JSON.parse(stored))
+    const u = JSON.parse(stored)
+    if (u.role === 'STUDENT') { router.push('/dashboard/student'); return }
+    setUser(u)
   }, [])
 
-  const set = (field: string, val: any) => setForm(f => ({ ...f, [field]: val }))
+  const set = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }))
 
-  const handleCreate = async () => {
-    if (!form.title.trim()) { alert('Exam title is required'); return }
-    if (form.durationMinutes < 10 && form.timingMode !== 'QUESTION') {
-      alert('Duration must be at least 10 minutes'); return
-    }
+  const createExam = async () => {
     setSaving(true)
     try {
       const branches = form.targetBranches ? form.targetBranches.split(',').map(s => s.trim()).filter(Boolean) : undefined
@@ -51,8 +57,8 @@ export default function CreateExamPage() {
 
       const payload = {
         ...form,
-        startAt: form.startAt || undefined,
-        endAt: form.endAt || undefined,
+        startAt: fromLocalDatetimeInput(form.startAt),
+        endAt: fromLocalDatetimeInput(form.endAt),
         targetBranches: branches,
         targetBatches: batches,
         sectionDurations: form.timingMode === 'SECTION' ? form.sectionDurations : undefined,

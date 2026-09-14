@@ -230,6 +230,18 @@ export default function ExamResultPage() {
                   <span>Public: {q.passedPublic}/{q.totalPublic} passed</span>
                   {q.language && <span>Language: {q.language}</span>}
                 </div>
+                {(q.hintsUnlocked > 0 || (result.unlockedHints && result.unlockedHints[String(q.questionId)]?.length > 0)) && (
+                  <div className="mt-3 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs flex items-center justify-between">
+                    <span className="text-amber-300 font-medium flex items-center gap-1.5">
+                      <span>💡</span> {q.hintsUnlocked || result.unlockedHints[String(q.questionId)]?.length} Hint(s) Unlocked
+                    </span>
+                    {q.hintDeduction > 0 && (
+                      <span className="text-rose-400 font-bold">
+                        -{q.hintDeduction} Marks Hint Penalty
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
             {!result.codingDetails?.length && (

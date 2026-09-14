@@ -43,7 +43,8 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
         problemStatement: '', inputFormat: '', outputFormat: '', constraints: '',
         testCases: [{ input: '', output: '', explanation: '', isHidden: false }],
         codeSnippet: '', expectedOutput: '',
-        allowedLanguages: ['Python'],
+        allowedLanguages: [],
+        hints: [''],
         explanation: '',
         correctCode: '',
         description: '',
@@ -59,7 +60,7 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
     const [saving, setSaving] = useState(false)
     const [showPreview, setShowPreview] = useState(false)
     const [error, setError] = useState('')
-    const [pqTab, setPqTab] = useState<'explanation' | 'problem' | 'testcases' | 'predefined'>('explanation')
+    const [pqTab, setPqTab] = useState<'explanation' | 'problem' | 'testcases' | 'predefined' | 'hints'>('explanation')
     const [predefinedCodes, setPredefinedCodes] = useState<Record<string, string>>({ ...ADMIN_STARTERS })
 
     const problemStatementRef = useRef<HTMLTextAreaElement>(null)
@@ -173,7 +174,8 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
                         testCases: Array.isArray(data.testCases)
                             ? data.testCases.map((tc: any) => ({ ...tc, isHidden: tc.isHidden ?? false }))
                             : prev.testCases,
-                        allowedLanguages: data.allowedLanguages || prev.allowedLanguages || ['Python'],
+                        allowedLanguages: data.type === 'PQ' ? (Array.isArray(data.allowedLanguages) && data.allowedLanguages.length > 0 ? data.allowedLanguages : ['Python']) : (data.allowedLanguages || []),
+                        hints: Array.isArray(data.hints) && data.hints.length > 0 ? data.hints : [''],
                     };
 
                     // Sync common fields for UI consistency
@@ -198,7 +200,8 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
         try {
             const submitData = {
                 ...form,
-                topicNames: Array.isArray(form.topicNames) ? form.topicNames.join(', ') : form.topicNames
+                topicNames: Array.isArray(form.topicNames) ? form.topicNames.join(', ') : form.topicNames,
+                hints: Array.isArray(form.hints) ? form.hints.map((h: string) => h.trim()).filter(Boolean) : [],
             }
             if (form.type === 'PQ') {
                 submitData.codeSnippet = JSON.stringify(predefinedCodes);
@@ -217,7 +220,10 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
             if (submitData.type !== 'FIB') delete (submitData as any).blanks;
             if (submitData.type !== 'MCQ' && submitData.type !== 'OP') delete (submitData as any).options;
             if (submitData.type !== 'JC') delete (submitData as any).jumbledStatements;
-            if (submitData.type !== 'PQ') delete (submitData as any).testCases;
+            if (submitData.type !== 'PQ') {
+                delete (submitData as any).testCases;
+                delete (submitData as any).allowedLanguages;
+            }
             if (submitData.type !== 'OP' && submitData.type !== 'PQ') {
                 delete (submitData as any).codeSnippet;
                 delete (submitData as any).expectedOutput;
@@ -367,7 +373,7 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
                             <div>
                                 <label className="text-gray-400 text-sm mb-2 block">Programming Language</label>
                                 <select value={form.programmingLanguage} onChange={e => set('programmingLanguage', e.target.value)} className="input-field">
-                                    <option value="">Any</option>
+                                    <option value="">None / Not Specified</option>
                                     {LANGUAGES.map(l => <option key={l}>{l}</option>)}
                                 </select>
                             </div>
@@ -699,6 +705,18 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
                                         <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-400 rounded-full" />
                                     )}
                                 </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setPqTab('hints')}
+                                    className={`pb-2 text-sm font-semibold transition-all relative ${
+                                        pqTab === 'hints' ? 'text-primary-400' : 'text-gray-400 hover:text-white'
+                                    }`}
+                                >
+                                    💡 Hints {form.hints?.filter((h: string) => h?.trim())?.length ? `(${form.hints.filter((h: string) => h?.trim()).length})` : ''}
+                                    {pqTab === 'hints' && (
+                                        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-400 rounded-full" />
+                                    )}
+                                </button>
                             </div>
 
                             {pqTab === 'explanation' && (
@@ -877,6 +895,58 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
                                             ))}
                                         </div>
                                     )}
+                                </div>
+                            )}
+
+                            {pqTab === 'hints' && (
+                                <div className="space-y-4 animate-in fade-in duration-200">
+                                    <div>
+                                        <h4 className="text-white text-sm font-semibold">Sequential Problem Hints</h4>
+                                        <p className="text-xs text-gray-400 mt-1">
+                                            Add progressive hints that students can optionally unlock during tests. When creating assessments, you can configure negative mark penalties or test timer deductions for each revealed hint.
+                                        </p>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        {(form.hints || []).map((hint: string, i: number) => (
+                                            <div key={i} className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-2">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+                                                        <span>💡</span> Hint {i + 1}
+                                                    </span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const nextHints = (form.hints || []).filter((_: any, idx: number) => idx !== i)
+                                                            set('hints', nextHints.length ? nextHints : [''])
+                                                        }}
+                                                        className="text-xs text-rose-400 hover:text-rose-300 transition-colors font-semibold"
+                                                    >
+                                                        ✕ Remove Hint
+                                                    </button>
+                                                </div>
+                                                <textarea
+                                                    value={hint}
+                                                    onChange={e => {
+                                                        const nextHints = [...(form.hints || [])]
+                                                        nextHints[i] = e.target.value
+                                                        set('hints', nextHints)
+                                                    }}
+                                                    rows={3}
+                                                    placeholder={`Provide Hint ${i + 1} guidance for solving the problem...`}
+                                                    className="input-field text-xs font-sans"
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => set('hints', [...(form.hints || []), ''])}
+                                        className="px-4 py-2 rounded-xl bg-amber-500/10 text-amber-300 border border-amber-500/20 text-xs font-bold hover:bg-amber-500/20 transition-all flex items-center gap-1.5"
+                                    >
+                                        <span>+</span> Add Another Hint
+                                    </button>
                                 </div>
                             )}
                         </div>

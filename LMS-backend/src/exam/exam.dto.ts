@@ -96,6 +96,20 @@ export class AddExamQuestionDto {
   @IsNumber() @Min(0) marks: number;
   @IsNumber() @Min(0) @IsOptional() negativeMarks?: number;
   @IsInt() @IsOptional() sortOrder?: number;
+  @IsBoolean() @IsOptional() hintsEnabled?: boolean;
+  @IsString() @IsOptional() @IsIn(['MARKS', 'TIME', 'NONE']) hintPenaltyType?: 'MARKS' | 'TIME' | 'NONE';
+  @IsArray() @IsOptional() hintPenalties?: number[];
+}
+
+export class UpdateQuestionHintSettingsDto {
+  @IsBoolean() @IsOptional() hintsEnabled?: boolean;
+  @IsString() @IsIn(['MARKS', 'TIME', 'NONE']) hintPenaltyType: 'MARKS' | 'TIME' | 'NONE';
+  @IsArray() @IsOptional() hintPenalties?: number[];
+}
+
+export class UnlockHintDto {
+  @IsInt() questionId: number;
+  @IsInt() @Min(0) hintIndex: number;
 }
 
 export class AddManyExamQuestionsDto {

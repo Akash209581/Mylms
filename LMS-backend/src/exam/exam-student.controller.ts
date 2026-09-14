@@ -6,7 +6,7 @@ import { RolesGuard } from '../common/roles.guard';
 import { Roles } from '../common/roles.decorator';
 import { UserRole } from '../entities/user.entity';
 import { ExamStudentService } from './exam-student.service';
-import { SaveMcqAnswersDto, RunCodeDto, SubmitExamDto } from './exam.dto';
+import { SaveMcqAnswersDto, RunCodeDto, SubmitExamDto, UnlockHintDto } from './exam.dto';
 
 @Controller('student/exams')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -32,6 +32,15 @@ export class ExamStudentController {
   @Get('attempts/:attemptId')
   getAttempt(@Request() req, @Param('attemptId', ParseIntPipe) attemptId: number) {
     return this.service.getAttempt(req.user, attemptId);
+  }
+
+  @Post('attempts/:attemptId/unlock-hint')
+  unlockHint(
+    @Request() req,
+    @Param('attemptId', ParseIntPipe) attemptId: number,
+    @Body() dto: UnlockHintDto,
+  ) {
+    return this.service.unlockHint(req.user, attemptId, dto);
   }
 
   @Patch('attempts/:attemptId/answers')

@@ -236,10 +236,20 @@ export class QuestionBankController {
       });
     }
 
-    // QUESTION_CREATOR sees their own questions (all statuses) + approved questions
-    if (userRole === UserRole.QUESTION_CREATOR) {
+    // Filter questions by status
+    if (status) {
+      if (status !== 'ALL') {
+        qb.andWhere('q.status = :status', { status });
+      }
+    } else if (userRole === UserRole.QUESTION_CREATOR) {
+      // QUESTION_CREATOR sees their own questions (all statuses) + approved questions
       qb.andWhere('(q.createdBy = :userId OR q.status = :apprStatus)', {
         userId,
+        apprStatus: QuestionStatus.APPROVED,
+      });
+    } else {
+      // Default to showing only APPROVED questions in Question Bank
+      qb.andWhere('q.status = :apprStatus', {
         apprStatus: QuestionStatus.APPROVED,
       });
     }
@@ -247,7 +257,6 @@ export class QuestionBankController {
     if (type) qb.andWhere('q.type = :type', { type });
     if (difficulty) qb.andWhere('q.difficulty = :difficulty', { difficulty });
     if (domain) qb.andWhere('q.domain = :domain', { domain });
-    if (status) qb.andWhere('q.status = :status', { status });
     if (targetCompanies) {
       qb.andWhere('(q.targetCompanies ILIKE :tcomp OR q.companiesAppeared ILIKE :tcomp)', {
         tcomp: `%${targetCompanies}%`,
@@ -270,6 +279,7 @@ export class QuestionBankController {
   async getStats(@Request() req?: any) {
     const userRole = req?.user?.role;
     const userCollegeId = req?.user?.collegeId;
+    const userId = req?.user?.sub;
 
     // Get organization filter based on user role
     const collegeFilter = this.CollegeFilterService.getCollegeFilter(
@@ -278,10 +288,17 @@ export class QuestionBankController {
     );
 
     const activeCond = '(q.isActive IS NULL OR q.isActive = true)';
+    let statusFilter = 'q.status = :apprStatus';
+    let statusParams: any = { apprStatus: QuestionStatus.APPROVED };
+    if (userRole === UserRole.QUESTION_CREATOR) {
+      statusFilter = '(q.createdBy = :userId OR q.status = :apprStatus)';
+      statusParams = { userId, apprStatus: QuestionStatus.APPROVED };
+    }
 
     // Build base query with organization filter
     const baseQuery = this.questionRepo.createQueryBuilder('q')
-      .where(activeCond);
+      .where(activeCond)
+      .andWhere(statusFilter, statusParams);
     if (collegeFilter.collegeId) {
       baseQuery.andWhere('q.collegeId = :collegeId', {
         collegeId: collegeFilter.collegeId
@@ -295,6 +312,7 @@ export class QuestionBankController {
       .select('q.type', 'type')
       .addSelect('COUNT(*)', 'count')
       .where(activeCond)
+      .andWhere(statusFilter, statusParams)
       .andWhere(collegeFilter.collegeId ? 'q.collegeId = :collegeId' : '1=1',
         collegeFilter.collegeId ? { collegeId: collegeFilter.collegeId } : {})
       .groupBy('q.type')
@@ -305,12 +323,41 @@ export class QuestionBankController {
       .select('q.difficulty', 'difficulty')
       .addSelect('COUNT(*)', 'count')
       .where(activeCond)
+      .andWhere(statusFilter, statusParams)
       .andWhere(collegeFilter.collegeId ? 'q.collegeId = :collegeId' : '1=1',
         collegeFilter.collegeId ? { collegeId: collegeFilter.collegeId } : {})
       .groupBy('q.difficulty')
       .getRawMany();
 
     return { total, byType, byDifficulty };
+  }
+
+  @Post('upload-image')
+  @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.INSTRUCTOR, UserRole.QUESTION_CREATOR)
+  @UseInterceptors(FileInterceptor('file', {
+    limits: { fileSize: 10 * 1024 * 1024 }
+  }))
+  async uploadQuestionImage(@UploadedFile() file: any) {
+    if (!file) {
+      throw new BadRequestException('No image file uploaded');
+    }
+
+    const fs = require('fs');
+    const path = require('path');
+
+    const baseUploadsDir = process.env.UPLOADS_DIR || path.join(process.cwd(), 'uploads');
+    const questionUploadsDir = path.join(baseUploadsDir, 'questions');
+    if (!fs.existsSync(questionUploadsDir)) {
+      fs.mkdirSync(questionUploadsDir, { recursive: true });
+    }
+    const ext = path.extname(file.originalname) || '.png';
+    const shortId = Math.random().toString(36).substring(2, 8);
+    const safeName = `q_${Date.now()}_${shortId}${ext}`;
+    const filePath = path.join(questionUploadsDir, safeName);
+    fs.writeFileSync(filePath, file.buffer);
+    const fileUrl = `/uploads/questions/${safeName}`;
+
+    return { url: fileUrl };
   }
 
   @Post('bulk-import')
@@ -461,8 +508,13 @@ export class QuestionBankController {
       status = dto.status;
     }
 
+    const allowedLanguages = dto.type === QuestionType.PQ
+      ? (Array.isArray(dto.allowedLanguages) && dto.allowedLanguages.length > 0 ? dto.allowedLanguages : ['Python'])
+      : null;
+
     const q = this.questionRepo.create({
       ...dto,
+      allowedLanguages: allowedLanguages as any,
       targetCompanies: dto.targetCompanies || dto.companiesAppeared,
       companiesAppeared: dto.companiesAppeared || dto.targetCompanies,
       questionNumber,
@@ -525,6 +577,10 @@ export class QuestionBankController {
       }
 
       const nextType = dto.type || question.type;
+      if (nextType !== QuestionType.PQ) {
+        dto.allowedLanguages = null as any;
+      }
+
       const nextText = dto.questionText ?? question.questionText;
       const nextCollegeId = question.collegeId || userCollegeId || 1;
       await this.assertQuestionIsNew(nextType, nextText, nextCollegeId, id);

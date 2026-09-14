@@ -35,6 +35,14 @@ interface Question {
   allowedLanguages?: string[]
   codeSnippet?: string
   sampleTestCases?: SampleTestCase[]
+  hints?: {
+    totalHints: number
+    hintsEnabled: boolean
+    hintPenaltyType: 'MARKS' | 'TIME' | 'NONE'
+    hintPenalties: number[]
+    unlockedCount: number
+    unlockedHints: { index: number; text: string }[]
+  }
 }
 
 interface Attempt {
@@ -565,6 +573,47 @@ export default function ExamAttemptPage() {
     }
   }
 
+  const handleUnlockHint = async (questionId: number, hintIndex: number) => {
+    if (!attemptId) return
+    try {
+      const res = await api.post(`/student/exams/attempts/${attemptId}/unlock-hint`, {
+        questionId,
+        hintIndex,
+      })
+      const { hintIndex: revealedIdx, hintText, remainingSeconds, deadlineAt } = res.data
+
+      setAttempt((prev: any) => {
+        if (!prev) return prev
+        const updatedQuestions = (prev.questions || []).map((q: any) => {
+          if (q.id === questionId && q.hints) {
+            const existingUnlocked = q.hints.unlockedHints || []
+            const newUnlocked = [...existingUnlocked.filter((h: any) => h.index !== revealedIdx), { index: revealedIdx, text: hintText }]
+            return {
+              ...q,
+              hints: {
+                ...q.hints,
+                unlockedCount: newUnlocked.length,
+                unlockedHints: newUnlocked,
+              },
+            }
+          }
+          return q
+        })
+
+        return {
+          ...prev,
+          remainingSeconds: remainingSeconds !== undefined ? remainingSeconds : prev.remainingSeconds,
+          deadlineAt: deadlineAt || prev.deadlineAt,
+          questions: updatedQuestions,
+        }
+      })
+      return res.data
+    } catch (err: any) {
+      alert(err?.response?.data?.message || 'Failed to unlock hint')
+      throw err
+    }
+  }
+
   const submitExam = async (rawReason?: any) => {
     if (submittingRef.current) return
     submittingRef.current = true
@@ -744,6 +793,7 @@ export default function ExamAttemptPage() {
                   onSubmitCode={() => runCode(currentQuestion.id, true)}
                   isMarkedForReview={markedReview.includes(currentQuestion.id)}
                   onToggleReview={() => toggleReview(currentQuestion.id)}
+                  onUnlockHint={handleUnlockHint}
                 />
               )}
             </>
