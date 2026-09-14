@@ -186,7 +186,7 @@ export default function SuperAdminUsersPage() {
                                                     onChange={e => handleRoleChange(u.id, e.target.value)}
                                                     className="text-xs font-semibold rounded-lg px-2 py-1.5 outline-none cursor-pointer"
                                                     style={{ background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)', color: '#a5b4fc' }}>
-                                                    {['STUDENT', 'INSTRUCTOR', 'ADMIN', 'SUPERADMIN'].map(r => (
+                                                    {['STUDENT', 'INSTRUCTOR', 'QUESTION_CREATOR', 'CONTENT_CREATOR', 'ADMIN', 'SUPERADMIN'].map(r => (
                                                         <option key={r} value={r} style={{ background: '#1a1a2e' }}>{r}</option>
                                                     ))}
                                                 </select>

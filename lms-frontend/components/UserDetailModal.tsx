@@ -26,6 +26,10 @@ export default function UserDetailModal({ user, onClose, canDelete = false, onDe
                 return 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-300 border border-emerald-500/30'
             case 'INSTRUCTOR':
                 return 'bg-gradient-to-r from-blue-500/20 to-cyan-500/20 text-blue-300 border border-blue-500/30'
+            case 'QUESTION_CREATOR':
+                return 'bg-gradient-to-r from-amber-500/20 to-yellow-500/20 text-amber-300 border border-amber-500/30'
+            case 'CONTENT_CREATOR':
+                return 'bg-gradient-to-r from-indigo-500/20 to-violet-500/20 text-indigo-300 border border-indigo-500/30'
             case 'STUDENT':
                 return 'bg-gradient-to-r from-purple-500/20 to-indigo-500/20 text-purple-300 border border-purple-500/30'
             default:
