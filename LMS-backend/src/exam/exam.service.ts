@@ -91,12 +91,12 @@ export class ExamService implements OnModuleInit, OnModuleDestroy {
         .andWhere('(end_at IS NULL OR end_at > :now)', { now })
         .execute();
 
-      // 2. SCHEDULED or LIVE -> COMPLETED (endAt passed)
+      // 2. Any active/scheduled/draft exam with end_at in the past -> COMPLETED
       await this.examRepo
         .createQueryBuilder()
         .update(Exam)
         .set({ status: ExamStatus.COMPLETED })
-        .where('status IN (:...statuses)', { statuses: [ExamStatus.LIVE, ExamStatus.SCHEDULED] })
+        .where('status NOT IN (:...doneStatuses)', { doneStatuses: [ExamStatus.COMPLETED, ExamStatus.ARCHIVED] })
         .andWhere('end_at IS NOT NULL AND end_at <= :now', { now })
         .execute();
     } catch (err) {
@@ -243,8 +243,12 @@ export class ExamService implements OnModuleInit, OnModuleDestroy {
     if (qCount === 0)
       throw new BadRequestException('Add at least one question before publishing');
 
-    const newStatus = exam.startAt && new Date(exam.startAt) > new Date()
-      ? ExamStatus.SCHEDULED : ExamStatus.LIVE;
+    let newStatus = ExamStatus.LIVE;
+    if (exam.endAt && new Date(exam.endAt) <= new Date()) {
+      newStatus = ExamStatus.COMPLETED;
+    } else if (exam.startAt && new Date(exam.startAt) > new Date()) {
+      newStatus = ExamStatus.SCHEDULED;
+    }
 
     await this.examRepo.update(id, { status: newStatus });
     return { message: `Exam is now ${newStatus}`, status: newStatus };

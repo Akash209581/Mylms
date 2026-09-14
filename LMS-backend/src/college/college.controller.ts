@@ -1,28 +1,35 @@
 import {
   Controller,
   Get,
+  Post,
   Put,
   Delete,
   Param,
   Body,
   UseGuards,
   ParseIntPipe,
+  Request,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/jwt.guard';
 import { RolesGuard } from '../common/roles.guard';
 import { Roles } from '../common/roles.decorator';
 import { UserRole } from '../entities/user.entity';
 import { CollegeService } from './college.service';
-import { UpdateCollegeDto } from './college.dto';
+import { CreateCollegeDto, UpdateCollegeDto } from './college.dto';
 
 @Controller('colleges')
 @UseGuards(JwtAuthGuard)
 export class CollegeController {
   constructor(private collegeService: CollegeService) {}
 
-  // NOTE: Colleges are auto-created during user creation by SUPERADMIN
-  // Manual college creation endpoint has been removed as per requirements
-  // Colleges are created automatically when SUPERADMIN creates first user with a college name
+  // SUPERADMIN ONLY - Create college directly
+  @Post()
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.SUPERADMIN)
+  async createCollege(@Body() dto: CreateCollegeDto, @Request() req: any) {
+    const userId = req.user?.id || req.user?.sub;
+    return this.collegeService.createCollege(dto, userId);
+  }
 
   // All authenticated users can view colleges
   @Get()

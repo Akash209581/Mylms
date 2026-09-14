@@ -210,7 +210,18 @@ export default function ExamListPage() {
 
   const examBase = '/dashboard/superadmin/exams'
 
-  const filtered = filter === 'ALL' ? exams : exams.filter(e => e.status === filter)
+  const getEffectiveStatus = (exam: any) => {
+    if (exam.status === 'ARCHIVED') return 'ARCHIVED'
+    if (exam.endAt && new Date(exam.endAt).getTime() <= Date.now()) {
+      return 'COMPLETED'
+    }
+    if (exam.startAt && new Date(exam.startAt).getTime() > Date.now() && exam.status !== 'DRAFT') {
+      return 'SCHEDULED'
+    }
+    return exam.status || 'DRAFT'
+  }
+
+  const filtered = filter === 'ALL' ? exams : exams.filter(e => getEffectiveStatus(e) === filter)
 
   return (
     <div className="min-h-screen bg-mesh">
@@ -235,7 +246,7 @@ export default function ExamListPage() {
               className={`stat-card cursor-pointer text-left transition-all ${filter === s ? 'ring-2 ring-[var(--accent)]' : ''}`}
             >
               <p className="text-2xl font-bold role-text-primary">
-                {s === 'ALL' ? exams.length : exams.filter(e => e.status === s).length}
+                {s === 'ALL' ? exams.length : exams.filter(e => getEffectiveStatus(e) === s).length}
               </p>
               <p className="role-text-muted text-xs mt-1">{s}</p>
             </button>
@@ -282,7 +293,9 @@ export default function ExamListPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map(exam => (
+                  {filtered.map(exam => {
+                    const effStatus = getEffectiveStatus(exam)
+                    return (
                     <tr
                       key={exam.id}
                       className="border-b hover:bg-[var(--bg-surface)]/10 transition-colors"
@@ -293,8 +306,8 @@ export default function ExamListPage() {
                         <p className="role-text-muted text-xs mt-0.5">#{exam.id}</p>
                       </td>
                       <td className="py-4 px-6">
-                        <span className={`badge border text-xs ${statusColors[exam.status] || ''}`}>
-                          {exam.status}
+                        <span className={`badge border text-xs ${statusColors[effStatus] || ''}`}>
+                          {effStatus}
                         </span>
                       </td>
                       <td className="py-4 px-6 role-text-muted text-sm">{exam.durationMinutes}m</td>
@@ -310,6 +323,12 @@ export default function ExamListPage() {
                                 to {new Date(exam.endAt).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' })}
                               </span>
                             )}
+                          </div>
+                        ) : exam.endAt ? (
+                          <div>
+                            <span className="opacity-75">
+                              Until {new Date(exam.endAt).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' })}
+                            </span>
                           </div>
                         ) : (
                           <span className="opacity-50">Immediate / Anytime</span>
@@ -364,7 +383,7 @@ export default function ExamListPage() {
                         </div>
                       </td>
                     </tr>
-                  ))}
+                  )})}
                 </tbody>
               </table>
             </div>

@@ -124,8 +124,15 @@ export default function SuperAdminDashboard() {
                                                     onChange={e => handleRoleChange(u.id, e.target.value)}
                                                     aria-label="Change user role"
                                                     className="role-table-select">
-                                                    {['STUDENT', 'INSTRUCTOR', 'ADMIN', 'SUPERADMIN'].map(r => (
-                                                        <option key={r} value={r}>{r}</option>
+                                                    {[
+                                                        { value: 'STUDENT', label: 'Student' },
+                                                        { value: 'INSTRUCTOR', label: 'Instructor' },
+                                                        { value: 'ADMIN', label: 'College Admin' },
+                                                        { value: 'SUPERADMIN', label: 'Super Admin' },
+                                                        { value: 'QUESTION_CREATOR', label: 'Question Creator' },
+                                                        { value: 'CONTENT_CREATOR', label: 'Content Creator' },
+                                                    ].map(r => (
+                                                        <option key={r.value} value={r.value}>{r.label}</option>
                                                     ))}
                                                 </select>
                                             </td>

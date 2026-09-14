@@ -61,6 +61,21 @@ export default function CollegesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
+  // Create College Modal State
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [creating, setCreating] = useState(false)
+  const [createError, setCreateError] = useState('')
+  const [newCollege, setNewCollege] = useState({
+    name: '',
+    type: 'College',
+    city: '',
+    state: '',
+    country: 'India',
+    contactEmail: '',
+    contactPhone: '',
+    description: '',
+  })
+
   useEffect(() => {
     fetchColleges()
   }, [])
@@ -80,17 +95,63 @@ export default function CollegesPage() {
     }
   }
 
+  const handleCreateCollege = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newCollege.name.trim()) {
+      setCreateError('College name is required')
+      return
+    }
+    setCreating(true)
+    setCreateError('')
+    try {
+      await api.post('/colleges', {
+        name: newCollege.name.trim(),
+        type: newCollege.type,
+        city: newCollege.city.trim() || undefined,
+        state: newCollege.state.trim() || undefined,
+        country: newCollege.country.trim() || undefined,
+        contactEmail: newCollege.contactEmail.trim() || undefined,
+        contactPhone: newCollege.contactPhone.trim() || undefined,
+        description: newCollege.description.trim() || undefined,
+      })
+      setShowCreateModal(false)
+      setNewCollege({
+        name: '',
+        type: 'College',
+        city: '',
+        state: '',
+        country: 'India',
+        contactEmail: '',
+        contactPhone: '',
+        description: '',
+      })
+      await fetchColleges()
+    } catch (err: any) {
+      setCreateError(err.response?.data?.message || 'Failed to create college')
+    } finally {
+      setCreating(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-mesh">
       <Sidebar role="SUPERADMIN" />
       <Navbar title="Colleges &amp; Universities" />
       <main className="page-content">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-1">Colleges &amp; Universities</h1>
-          <p className="text-slate-600 dark:text-gray-400">
-            Manage educational institutions and view user &amp; course statistics
-          </p>
+        <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-1">Colleges &amp; Universities</h1>
+            <p className="text-slate-600 dark:text-gray-400">
+              Manage educational institutions and view user &amp; course statistics
+            </p>
+          </div>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold rounded-xl hover:shadow-lg hover:shadow-indigo-500/20 transform hover:scale-105 transition-all flex items-center gap-2 self-start md:self-auto"
+          >
+            <span>➕</span> Add New College
+          </button>
         </div>
 
         {error && (
@@ -222,20 +283,156 @@ export default function CollegesPage() {
                 <div className="text-8xl mb-6">🏛️</div>
                 <h3 className="text-3xl font-bold text-slate-900 dark:text-white mb-3">No Colleges Yet</h3>
                 <p className="text-slate-600 dark:text-gray-400 mb-8 max-w-2xl mx-auto">
-                  Colleges are automatically created when you create the first user for that college.
-                  Create a new user (ADMIN, INSTRUCTOR, or STUDENT) to get started.
+                  Get started by adding your first college / university to the platform.
                 </p>
                 <button
-                  onClick={() => router.push('/dashboard/superadmin/users/create')}
+                  onClick={() => setShowCreateModal(true)}
                   className="px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-xl hover:shadow-lg transform hover:scale-105 transition-all duration-200"
                 >
-                  + Create First User
+                  + Add First College
                 </button>
               </div>
             )}
           </>
         )}
       </main>
+
+      {/* Create College Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-slate-900 border border-white/15 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl animate-fade-in my-8">
+            <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-xl text-indigo-400">
+                  🏛️
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white">Add New College</h3>
+                  <p className="text-xs text-slate-400">Register an institution / university</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCreateModal(false)}
+                className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center text-sm transition-all"
+              >
+                ✕
+              </button>
+            </div>
+
+            {createError && (
+              <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-400">
+                {createError}
+              </div>
+            )}
+
+            <form onSubmit={handleCreateCollege} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                  College / Institution Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newCollege.name}
+                  onChange={e => setNewCollege(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="e.g. Stanford University or IIT Madras"
+                  className="input-field text-sm"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                    Institution Type
+                  </label>
+                  <select
+                    value={newCollege.type}
+                    onChange={e => setNewCollege(prev => ({ ...prev, type: e.target.value }))}
+                    className="input-field text-sm"
+                  >
+                    <option value="College">College</option>
+                    <option value="University">University</option>
+                    <option value="Institute">Institute</option>
+                    <option value="Autonomous">Autonomous</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                    City
+                  </label>
+                  <input
+                    type="text"
+                    value={newCollege.city}
+                    onChange={e => setNewCollege(prev => ({ ...prev, city: e.target.value }))}
+                    placeholder="e.g. Bangalore"
+                    className="input-field text-sm"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                    State
+                  </label>
+                  <input
+                    type="text"
+                    value={newCollege.state}
+                    onChange={e => setNewCollege(prev => ({ ...prev, state: e.target.value }))}
+                    placeholder="e.g. Karnataka"
+                    className="input-field text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                    Contact Email
+                  </label>
+                  <input
+                    type="email"
+                    value={newCollege.contactEmail}
+                    onChange={e => setNewCollege(prev => ({ ...prev, contactEmail: e.target.value }))}
+                    placeholder="admin@college.edu"
+                    className="input-field text-sm"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                  Description / Notes (Optional)
+                </label>
+                <textarea
+                  rows={2}
+                  value={newCollege.description}
+                  onChange={e => setNewCollege(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="Additional details about the college..."
+                  className="input-field text-sm"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(false)}
+                  className="btn-secondary text-xs px-4 py-2.5"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={creating}
+                  className="px-6 py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-lg shadow-indigo-600/30 transition-all flex items-center gap-2 disabled:opacity-50"
+                >
+                  {creating ? 'Adding College...' : 'Add College'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
