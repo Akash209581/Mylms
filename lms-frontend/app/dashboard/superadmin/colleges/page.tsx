@@ -87,14 +87,14 @@ export default function CollegesPage() {
       <main className="page-content">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-1">Colleges &amp; Universities</h1>
-          <p className="text-gray-400">
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-1">Colleges &amp; Universities</h1>
+          <p className="text-slate-600 dark:text-gray-400">
             Manage educational institutions and view user &amp; course statistics
           </p>
         </div>
 
         {error && (
-          <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-6 py-4 rounded-xl mb-6 flex items-center gap-3">
+          <div className="bg-red-500/10 border border-red-500/20 text-red-500 dark:text-red-400 px-6 py-4 rounded-xl mb-6 flex items-center gap-3">
             <span className="text-2xl">⚠️</span>
             <span>{error}</span>
           </div>
@@ -115,32 +115,32 @@ export default function CollegesPage() {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
               <div className="stat-card">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl mb-3 bg-gradient-to-br from-amber-500 to-orange-600">🏛️</div>
-                <p className="text-2xl font-bold text-white mb-0.5">{colleges.length}</p>
-                <p className="text-gray-400 text-xs">Total Colleges</p>
+                <p className="text-2xl font-bold text-slate-900 dark:text-white mb-0.5">{colleges.length}</p>
+                <p className="text-slate-500 dark:text-gray-400 text-xs">Total Colleges</p>
               </div>
 
               <div className="stat-card">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl mb-3 bg-gradient-to-br from-emerald-500 to-teal-600">👨‍💼</div>
-                <p className="text-2xl font-bold text-white mb-0.5">
+                <p className="text-2xl font-bold text-slate-900 dark:text-white mb-0.5">
                   {colleges.reduce((sum, c) => sum + c.adminCount, 0)}
                 </p>
-                <p className="text-gray-400 text-xs">Total Admins</p>
+                <p className="text-slate-500 dark:text-gray-400 text-xs">Total Admins</p>
               </div>
 
               <div className="stat-card">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl mb-3 bg-gradient-to-br from-blue-500 to-cyan-600">👨‍🏫</div>
-                <p className="text-2xl font-bold text-white mb-0.5">
+                <p className="text-2xl font-bold text-slate-900 dark:text-white mb-0.5">
                   {colleges.reduce((sum, c) => sum + c.instructorCount, 0)}
                 </p>
-                <p className="text-gray-400 text-xs">Total Instructors</p>
+                <p className="text-slate-500 dark:text-gray-400 text-xs">Total Instructors</p>
               </div>
 
               <div className="stat-card">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl mb-3 bg-gradient-to-br from-purple-500 to-pink-600">👨‍🎓</div>
-                <p className="text-2xl font-bold text-white mb-0.5">
+                <p className="text-2xl font-bold text-slate-900 dark:text-white mb-0.5">
                   {colleges.reduce((sum, c) => sum + c.studentCount, 0)}
                 </p>
-                <p className="text-gray-400 text-xs">Total Students</p>
+                <p className="text-slate-500 dark:text-gray-400 text-xs">Total Students</p>
               </div>
             </div>
 
@@ -220,8 +220,8 @@ export default function CollegesPage() {
             {colleges.length === 0 && (
               <div className="glass-card p-12 text-center border border-white/5">
                 <div className="text-8xl mb-6">🏛️</div>
-                <h3 className="text-3xl font-bold text-white mb-3">No Colleges Yet</h3>
-                <p className="text-gray-400 mb-8 max-w-2xl mx-auto">
+                <h3 className="text-3xl font-bold text-slate-900 dark:text-white mb-3">No Colleges Yet</h3>
+                <p className="text-slate-600 dark:text-gray-400 mb-8 max-w-2xl mx-auto">
                   Colleges are automatically created when you create the first user for that college.
                   Create a new user (ADMIN, INSTRUCTOR, or STUDENT) to get started.
                 </p>

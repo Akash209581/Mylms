@@ -80,8 +80,8 @@ export default function ContestManagementPage() {
             <main className="page-content">
                 <div className="flex justify-between items-start mb-8">
                     <div>
-                        <h1 className="text-3xl font-bold text-white mb-1">Contest / Assessment / Test</h1>
-                        <p className="text-gray-400">Create and manage platform-wide assessments</p>
+                        <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-1">Contest / Assessment / Test</h1>
+                        <p className="text-slate-600 dark:text-gray-400">Create and manage platform-wide assessments</p>
                     </div>
                     <button onClick={() => setShowCreate(true)} className="btn-primary px-5 py-2.5 text-sm">+ Create New</button>
                 </div>

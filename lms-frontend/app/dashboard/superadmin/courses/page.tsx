@@ -174,8 +174,8 @@ export default function SuperAdminCoursesPage() {
                 {/* Header */}
                 <div className="mb-8 flex items-center justify-between">
                     <div>
-                        <h1 className="text-3xl font-bold text-white mb-1">Course Management</h1>
-                        <p className="text-gray-400">View and manage all courses on the platform</p>
+                        <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-1">Course Management</h1>
+                        <p className="text-slate-600 dark:text-gray-400">View and manage all courses on the platform</p>
                     </div>
                     <button
                         onClick={() => router.push(`/dashboard/${userRole.toLowerCase()}/courses/create`)}
@@ -196,8 +196,8 @@ export default function SuperAdminCoursesPage() {
                         <div key={i} className="stat-card">
                             <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl mb-3"
                                 style={{ background: s.gradient }}>{s.icon}</div>
-                            <p className="text-2xl font-bold text-white mb-0.5">{s.value}</p>
-                            <p className="text-gray-400 text-xs">{s.label}</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-white mb-0.5">{s.value}</p>
+                            <p className="text-slate-500 dark:text-gray-400 text-xs">{s.label}</p>
                         </div>
                     ))}
                 </div>

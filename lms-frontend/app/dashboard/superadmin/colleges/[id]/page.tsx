@@ -381,8 +381,8 @@ export default function CollegeDetailsPage({ params }: { params: { id: string } 
               {/* Stats Bar */}
               <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-white/5 bg-white/5">
                 <div className="p-6 text-center">
-                  <div className="text-3xl font-bold text-white">{details.totalUsers}</div>
-                  <div className="text-xs font-bold text-gray-400 uppercase mt-1">Total Users</div>
+                  <div className="text-3xl font-bold text-slate-900 dark:text-white">{details.totalUsers}</div>
+                  <div className="text-xs font-bold text-slate-500 dark:text-gray-400 uppercase mt-1">Total Users</div>
                 </div>
                 <div className="p-6 text-center">
                   <div className="text-3xl font-bold text-emerald-400">{details.adminCount}</div>
