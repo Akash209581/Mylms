@@ -23,6 +23,13 @@ export default function ApprovalsPage() {
     const [loading, setLoading] = useState(true)
     const [actionLoading, setActionLoading] = useState<number | null>(null)
     const [searchQuery, setSearchQuery] = useState('')
+    const [filterType, setFilterType] = useState('ALL')
+    const [filterDiff, setFilterDiff] = useState('ALL')
+    const [filterDomain, setFilterDomain] = useState('ALL')
+    const [filterCreator, setFilterCreator] = useState('ALL')
+    const [filterCategory, setFilterCategory] = useState('ALL')
+    const [filterLevel, setFilterLevel] = useState('ALL')
+    const [filterInstructor, setFilterInstructor] = useState('ALL')
 
     // Preview state
     const [selectedQuestion, setSelectedQuestion] = useState<any | null>(null)
@@ -146,16 +153,65 @@ export default function ApprovalsPage() {
         }
     }
 
+    const diffColors: Record<string, string> = {
+        VERY_EASY: '#10b981', EASY: '#34d399', MEDIUM: '#f59e0b',
+        HARD: '#ef4444', VERY_HARD: '#dc2626',
+    }
+
+    const QUESTION_TYPES = [
+        { key: 'ALL', label: 'All Types' },
+        { key: 'MCQ', label: 'MCQ' },
+        { key: 'PQ', label: 'Programming' },
+        { key: 'FIB', label: 'Fill Blank' },
+        { key: 'MQ', label: 'Matching' },
+        { key: 'JC', label: 'Jumbled Code' },
+        { key: 'OP', label: 'Output Pred.' },
+    ]
+
+    // Distinct filter lists
+    const uniqueDomains = Array.from(new Set(pendingQuestions.map(q => q.domain || 'Programming Domain').filter(Boolean)))
+    const uniqueCreators = Array.from(new Set(pendingQuestions.map(q => q.creator?.name).filter(Boolean)))
+    const uniqueCategories = Array.from(new Set(pendingCourses.map(c => c.category).filter(Boolean)))
+    const uniqueInstructors = Array.from(new Set(pendingCourses.map(c => c.instructor?.name).filter(Boolean)))
+
+    const isFiltered = activeTab === 'questions'
+        ? (filterType !== 'ALL' || filterDiff !== 'ALL' || filterDomain !== 'ALL' || filterCreator !== 'ALL' || !!searchQuery.trim())
+        : (filterCategory !== 'ALL' || filterLevel !== 'ALL' || filterInstructor !== 'ALL' || !!searchQuery.trim())
+
+    const handleResetFilters = () => {
+        setFilterType('ALL')
+        setFilterDiff('ALL')
+        setFilterDomain('ALL')
+        setFilterCreator('ALL')
+        setFilterCategory('ALL')
+        setFilterLevel('ALL')
+        setFilterInstructor('ALL')
+        setSearchQuery('')
+    }
+
     const filteredQuestions = pendingQuestions.filter(q => {
-        if (!searchQuery) return true
-        const text = `${q.questionNumber || ''} ${q.questionText || ''} ${q.topicNames || ''} ${q.domain || ''} ${q.targetCompanies || q.companiesAppeared || ''} ${q.creator?.name || ''}`.toLowerCase()
-        return text.includes(searchQuery.toLowerCase())
+        const matchType = filterType === 'ALL' || q.type === filterType
+        const matchDiff = filterDiff === 'ALL' || q.difficulty === filterDiff
+        const matchDomain = filterDomain === 'ALL' || (q.domain || 'Programming Domain') === filterDomain
+        const matchCreator = filterCreator === 'ALL' || (q.creator?.name === filterCreator)
+
+        if (!matchType || !matchDiff || !matchDomain || !matchCreator) return false
+
+        if (!searchQuery.trim()) return true
+        const text = `${q.questionNumber || ''} ${q.questionText || ''} ${q.topicNames || ''} ${q.domain || ''} ${q.targetCompanies || q.companiesAppeared || ''} ${q.creator?.name || ''} ${q.creator?.email || ''}`.toLowerCase()
+        return text.includes(searchQuery.toLowerCase().trim())
     })
 
     const filteredCourses = pendingCourses.filter(c => {
-        if (!searchQuery) return true
-        const text = `${c.title || ''} ${c.category || ''} ${c.instructor?.name || ''}`.toLowerCase()
-        return text.includes(searchQuery.toLowerCase())
+        const matchCategory = filterCategory === 'ALL' || c.category === filterCategory
+        const matchLevel = filterLevel === 'ALL' || c.level === filterLevel
+        const matchInstructor = filterInstructor === 'ALL' || (c.instructor?.name === filterInstructor)
+
+        if (!matchCategory || !matchLevel || !matchInstructor) return false
+
+        if (!searchQuery.trim()) return true
+        const text = `${c.title || ''} ${c.category || ''} ${c.description || ''} ${c.instructor?.name || ''} ${c.instructor?.email || ''}`.toLowerCase()
+        return text.includes(searchQuery.toLowerCase().trim())
     })
 
     return (
@@ -222,10 +278,10 @@ export default function ApprovalsPage() {
                 </div>
 
                 {/* Tabs & Search Bar */}
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
                     <div className="flex bg-slate-100 dark:bg-white/5 p-1 rounded-2xl border border-slate-200 dark:border-white/10 w-full sm:w-auto">
                         <button
-                            onClick={() => setActiveTab('questions')}
+                            onClick={() => { setActiveTab('questions'); handleResetFilters() }}
                             className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${
                                 activeTab === 'questions' ? 'bg-primary-600 text-white shadow-lg shadow-primary-500/25' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                             }`}
@@ -235,7 +291,7 @@ export default function ApprovalsPage() {
                             <span className="px-2 py-0.5 rounded-full text-xs bg-white/20">{summary.pendingQuestions}</span>
                         </button>
                         <button
-                            onClick={() => setActiveTab('courses')}
+                            onClick={() => { setActiveTab('courses'); handleResetFilters() }}
                             className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${
                                 activeTab === 'courses' ? 'bg-primary-600 text-white shadow-lg shadow-primary-500/25' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                             }`}
@@ -250,12 +306,169 @@ export default function ApprovalsPage() {
                         <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                         <input
                             type="text"
-                            placeholder="Filter by title, topic, company..."
+                            placeholder={activeTab === 'questions' ? "Search title, topic, company, creator..." : "Search title, category, instructor..."}
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
-                            className="input-field pl-10 text-xs h-10 w-full"
+                            className="input-field pl-10 text-xs h-10 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10"
                         />
                     </div>
+                </div>
+
+                {/* Filter Controls */}
+                <div className="glass-card p-4 mb-6 space-y-3">
+                    {activeTab === 'questions' ? (
+                        <>
+                            {/* Question Type and Difficulty Filters */}
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                                <div className="flex gap-1.5 flex-wrap items-center">
+                                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 mr-1 flex items-center gap-1">
+                                        <Filter className="w-3.5 h-3.5" /> Type:
+                                    </span>
+                                    {QUESTION_TYPES.map(t => (
+                                        <button
+                                            key={t.key}
+                                            onClick={() => setFilterType(t.key)}
+                                            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                                                filterType === t.key
+                                                    ? 'bg-purple-600 text-white shadow-sm scale-105'
+                                                    : 'text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10'
+                                            }`}
+                                        >
+                                            {t.label}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                <div className="flex gap-1.5 flex-wrap items-center">
+                                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 mr-1">Difficulty:</span>
+                                    {['ALL', 'VERY_EASY', 'EASY', 'MEDIUM', 'HARD', 'VERY_HARD'].map(d => (
+                                        <button
+                                            key={d}
+                                            onClick={() => setFilterDiff(d)}
+                                            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                                                filterDiff === d
+                                                    ? 'text-white shadow-sm scale-105'
+                                                    : 'text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10'
+                                            }`}
+                                            style={{
+                                                background: filterDiff === d ? (diffColors[d] || '#6366f1') : undefined,
+                                                borderColor: filterDiff === d ? (diffColors[d] || '#6366f1') : undefined,
+                                            }}
+                                        >
+                                            {d === 'ALL' ? 'All Diff.' : d.replace('_', ' ')}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Dropdown Filters & Reset */}
+                            <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-200 dark:border-white/10">
+                                <div className="flex flex-wrap gap-2.5 items-center">
+                                    {uniqueDomains.length > 0 && (
+                                        <select
+                                            value={filterDomain}
+                                            onChange={e => setFilterDomain(e.target.value)}
+                                            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 outline-none"
+                                        >
+                                            <option value="ALL">All Domains ({uniqueDomains.length})</option>
+                                            {uniqueDomains.map((d: any) => (
+                                                <option key={d} value={d}>{d}</option>
+                                            ))}
+                                        </select>
+                                    )}
+
+                                    {uniqueCreators.length > 0 && (
+                                        <select
+                                            value={filterCreator}
+                                            onChange={e => setFilterCreator(e.target.value)}
+                                            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 outline-none"
+                                        >
+                                            <option value="ALL">All Authors ({uniqueCreators.length})</option>
+                                            {uniqueCreators.map((c: any) => (
+                                                <option key={c} value={c}>👤 {c}</option>
+                                            ))}
+                                        </select>
+                                    )}
+
+                                    {isFiltered && (
+                                        <button
+                                            onClick={handleResetFilters}
+                                            className="px-3 py-1.5 rounded-xl text-xs font-semibold text-rose-500 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 transition-all flex items-center gap-1"
+                                        >
+                                            ✕ Reset Filters
+                                        </button>
+                                    )}
+                                </div>
+
+                                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                                    Showing <strong className="text-slate-900 dark:text-white font-bold">{filteredQuestions.length}</strong> of {pendingQuestions.length} questions
+                                </p>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            {/* Course Filters */}
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                                <div className="flex flex-wrap gap-2.5 items-center">
+                                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 mr-1 flex items-center gap-1">
+                                        <Filter className="w-3.5 h-3.5" /> Level:
+                                    </span>
+                                    {['ALL', 'Beginner', 'Intermediate', 'Advanced', 'All Levels'].map(lvl => (
+                                        <button
+                                            key={lvl}
+                                            onClick={() => setFilterLevel(lvl)}
+                                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                                                filterLevel === lvl
+                                                    ? 'bg-indigo-600 text-white shadow-sm scale-105'
+                                                    : 'text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10'
+                                            }`}
+                                        >
+                                            {lvl === 'ALL' ? 'All Levels' : lvl}
+                                        </button>
+                                    ))}
+
+                                    {uniqueCategories.length > 0 && (
+                                        <select
+                                            value={filterCategory}
+                                            onChange={e => setFilterCategory(e.target.value)}
+                                            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 outline-none ml-2"
+                                        >
+                                            <option value="ALL">All Categories ({uniqueCategories.length})</option>
+                                            {uniqueCategories.map((cat: any) => (
+                                                <option key={cat} value={cat}>{cat}</option>
+                                            ))}
+                                        </select>
+                                    )}
+
+                                    {uniqueInstructors.length > 0 && (
+                                        <select
+                                            value={filterInstructor}
+                                            onChange={e => setFilterInstructor(e.target.value)}
+                                            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 outline-none"
+                                        >
+                                            <option value="ALL">All Instructors ({uniqueInstructors.length})</option>
+                                            {uniqueInstructors.map((inst: any) => (
+                                                <option key={inst} value={inst}>👤 {inst}</option>
+                                            ))}
+                                        </select>
+                                    )}
+
+                                    {isFiltered && (
+                                        <button
+                                            onClick={handleResetFilters}
+                                            className="px-3 py-1.5 rounded-xl text-xs font-semibold text-rose-500 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 transition-all flex items-center gap-1"
+                                        >
+                                            ✕ Reset Filters
+                                        </button>
+                                    )}
+                                </div>
+
+                                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                                    Showing <strong className="text-slate-900 dark:text-white font-bold">{filteredCourses.length}</strong> of {pendingCourses.length} courses
+                                </p>
+                            </div>
+                        </>
+                    )}
                 </div>
 
                 {/* Content Table */}
