@@ -74,7 +74,9 @@ export default function QuestionBankPage() {
 
     const filtered = questions.filter(q => {
         const qStatus = q.status || 'APPROVED'
-        const matchStatus = filterStatus === 'ALL' || qStatus === filterStatus
+        const matchStatus = userRole === 'QUESTION_CREATOR'
+            ? (filterStatus === 'ALL' || qStatus === filterStatus)
+            : (qStatus === 'APPROVED')
         const matchType = filterType === 'ALL' || q.type === filterType
         const matchDiff = filterDiff === 'ALL' || q.difficulty === filterDiff
         const matchDomain = filterDomain === 'ALL' || (q.domain || 'Programming Domain') === filterDomain
@@ -152,27 +154,29 @@ export default function QuestionBankPage() {
                             ))}
                         </div>
 
-                        {/* Status filters */}
-                        <div className="flex gap-2 flex-wrap items-center">
-                            <span className="text-xs font-semibold text-slate-500 mr-1">Status:</span>
-                            {[
-                                { key: 'ALL', label: 'All Statuses' },
-                                { key: 'APPROVED', label: 'Approved' },
-                                { key: 'PENDING_APPROVAL', label: '⏳ Pending' },
-                                { key: 'REJECTED', label: 'Rejected' },
-                            ].map(st => (
-                                <button key={st.key} onClick={() => setFilterStatus(st.key)}
-                                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                                        filterStatus === st.key ? 'text-white shadow-sm scale-105' : 'text-slate-700 bg-white hover:text-slate-900 border border-slate-200'
-                                    }`}
-                                    style={{
-                                        background: filterStatus === st.key ? '#6366f1' : '#ffffff',
-                                        borderColor: filterStatus === st.key ? '#6366f1' : '#e2e8f0'
-                                    }}>
-                                    {st.label}
-                                </button>
-                            ))}
-                        </div>
+                        {/* Status filters - Only for Question Creator */}
+                        {userRole === 'QUESTION_CREATOR' && (
+                            <div className="flex gap-2 flex-wrap items-center">
+                                <span className="text-xs font-semibold text-slate-500 mr-1">Status:</span>
+                                {[
+                                    { key: 'ALL', label: 'All Statuses' },
+                                    { key: 'APPROVED', label: 'Approved' },
+                                    { key: 'PENDING_APPROVAL', label: '⏳ Pending' },
+                                    { key: 'REJECTED', label: 'Rejected' },
+                                ].map(st => (
+                                    <button key={st.key} onClick={() => setFilterStatus(st.key)}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                                            filterStatus === st.key ? 'text-white shadow-sm scale-105' : 'text-slate-700 bg-white hover:text-slate-900 border border-slate-200'
+                                        }`}
+                                        style={{
+                                            background: filterStatus === st.key ? '#6366f1' : '#ffffff',
+                                            borderColor: filterStatus === st.key ? '#6366f1' : '#e2e8f0'
+                                        }}>
+                                        {st.label}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex flex-col sm:flex-row gap-3">
