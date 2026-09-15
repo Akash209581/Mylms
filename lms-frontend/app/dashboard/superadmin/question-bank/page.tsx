@@ -27,6 +27,7 @@ export default function QuestionBankPage() {
     const [loading, setLoading] = useState(true)
     const [filterType, setFilterType] = useState('ALL')
     const [filterDiff, setFilterDiff] = useState('ALL')
+    const [filterStatus, setFilterStatus] = useState('ALL')
     const [filterDomain, setFilterDomain] = useState('ALL')
     const [domains, setDomains] = useState<any[]>([])
     const [search, setSearch] = useState('')
@@ -73,7 +74,7 @@ export default function QuestionBankPage() {
 
     const filtered = questions.filter(q => {
         const qStatus = q.status || 'APPROVED'
-        const matchStatus = qStatus === 'APPROVED'
+        const matchStatus = filterStatus === 'ALL' || qStatus === filterStatus
         const matchType = filterType === 'ALL' || q.type === filterType
         const matchDiff = filterDiff === 'ALL' || q.difficulty === filterDiff
         const matchDomain = filterDomain === 'ALL' || (q.domain || 'Programming Domain') === filterDomain
@@ -132,22 +133,49 @@ export default function QuestionBankPage() {
                 </div>
 
                 {/* Filters */}
-                <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                    <div className="flex gap-2 flex-wrap">
-                        {['ALL', 'VERY_EASY', 'EASY', 'MEDIUM', 'HARD', 'VERY_HARD'].map(d => (
-                            <button key={d} onClick={() => setFilterDiff(d)}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                                    filterDiff === d ? 'text-white shadow-sm scale-105' : 'text-slate-700 bg-white hover:text-slate-900 border border-slate-200'
-                                }`}
-                                style={{
-                                    background: filterDiff === d ? (diffColors[d] || '#6366f1') : '#ffffff',
-                                    borderColor: filterDiff === d ? (diffColors[d] || '#6366f1') : '#e2e8f0'
-                                }}>
-                                {d.replace('_', ' ')}
-                            </button>
-                        ))}
+                <div className="flex flex-col gap-4 mb-6">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        {/* Difficulty filters */}
+                        <div className="flex gap-2 flex-wrap items-center">
+                            <span className="text-xs font-semibold text-slate-500 mr-1">Difficulty:</span>
+                            {['ALL', 'VERY_EASY', 'EASY', 'MEDIUM', 'HARD', 'VERY_HARD'].map(d => (
+                                <button key={d} onClick={() => setFilterDiff(d)}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                                        filterDiff === d ? 'text-white shadow-sm scale-105' : 'text-slate-700 bg-white hover:text-slate-900 border border-slate-200'
+                                    }`}
+                                    style={{
+                                        background: filterDiff === d ? (diffColors[d] || '#6366f1') : '#ffffff',
+                                        borderColor: filterDiff === d ? (diffColors[d] || '#6366f1') : '#e2e8f0'
+                                    }}>
+                                    {d.replace('_', ' ')}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Status filters */}
+                        <div className="flex gap-2 flex-wrap items-center">
+                            <span className="text-xs font-semibold text-slate-500 mr-1">Status:</span>
+                            {[
+                                { key: 'ALL', label: 'All Statuses' },
+                                { key: 'APPROVED', label: 'Approved' },
+                                { key: 'PENDING_APPROVAL', label: '⏳ Pending' },
+                                { key: 'REJECTED', label: 'Rejected' },
+                            ].map(st => (
+                                <button key={st.key} onClick={() => setFilterStatus(st.key)}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                                        filterStatus === st.key ? 'text-white shadow-sm scale-105' : 'text-slate-700 bg-white hover:text-slate-900 border border-slate-200'
+                                    }`}
+                                    style={{
+                                        background: filterStatus === st.key ? '#6366f1' : '#ffffff',
+                                        borderColor: filterStatus === st.key ? '#6366f1' : '#e2e8f0'
+                                    }}>
+                                    {st.label}
+                                </button>
+                            ))}
+                        </div>
                     </div>
-                    <div className="flex-1 flex gap-3">
+
+                    <div className="flex flex-col sm:flex-row gap-3">
                         <select value={filterDomain} onChange={e => setFilterDomain(e.target.value)}
                             className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-xs font-semibold text-slate-900 outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-all min-w-[160px] shadow-sm">
                             <option value="ALL" className="bg-white text-slate-900">All Domains</option>

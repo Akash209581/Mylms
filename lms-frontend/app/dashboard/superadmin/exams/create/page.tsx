@@ -7,7 +7,7 @@ import Navbar from '@/components/layout/Navbar'
 import { api } from '@/lib/api'
 import { fromLocalDatetimeInput } from '@/lib/date-utils'
 
-const steps = ['Details & Schedule', 'Settings', 'Section Durations', 'Review']
+const steps = ['Details & Schedule', 'Settings', 'Review']
 
 export default function CreateExamPage() {
   const router = useRouter()
@@ -29,10 +29,13 @@ export default function CreateExamPage() {
     negativeMarksValue: 0.25,
     tabSwitchMonitoring: true,
     maxTabSwitches: 3,
-    shuffleQuestions: false,
-    shuffleOptions: false,
+    randomizeQuestions: false,
+    randomizeOptions: false,
+    autoSubmit: true,
+    showResults: true,
     showCorrectAnswers: true,
     showExplanations: true,
+    rankingEnabled: true,
     instructions: '',
     timingMode: 'TOTAL',
     sectionDurations: { A: 30, B: 30 },
@@ -50,6 +53,10 @@ export default function CreateExamPage() {
   const set = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }))
 
   const createExam = async () => {
+    if (!form.title.trim()) {
+      alert('Please enter an exam title')
+      return
+    }
     setSaving(true)
     try {
       const branches = form.targetBranches ? form.targetBranches.split(',').map(s => s.trim()).filter(Boolean) : undefined
@@ -434,7 +441,7 @@ export default function CreateExamPage() {
                 Next →
               </button>
             ) : (
-              <button onClick={handleCreate} disabled={saving} className="btn-success">
+              <button onClick={createExam} disabled={saving} className="btn-success">
                 {saving ? 'Creating...' : '🚀 Create Exam & Add Questions'}
               </button>
             )}
