@@ -8,21 +8,28 @@ import { API_URL } from '@/lib/api'
 import { apiFetch } from '@/lib/apiFetch'
 import { getAuthHeaders } from '@/lib/authHeaders'
 import QuestionPreview from '@/components/question-bank/QuestionPreview'
-import { CheckCircle, XCircle, Eye, AlertCircle, Clock, BookOpen, HelpCircle, UserCheck, Search, Filter } from 'lucide-react'
+import { CheckCircle, XCircle, Eye, AlertCircle, Clock, BookOpen, HelpCircle, UserCheck, Search, Filter, RotateCcw } from 'lucide-react'
 
 export default function ApprovalsPage() {
     const router = useRouter()
     const [activeTab, setActiveTab] = useState<'questions' | 'courses'>('questions')
-    const [summary, setSummary] = useState<{ pendingQuestions: number; pendingCourses: number; totalPending: number }>({
+    const [summary, setSummary] = useState<any>({
         pendingQuestions: 0,
+        approvedQuestions: 0,
+        rejectedQuestions: 0,
         pendingCourses: 0,
+        approvedCourses: 0,
+        rejectedCourses: 0,
         totalPending: 0,
     })
-    const [pendingQuestions, setPendingQuestions] = useState<any[]>([])
-    const [pendingCourses, setPendingCourses] = useState<any[]>([])
+    const [questions, setQuestions] = useState<any[]>([])
+    const [courses, setCourses] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const [actionLoading, setActionLoading] = useState<number | null>(null)
     const [searchQuery, setSearchQuery] = useState('')
+
+    // Filter states
+    const [filterStatus, setFilterStatus] = useState<'ALL' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED'>('PENDING_APPROVAL')
     const [filterType, setFilterType] = useState('ALL')
     const [filterDiff, setFilterDiff] = useState('ALL')
     const [filterDomain, setFilterDomain] = useState('ALL')
@@ -52,13 +59,13 @@ export default function ApprovalsPage() {
         try {
             const [sumRes, qRes, cRes] = await Promise.all([
                 apiFetch(`${API_URL}/superadmin/approvals/summary`, { credentials: 'include', headers: getAuthHeaders() }),
-                apiFetch(`${API_URL}/superadmin/approvals/questions`, { credentials: 'include', headers: getAuthHeaders() }),
-                apiFetch(`${API_URL}/superadmin/approvals/courses`, { credentials: 'include', headers: getAuthHeaders() }),
+                apiFetch(`${API_URL}/superadmin/approvals/questions?status=ALL`, { credentials: 'include', headers: getAuthHeaders() }),
+                apiFetch(`${API_URL}/superadmin/approvals/courses?status=ALL`, { credentials: 'include', headers: getAuthHeaders() }),
             ])
 
             if (sumRes.ok) setSummary(await sumRes.json())
-            if (qRes.ok) setPendingQuestions(await qRes.json())
-            if (cRes.ok) setPendingCourses(await cRes.json())
+            if (qRes.ok) setQuestions(await qRes.json())
+            if (cRes.ok) setCourses(await cRes.json())
         } catch (err) {
             console.error('Failed to load approvals:', err)
         } finally {
@@ -75,12 +82,8 @@ export default function ApprovalsPage() {
                 headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
             })
             if (res.ok) {
-                setPendingQuestions(prev => prev.filter(q => q.id !== id))
-                setSummary(prev => ({
-                    ...prev,
-                    pendingQuestions: Math.max(0, prev.pendingQuestions - 1),
-                    totalPending: Math.max(0, prev.totalPending - 1),
-                }))
+                setQuestions(prev => prev.map(q => q.id === id ? { ...q, status: 'APPROVED', rejectionReason: undefined } : q))
+                loadData()
             }
         } catch (err) {
             console.error('Approval failed:', err)
@@ -98,12 +101,8 @@ export default function ApprovalsPage() {
                 headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
             })
             if (res.ok) {
-                setPendingCourses(prev => prev.filter(c => c.id !== id))
-                setSummary(prev => ({
-                    ...prev,
-                    pendingCourses: Math.max(0, prev.pendingCourses - 1),
-                    totalPending: Math.max(0, prev.totalPending - 1),
-                }))
+                setCourses(prev => prev.map(c => c.id === id ? { ...c, status: 'APPROVED', rejectionReason: null } : c))
+                loadData()
             }
         } catch (err) {
             console.error('Approval failed:', err)
@@ -129,22 +128,13 @@ export default function ApprovalsPage() {
 
             if (res.ok) {
                 if (rejectTarget.type === 'question') {
-                    setPendingQuestions(prev => prev.filter(q => q.id !== rejectTarget.id))
-                    setSummary(prev => ({
-                        ...prev,
-                        pendingQuestions: Math.max(0, prev.pendingQuestions - 1),
-                        totalPending: Math.max(0, prev.totalPending - 1),
-                    }))
+                    setQuestions(prev => prev.map(q => q.id === rejectTarget.id ? { ...q, status: 'REJECTED', rejectionReason: rejectReason } : q))
                 } else {
-                    setPendingCourses(prev => prev.filter(c => c.id !== rejectTarget.id))
-                    setSummary(prev => ({
-                        ...prev,
-                        pendingCourses: Math.max(0, prev.pendingCourses - 1),
-                        totalPending: Math.max(0, prev.totalPending - 1),
-                    }))
+                    setCourses(prev => prev.map(c => c.id === rejectTarget.id ? { ...c, status: 'REJECTED', rejectionReason: rejectReason } : c))
                 }
                 setRejectTarget(null)
                 setRejectReason('')
+                loadData()
             }
         } catch (err) {
             console.error('Rejection failed:', err)
@@ -169,16 +159,26 @@ export default function ApprovalsPage() {
     ]
 
     // Distinct filter lists
-    const uniqueDomains = Array.from(new Set(pendingQuestions.map(q => q.domain || 'Programming Domain').filter(Boolean)))
-    const uniqueCreators = Array.from(new Set(pendingQuestions.map(q => q.creator?.name).filter(Boolean)))
-    const uniqueCategories = Array.from(new Set(pendingCourses.map(c => c.category).filter(Boolean)))
-    const uniqueInstructors = Array.from(new Set(pendingCourses.map(c => c.instructor?.name).filter(Boolean)))
+    const uniqueDomains = Array.from(new Set(questions.map(q => q.domain || 'Programming Domain').filter(Boolean)))
+    const uniqueCreators = Array.from(new Set(questions.map(q => q.creator?.name).filter(Boolean)))
+    const uniqueCategories = Array.from(new Set(courses.map(c => c.category).filter(Boolean)))
+    const uniqueInstructors = Array.from(new Set(courses.map(c => c.instructor?.name).filter(Boolean)))
+
+    // Active counts
+    const pendingQuestionsCount = questions.filter(q => q.status === 'PENDING_APPROVAL').length
+    const approvedQuestionsCount = questions.filter(q => q.status === 'APPROVED').length
+    const rejectedQuestionsCount = questions.filter(q => q.status === 'REJECTED').length
+
+    const pendingCoursesCount = courses.filter(c => c.status === 'PENDING_APPROVAL').length
+    const approvedCoursesCount = courses.filter(c => c.status === 'APPROVED').length
+    const rejectedCoursesCount = courses.filter(c => c.status === 'REJECTED').length
 
     const isFiltered = activeTab === 'questions'
-        ? (filterType !== 'ALL' || filterDiff !== 'ALL' || filterDomain !== 'ALL' || filterCreator !== 'ALL' || !!searchQuery.trim())
-        : (filterCategory !== 'ALL' || filterLevel !== 'ALL' || filterInstructor !== 'ALL' || !!searchQuery.trim())
+        ? (filterStatus !== 'PENDING_APPROVAL' || filterType !== 'ALL' || filterDiff !== 'ALL' || filterDomain !== 'ALL' || filterCreator !== 'ALL' || !!searchQuery.trim())
+        : (filterStatus !== 'PENDING_APPROVAL' || filterCategory !== 'ALL' || filterLevel !== 'ALL' || filterInstructor !== 'ALL' || !!searchQuery.trim())
 
     const handleResetFilters = () => {
+        setFilterStatus('PENDING_APPROVAL')
         setFilterType('ALL')
         setFilterDiff('ALL')
         setFilterDomain('ALL')
@@ -189,25 +189,29 @@ export default function ApprovalsPage() {
         setSearchQuery('')
     }
 
-    const filteredQuestions = pendingQuestions.filter(q => {
+    const filteredQuestions = questions.filter(q => {
+        const qStatus = q.status || 'PENDING_APPROVAL'
+        const matchStatus = filterStatus === 'ALL' || qStatus === filterStatus
         const matchType = filterType === 'ALL' || q.type === filterType
         const matchDiff = filterDiff === 'ALL' || q.difficulty === filterDiff
         const matchDomain = filterDomain === 'ALL' || (q.domain || 'Programming Domain') === filterDomain
         const matchCreator = filterCreator === 'ALL' || (q.creator?.name === filterCreator)
 
-        if (!matchType || !matchDiff || !matchDomain || !matchCreator) return false
+        if (!matchStatus || !matchType || !matchDiff || !matchDomain || !matchCreator) return false
 
         if (!searchQuery.trim()) return true
         const text = `${q.questionNumber || ''} ${q.questionText || ''} ${q.topicNames || ''} ${q.domain || ''} ${q.targetCompanies || q.companiesAppeared || ''} ${q.creator?.name || ''} ${q.creator?.email || ''}`.toLowerCase()
         return text.includes(searchQuery.toLowerCase().trim())
     })
 
-    const filteredCourses = pendingCourses.filter(c => {
+    const filteredCourses = courses.filter(c => {
+        const cStatus = c.status || 'PENDING_APPROVAL'
+        const matchStatus = filterStatus === 'ALL' || cStatus === filterStatus
         const matchCategory = filterCategory === 'ALL' || c.category === filterCategory
         const matchLevel = filterLevel === 'ALL' || c.level === filterLevel
         const matchInstructor = filterInstructor === 'ALL' || (c.instructor?.name === filterInstructor)
 
-        if (!matchCategory || !matchLevel || !matchInstructor) return false
+        if (!matchStatus || !matchCategory || !matchLevel || !matchInstructor) return false
 
         if (!searchQuery.trim()) return true
         const text = `${c.title || ''} ${c.category || ''} ${c.description || ''} ${c.instructor?.name || ''} ${c.instructor?.email || ''}`.toLowerCase()
@@ -230,7 +234,7 @@ export default function ApprovalsPage() {
                         </div>
                         <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Super Admin Approval Hub</h1>
                         <p className="text-slate-600 dark:text-slate-400 text-sm mt-1">
-                            Review, verify, and approve question bank submissions and curriculum courses authored by creators.
+                            Review, verify, approve, and track question bank submissions and curriculum courses authored by creators.
                         </p>
                     </div>
 
@@ -244,36 +248,51 @@ export default function ApprovalsPage() {
                 {/* Metrics Row */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
                     <div 
-                        onClick={() => setActiveTab('questions')} 
-                        className={`glass-card p-5 cursor-pointer transition-all ${activeTab === 'questions' ? 'border-primary-500 ring-2 ring-primary-500/20' : 'hover:border-primary-500/30'}`}
+                        onClick={() => { setActiveTab('questions'); setFilterStatus('PENDING_APPROVAL') }} 
+                        className={`glass-card p-5 cursor-pointer transition-all ${activeTab === 'questions' && filterStatus === 'PENDING_APPROVAL' ? 'border-amber-500 ring-2 ring-amber-500/20' : 'hover:border-amber-500/30'}`}
                     >
                         <div className="flex items-center justify-between">
-                            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Pending Questions</span>
-                            <span className="p-2 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400"><HelpCircle className="w-5 h-5" /></span>
+                            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">⏳ Pending Review</span>
+                            <span className="p-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400"><Clock className="w-5 h-5" /></span>
                         </div>
-                        <div className="text-3xl font-black text-purple-600 dark:text-purple-400 mt-2">{summary.pendingQuestions}</div>
-                        <p className="text-xs text-purple-700/80 dark:text-purple-300/80 mt-1">MCQs, Coding, FIBs awaiting review</p>
+                        <div className="text-3xl font-black text-amber-600 dark:text-amber-400 mt-2">
+                            {activeTab === 'questions' ? pendingQuestionsCount : pendingCoursesCount}
+                        </div>
+                        <p className="text-xs text-amber-700/80 dark:text-amber-300/80 mt-1">
+                            {activeTab === 'questions' ? `${pendingQuestionsCount} questions awaiting review` : `${pendingCoursesCount} courses awaiting review`}
+                        </p>
                     </div>
 
                     <div 
-                        onClick={() => setActiveTab('courses')} 
-                        className={`glass-card p-5 cursor-pointer transition-all ${activeTab === 'courses' ? 'border-primary-500 ring-2 ring-primary-500/20' : 'hover:border-primary-500/30'}`}
+                        onClick={() => setFilterStatus('APPROVED')} 
+                        className={`glass-card p-5 cursor-pointer transition-all ${filterStatus === 'APPROVED' ? 'border-emerald-500 ring-2 ring-emerald-500/20' : 'hover:border-emerald-500/30'}`}
                     >
                         <div className="flex items-center justify-between">
-                            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Pending Courses</span>
-                            <span className="p-2 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"><BookOpen className="w-5 h-5" /></span>
+                            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">✅ Approved Submissions</span>
+                            <span className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"><CheckCircle className="w-5 h-5" /></span>
                         </div>
-                        <div className="text-3xl font-black text-indigo-600 dark:text-indigo-400 mt-2">{summary.pendingCourses}</div>
-                        <p className="text-xs text-indigo-700/80 dark:text-indigo-300/80 mt-1">Curriculum & lessons awaiting review</p>
+                        <div className="text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-2">
+                            {activeTab === 'questions' ? approvedQuestionsCount : approvedCoursesCount}
+                        </div>
+                        <p className="text-xs text-emerald-700/80 dark:text-emerald-300/80 mt-1">
+                            {activeTab === 'questions' ? `${approvedQuestionsCount} approved questions` : `${approvedCoursesCount} approved courses`}
+                        </p>
                     </div>
 
-                    <div className="glass-card p-5">
+                    <div 
+                        onClick={() => setFilterStatus('REJECTED')} 
+                        className={`glass-card p-5 cursor-pointer transition-all ${filterStatus === 'REJECTED' ? 'border-rose-500 ring-2 ring-rose-500/20' : 'hover:border-rose-500/30'}`}
+                    >
                         <div className="flex items-center justify-between">
-                            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Queue</span>
-                            <span className="p-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400"><Clock className="w-5 h-5" /></span>
+                            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">❌ Rejected Submissions</span>
+                            <span className="p-2 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400"><XCircle className="w-5 h-5" /></span>
                         </div>
-                        <div className="text-3xl font-black text-amber-600 dark:text-amber-400 mt-2">{summary.totalPending}</div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Items currently requiring action</p>
+                        <div className="text-3xl font-black text-rose-600 dark:text-rose-400 mt-2">
+                            {activeTab === 'questions' ? rejectedQuestionsCount : rejectedCoursesCount}
+                        </div>
+                        <p className="text-xs text-rose-700/80 dark:text-rose-300/80 mt-1">
+                            {activeTab === 'questions' ? `${rejectedQuestionsCount} rejected questions` : `${rejectedCoursesCount} rejected courses`}
+                        </p>
                     </div>
                 </div>
 
@@ -288,7 +307,7 @@ export default function ApprovalsPage() {
                         >
                             <HelpCircle className="w-4 h-4" />
                             <span>Questions Queue</span>
-                            <span className="px-2 py-0.5 rounded-full text-xs bg-white/20">{summary.pendingQuestions}</span>
+                            <span className="px-2 py-0.5 rounded-full text-xs bg-white/20">{questions.length}</span>
                         </button>
                         <button
                             onClick={() => { setActiveTab('courses'); handleResetFilters() }}
@@ -298,7 +317,7 @@ export default function ApprovalsPage() {
                         >
                             <BookOpen className="w-4 h-4" />
                             <span>Courses Queue</span>
-                            <span className="px-2 py-0.5 rounded-full text-xs bg-white/20">{summary.pendingCourses}</span>
+                            <span className="px-2 py-0.5 rounded-full text-xs bg-white/20">{courses.length}</span>
                         </button>
                     </div>
 
@@ -315,15 +334,52 @@ export default function ApprovalsPage() {
                 </div>
 
                 {/* Filter Controls */}
-                <div className="glass-card p-4 mb-6 space-y-3">
+                <div className="glass-card p-4 mb-6 space-y-4">
+                    {/* PRIMARY STATUS FILTER ROW */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-white/10">
+                        <div className="flex gap-2 flex-wrap items-center">
+                            <span className="text-xs font-bold text-slate-700 dark:text-slate-300 mr-1 flex items-center gap-1.5">
+                                <Filter className="w-4 h-4 text-primary-500" /> Status:
+                            </span>
+                            {[
+                                { key: 'ALL', label: 'All Statuses', count: activeTab === 'questions' ? questions.length : courses.length, color: 'bg-slate-800' },
+                                { key: 'PENDING_APPROVAL', label: '⏳ Pending Review', count: activeTab === 'questions' ? pendingQuestionsCount : pendingCoursesCount, color: 'bg-amber-500 text-white' },
+                                { key: 'APPROVED', label: '✅ Approved', count: activeTab === 'questions' ? approvedQuestionsCount : approvedCoursesCount, color: 'bg-emerald-600 text-white' },
+                                { key: 'REJECTED', label: '❌ Rejected', count: activeTab === 'questions' ? rejectedQuestionsCount : rejectedCoursesCount, color: 'bg-rose-600 text-white' },
+                            ].map(st => (
+                                <button
+                                    key={st.key}
+                                    onClick={() => setFilterStatus(st.key as any)}
+                                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                                        filterStatus === st.key
+                                            ? `${st.color} shadow-md scale-105`
+                                            : 'text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10'
+                                    }`}
+                                >
+                                    <span>{st.label}</span>
+                                    <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${filterStatus === st.key ? 'bg-white/25 text-white' : 'bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-slate-300'}`}>
+                                        {st.count}
+                                    </span>
+                                </button>
+                            ))}
+                        </div>
+
+                        {isFiltered && (
+                            <button
+                                onClick={handleResetFilters}
+                                className="px-3 py-1.5 rounded-xl text-xs font-semibold text-rose-500 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 transition-all flex items-center gap-1.5"
+                            >
+                                <RotateCcw className="w-3.5 h-3.5" /> Reset Filters
+                            </button>
+                        )}
+                    </div>
+
                     {activeTab === 'questions' ? (
                         <>
                             {/* Question Type and Difficulty Filters */}
                             <div className="flex flex-wrap items-center justify-between gap-3">
                                 <div className="flex gap-1.5 flex-wrap items-center">
-                                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 mr-1 flex items-center gap-1">
-                                        <Filter className="w-3.5 h-3.5" /> Type:
-                                    </span>
+                                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 mr-1">Type:</span>
                                     {QUESTION_TYPES.map(t => (
                                         <button
                                             key={t.key}
@@ -361,14 +417,14 @@ export default function ApprovalsPage() {
                                 </div>
                             </div>
 
-                            {/* Dropdown Filters & Reset */}
+                            {/* Dropdown Filters */}
                             <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-200 dark:border-white/10">
                                 <div className="flex flex-wrap gap-2.5 items-center">
                                     {uniqueDomains.length > 0 && (
                                         <select
                                             value={filterDomain}
                                             onChange={e => setFilterDomain(e.target.value)}
-                                            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 outline-none"
+                                            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 outline-none shadow-sm"
                                         >
                                             <option value="ALL">All Domains ({uniqueDomains.length})</option>
                                             {uniqueDomains.map((d: any) => (
@@ -381,7 +437,7 @@ export default function ApprovalsPage() {
                                         <select
                                             value={filterCreator}
                                             onChange={e => setFilterCreator(e.target.value)}
-                                            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 outline-none"
+                                            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 outline-none shadow-sm"
                                         >
                                             <option value="ALL">All Authors ({uniqueCreators.length})</option>
                                             {uniqueCreators.map((c: any) => (
@@ -389,19 +445,10 @@ export default function ApprovalsPage() {
                                             ))}
                                         </select>
                                     )}
-
-                                    {isFiltered && (
-                                        <button
-                                            onClick={handleResetFilters}
-                                            className="px-3 py-1.5 rounded-xl text-xs font-semibold text-rose-500 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 transition-all flex items-center gap-1"
-                                        >
-                                            ✕ Reset Filters
-                                        </button>
-                                    )}
                                 </div>
 
                                 <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                                    Showing <strong className="text-slate-900 dark:text-white font-bold">{filteredQuestions.length}</strong> of {pendingQuestions.length} questions
+                                    Showing <strong className="text-slate-900 dark:text-white font-bold">{filteredQuestions.length}</strong> of {questions.length} questions
                                 </p>
                             </div>
                         </>
@@ -410,9 +457,7 @@ export default function ApprovalsPage() {
                             {/* Course Filters */}
                             <div className="flex flex-wrap items-center justify-between gap-3">
                                 <div className="flex flex-wrap gap-2.5 items-center">
-                                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 mr-1 flex items-center gap-1">
-                                        <Filter className="w-3.5 h-3.5" /> Level:
-                                    </span>
+                                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 mr-1">Level:</span>
                                     {['ALL', 'Beginner', 'Intermediate', 'Advanced', 'All Levels'].map(lvl => (
                                         <button
                                             key={lvl}
@@ -431,7 +476,7 @@ export default function ApprovalsPage() {
                                         <select
                                             value={filterCategory}
                                             onChange={e => setFilterCategory(e.target.value)}
-                                            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 outline-none ml-2"
+                                            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 outline-none ml-2 shadow-sm"
                                         >
                                             <option value="ALL">All Categories ({uniqueCategories.length})</option>
                                             {uniqueCategories.map((cat: any) => (
@@ -444,7 +489,7 @@ export default function ApprovalsPage() {
                                         <select
                                             value={filterInstructor}
                                             onChange={e => setFilterInstructor(e.target.value)}
-                                            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 outline-none"
+                                            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 outline-none shadow-sm"
                                         >
                                             <option value="ALL">All Instructors ({uniqueInstructors.length})</option>
                                             {uniqueInstructors.map((inst: any) => (
@@ -452,19 +497,10 @@ export default function ApprovalsPage() {
                                             ))}
                                         </select>
                                     )}
-
-                                    {isFiltered && (
-                                        <button
-                                            onClick={handleResetFilters}
-                                            className="px-3 py-1.5 rounded-xl text-xs font-semibold text-rose-500 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 transition-all flex items-center gap-1"
-                                        >
-                                            ✕ Reset Filters
-                                        </button>
-                                    )}
                                 </div>
 
                                 <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                                    Showing <strong className="text-slate-900 dark:text-white font-bold">{filteredCourses.length}</strong> of {pendingCourses.length} courses
+                                    Showing <strong className="text-slate-900 dark:text-white font-bold">{filteredCourses.length}</strong> of {courses.length} courses
                                 </p>
                             </div>
                         </>
@@ -476,7 +512,7 @@ export default function ApprovalsPage() {
                     {loading ? (
                         <div className="flex flex-col items-center justify-center py-24">
                             <div className="w-10 h-10 border-2 border-primary-500 border-t-transparent rounded-full animate-spin mb-3" />
-                            <p className="text-slate-500 dark:text-slate-400 text-sm">Loading approval queue...</p>
+                            <p className="text-slate-500 dark:text-slate-400 text-sm">Loading submissions queue...</p>
                         </div>
                     ) : activeTab === 'questions' ? (
                         filteredQuestions.length === 0 ? (
@@ -484,9 +520,11 @@ export default function ApprovalsPage() {
                                 <div className="w-16 h-16 rounded-3xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto mb-4 border border-emerald-500/20 text-2xl">
                                     ✓
                                 </div>
-                                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Question Queue is All Clear!</h3>
+                                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">No Questions Found</h3>
                                 <p className="text-slate-500 dark:text-slate-400 text-sm max-w-md mx-auto">
-                                    There are no questions currently waiting for review. All creator submissions have been evaluated.
+                                    {filterStatus === 'PENDING_APPROVAL'
+                                        ? 'There are no questions currently waiting for review. All submissions have been evaluated.'
+                                        : `No questions found matching the selected status (${filterStatus}) and filters.`}
                                 </p>
                             </div>
                         ) : (
@@ -495,6 +533,7 @@ export default function ApprovalsPage() {
                                     <thead>
                                         <tr className="border-b border-slate-200 dark:border-white/10 text-left text-xs font-semibold text-slate-500 dark:text-slate-400">
                                             <th className="pb-3 pr-4">Code</th>
+                                            <th className="pb-3 pr-4">Status</th>
                                             <th className="pb-3 pr-4">Type</th>
                                             <th className="pb-3 pr-4">Question Details</th>
                                             <th className="pb-3 pr-4">Target Companies</th>
@@ -505,11 +544,21 @@ export default function ApprovalsPage() {
                                     <tbody className="divide-y divide-slate-100 dark:divide-white/5">
                                         {filteredQuestions.map((q) => {
                                             const companies = q.targetCompanies || q.companiesAppeared || ''
+                                            const status = q.status || 'PENDING_APPROVAL'
                                             return (
                                                 <tr key={q.id} className="hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors">
                                                     <td className="py-4 pr-4">
                                                         <span className="font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 px-2 py-1 rounded-md border border-indigo-500/20">
                                                             {q.questionNumber}
+                                                        </span>
+                                                    </td>
+                                                    <td className="py-4 pr-4">
+                                                        <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold inline-flex items-center gap-1 ${
+                                                            status === 'APPROVED' ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30' :
+                                                            status === 'PENDING_APPROVAL' ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 animate-pulse' :
+                                                            'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30'
+                                                        }`}>
+                                                            {status === 'APPROVED' ? '✅ Approved' : status === 'PENDING_APPROVAL' ? '⏳ Pending' : '❌ Rejected'}
                                                         </span>
                                                     </td>
                                                     <td className="py-4 pr-4">
@@ -521,6 +570,12 @@ export default function ApprovalsPage() {
                                                     <td className="py-4 pr-4 max-w-sm">
                                                         <p className="text-sm font-semibold text-slate-900 dark:text-white line-clamp-2">{q.questionText}</p>
                                                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Topic: <span className="text-slate-700 dark:text-slate-300 font-medium">{q.topicNames}</span> ({q.domain})</p>
+                                                        {q.rejectionReason && (
+                                                            <div className="mt-1.5 p-2 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs flex items-start gap-1.5">
+                                                                <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                                                                <span><strong>Rejection Reason:</strong> {q.rejectionReason}</span>
+                                                            </div>
+                                                        )}
                                                     </td>
                                                     <td className="py-4 pr-4 max-w-[180px]">
                                                         {companies ? (() => {
@@ -539,7 +594,6 @@ export default function ApprovalsPage() {
                                                                             </span>
                                                                         )}
                                                                     </div>
-                                                                    {/* Tooltip on cursor hover showing all target companies */}
                                                                     <div className="absolute left-0 bottom-full mb-2 z-50 hidden group-hover/comp:flex flex-col gap-1.5 p-3 bg-slate-900 border border-white/15 rounded-xl shadow-2xl min-w-[180px] max-w-xs pointer-events-none">
                                                                         <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">All Target Companies ({compList.length})</p>
                                                                         <div className="flex flex-wrap gap-1">
@@ -575,20 +629,26 @@ export default function ApprovalsPage() {
                                                             >
                                                                 <Eye className="w-3.5 h-3.5" /> Preview
                                                             </button>
-                                                            <button
-                                                                disabled={actionLoading === q.id}
-                                                                onClick={() => handleApproveQuestion(q.id)}
-                                                                className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-500 text-white hover:bg-emerald-600 transition-all shadow-md shadow-emerald-500/20 flex items-center gap-1.5 disabled:opacity-50"
-                                                            >
-                                                                <CheckCircle className="w-3.5 h-3.5" /> Approve
-                                                            </button>
-                                                            <button
-                                                                disabled={actionLoading === q.id}
-                                                                onClick={() => setRejectTarget({ type: 'question', id: q.id, title: q.questionText })}
-                                                                className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500 hover:text-white border border-rose-500/20 transition-all flex items-center gap-1.5 disabled:opacity-50"
-                                                            >
-                                                                <XCircle className="w-3.5 h-3.5" /> Reject
-                                                            </button>
+
+                                                            {status !== 'APPROVED' && (
+                                                                <button
+                                                                    disabled={actionLoading === q.id}
+                                                                    onClick={() => handleApproveQuestion(q.id)}
+                                                                    className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-500 text-white hover:bg-emerald-600 transition-all shadow-md shadow-emerald-500/20 flex items-center gap-1.5 disabled:opacity-50"
+                                                                >
+                                                                    <CheckCircle className="w-3.5 h-3.5" /> {status === 'REJECTED' ? 'Reinstate' : 'Approve'}
+                                                                </button>
+                                                            )}
+
+                                                            {status !== 'REJECTED' && (
+                                                                <button
+                                                                    disabled={actionLoading === q.id}
+                                                                    onClick={() => setRejectTarget({ type: 'question', id: q.id, title: q.questionText })}
+                                                                    className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500 hover:text-white border border-rose-500/20 transition-all flex items-center gap-1.5 disabled:opacity-50"
+                                                                >
+                                                                    <XCircle className="w-3.5 h-3.5" /> {status === 'APPROVED' ? 'Revoke' : 'Reject'}
+                                                                </button>
+                                                            )}
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -604,9 +664,11 @@ export default function ApprovalsPage() {
                                 <div className="w-16 h-16 rounded-3xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto mb-4 border border-emerald-500/20 text-2xl">
                                     ✓
                                 </div>
-                                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Course Queue is All Clear!</h3>
+                                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">No Courses Found</h3>
                                 <p className="text-slate-500 dark:text-slate-400 text-sm max-w-md mx-auto">
-                                    There are no courses waiting for review. All curriculum proposals have been evaluated.
+                                    {filterStatus === 'PENDING_APPROVAL'
+                                        ? 'There are no courses currently waiting for review. All curriculum proposals have been evaluated.'
+                                        : `No courses found matching the selected status (${filterStatus}) and filters.`}
                                 </p>
                             </div>
                         ) : (
@@ -615,6 +677,7 @@ export default function ApprovalsPage() {
                                     <thead>
                                         <tr className="border-b border-slate-200 dark:border-white/10 text-left text-xs font-semibold text-slate-500 dark:text-slate-400">
                                             <th className="pb-3 pr-4">Course Title</th>
+                                            <th className="pb-3 pr-4">Status</th>
                                             <th className="pb-3 pr-4">Category & Level</th>
                                             <th className="pb-3 pr-4">Instructor / Author</th>
                                             <th className="pb-3 pr-4">Submitted Date</th>
@@ -622,67 +685,91 @@ export default function ApprovalsPage() {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-                                        {filteredCourses.map((c) => (
-                                            <tr key={c.id} className="hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors">
-                                                <td className="py-4 pr-4 max-w-md">
-                                                    <div className="flex items-center gap-3">
-                                                        {c.thumbnail ? (
-                                                            <img src={c.thumbnail} alt="" className="w-12 h-8 rounded-lg object-cover border border-slate-200 dark:border-white/10" />
-                                                        ) : (
-                                                            <div className="w-12 h-8 rounded-lg bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-xs">📚</div>
-                                                        )}
-                                                        <div>
-                                                            <p className="text-sm font-bold text-slate-900 dark:text-white">{c.title}</p>
-                                                            <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1">{c.description || 'No description provided'}</p>
+                                        {filteredCourses.map((c) => {
+                                            const status = c.status || 'PENDING_APPROVAL'
+                                            return (
+                                                <tr key={c.id} className="hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors">
+                                                    <td className="py-4 pr-4 max-w-md">
+                                                        <div className="flex items-center gap-3">
+                                                            {c.thumbnail ? (
+                                                                <img src={c.thumbnail} alt="" className="w-12 h-8 rounded-lg object-cover border border-slate-200 dark:border-white/10" />
+                                                            ) : (
+                                                                <div className="w-12 h-8 rounded-lg bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-xs">📚</div>
+                                                            )}
+                                                            <div>
+                                                                <p className="text-sm font-bold text-slate-900 dark:text-white">{c.title}</p>
+                                                                <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1">{c.description || 'No description provided'}</p>
+                                                                {c.rejectionReason && (
+                                                                    <div className="mt-1.5 p-2 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs flex items-start gap-1.5">
+                                                                        <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                                                                        <span><strong>Rejection Reason:</strong> {c.rejectionReason}</span>
+                                                                    </div>
+                                                                )}
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                </td>
-                                                <td className="py-4 pr-4">
-                                                    <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
-                                                        {c.category || 'General'}
-                                                    </span>
-                                                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">{c.level || 'All Levels'}</div>
-                                                </td>
-                                                <td className="py-4 pr-4">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-7 h-7 rounded-full bg-slate-700 flex items-center justify-center text-xs text-white font-bold">
-                                                            {c.instructor?.name?.[0] || 'I'}
+                                                    </td>
+                                                    <td className="py-4 pr-4">
+                                                        <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold inline-flex items-center gap-1 ${
+                                                            status === 'APPROVED' ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30' :
+                                                            status === 'PENDING_APPROVAL' ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 animate-pulse' :
+                                                            'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30'
+                                                        }`}>
+                                                            {status === 'APPROVED' ? '✅ Approved' : status === 'PENDING_APPROVAL' ? '⏳ Pending' : '❌ Rejected'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="py-4 pr-4">
+                                                        <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+                                                            {c.category || 'General'}
+                                                        </span>
+                                                        <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">{c.level || 'All Levels'}</div>
+                                                    </td>
+                                                    <td className="py-4 pr-4">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-7 h-7 rounded-full bg-slate-700 flex items-center justify-center text-xs text-white font-bold">
+                                                                {c.instructor?.name?.[0] || 'I'}
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-xs font-semibold text-slate-900 dark:text-white">{c.instructor?.name || 'Content Creator'}</p>
+                                                                <p className="text-[10px] text-slate-500 dark:text-slate-400">{c.instructor?.email || 'instructor@appliedstemlabs.com'}</p>
+                                                            </div>
                                                         </div>
-                                                        <div>
-                                                            <p className="text-xs font-semibold text-slate-900 dark:text-white">{c.instructor?.name || 'Content Creator'}</p>
-                                                            <p className="text-[10px] text-slate-500 dark:text-slate-400">{c.instructor?.email || 'instructor@appliedstemlabs.com'}</p>
+                                                    </td>
+                                                    <td className="py-4 pr-4 text-xs text-slate-500 dark:text-slate-400">
+                                                        {new Date(c.createdAt).toLocaleDateString()}
+                                                    </td>
+                                                    <td className="py-4 text-right">
+                                                        <div className="flex items-center justify-end gap-2">
+                                                            <button
+                                                                onClick={() => router.push(`/dashboard/superadmin/courses/${c.id}`)}
+                                                                className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10 transition-all flex items-center gap-1.5"
+                                                            >
+                                                                <Eye className="w-3.5 h-3.5" /> Inspect
+                                                            </button>
+
+                                                            {status !== 'APPROVED' && (
+                                                                <button
+                                                                    disabled={actionLoading === c.id}
+                                                                    onClick={() => handleApproveCourse(c.id)}
+                                                                    className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-500 text-white hover:bg-emerald-600 transition-all shadow-md shadow-emerald-500/20 flex items-center gap-1.5 disabled:opacity-50"
+                                                                >
+                                                                    <CheckCircle className="w-3.5 h-3.5" /> {status === 'REJECTED' ? 'Reinstate' : 'Approve'}
+                                                                </button>
+                                                            )}
+
+                                                            {status !== 'REJECTED' && (
+                                                                <button
+                                                                    disabled={actionLoading === c.id}
+                                                                    onClick={() => setRejectTarget({ type: 'course', id: c.id, title: c.title })}
+                                                                    className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500 hover:text-white border border-rose-500/20 transition-all flex items-center gap-1.5 disabled:opacity-50"
+                                                                >
+                                                                    <XCircle className="w-3.5 h-3.5" /> {status === 'APPROVED' ? 'Revoke' : 'Reject'}
+                                                                </button>
+                                                            )}
                                                         </div>
-                                                    </div>
-                                                </td>
-                                                <td className="py-4 pr-4 text-xs text-slate-500 dark:text-slate-400">
-                                                    {new Date(c.createdAt).toLocaleDateString()}
-                                                </td>
-                                                <td className="py-4 text-right">
-                                                    <div className="flex items-center justify-end gap-2">
-                                                        <button
-                                                            onClick={() => router.push(`/dashboard/superadmin/courses/${c.id}`)}
-                                                            className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10 transition-all flex items-center gap-1.5"
-                                                        >
-                                                            <Eye className="w-3.5 h-3.5" /> Inspect
-                                                        </button>
-                                                        <button
-                                                            disabled={actionLoading === c.id}
-                                                            onClick={() => handleApproveCourse(c.id)}
-                                                            className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-500 text-white hover:bg-emerald-600 transition-all shadow-md shadow-emerald-500/20 flex items-center gap-1.5 disabled:opacity-50"
-                                                        >
-                                                            <CheckCircle className="w-3.5 h-3.5" /> Approve
-                                                        </button>
-                                                        <button
-                                                            disabled={actionLoading === c.id}
-                                                            onClick={() => setRejectTarget({ type: 'course', id: c.id, title: c.title })}
-                                                            className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500 hover:text-white border border-rose-500/20 transition-all flex items-center gap-1.5 disabled:opacity-50"
-                                                        >
-                                                            <XCircle className="w-3.5 h-3.5" /> Reject
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
+                                                    </td>
+                                                </tr>
+                                            )
+                                        })}
                                     </tbody>
                                 </table>
                             </div>

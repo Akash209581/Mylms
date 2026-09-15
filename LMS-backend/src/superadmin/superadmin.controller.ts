@@ -5,6 +5,7 @@ import {
   Delete,
   Param,
   Body,
+  Query,
   UseGuards,
   ParseIntPipe,
   Request,
@@ -387,16 +388,42 @@ export class SuperadminController {
     const pendingCourses = await this.courseRepo.count({
       where: { status: CourseStatus.PENDING_APPROVAL },
     });
+    const approvedCourses = await this.courseRepo.count({
+      where: { status: CourseStatus.APPROVED },
+    });
+    const rejectedCourses = await this.courseRepo.count({
+      where: { status: CourseStatus.REJECTED },
+    });
     const pendingQuestions = await this.questionRepo.count({
       where: { status: QuestionStatus.PENDING_APPROVAL },
     });
-    return { pendingCourses, pendingQuestions, totalPending: pendingCourses + pendingQuestions };
+    const approvedQuestions = await this.questionRepo.count({
+      where: { status: QuestionStatus.APPROVED },
+    });
+    const rejectedQuestions = await this.questionRepo.count({
+      where: { status: QuestionStatus.REJECTED },
+    });
+    return {
+      pendingCourses,
+      approvedCourses,
+      rejectedCourses,
+      pendingQuestions,
+      approvedQuestions,
+      rejectedQuestions,
+      totalPending: pendingCourses + pendingQuestions,
+    };
   }
 
   @Get('approvals/courses')
-  async getPendingCourses() {
+  async getPendingCourses(@Query('status') status?: string) {
+    const where: any = {};
+    if (status && status !== 'ALL') {
+      where.status = status;
+    } else if (!status) {
+      where.status = CourseStatus.PENDING_APPROVAL;
+    }
     return this.courseRepo.find({
-      where: { status: CourseStatus.PENDING_APPROVAL },
+      where: Object.keys(where).length ? where : undefined,
       relations: ['instructor', 'approver', 'assignedColleges'],
       order: { createdAt: 'DESC' },
     });
@@ -435,9 +462,15 @@ export class SuperadminController {
   }
 
   @Get('approvals/questions')
-  async getPendingQuestions() {
+  async getPendingQuestions(@Query('status') status?: string) {
+    const where: any = {};
+    if (status && status !== 'ALL') {
+      where.status = status;
+    } else if (!status) {
+      where.status = QuestionStatus.PENDING_APPROVAL;
+    }
     return this.questionRepo.find({
-      where: { status: QuestionStatus.PENDING_APPROVAL },
+      where: Object.keys(where).length ? where : undefined,
       relations: ['creator', 'approver', 'college'],
       order: { createdAt: 'DESC' },
     });

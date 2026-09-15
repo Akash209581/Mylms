@@ -50,6 +50,7 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
         description: '',
         domain: 'Programming Domain',
     })
+    const [userRole, setUserRole] = useState<'SUPERADMIN' | 'ADMIN' | 'INSTRUCTOR' | 'QUESTION_CREATOR'>('SUPERADMIN')
     const [domains, setDomains] = useState<any[]>([])
     const [topics, setTopics] = useState<any[]>([])
     const [newDomain, setNewDomain] = useState('')
@@ -139,6 +140,7 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
         if (!stored) { router.push('/login'); return }
         const u = JSON.parse(stored)
         if (!['SUPERADMIN', 'ADMIN', 'INSTRUCTOR', 'QUESTION_CREATOR'].includes(u.role)) { router.push('/login'); return }
+        setUserRole(u.role)
         
         fetchDomains()
 
@@ -218,35 +220,34 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
             // Cleanup: remove empty/irrelevant fields to be super safe
             if (submitData.type !== 'MQ') delete (submitData as any).matchingPairs;
             if (submitData.type !== 'FIB') delete (submitData as any).blanks;
-            if (submitData.type !== 'MCQ' && submitData.type !== 'OP') delete (submitData as any).options;
-            if (submitData.type !== 'JC') delete (submitData as any).jumbledStatements;
             if (submitData.type !== 'PQ') {
                 delete (submitData as any).testCases;
+                delete (submitData as any).problemStatement;
+                delete (submitData as any).inputFormat;
+                delete (submitData as any).outputFormat;
+                delete (submitData as any).constraints;
                 delete (submitData as any).allowedLanguages;
             }
-            if (submitData.type !== 'OP' && submitData.type !== 'PQ') {
+            if (submitData.type !== 'MCQ' && submitData.type !== 'OP') {
+                delete (submitData as any).options;
+                delete (submitData as any).correctAnswer;
                 delete (submitData as any).codeSnippet;
                 delete (submitData as any).expectedOutput;
             }
-
-            const { id: _, questionNumber, createdAt, updatedAt, isActive, opMode, question_number, created_at, updated_at, ...cleanedData } = submitData;
 
             const res = await apiFetch(`${API_URL}/question-bank/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify(cleanedData),
+                body: JSON.stringify(submitData),
             })
-            if (!res.ok) {
-                const e = await res.json().catch(() => ({}))
-                const msg = Array.isArray(e.message) ? e.message.join(', ') : e.message
-                setError(msg || 'Error saving')
-                return
+            if (res.ok) {
+                router.push(`${getRoleBasePath(userRole)}/question-bank`)
+            } else {
+                const data = await res.json()
+                setError(data.message || 'Failed to update question')
             }
-            const stored = localStorage.getItem('user')
-            const role = stored ? JSON.parse(stored).role : 'SUPERADMIN'
-            router.push(`${getRoleBasePath(role)}/question-bank`)
-        } catch (e: any) { setError(e.message) }
+        } catch (e: any) { setError(e.message || 'Failed to update question') }
         finally { setSaving(false) }
     }
 
@@ -258,11 +259,11 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
 
     return (
         <div className="min-h-screen bg-mesh">
-            <Sidebar role="SUPERADMIN" />
+            <Sidebar role={userRole} />
             <Navbar title="Edit Question" />
             <main className="page-content">
                 <div className="flex items-center gap-3 mb-8">
-                    <button onClick={() => router.push('/dashboard/superadmin/question-bank')}
+                    <button onClick={() => router.push(`${getRoleBasePath(userRole)}/question-bank`)}
                         className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-[var(--bg-surface)]/10 transition-all">
                         ← Back
                     </button>
@@ -271,6 +272,27 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
                         <p className="text-gray-400 text-sm">Update the question details for <span className="text-primary-400 font-mono">{form.questionNumber}</span></p>
                     </div>
                 </div>
+
+                {/* Rejection Banner for Question Creators */}
+                {form.status === 'REJECTED' && (
+                    <div className="glass-card p-5 mb-6 border border-rose-500/40 bg-rose-500/10 rounded-2xl">
+                        <div className="flex items-start gap-3">
+                            <div className="p-2 rounded-xl bg-rose-500/20 text-rose-400 text-lg shrink-0">
+                                ⚠️
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-bold text-rose-300">Question Rejected by Super Admin</h3>
+                                <p className="text-xs text-rose-200 mt-1 leading-relaxed">
+                                    <strong className="text-rose-400">Rejection Reason / Improvement Notes: </strong>
+                                    <span>{form.rejectionReason || 'Content does not meet assessment quality standards. Please revise.'}</span>
+                                </p>
+                                <p className="text-[11px] text-rose-300/80 mt-2 font-medium">
+                                    💡 Make your corrections and click <strong>"Update Question"</strong> below. It will automatically be resubmitted to the Super Admin Approvals Queue.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {error && (
                     <div className="glass-card p-4 mb-6 border border-red-500/30 bg-red-500/10">

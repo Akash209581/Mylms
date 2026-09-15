@@ -561,6 +561,17 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
 
                 {/* Modal Body */}
                 <div className="p-8 overflow-y-auto flex-1 min-h-0">
+                    {/* Rejection Alert Banner */}
+                    {(form.status === 'REJECTED' || form.rejectionReason) && form.rejectionReason && (
+                        <div className="mb-6 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 flex items-start gap-3">
+                            <span className="text-xl shrink-0">⚠️</span>
+                            <div>
+                                <h4 className="text-xs font-bold uppercase tracking-wider text-rose-900">Super Admin Rejection Feedback</h4>
+                                <p className="text-xs text-rose-700 mt-1 leading-relaxed">{form.rejectionReason}</p>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="mb-6 pb-6 border-b border-gray-100">
                         <div className="flex flex-wrap items-center gap-2 mb-3">
                             {form.questionNumber && (

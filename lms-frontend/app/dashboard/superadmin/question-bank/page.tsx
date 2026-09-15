@@ -265,14 +265,23 @@ export default function QuestionBankPage() {
                                                     </span>
                                                 </td>
                                                 <td className="py-4 pr-4">
-                                                    <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${status === 'APPROVED' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' :
-                                                            status === 'PENDING_APPROVAL' ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30 animate-pulse' :
-                                                                'bg-rose-500/15 text-rose-400 border border-rose-500/30'
-                                                        }`} title={q.rejectionReason || undefined}>
-                                                        {status === 'PENDING_APPROVAL' ? '⏳ PENDING' : status}
+                                                    <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold inline-flex items-center gap-1 ${
+                                                        status === 'APPROVED' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' :
+                                                        status === 'PENDING_APPROVAL' ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30 animate-pulse' :
+                                                        'bg-rose-500/15 text-rose-400 border border-rose-500/30'
+                                                    }`}>
+                                                        {status === 'PENDING_APPROVAL' ? '⏳ PENDING' : status === 'APPROVED' ? '✅ APPROVED' : '❌ REJECTED'}
                                                     </span>
                                                 </td>
-                                                <td className="py-4 pr-4 role-text-secondary text-sm max-w-xs truncate">{q.questionText || q.problemStatement}</td>
+                                                <td className="py-4 pr-4 role-text-secondary text-sm max-w-sm">
+                                                    <p className="font-medium line-clamp-2">{q.questionText || q.problemStatement}</p>
+                                                    {status === 'REJECTED' && q.rejectionReason && (
+                                                        <div className="mt-1.5 p-2 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs">
+                                                            <strong className="text-rose-400">⚠️ Super Admin Feedback: </strong>
+                                                            <span>{q.rejectionReason}</span>
+                                                        </div>
+                                                    )}
+                                                </td>
                                                 <td className="py-4">
                                                     <div className="flex gap-2">
                                                         <button onClick={() => { setSelectedQuestion(q); setShowPreview(true) }}
