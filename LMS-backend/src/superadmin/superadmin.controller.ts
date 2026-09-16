@@ -506,4 +506,39 @@ export class SuperadminController {
     });
     return { success: true, message: 'Question rejected' };
   }
+
+  @Delete('questions/:id')
+  async deleteQuestion(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() req: any,
+  ) {
+    const question = await this.questionRepo.findOne({ where: { id } });
+    if (!question) throw new NotFoundException('Question not found');
+
+    try {
+      await this.questionRepo.delete(id);
+    } catch (err) {
+      // If foreign key constraint or references prevent hard deletion, soft delete
+      await this.questionRepo.update(id, { isActive: false });
+    }
+
+    // Log audit trail
+    const audit = this.auditRepo.create({
+      actorId: req.user.sub,
+      actorName: req.user.name || req.user.email,
+      actorRole: req.user.role,
+      action: 'QUESTION_DELETED',
+      targetType: 'Question',
+      targetId: id,
+      targetName: question.questionNumber || question.questionText?.substring(0, 50),
+      details: JSON.stringify({
+        type: question.type,
+        status: question.status,
+        difficulty: question.difficulty,
+      }),
+    });
+    await this.auditRepo.save(audit);
+
+    return { success: true, message: 'Question deleted successfully' };
+  }
 }

@@ -8,7 +8,7 @@ import { API_URL } from '@/lib/api'
 import { apiFetch } from '@/lib/apiFetch'
 import { getAuthHeaders } from '@/lib/authHeaders'
 import QuestionPreview from '@/components/question-bank/QuestionPreview'
-import { CheckCircle, XCircle, Eye, AlertCircle, Clock, BookOpen, HelpCircle, UserCheck, Search, Filter, RotateCcw } from 'lucide-react'
+import { CheckCircle, XCircle, Eye, AlertCircle, Clock, BookOpen, HelpCircle, UserCheck, Search, Filter, RotateCcw, Trash2 } from 'lucide-react'
 
 export default function ApprovalsPage() {
     const router = useRouter()
@@ -44,6 +44,9 @@ export default function ApprovalsPage() {
     // Reject Modal state
     const [rejectTarget, setRejectTarget] = useState<{ type: 'question' | 'course'; id: number; title: string } | null>(null)
     const [rejectReason, setRejectReason] = useState('')
+
+    // Delete Modal state
+    const [deleteTarget, setDeleteTarget] = useState<{ id: number; questionNumber?: string; title: string } | null>(null)
 
     useEffect(() => {
         const stored = localStorage.getItem('user')
@@ -138,6 +141,30 @@ export default function ApprovalsPage() {
             }
         } catch (err) {
             console.error('Rejection failed:', err)
+        } finally {
+            setActionLoading(null)
+        }
+    }
+
+    const handleDeleteQuestion = async (id: number) => {
+        setActionLoading(id)
+        try {
+            const res = await apiFetch(`${API_URL}/superadmin/questions/${id}`, {
+                method: 'DELETE',
+                credentials: 'include',
+                headers: getAuthHeaders(),
+            })
+            if (res.ok) {
+                setQuestions(prev => prev.filter(q => q.id !== id))
+                setDeleteTarget(null)
+                loadData()
+            } else {
+                const data = await res.json().catch(() => ({}))
+                alert(data.message || 'Failed to delete question')
+            }
+        } catch (err) {
+            console.error('Failed to delete question:', err)
+            alert('Failed to delete question')
         } finally {
             setActionLoading(null)
         }
@@ -307,7 +334,7 @@ export default function ApprovalsPage() {
                         >
                             <HelpCircle className="w-4 h-4" />
                             <span>Questions Queue</span>
-                            <span className="px-2 py-0.5 rounded-full text-xs bg-white/20">{questions.length}</span>
+                            <span className="px-2 py-0.5 rounded-full text-xs bg-white/20">{pendingQuestionsCount}</span>
                         </button>
                         <button
                             onClick={() => { setActiveTab('courses'); handleResetFilters() }}
@@ -317,7 +344,7 @@ export default function ApprovalsPage() {
                         >
                             <BookOpen className="w-4 h-4" />
                             <span>Courses Queue</span>
-                            <span className="px-2 py-0.5 rounded-full text-xs bg-white/20">{courses.length}</span>
+                            <span className="px-2 py-0.5 rounded-full text-xs bg-white/20">{pendingCoursesCount}</span>
                         </button>
                     </div>
 
@@ -649,6 +676,17 @@ export default function ApprovalsPage() {
                                                                     <XCircle className="w-3.5 h-3.5" /> {status === 'APPROVED' ? 'Revoke' : 'Reject'}
                                                                 </button>
                                                             )}
+
+                                                            {status === 'REJECTED' && (
+                                                                <button
+                                                                    disabled={actionLoading === q.id}
+                                                                    onClick={() => setDeleteTarget({ id: q.id, questionNumber: q.questionNumber, title: q.questionText })}
+                                                                    className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-rose-600/10 text-rose-600 dark:text-rose-400 hover:bg-rose-600 hover:text-white border border-rose-500/30 transition-all flex items-center gap-1.5 disabled:opacity-50"
+                                                                    title="Permanently delete rejected question"
+                                                                >
+                                                                    <Trash2 className="w-3.5 h-3.5" /> Delete
+                                                                </button>
+                                                            )}
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -828,6 +866,68 @@ export default function ApprovalsPage() {
                                 className="px-5 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-lg shadow-rose-600/30 transition-all"
                             >
                                 Confirm Rejection
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Question Modal */}
+            {deleteTarget && (
+                <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-slate-900 border border-white/15 rounded-3xl p-6 max-w-md w-full shadow-2xl animate-fade-in">
+                        <div className="flex items-center gap-3 mb-4 text-rose-400">
+                            <div className="p-2.5 rounded-2xl bg-rose-500/10 border border-rose-500/20">
+                                <Trash2 className="w-6 h-6 text-rose-500" />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-bold text-white">Delete Rejected Question</h3>
+                                <p className="text-xs text-slate-400">Permanent removal from Question Bank</p>
+                            </div>
+                        </div>
+
+                        <div className="mb-4 bg-white/5 p-3.5 rounded-xl border border-white/10 space-y-1.5">
+                            {deleteTarget.questionNumber && (
+                                <span className="font-mono text-xs font-bold text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20 inline-block">
+                                    {deleteTarget.questionNumber}
+                                </span>
+                            )}
+                            <p className="text-xs text-slate-300 font-medium line-clamp-3">
+                                "{deleteTarget.title}"
+                            </p>
+                        </div>
+
+                        <p className="text-xs text-rose-400/90 mb-5 bg-rose-500/10 p-2.5 rounded-xl border border-rose-500/20 flex items-center gap-2">
+                            <AlertCircle className="w-4 h-4 shrink-0" />
+                            This action cannot be undone. The question will be permanently removed.
+                        </p>
+
+                        <div className="flex justify-end gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setDeleteTarget(null)}
+                                className="btn-secondary text-xs px-4 py-2"
+                                disabled={actionLoading === deleteTarget.id}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => handleDeleteQuestion(deleteTarget.id)}
+                                disabled={actionLoading === deleteTarget.id}
+                                className="px-5 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-lg shadow-rose-600/30 transition-all flex items-center gap-1.5 disabled:opacity-50"
+                            >
+                                {actionLoading === deleteTarget.id ? (
+                                    <>
+                                        <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                        <span>Deleting...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                        <span>Delete Question</span>
+                                    </>
+                                )}
                             </button>
                         </div>
                     </div>
