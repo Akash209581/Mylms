@@ -395,13 +395,13 @@ export class SuperadminController {
       where: { status: CourseStatus.REJECTED },
     });
     const pendingQuestions = await this.questionRepo.count({
-      where: { status: QuestionStatus.PENDING_APPROVAL },
+      where: { status: QuestionStatus.PENDING_APPROVAL, isActive: true },
     });
     const approvedQuestions = await this.questionRepo.count({
-      where: { status: QuestionStatus.APPROVED },
+      where: { status: QuestionStatus.APPROVED, isActive: true },
     });
     const rejectedQuestions = await this.questionRepo.count({
-      where: { status: QuestionStatus.REJECTED },
+      where: { status: QuestionStatus.REJECTED, isActive: true },
     });
     return {
       pendingCourses,
@@ -463,14 +463,14 @@ export class SuperadminController {
 
   @Get('approvals/questions')
   async getPendingQuestions(@Query('status') status?: string) {
-    const where: any = {};
+    const where: any = { isActive: true };
     if (status && status !== 'ALL') {
       where.status = status;
     } else if (!status) {
       where.status = QuestionStatus.PENDING_APPROVAL;
     }
     return this.questionRepo.find({
-      where: Object.keys(where).length ? where : undefined,
+      where,
       relations: ['creator', 'approver', 'college'],
       order: { createdAt: 'DESC' },
     });
@@ -516,10 +516,15 @@ export class SuperadminController {
     if (!question) throw new NotFoundException('Question not found');
 
     try {
+      // Clean up child relationships first to prevent FK constraints
+      await this.questionRepo.manager.query(`DELETE FROM exam_questions WHERE question_id = $1`, [id]).catch(() => {});
+      await this.questionRepo.manager.query(`DELETE FROM exam_coding_submissions WHERE question_id = $1`, [id]).catch(() => {});
+      await this.questionRepo.manager.query(`DELETE FROM daily_streak WHERE question_id = $1`, [id]).catch(() => {});
+      await this.questionRepo.manager.query(`DELETE FROM quiz_questions WHERE question_id = $1`, [id]).catch(() => {});
       await this.questionRepo.delete(id);
     } catch (err) {
-      // If foreign key constraint or references prevent hard deletion, soft delete
-      await this.questionRepo.update(id, { isActive: false });
+      console.error('Hard delete failed, falling back to soft delete:', err);
+      await this.questionRepo.update(id, { isActive: false, status: QuestionStatus.REJECTED });
     }
 
     // Log audit trail

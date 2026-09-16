@@ -47,6 +47,11 @@ export default function ApprovalsPage() {
 
     // Delete Modal state
     const [deleteTarget, setDeleteTarget] = useState<{ id: number; questionNumber?: string; title: string } | null>(null)
+    const [expandedCompanies, setExpandedCompanies] = useState<Record<number, boolean>>({})
+
+    const toggleCompanyExpand = (id: number) => {
+        setExpandedCompanies(prev => ({ ...prev, [id]: !prev[id] }))
+    }
 
     useEffect(() => {
         const stored = localStorage.getItem('user')
@@ -149,22 +154,31 @@ export default function ApprovalsPage() {
     const handleDeleteQuestion = async (id: number) => {
         setActionLoading(id)
         try {
-            const res = await apiFetch(`${API_URL}/superadmin/questions/${id}`, {
+            let res = await apiFetch(`${API_URL}/superadmin/questions/${id}`, {
                 method: 'DELETE',
                 credentials: 'include',
                 headers: getAuthHeaders(),
             })
+
+            if (!res.ok && res.status === 404) {
+                res = await apiFetch(`${API_URL}/question-bank/${id}`, {
+                    method: 'DELETE',
+                    credentials: 'include',
+                    headers: getAuthHeaders(),
+                })
+            }
+
             if (res.ok) {
                 setQuestions(prev => prev.filter(q => q.id !== id))
                 setDeleteTarget(null)
-                loadData()
+                await loadData()
             } else {
                 const data = await res.json().catch(() => ({}))
                 alert(data.message || 'Failed to delete question')
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to delete question:', err)
-            alert('Failed to delete question')
+            alert(err?.message || 'Failed to delete question')
         } finally {
             setActionLoading(null)
         }
@@ -190,6 +204,16 @@ export default function ApprovalsPage() {
     const uniqueCreators = Array.from(new Set(questions.map(q => q.creator?.name).filter(Boolean)))
     const uniqueCategories = Array.from(new Set(courses.map(c => c.category).filter(Boolean)))
     const uniqueInstructors = Array.from(new Set(courses.map(c => c.instructor?.name).filter(Boolean)))
+
+    // Domain stats breakdown
+    const domainStats = uniqueDomains.reduce((acc: Record<string, { total: number; pending: number; approved: number; rejected: number }>, d: string) => {
+        const total = questions.filter(q => (q.domain || 'Programming Domain') === d).length
+        const pending = questions.filter(q => (q.domain || 'Programming Domain') === d && (q.status === 'PENDING_APPROVAL' || !q.status)).length
+        const approved = questions.filter(q => (q.domain || 'Programming Domain') === d && q.status === 'APPROVED').length
+        const rejected = questions.filter(q => (q.domain || 'Programming Domain') === d && q.status === 'REJECTED').length
+        acc[d] = { total, pending, approved, rejected }
+        return acc
+    }, {})
 
     // Active counts
     const pendingQuestionsCount = questions.filter(q => q.status === 'PENDING_APPROVAL').length
@@ -454,9 +478,14 @@ export default function ApprovalsPage() {
                                             className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 outline-none shadow-sm"
                                         >
                                             <option value="ALL">All Domains ({uniqueDomains.length})</option>
-                                            {uniqueDomains.map((d: any) => (
-                                                <option key={d} value={d}>{d}</option>
-                                            ))}
+                                            {uniqueDomains.map((d: any) => {
+                                                const st = domainStats[d] || { total: 0, pending: 0 }
+                                                return (
+                                                    <option key={d} value={d}>
+                                                        {d} ({st.pending} pending / {st.total} total)
+                                                    </option>
+                                                )
+                                            })}
                                         </select>
                                     )}
 
@@ -534,6 +563,27 @@ export default function ApprovalsPage() {
                     )}
                 </div>
 
+                {/* Domain status banner helper */}
+                {activeTab === 'questions' && filterDomain !== 'ALL' && domainStats[filterDomain] && filterStatus === 'PENDING_APPROVAL' && domainStats[filterDomain].pending === 0 && domainStats[filterDomain].total > 0 && (
+                    <div className="mb-4 p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/25 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in">
+                        <div className="flex items-center gap-2.5 text-xs text-indigo-800 dark:text-indigo-200">
+                            <AlertCircle className="w-5 h-5 shrink-0 text-indigo-500" />
+                            <div>
+                                <p className="font-bold">No pending questions waiting for review in "{filterDomain}"</p>
+                                <p className="text-slate-600 dark:text-slate-400 text-[11px] mt-0.5">
+                                    All <strong>{domainStats[filterDomain].total}</strong> questions are already evaluated ({domainStats[filterDomain].approved} Approved, {domainStats[filterDomain].rejected} Rejected).
+                                </p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => setFilterStatus('ALL')}
+                            className="px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20 transition-all whitespace-nowrap self-start sm:self-auto flex items-center gap-1.5"
+                        >
+                            <Eye className="w-3.5 h-3.5" /> View All {domainStats[filterDomain].total} Questions in Domain
+                        </button>
+                    </div>
+                )}
+
                 {/* Content Table */}
                 <div className="glass-card p-6">
                     {loading ? (
@@ -544,15 +594,33 @@ export default function ApprovalsPage() {
                     ) : activeTab === 'questions' ? (
                         filteredQuestions.length === 0 ? (
                             <div className="text-center py-20">
-                                <div className="w-16 h-16 rounded-3xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto mb-4 border border-emerald-500/20 text-2xl">
-                                    ✓
+                                <div className="w-16 h-16 rounded-3xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto mb-4 border border-amber-500/20 text-2xl">
+                                    🔍
                                 </div>
                                 <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">No Questions Found</h3>
-                                <p className="text-slate-500 dark:text-slate-400 text-sm max-w-md mx-auto">
-                                    {filterStatus === 'PENDING_APPROVAL'
-                                        ? 'There are no questions currently waiting for review. All submissions have been evaluated.'
+                                <p className="text-slate-500 dark:text-slate-400 text-sm max-w-md mx-auto mb-4">
+                                    {filterDomain !== 'ALL' && domainStats[filterDomain]?.total > 0
+                                        ? `All ${domainStats[filterDomain].total} questions in "${filterDomain}" have already been evaluated (${domainStats[filterDomain].approved} Approved, ${domainStats[filterDomain].rejected} Rejected). There are no pending questions in this domain.`
+                                        : filterStatus === 'PENDING_APPROVAL'
+                                        ? 'There are no questions currently waiting for review matching the selected filter.'
                                         : `No questions found matching the selected status (${filterStatus}) and filters.`}
                                 </p>
+                                <div className="flex items-center justify-center gap-2">
+                                    {filterDomain !== 'ALL' && domainStats[filterDomain]?.total > 0 && filterStatus !== 'ALL' && (
+                                        <button
+                                            onClick={() => setFilterStatus('ALL')}
+                                            className="btn-primary text-xs px-4 py-2"
+                                        >
+                                            View All {domainStats[filterDomain].total} Questions in {filterDomain}
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={handleResetFilters}
+                                        className="btn-secondary text-xs px-4 py-2"
+                                    >
+                                        Reset Filters
+                                    </button>
+                                </div>
                             </div>
                         ) : (
                             <div className="overflow-x-auto">
@@ -604,33 +672,45 @@ export default function ApprovalsPage() {
                                                             </div>
                                                         )}
                                                     </td>
-                                                    <td className="py-4 pr-4 max-w-[180px]">
+                                                    <td className="py-4 pr-4 min-w-[180px] max-w-xs">
                                                         {companies ? (() => {
                                                             const compList = companies.split(',').map((c: string) => c.trim()).filter(Boolean)
+                                                            const isExpanded = !!expandedCompanies[q.id]
+                                                            const visibleList = isExpanded ? compList : compList.slice(0, 2)
+                                                            const remainingCount = compList.length - 2
+
                                                             return (
-                                                                <div className="relative group/comp inline-block">
-                                                                    <div className="flex flex-wrap items-center gap-1">
-                                                                        {compList.slice(0, 1).map((c: string) => (
-                                                                            <span key={c} className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-[11px] font-medium truncate max-w-[120px]" title="Hover to view all companies">
+                                                                <div className="flex flex-col gap-1.5">
+                                                                    <div className="flex flex-wrap items-center gap-1.5">
+                                                                        {visibleList.map((c: string, idx: number) => (
+                                                                            <span 
+                                                                                key={idx} 
+                                                                                className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-[11px] font-medium"
+                                                                                title={`Target Company: ${c}`}
+                                                                            >
                                                                                 🏢 {c}
                                                                             </span>
                                                                         ))}
-                                                                        {compList.length > 1 && (
-                                                                            <span className="px-1.5 py-0.5 rounded-md bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 text-[10px] font-semibold cursor-pointer group-hover/comp:bg-blue-600 group-hover/comp:text-white transition-colors">
-                                                                                +{compList.length - 1} more
-                                                                            </span>
+                                                                        {!isExpanded && remainingCount > 0 && (
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={(e) => { e.stopPropagation(); toggleCompanyExpand(q.id) }}
+                                                                                className="px-2 py-0.5 rounded-md bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 text-[11px] font-bold hover:bg-indigo-600 hover:text-white transition-all shadow-sm flex items-center gap-0.5 cursor-pointer"
+                                                                                title={`Click to show all ${compList.length} companies`}
+                                                                            >
+                                                                                +{remainingCount} more
+                                                                            </button>
                                                                         )}
                                                                     </div>
-                                                                    <div className="absolute left-0 bottom-full mb-2 z-50 hidden group-hover/comp:flex flex-col gap-1.5 p-3 bg-slate-900 border border-white/15 rounded-xl shadow-2xl min-w-[180px] max-w-xs pointer-events-none">
-                                                                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">All Target Companies ({compList.length})</p>
-                                                                        <div className="flex flex-wrap gap-1">
-                                                                            {compList.map((c: string, idx: number) => (
-                                                                                <span key={idx} className="px-2 py-0.5 rounded-md bg-blue-500/15 text-blue-300 border border-blue-500/30 text-[11px] font-medium whitespace-nowrap">
-                                                                                    🏢 {c}
-                                                                                </span>
-                                                                            ))}
-                                                                        </div>
-                                                                    </div>
+                                                                    {isExpanded && compList.length > 2 && (
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={(e) => { e.stopPropagation(); toggleCompanyExpand(q.id) }}
+                                                                            className="text-[10px] text-indigo-500 dark:text-indigo-400 hover:underline font-semibold self-start"
+                                                                        >
+                                                                            ▴ Show less
+                                                                        </button>
+                                                                    )}
                                                                 </div>
                                                             )
                                                         })() : (
