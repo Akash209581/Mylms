@@ -199,13 +199,24 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
 
     const set = (key: string, val: any) => setForm((p: any) => ({ ...p, [key]: val }))
 
-    const handleSubmit = async () => {
+    const isApprovedLocked = userRole === 'QUESTION_CREATOR' && form.status === 'APPROVED'
+
+    const handleSubmit = async (statusOverride?: 'DRAFT' | 'PENDING_APPROVAL') => {
+        if (isApprovedLocked) {
+            setError('Approved questions cannot be edited by the question creator.')
+            return
+        }
         setSaving(true); setError('')
         try {
             const submitData = {
                 ...form,
                 topicNames: Array.isArray(form.topicNames) ? form.topicNames.join(', ') : form.topicNames,
                 hints: Array.isArray(form.hints) ? form.hints.map((h: string) => h.trim()).filter(Boolean) : [],
+            }
+            if (statusOverride) {
+                submitData.status = statusOverride
+            } else if (userRole === 'QUESTION_CREATOR') {
+                submitData.status = form.status === 'DRAFT' ? 'DRAFT' : 'PENDING_APPROVAL'
             }
             if (form.type === 'PQ') {
                 submitData.codeSnippet = JSON.stringify(predefinedCodes);
@@ -244,6 +255,7 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
             delete (submitData as any).createdAt;
             delete (submitData as any).id;
             delete (submitData as any).assignedColleges;
+            delete (submitData as any).description;
 
             const res = await apiFetch(`${API_URL}/question-bank/${id}`, {
                 method: 'PUT',
@@ -283,6 +295,23 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
                     </div>
                 </div>
 
+                {/* Approved Lock Banner for Question Creators */}
+                {isApprovedLocked && (
+                    <div className="glass-card p-5 mb-6 border border-emerald-500/40 bg-emerald-500/10 rounded-2xl">
+                        <div className="flex items-start gap-3">
+                            <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400 text-lg shrink-0">
+                                🔒
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-bold text-emerald-300">Question is Approved & Locked</h3>
+                                <p className="text-xs text-emerald-200 mt-1 leading-relaxed">
+                                    This question has been approved by the Super Admin and added to the Question Bank. Question creators cannot modify approved questions.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Rejection Banner for Question Creators */}
                 {form.status === 'REJECTED' && (
                     <div className="glass-card p-5 mb-6 border border-rose-500/40 bg-rose-500/10 rounded-2xl">
@@ -297,7 +326,7 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
                                     <span>{form.rejectionReason || 'Content does not meet assessment quality standards. Please revise.'}</span>
                                 </p>
                                 <p className="text-[11px] text-rose-300/80 mt-2 font-medium">
-                                    💡 Make your corrections and click <strong>"Update Question"</strong> below. It will automatically be resubmitted to the Super Admin Approvals Queue.
+                                    💡 Make your corrections and click <strong>"Submit for Approval"</strong> below. It will automatically be resubmitted to the Super Admin Approvals Queue.
                                 </p>
                             </div>
                         </div>
@@ -1082,18 +1111,37 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
                     )}
 
                     {/* Footer Actions */}
-                    <div className="flex justify-between items-center bg-[var(--bg-surface)]/5 p-6 rounded-2xl border border-white/10">
-                        <button onClick={() => router.push(returnTo || `${getRoleBasePath(userRole)}/question-bank`)} className="btn-secondary px-5 py-2.5">Cancel</button>
-                        <div className="flex gap-3">
+                    <div className="flex flex-wrap justify-between items-center gap-4 bg-[var(--bg-surface)]/5 p-6 rounded-2xl border border-white/10">
+                        <button onClick={() => router.push(returnTo || `${getRoleBasePath(userRole)}/question-bank`)} className="btn-secondary px-5 py-2.5">
+                            {isApprovedLocked ? '← Back to Question Bank' : 'Cancel'}
+                        </button>
+                        <div className="flex flex-wrap gap-3">
                             <button onClick={() => setShowPreview(true)}
                                 disabled={!form.questionText || !form.topicNames}
                                 className="px-6 py-2.5 rounded-xl bg-indigo-600/20 text-indigo-400 font-semibold border border-indigo-500/30 hover:bg-indigo-600 hover:text-white transition-all disabled:opacity-30">
                                 👁️ Preview Question
                             </button>
-                            <button onClick={handleSubmit} disabled={saving || !form.questionText || !form.topicNames}
-                                className="btn-primary px-8 py-2.5 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary-500/20">
-                                {saving ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Updating...</> : '🚀 Update Question'}
-                            </button>
+                            {isApprovedLocked ? (
+                                <div className="px-5 py-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 text-xs font-semibold border border-emerald-500/20 flex items-center gap-2">
+                                    🔒 Approved & Read Only
+                                </div>
+                            ) : userRole === 'QUESTION_CREATOR' ? (
+                                <>
+                                    <button onClick={() => handleSubmit('DRAFT')} disabled={saving || !form.questionText || !form.topicNames}
+                                        className="px-6 py-2.5 rounded-xl bg-slate-700/60 hover:bg-slate-700 text-slate-200 font-semibold border border-slate-600 transition-all disabled:opacity-50 flex items-center gap-2">
+                                        {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : '📝'} Save as Draft
+                                    </button>
+                                    <button onClick={() => handleSubmit('PENDING_APPROVAL')} disabled={saving || !form.questionText || !form.topicNames}
+                                        className="btn-primary px-8 py-2.5 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary-500/20">
+                                        {saving ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Submitting...</> : '🚀 Submit for Approval'}
+                                    </button>
+                                </>
+                            ) : (
+                                <button onClick={() => handleSubmit()} disabled={saving || !form.questionText || !form.topicNames}
+                                    className="btn-primary px-8 py-2.5 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary-500/20">
+                                    {saving ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Updating...</> : '🚀 Update Question'}
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>

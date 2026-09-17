@@ -148,7 +148,7 @@ function CreateQuestionForm() {
 
     const set = (key: string, val: any) => setForm((p: any) => ({ ...p, [key]: val }))
 
-    const handleSubmit = async () => {
+    const handleSubmit = async (statusOverride?: 'DRAFT' | 'PENDING_APPROVAL') => {
         setSaving(true); setError('')
 
         // Frontend Validation
@@ -163,9 +163,16 @@ function CreateQuestionForm() {
                 programmingLanguage: form.programmingLanguage || undefined,
                 hints: Array.isArray(form.hints) ? form.hints.map((h: string) => h.trim()).filter(Boolean) : [],
             }
+            if (statusOverride) {
+                submitData.status = statusOverride
+            } else if (currentRole === 'QUESTION_CREATOR') {
+                submitData.status = 'PENDING_APPROVAL'
+            }
             if (form.type === 'PQ') {
                 submitData.codeSnippet = JSON.stringify(predefinedCodes);
             }
+            delete (submitData as any).description;
+
             const res = await apiFetch(`${API_URL}/question-bank`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1020,18 +1027,31 @@ function CreateQuestionForm() {
                         )}
 
                         {/* Footer Actions */}
-                        <div className="flex justify-between items-center bg-[var(--bg-surface)]/5 p-6 rounded-2xl border border-white/10">
+                        <div className="flex flex-wrap justify-between items-center gap-4 bg-[var(--bg-surface)]/5 p-6 rounded-2xl border border-white/10">
                             <button onClick={() => setStep(1)} className="btn-secondary px-5 py-2.5">← Change Type</button>
-                            <div className="flex gap-3">
+                            <div className="flex flex-wrap gap-3">
                                 <button onClick={() => setShowPreview(true)}
                                     disabled={!form.questionText || !form.topicNames}
                                     className="px-6 py-2.5 rounded-xl bg-indigo-600/20 text-indigo-400 font-semibold border border-indigo-500/30 hover:bg-indigo-600 hover:text-white transition-all disabled:opacity-30">
                                     👁️ Preview Question
                                 </button>
-                                <button onClick={handleSubmit} disabled={saving || !form.questionText || !form.topicNames}
-                                    className="btn-primary px-8 py-2.5 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary-500/20">
-                                    {saving ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Saving...</> : '✅ Save Question'}
-                                </button>
+                                {currentRole === 'QUESTION_CREATOR' ? (
+                                    <>
+                                        <button onClick={() => handleSubmit('DRAFT')} disabled={saving || !form.questionText || !form.topicNames}
+                                            className="px-6 py-2.5 rounded-xl bg-slate-700/60 hover:bg-slate-700 text-slate-200 font-semibold border border-slate-600 transition-all disabled:opacity-50 flex items-center gap-2">
+                                            {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : '📝'} Save as Draft
+                                        </button>
+                                        <button onClick={() => handleSubmit('PENDING_APPROVAL')} disabled={saving || !form.questionText || !form.topicNames}
+                                            className="btn-primary px-8 py-2.5 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary-500/20">
+                                            {saving ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Submitting...</> : '🚀 Submit for Approval'}
+                                        </button>
+                                    </>
+                                ) : (
+                                    <button onClick={() => handleSubmit()} disabled={saving || !form.questionText || !form.topicNames}
+                                        className="btn-primary px-8 py-2.5 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary-500/20">
+                                        {saving ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Saving...</> : '✅ Save Question'}
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>

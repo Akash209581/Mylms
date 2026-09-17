@@ -500,10 +500,10 @@ export class QuestionBankController {
       dto.correctAnswer = normalizeMcqLetter(dto.correctAnswer, dto.options) || dto.correctAnswer;
     }
 
-    // If QUESTION_CREATOR, mark as PENDING_APPROVAL and record createdBy
+    // If QUESTION_CREATOR, mark as DRAFT or PENDING_APPROVAL and record createdBy
     let status = QuestionStatus.APPROVED;
     if (userRole === UserRole.QUESTION_CREATOR) {
-      status = QuestionStatus.PENDING_APPROVAL;
+      status = dto.status === QuestionStatus.DRAFT ? QuestionStatus.DRAFT : QuestionStatus.PENDING_APPROVAL;
     } else if (dto.status) {
       status = dto.status;
     }
@@ -546,11 +546,16 @@ export class QuestionBankController {
 
       // SUPERADMIN can update any question
       if (userRole === UserRole.QUESTION_CREATOR) {
-        // Creator can only update their own question, and edits reset status to PENDING_APPROVAL
+        // Creator can only update their own question
         if (question.createdBy !== userId) {
-          return { message: 'Cannot edit questions created by other users' };
+          throw new BadRequestException('Cannot edit questions created by other users');
         }
-        dto.status = QuestionStatus.PENDING_APPROVAL;
+        // Don't give edit option to question Creator after getting approval
+        if (question.status === QuestionStatus.APPROVED) {
+          throw new BadRequestException('Cannot edit question after it has been approved');
+        }
+        // Creator can save as DRAFT or submit as PENDING_APPROVAL (default to PENDING_APPROVAL)
+        dto.status = dto.status === QuestionStatus.DRAFT ? QuestionStatus.DRAFT : QuestionStatus.PENDING_APPROVAL;
         dto.rejectionReason = undefined;
       } else if (userRole !== UserRole.SUPERADMIN) {
         if (!targetCollegeId) {
@@ -585,15 +590,26 @@ export class QuestionBankController {
       const nextCollegeId = question.collegeId || userCollegeId || undefined;
       await this.assertQuestionIsNew(nextType, nextText, nextCollegeId, id);
 
-      // Clean up metadata/relation properties that cause TypeORM update errors
-      delete (dto as any).id;
-      delete (dto as any).createdAt;
-      delete (dto as any).creator;
-      delete (dto as any).approver;
-      delete (dto as any).college;
-      delete (dto as any).assignedColleges;
+      // Sanitize payload to only valid Question entity columns to prevent TypeORM EntityPropertyNotFoundError
+      const allowedQuestionKeys = [
+        'questionNumber', 'type', 'topicNames', 'difficulty', 'domain',
+        'companiesAppeared', 'targetCompanies', 'programmingLanguage',
+        'recentYearAppearing', 'bestPracticeFor', 'questionText', 'options',
+        'correctAnswer', 'blanks', 'matchingPairs', 'extraRightMatches',
+        'jumbledStatements', 'problemStatement', 'inputFormat', 'outputFormat',
+        'constraints', 'allowedLanguages', 'testCases', 'codeSnippet',
+        'expectedOutput', 'explanation', 'correctCode', 'hints', 'isActive',
+        'status', 'createdBy', 'approvedBy', 'rejectionReason', 'collegeId',
+      ];
 
-      await this.questionRepo.update(id, dto);
+      const updatePayload: Record<string, any> = {};
+      for (const key of allowedQuestionKeys) {
+        if ((dto as any)[key] !== undefined) {
+          updatePayload[key] = (dto as any)[key];
+        }
+      }
+
+      await this.questionRepo.update(id, updatePayload);
       return this.questionRepo.findOneBy({ id });
     } catch (error) {
       if (error instanceof HttpException) throw error;
@@ -618,6 +634,9 @@ export class QuestionBankController {
     if (userRole === UserRole.QUESTION_CREATOR) {
       if (question.createdBy !== userId) {
         throw new BadRequestException('Cannot delete questions created by other users');
+      }
+      if (question.status === QuestionStatus.APPROVED) {
+        throw new BadRequestException('Cannot delete question after it has been approved');
       }
     } else if (userRole !== UserRole.SUPERADMIN) {
       if (!this.CollegeFilterService.canAccessCollege(

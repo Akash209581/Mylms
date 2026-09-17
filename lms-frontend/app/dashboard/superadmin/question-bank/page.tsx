@@ -160,9 +160,10 @@ export default function QuestionBankPage() {
                                 <span className="text-xs font-semibold text-slate-500 mr-1">Status:</span>
                                 {[
                                     { key: 'ALL', label: 'All Statuses' },
-                                    { key: 'APPROVED', label: 'Approved' },
+                                    { key: 'DRAFT', label: '📝 Draft' },
                                     { key: 'PENDING_APPROVAL', label: '⏳ Pending' },
-                                    { key: 'REJECTED', label: 'Rejected' },
+                                    { key: 'APPROVED', label: '✅ Approved' },
+                                    { key: 'REJECTED', label: '❌ Rejected' },
                                 ].map(st => (
                                     <button key={st.key} onClick={() => setFilterStatus(st.key)}
                                         className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
@@ -268,9 +269,10 @@ export default function QuestionBankPage() {
                                                     <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold inline-flex items-center gap-1 ${
                                                         status === 'APPROVED' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' :
                                                         status === 'PENDING_APPROVAL' ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30 animate-pulse' :
+                                                        status === 'DRAFT' ? 'bg-slate-500/15 text-slate-400 border border-slate-500/30' :
                                                         'bg-rose-500/15 text-rose-400 border border-rose-500/30'
                                                     }`}>
-                                                        {status === 'PENDING_APPROVAL' ? '⏳ PENDING' : status === 'APPROVED' ? '✅ APPROVED' : '❌ REJECTED'}
+                                                        {status === 'PENDING_APPROVAL' ? '⏳ PENDING' : status === 'APPROVED' ? '✅ APPROVED' : status === 'DRAFT' ? '📝 DRAFT' : '❌ REJECTED'}
                                                     </span>
                                                 </td>
                                                 <td className="py-4 pr-4 role-text-secondary text-sm max-w-sm">
@@ -288,16 +290,38 @@ export default function QuestionBankPage() {
                                                             className="px-2.5 py-1 rounded-lg text-xs font-medium bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500 hover:text-white transition-all">
                                                             Preview
                                                         </button>
-                                                        <button onClick={() => router.push(`${getRoleBasePath(userRole)}/question-bank/${q.id}/edit`)}
-                                                            className="px-2.5 py-1 rounded-lg text-xs font-medium"
-                                                            style={{ background: 'rgba(99,102,241,0.15)', color: '#a5b4fc', border: '1px solid rgba(99,102,241,0.3)' }}>
-                                                            Edit
-                                                        </button>
-                                                        <button onClick={() => handleDelete(q.id)}
-                                                            className="px-2.5 py-1 rounded-lg text-xs font-medium"
-                                                            style={{ background: 'rgba(239,68,68,0.15)', color: '#fca5a5', border: '1px solid rgba(239,68,68,0.3)' }}>
-                                                            Del
-                                                        </button>
+                                                        {/* Creator can only edit before approval */}
+                                                        {userRole === 'QUESTION_CREATOR' ? (
+                                                            status !== 'APPROVED' && (
+                                                                <button onClick={() => router.push(`${getRoleBasePath(userRole)}/question-bank/${q.id}/edit`)}
+                                                                    className="px-2.5 py-1 rounded-lg text-xs font-medium"
+                                                                    style={{ background: 'rgba(99,102,241,0.15)', color: '#a5b4fc', border: '1px solid rgba(99,102,241,0.3)' }}>
+                                                                    Edit
+                                                                </button>
+                                                            )
+                                                        ) : (
+                                                            <button onClick={() => router.push(`${getRoleBasePath(userRole)}/question-bank/${q.id}/edit`)}
+                                                                className="px-2.5 py-1 rounded-lg text-xs font-medium"
+                                                                style={{ background: 'rgba(99,102,241,0.15)', color: '#a5b4fc', border: '1px solid rgba(99,102,241,0.3)' }}>
+                                                                Edit
+                                                            </button>
+                                                        )}
+                                                        {/* Creator can only delete unapproved questions */}
+                                                        {userRole === 'QUESTION_CREATOR' ? (
+                                                            status !== 'APPROVED' && (
+                                                                <button onClick={() => handleDelete(q.id)}
+                                                                    className="px-2.5 py-1 rounded-lg text-xs font-medium"
+                                                                    style={{ background: 'rgba(239,68,68,0.15)', color: '#fca5a5', border: '1px solid rgba(239,68,68,0.3)' }}>
+                                                                    Del
+                                                                </button>
+                                                            )
+                                                        ) : (
+                                                            <button onClick={() => handleDelete(q.id)}
+                                                                className="px-2.5 py-1 rounded-lg text-xs font-medium"
+                                                                style={{ background: 'rgba(239,68,68,0.15)', color: '#fca5a5', border: '1px solid rgba(239,68,68,0.3)' }}>
+                                                                Del
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 </td>
                                             </tr>
