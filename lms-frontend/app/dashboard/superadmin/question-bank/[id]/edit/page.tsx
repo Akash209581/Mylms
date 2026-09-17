@@ -4,7 +4,7 @@ import { apiFetch } from '@/lib/apiFetch'
 
 import { API_URL } from '@/lib/api'
 import { useEffect, useState, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
 import QuestionPreview from '@/components/question-bank/QuestionPreview'
@@ -30,6 +30,8 @@ const QUESTION_TYPES = [
 export default function EditQuestionPage({ params }: { params: { id: string } }) {
     const id = params.id
     const router = useRouter()
+    const searchParams = useSearchParams()
+    const returnTo = searchParams?.get('returnTo')
     const [step, setStep] = useState(2)
     const [form, setForm] = useState<any>({
         type: '', topicNames: [], difficulty: 'MEDIUM', companiesAppeared: '',
@@ -235,6 +237,14 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
                 delete (submitData as any).expectedOutput;
             }
 
+            // Strip relation/metadata fields that cause backend/TypeORM errors
+            delete (submitData as any).creator;
+            delete (submitData as any).approver;
+            delete (submitData as any).college;
+            delete (submitData as any).createdAt;
+            delete (submitData as any).id;
+            delete (submitData as any).assignedColleges;
+
             const res = await apiFetch(`${API_URL}/question-bank/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
@@ -242,7 +252,7 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
                 body: JSON.stringify(submitData),
             })
             if (res.ok) {
-                router.push(`${getRoleBasePath(userRole)}/question-bank`)
+                router.push(returnTo || `${getRoleBasePath(userRole)}/question-bank`)
             } else {
                 const data = await res.json()
                 setError(data.message || 'Failed to update question')
@@ -263,7 +273,7 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
             <Navbar title="Edit Question" />
             <main className="page-content">
                 <div className="flex items-center gap-3 mb-8">
-                    <button onClick={() => router.push(`${getRoleBasePath(userRole)}/question-bank`)}
+                    <button onClick={() => router.push(returnTo || `${getRoleBasePath(userRole)}/question-bank`)}
                         className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-[var(--bg-surface)]/10 transition-all">
                         ← Back
                     </button>
@@ -1073,7 +1083,7 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
 
                     {/* Footer Actions */}
                     <div className="flex justify-between items-center bg-[var(--bg-surface)]/5 p-6 rounded-2xl border border-white/10">
-                        <button onClick={() => router.push('/dashboard/superadmin/question-bank')} className="btn-secondary px-5 py-2.5">Cancel</button>
+                        <button onClick={() => router.push(returnTo || `${getRoleBasePath(userRole)}/question-bank`)} className="btn-secondary px-5 py-2.5">Cancel</button>
                         <div className="flex gap-3">
                             <button onClick={() => setShowPreview(true)}
                                 disabled={!form.questionText || !form.topicNames}

@@ -137,7 +137,7 @@ export class QuestionBankController {
   private async assertQuestionIsNew(
     type: QuestionType,
     questionText: string,
-    collegeId: number,
+    collegeId?: number,
     excludeId?: number,
   ) {
     const incoming = questionDuplicateKey(type, questionText);
@@ -145,7 +145,7 @@ export class QuestionBankController {
       const qb = this.questionRepo
         .createQueryBuilder('q')
         .select(['q.id', 'q.type', 'q.questionText'])
-        .where('q.collegeId = :collegeId', { collegeId })
+        .where(collegeId ? 'q.collegeId = :collegeId' : '(q.collegeId IS NULL OR q.collegeId = 1)', { collegeId })
         .andWhere('q.type = :type', { type })
         .andWhere('(q.isActive IS NULL OR q.isActive = true)');
       if (excludeId) qb.andWhere('q.id != :excludeId', { excludeId });
@@ -582,15 +582,23 @@ export class QuestionBankController {
       }
 
       const nextText = dto.questionText ?? question.questionText;
-      const nextCollegeId = question.collegeId || userCollegeId || 1;
+      const nextCollegeId = question.collegeId || userCollegeId || undefined;
       await this.assertQuestionIsNew(nextType, nextText, nextCollegeId, id);
+
+      // Clean up metadata/relation properties that cause TypeORM update errors
+      delete (dto as any).id;
+      delete (dto as any).createdAt;
+      delete (dto as any).creator;
+      delete (dto as any).approver;
+      delete (dto as any).college;
+      delete (dto as any).assignedColleges;
 
       await this.questionRepo.update(id, dto);
       return this.questionRepo.findOneBy({ id });
     } catch (error) {
       if (error instanceof HttpException) throw error;
       console.error('Error updating question:', error);
-      throw new Error(`Failed to update question: ${error.message}`);
+      throw new BadRequestException(error.message || 'Failed to update question');
     }
   }
 

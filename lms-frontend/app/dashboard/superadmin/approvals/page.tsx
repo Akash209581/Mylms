@@ -1,5 +1,4 @@
 'use client'
-
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
@@ -8,7 +7,7 @@ import { API_URL } from '@/lib/api'
 import { apiFetch } from '@/lib/apiFetch'
 import { getAuthHeaders } from '@/lib/authHeaders'
 import QuestionPreview from '@/components/question-bank/QuestionPreview'
-import { CheckCircle, XCircle, Eye, AlertCircle, Clock, BookOpen, HelpCircle, UserCheck, Search, Filter, RotateCcw, Trash2 } from 'lucide-react'
+import { CheckCircle, XCircle, Eye, AlertCircle, Clock, BookOpen, HelpCircle, UserCheck, Search, Filter, RotateCcw, Trash2, Pencil } from 'lucide-react'
 
 export default function ApprovalsPage() {
     const router = useRouter()
@@ -40,7 +39,7 @@ export default function ApprovalsPage() {
 
     // Preview state
     const [selectedQuestion, setSelectedQuestion] = useState<any | null>(null)
-    
+
     // Reject Modal state
     const [rejectTarget, setRejectTarget] = useState<{ type: 'question' | 'course'; id: number; title: string } | null>(null)
     const [rejectReason, setRejectReason] = useState('')
@@ -298,8 +297,8 @@ export default function ApprovalsPage() {
 
                 {/* Metrics Row */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-                    <div 
-                        onClick={() => { setActiveTab('questions'); setFilterStatus('PENDING_APPROVAL') }} 
+                    <div
+                        onClick={() => { setActiveTab('questions'); setFilterStatus('PENDING_APPROVAL') }}
                         className={`glass-card p-5 cursor-pointer transition-all ${activeTab === 'questions' && filterStatus === 'PENDING_APPROVAL' ? 'border-amber-500 ring-2 ring-amber-500/20' : 'hover:border-amber-500/30'}`}
                     >
                         <div className="flex items-center justify-between">
@@ -314,8 +313,8 @@ export default function ApprovalsPage() {
                         </p>
                     </div>
 
-                    <div 
-                        onClick={() => setFilterStatus('APPROVED')} 
+                    <div
+                        onClick={() => setFilterStatus('APPROVED')}
                         className={`glass-card p-5 cursor-pointer transition-all ${filterStatus === 'APPROVED' ? 'border-emerald-500 ring-2 ring-emerald-500/20' : 'hover:border-emerald-500/30'}`}
                     >
                         <div className="flex items-center justify-between">
@@ -330,8 +329,8 @@ export default function ApprovalsPage() {
                         </p>
                     </div>
 
-                    <div 
-                        onClick={() => setFilterStatus('REJECTED')} 
+                    <div
+                        onClick={() => setFilterStatus('REJECTED')}
                         className={`glass-card p-5 cursor-pointer transition-all ${filterStatus === 'REJECTED' ? 'border-rose-500 ring-2 ring-rose-500/20' : 'hover:border-rose-500/30'}`}
                     >
                         <div className="flex items-center justify-between">
@@ -352,9 +351,8 @@ export default function ApprovalsPage() {
                     <div className="flex bg-slate-100 dark:bg-white/5 p-1 rounded-2xl border border-slate-200 dark:border-white/10 w-full sm:w-auto">
                         <button
                             onClick={() => { setActiveTab('questions'); handleResetFilters() }}
-                            className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${
-                                activeTab === 'questions' ? 'bg-primary-600 text-white shadow-lg shadow-primary-500/25' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                            }`}
+                            className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'questions' ? 'bg-primary-600 text-white shadow-lg shadow-primary-500/25' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                                }`}
                         >
                             <HelpCircle className="w-4 h-4" />
                             <span>Questions Queue</span>
@@ -362,9 +360,8 @@ export default function ApprovalsPage() {
                         </button>
                         <button
                             onClick={() => { setActiveTab('courses'); handleResetFilters() }}
-                            className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${
-                                activeTab === 'courses' ? 'bg-primary-600 text-white shadow-lg shadow-primary-500/25' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                            }`}
+                            className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'courses' ? 'bg-primary-600 text-white shadow-lg shadow-primary-500/25' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                                }`}
                         >
                             <BookOpen className="w-4 h-4" />
                             <span>Courses Queue</span>
@@ -401,11 +398,10 @@ export default function ApprovalsPage() {
                                 <button
                                     key={st.key}
                                     onClick={() => setFilterStatus(st.key as any)}
-                                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-                                        filterStatus === st.key
+                                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${filterStatus === st.key
                                             ? `${st.color} shadow-md scale-105`
                                             : 'text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10'
-                                    }`}
+                                        }`}
                                 >
                                     <span>{st.label}</span>
                                     <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${filterStatus === st.key ? 'bg-white/25 text-white' : 'bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-slate-300'}`}>
@@ -435,11 +431,10 @@ export default function ApprovalsPage() {
                                         <button
                                             key={t.key}
                                             onClick={() => setFilterType(t.key)}
-                                            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
-                                                filterType === t.key
+                                            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${filterType === t.key
                                                     ? 'bg-purple-600 text-white shadow-sm scale-105'
                                                     : 'text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10'
-                                            }`}
+                                                }`}
                                         >
                                             {t.label}
                                         </button>
@@ -452,11 +447,10 @@ export default function ApprovalsPage() {
                                         <button
                                             key={d}
                                             onClick={() => setFilterDiff(d)}
-                                            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
-                                                filterDiff === d
+                                            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${filterDiff === d
                                                     ? 'text-white shadow-sm scale-105'
                                                     : 'text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10'
-                                            }`}
+                                                }`}
                                             style={{
                                                 background: filterDiff === d ? (diffColors[d] || '#6366f1') : undefined,
                                                 borderColor: filterDiff === d ? (diffColors[d] || '#6366f1') : undefined,
@@ -518,11 +512,10 @@ export default function ApprovalsPage() {
                                         <button
                                             key={lvl}
                                             onClick={() => setFilterLevel(lvl)}
-                                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                                                filterLevel === lvl
+                                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${filterLevel === lvl
                                                     ? 'bg-indigo-600 text-white shadow-sm scale-105'
                                                     : 'text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10'
-                                            }`}
+                                                }`}
                                         >
                                             {lvl === 'ALL' ? 'All Levels' : lvl}
                                         </button>
@@ -602,8 +595,8 @@ export default function ApprovalsPage() {
                                     {filterDomain !== 'ALL' && domainStats[filterDomain]?.total > 0
                                         ? `All ${domainStats[filterDomain].total} questions in "${filterDomain}" have already been evaluated (${domainStats[filterDomain].approved} Approved, ${domainStats[filterDomain].rejected} Rejected). There are no pending questions in this domain.`
                                         : filterStatus === 'PENDING_APPROVAL'
-                                        ? 'There are no questions currently waiting for review matching the selected filter.'
-                                        : `No questions found matching the selected status (${filterStatus}) and filters.`}
+                                            ? 'There are no questions currently waiting for review matching the selected filter.'
+                                            : `No questions found matching the selected status (${filterStatus}) and filters.`}
                                 </p>
                                 <div className="flex items-center justify-center gap-2">
                                     {filterDomain !== 'ALL' && domainStats[filterDomain]?.total > 0 && filterStatus !== 'ALL' && (
@@ -648,11 +641,10 @@ export default function ApprovalsPage() {
                                                         </span>
                                                     </td>
                                                     <td className="py-4 pr-4">
-                                                        <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold inline-flex items-center gap-1 ${
-                                                            status === 'APPROVED' ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30' :
-                                                            status === 'PENDING_APPROVAL' ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 animate-pulse' :
-                                                            'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30'
-                                                        }`}>
+                                                        <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold inline-flex items-center gap-1 ${status === 'APPROVED' ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30' :
+                                                                status === 'PENDING_APPROVAL' ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 animate-pulse' :
+                                                                    'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30'
+                                                            }`}>
                                                             {status === 'APPROVED' ? '✅ Approved' : status === 'PENDING_APPROVAL' ? '⏳ Pending' : '❌ Rejected'}
                                                         </span>
                                                     </td>
@@ -683,8 +675,8 @@ export default function ApprovalsPage() {
                                                                 <div className="flex flex-col gap-1.5">
                                                                     <div className="flex flex-wrap items-center gap-1.5">
                                                                         {visibleList.map((c: string, idx: number) => (
-                                                                            <span 
-                                                                                key={idx} 
+                                                                            <span
+                                                                                key={idx}
                                                                                 className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-[11px] font-medium"
                                                                                 title={`Target Company: ${c}`}
                                                                             >
@@ -735,6 +727,14 @@ export default function ApprovalsPage() {
                                                                 className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10 transition-all flex items-center gap-1.5"
                                                             >
                                                                 <Eye className="w-3.5 h-3.5" /> Preview
+                                                            </button>
+
+                                                            <button
+                                                                onClick={() => router.push(`/dashboard/superadmin/question-bank/${q.id}/edit?returnTo=${encodeURIComponent('/dashboard/superadmin/approvals')}`)}
+                                                                className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/20 transition-all flex items-center gap-1.5"
+                                                                title="Edit Question"
+                                                            >
+                                                                <Pencil className="w-3.5 h-3.5" /> Edit
                                                             </button>
 
                                                             {status !== 'APPROVED' && (
@@ -827,11 +827,10 @@ export default function ApprovalsPage() {
                                                         </div>
                                                     </td>
                                                     <td className="py-4 pr-4">
-                                                        <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold inline-flex items-center gap-1 ${
-                                                            status === 'APPROVED' ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30' :
-                                                            status === 'PENDING_APPROVAL' ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 animate-pulse' :
-                                                            'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30'
-                                                        }`}>
+                                                        <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold inline-flex items-center gap-1 ${status === 'APPROVED' ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30' :
+                                                                status === 'PENDING_APPROVAL' ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 animate-pulse' :
+                                                                    'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30'
+                                                            }`}>
                                                             {status === 'APPROVED' ? '✅ Approved' : status === 'PENDING_APPROVAL' ? '⏳ Pending' : '❌ Rejected'}
                                                         </span>
                                                     </td>
