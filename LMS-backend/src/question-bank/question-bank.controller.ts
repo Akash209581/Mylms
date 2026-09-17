@@ -17,6 +17,7 @@ import {
   BadRequestException,
   ConflictException,
   HttpException,
+  OnModuleInit,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -48,14 +49,14 @@ import {
   questionDuplicateKey,
 } from '../common/question-duplicate.util';
 
-class CreateQuestionDto {
+export class CreateQuestionDto {
   @IsEnum(QuestionType) type: QuestionType;
-  @IsString() topicNames: string;
+  @IsString() @IsOptional() topicNames?: string;
   @IsEnum(Difficulty) @IsOptional() difficulty?: Difficulty;
-  @IsString() @IsOptional() companiesAppeared?: string;
   @IsString() @IsOptional() targetCompanies?: string;
+  @IsString() @IsOptional() companiesAppeared?: string;
   @IsString() @IsOptional() programmingLanguage?: string;
-  @IsInt() @IsOptional() recentYearAppearing?: number;
+  @IsNumber() @IsOptional() recentYearAppearing?: number;
   @IsString() @IsOptional() bestPracticeFor?: string;
   @IsString() questionText: string;
   @IsArray() @IsOptional() options?: string[];
@@ -89,13 +90,40 @@ class CreateQuestionDto {
 @Controller('question-bank')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.INSTRUCTOR, UserRole.QUESTION_CREATOR)
-export class QuestionBankController {
+export class QuestionBankController implements OnModuleInit {
   constructor(
     @InjectRepository(Question)
     private questionRepo: Repository<Question>,
     private bulkImportService: BulkImportService,
     private CollegeFilterService: CollegeFilterService,
   ) { }
+
+  async onModuleInit() {
+    try {
+      await this.questionRepo.query(`
+        DO $$ 
+        BEGIN 
+          IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='questions' AND column_name='questionNumber') THEN
+            ALTER TABLE questions ALTER COLUMN "questionNumber" DROP NOT NULL;
+          END IF;
+          IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='questions' AND column_name='question_number') THEN
+            ALTER TABLE questions ALTER COLUMN question_number DROP NOT NULL;
+          END IF;
+          IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='questions' AND column_name='college_id') THEN
+            ALTER TABLE questions ALTER COLUMN college_id DROP NOT NULL;
+          END IF;
+          IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='questions' AND column_name='companiesAppeared') THEN
+            ALTER TABLE questions ALTER COLUMN "companiesAppeared" DROP NOT NULL;
+          END IF;
+          IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='questions' AND column_name='companies_appeared') THEN
+            ALTER TABLE questions ALTER COLUMN companies_appeared DROP NOT NULL;
+          END IF;
+        END $$;
+      `);
+    } catch (e: any) {
+      console.warn('Could not auto-migrate questions constraints:', e?.message);
+    }
+  }
 
   private async generateQuestionNumber(
     type: QuestionType,
@@ -532,7 +560,16 @@ export class QuestionBankController {
         status,
         createdBy: userId,
       });
-      return await this.questionRepo.save(q);
+      try {
+        return await this.questionRepo.save(q);
+      } catch (saveErr: any) {
+        if (saveErr.message && (saveErr.message.includes('questionNumber') || saveErr.message.includes('not-null'))) {
+          await this.questionRepo.query('ALTER TABLE questions ALTER COLUMN "questionNumber" DROP NOT NULL;').catch(() => {});
+          await this.questionRepo.query('ALTER TABLE questions ALTER COLUMN question_number DROP NOT NULL;').catch(() => {});
+          return await this.questionRepo.save(q);
+        }
+        throw saveErr;
+      }
     } catch (err: any) {
       if (err instanceof BadRequestException || err instanceof ConflictException || err instanceof NotFoundException) {
         throw err;
