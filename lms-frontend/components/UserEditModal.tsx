@@ -107,25 +107,31 @@ export default function UserEditModal({ user, onClose, onSuccess }: UserEditModa
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={onClose}>
-            <div className="glass-card w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-slate-900 border border-white/15 rounded-3xl p-6 shadow-2xl text-white animate-fade-in" onClick={e => e.stopPropagation()}>
+            <div 
+                className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/15 rounded-3xl p-6 shadow-2xl text-slate-900 dark:text-white animate-fade-in" 
+                onClick={e => e.stopPropagation()}
+            >
                 {/* Header */}
-                <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-6">
+                <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-white/10 mb-6">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center text-blue-400 font-bold text-lg">
+                        <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-lg">
                             ✏️
                         </div>
                         <div>
-                            <h2 className="text-xl font-bold text-white">Edit User Profile</h2>
-                            <p className="text-xs text-slate-400">Update account details, role permissions, or credentials</p>
+                            <h2 className="text-xl font-bold text-slate-900 dark:text-white">Edit User Profile</h2>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">Update account details, role permissions, or credentials</p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors">
+                    <button 
+                        onClick={onClose} 
+                        className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
+                    >
                         ✕
                     </button>
                 </div>
 
                 {error && (
-                    <div className="p-3 mb-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs font-medium">
+                    <div className="p-3 mb-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-300 text-xs font-semibold">
                         ⚠️ {error}
                     </div>
                 )}
@@ -133,49 +139,49 @@ export default function UserEditModal({ user, onClose, onSuccess }: UserEditModa
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-xs font-semibold text-slate-300 mb-1">Full Name *</label>
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Full Name *</label>
                             <input
                                 type="text"
                                 value={form.name}
                                 onChange={e => setForm({ ...form, name: e.target.value })}
                                 required
-                                className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-indigo-500 transition-colors"
+                                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white placeholder-slate-400 text-xs focus:outline-none focus:border-indigo-500 transition-colors"
                             />
                         </div>
 
                         <div>
-                            <label className="block text-xs font-semibold text-slate-300 mb-1">Email Address *</label>
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Email Address *</label>
                             <input
                                 type="email"
                                 value={form.email}
                                 onChange={e => setForm({ ...form, email: e.target.value })}
                                 required
-                                className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-indigo-500 transition-colors"
+                                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white placeholder-slate-400 text-xs focus:outline-none focus:border-indigo-500 transition-colors"
                             />
                         </div>
 
                         <div>
-                            <label className="block text-xs font-semibold text-slate-300 mb-1">Role *</label>
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Role *</label>
                             <select
                                 value={form.role}
                                 onChange={e => setForm({ ...form, role: e.target.value })}
-                                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800 border border-white/10 text-white text-xs focus:outline-none focus:border-indigo-500 transition-colors"
+                                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-indigo-500 transition-colors font-medium"
                             >
                                 {['STUDENT', 'INSTRUCTOR', 'QUESTION_CREATOR', 'CONTENT_CREATOR', 'ADMIN', 'SUPERADMIN'].map(r => (
-                                    <option key={r} value={r} className="bg-slate-800 text-white">{r}</option>
+                                    <option key={r} value={r} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">{r}</option>
                                 ))}
                             </select>
                         </div>
 
                         <div>
-                            <label className="block text-xs font-semibold text-slate-300 mb-1">Account Status</label>
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Account Status</label>
                             <select
                                 value={form.isActive ? 'ACTIVE' : 'INACTIVE'}
                                 onChange={e => setForm({ ...form, isActive: e.target.value === 'ACTIVE' })}
-                                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-800 border border-white/10 text-white text-xs focus:outline-none focus:border-indigo-500 transition-colors"
+                                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-indigo-500 transition-colors font-medium"
                             >
-                                <option value="ACTIVE" className="bg-slate-800 text-emerald-400">✓ Active</option>
-                                <option value="INACTIVE" className="bg-slate-800 text-rose-400">✕ Inactive / Suspended</option>
+                                <option value="ACTIVE" className="bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400">✓ Active</option>
+                                <option value="INACTIVE" className="bg-white dark:bg-slate-800 text-rose-600 dark:text-rose-400">✕ Inactive / Suspended</option>
                             </select>
                         </div>
                     </div>
@@ -185,20 +191,20 @@ export default function UserEditModal({ user, onClose, onSuccess }: UserEditModa
                         <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center gap-3">
                             <span className="text-xl">🌐</span>
                             <div>
-                                <p className="text-xs font-bold text-emerald-400">Global Platform Account</p>
-                                <p className="text-[11px] text-emerald-300/80">Creators operate across the entire platform and do not belong to any specific college.</p>
+                                <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400">Global Platform Account</p>
+                                <p className="text-[11px] text-emerald-600 dark:text-emerald-300/80">Creators operate across the entire platform and do not belong to any specific college.</p>
                             </div>
                         </div>
                     ) : (
                         <div>
-                            <label className="block text-xs font-semibold text-slate-300 mb-1">College / University Name</label>
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">College / University Name</label>
                             <input
                                 type="text"
                                 list="college-options"
                                 value={form.collegeName}
                                 onChange={e => setForm({ ...form, collegeName: e.target.value })}
                                 placeholder="Select or enter college name..."
-                                className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-indigo-500 transition-colors"
+                                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white placeholder-slate-400 text-xs focus:outline-none focus:border-indigo-500 transition-colors"
                             />
                             <datalist id="college-options">
                                 {colleges.map((c: any) => (
@@ -210,53 +216,53 @@ export default function UserEditModal({ user, onClose, onSuccess }: UserEditModa
 
                     {/* Student Specific Fields */}
                     {form.role === 'STUDENT' && (
-                        <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-3">
-                            <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                        <div className="p-4 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 space-y-3">
+                            <h3 className="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider flex items-center gap-2">
                                 🎓 Student Academic Details
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 <div>
-                                    <label className="block text-[11px] font-semibold text-slate-400 mb-1">Registration / Roll No.</label>
+                                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">Registration / Roll No.</label>
                                     <input
                                         type="text"
                                         value={form.registrationNumber}
                                         onChange={e => setForm({ ...form, registrationNumber: e.target.value })}
                                         placeholder="e.g. 231FA04867"
-                                        className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-indigo-500"
+                                        className="w-full px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-indigo-500"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-[11px] font-semibold text-slate-400 mb-1">Course / Degree</label>
+                                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">Course / Degree</label>
                                     <input
                                         type="text"
                                         value={form.course}
                                         onChange={e => setForm({ ...form, course: e.target.value })}
                                         placeholder="e.g. B.Tech"
-                                        className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-indigo-500"
+                                        className="w-full px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-indigo-500"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-[11px] font-semibold text-slate-400 mb-1">Branch / Specialization</label>
+                                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">Branch / Specialization</label>
                                     <input
                                         type="text"
                                         value={form.branch}
                                         onChange={e => setForm({ ...form, branch: e.target.value })}
                                         placeholder="e.g. CSE / IT"
-                                        className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-indigo-500"
+                                        className="w-full px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-indigo-500"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-[11px] font-semibold text-slate-400 mb-1">Mobile Number</label>
+                                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">Mobile Number</label>
                                     <input
                                         type="text"
                                         value={form.mobileNumber}
                                         onChange={e => setForm({ ...form, mobileNumber: e.target.value })}
                                         placeholder="e.g. +91 9876543210"
-                                        className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-indigo-500"
+                                        className="w-full px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-indigo-500"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-[11px] font-semibold text-slate-400 mb-1">Year & Semester</label>
+                                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">Year & Semester</label>
                                     <div className="grid grid-cols-2 gap-2">
                                         <input
                                             type="number"
@@ -265,7 +271,7 @@ export default function UserEditModal({ user, onClose, onSuccess }: UserEditModa
                                             placeholder="Year (1-4)"
                                             min={1}
                                             max={6}
-                                            className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-indigo-500"
+                                            className="w-full px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-indigo-500"
                                         />
                                         <input
                                             type="number"
@@ -274,26 +280,26 @@ export default function UserEditModal({ user, onClose, onSuccess }: UserEditModa
                                             placeholder="Sem (1-8)"
                                             min={1}
                                             max={12}
-                                            className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-indigo-500"
+                                            className="w-full px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-indigo-500"
                                         />
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="block text-[11px] font-semibold text-slate-400 mb-1">Country & State</label>
+                                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">Country & State</label>
                                     <div className="grid grid-cols-2 gap-2">
                                         <input
                                             type="text"
                                             value={form.country}
                                             onChange={e => setForm({ ...form, country: e.target.value })}
                                             placeholder="Country"
-                                            className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-indigo-500"
+                                            className="w-full px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-indigo-500"
                                         />
                                         <input
                                             type="text"
                                             value={form.state}
                                             onChange={e => setForm({ ...form, state: e.target.value })}
                                             placeholder="State"
-                                            className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-indigo-500"
+                                            className="w-full px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-indigo-500"
                                         />
                                     </div>
                                 </div>
@@ -302,8 +308,8 @@ export default function UserEditModal({ user, onClose, onSuccess }: UserEditModa
                     )}
 
                     {/* Reset Password Option */}
-                    <div className="p-3.5 rounded-xl bg-white/5 border border-white/10">
-                        <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10">
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                             🔑 Reset Password <span className="text-[10px] text-slate-500 font-normal">(Leave blank to keep unchanged)</span>
                         </label>
                         <input
@@ -312,16 +318,16 @@ export default function UserEditModal({ user, onClose, onSuccess }: UserEditModa
                             onChange={e => setForm({ ...form, password: e.target.value })}
                             placeholder="Enter new password (min. 6 chars)..."
                             minLength={6}
-                            className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-indigo-500 transition-colors"
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white placeholder-slate-400 text-xs focus:outline-none focus:border-indigo-500 transition-colors"
                         />
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
+                    <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-white/10">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+                            className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
                         >
                             Cancel
                         </button>
