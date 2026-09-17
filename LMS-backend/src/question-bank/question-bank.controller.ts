@@ -138,7 +138,7 @@ export class QuestionBankController {
   private async assertQuestionIsNew(
     type: QuestionType,
     questionText: string,
-    collegeId?: number,
+    collegeId?: number | null,
     excludeId?: number,
   ) {
     const incoming = questionDuplicateKey(type, questionText);
@@ -146,7 +146,7 @@ export class QuestionBankController {
       const qb = this.questionRepo
         .createQueryBuilder('q')
         .select(['q.id', 'q.type', 'q.questionText'])
-        .where(collegeId ? 'q.collegeId = :collegeId' : '(q.collegeId IS NULL OR q.collegeId = 1)', { collegeId })
+        .where(collegeId ? 'q.collegeId = :collegeId' : 'q.collegeId IS NULL', { collegeId })
         .andWhere('q.type = :type', { type })
         .andWhere('(q.isActive IS NULL OR q.isActive = true)');
       if (excludeId) qb.andWhere('q.id != :excludeId', { excludeId });
@@ -248,25 +248,23 @@ export class QuestionBankController {
         qb.andWhere('q.status = :status', { status });
       }
     } else if (userRole === UserRole.QUESTION_CREATOR) {
-      // QUESTION_CREATOR sees their own questions (all statuses) + approved questions
+      // Question creators see their own questions (all statuses) plus APPROVED questions from other creators
       qb.andWhere('(q.createdBy = :userId OR q.status = :apprStatus)', {
         userId,
         apprStatus: QuestionStatus.APPROVED,
       });
-    } else {
-      // Default to showing only APPROVED questions in Question Bank
-      qb.andWhere('q.status = :apprStatus', {
-        apprStatus: QuestionStatus.APPROVED,
-      });
+    } else if (userRole !== UserRole.SUPERADMIN && userRole !== UserRole.ADMIN) {
+      // Students/Instructors only see approved questions
+      qb.andWhere('q.status = :status', { status: QuestionStatus.APPROVED });
     }
 
     if (type) qb.andWhere('q.type = :type', { type });
-    if (difficulty) qb.andWhere('q.difficulty = :difficulty', { difficulty });
-    if (domain) qb.andWhere('q.domain = :domain', { domain });
+    if (difficulty)
+      qb.andWhere('q.difficulty = :difficulty', { difficulty });
+    if (domain)
+      qb.andWhere('q.domain = :domain', { domain });
     if (targetCompanies) {
-      qb.andWhere('(q.targetCompanies ILIKE :tcomp OR q.companiesAppeared ILIKE :tcomp)', {
-        tcomp: `%${targetCompanies}%`,
-      });
+      qb.andWhere('q.targetCompanies ILIKE :tc', { tc: `%${targetCompanies}%` });
     }
     if (topic)
       qb.andWhere('q.topicNames ILIKE :topic', { topic: `%${topic}%` });
@@ -449,22 +447,7 @@ export class QuestionBankController {
 
       const userRole = req?.user?.role;
       const userCollegeId = req?.user?.collegeId;
-      const userId = req?.user?.sub;
-
-      // SUPERADMIN can access any question.
-      if (userRole === UserRole.SUPERADMIN) {
-        return question;
-      }
-
-      // QUESTION_CREATOR can access questions they created
-      if (userRole === UserRole.QUESTION_CREATOR && question.createdBy === userId) {
-        return question;
-      }
-
       const targetCollegeId = question.collegeId;
-      if (!targetCollegeId) {
-        return question;
-      }
 
       if (!this.CollegeFilterService.canAccessCollege(
         userRole,
@@ -484,55 +467,79 @@ export class QuestionBankController {
   @Post()
   @Roles(UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.INSTRUCTOR, UserRole.QUESTION_CREATOR)
   async create(@Body() dto: CreateQuestionDto, @Request() req?: any) {
-    const userRole = req?.user?.role;
-    const userCollegeId = req?.user?.collegeId;
-    const userId = req?.user?.sub;
+    try {
+      const userRole = req?.user?.role;
+      const userCollegeId = req?.user?.collegeId;
+      const userId = req?.user?.sub;
 
-    // Validate user has collegeId (SUPERADMIN and QUESTION_CREATOR are global roles)
-    if (userRole !== UserRole.SUPERADMIN && userRole !== UserRole.QUESTION_CREATOR && !userCollegeId) {
-      throw new BadRequestException('User must belong to an organization to create questions');
+      // Validate user has collegeId (SUPERADMIN and QUESTION_CREATOR are global roles)
+      if (userRole !== UserRole.SUPERADMIN && userRole !== UserRole.QUESTION_CREATOR && !userCollegeId) {
+        throw new BadRequestException('User must belong to an organization to create questions');
+      }
+
+      // For global roles (QUESTION_CREATOR / SUPERADMIN), collegeId defaults to null (global question bank)
+      let collegeId: number | null = null;
+      if (userRole === UserRole.SUPERADMIN && dto.collegeId) {
+        collegeId = dto.collegeId;
+      } else if (userRole === UserRole.ADMIN || userRole === UserRole.INSTRUCTOR) {
+        collegeId = userCollegeId || null;
+      } else if (userCollegeId) {
+        collegeId = userCollegeId;
+      }
+
+      // Verify that the collegeId actually exists in the DB if one was supplied
+      if (collegeId) {
+        const collegeExists = await this.questionRepo.manager.query(
+          'SELECT id FROM colleges WHERE id = $1 LIMIT 1',
+          [collegeId],
+        ).catch(() => []);
+        if (!collegeExists || collegeExists.length === 0) {
+          collegeId = null;
+        }
+      }
+
+      await this.assertQuestionIsNew(dto.type, dto.questionText, collegeId);
+
+      if (dto.type === QuestionType.MCQ && dto.correctAnswer) {
+        dto.correctAnswer = normalizeMcqLetter(dto.correctAnswer, dto.options) || dto.correctAnswer;
+      }
+
+      // If QUESTION_CREATOR, mark as DRAFT or PENDING_APPROVAL and record createdBy
+      let status = QuestionStatus.APPROVED;
+      if (userRole === UserRole.QUESTION_CREATOR) {
+        status = dto.status === QuestionStatus.DRAFT ? QuestionStatus.DRAFT : QuestionStatus.PENDING_APPROVAL;
+      } else if (dto.status) {
+        status = dto.status;
+      }
+
+      // Only generate official questionNumber if status is APPROVED
+      let questionNumber: string | null = null;
+      if (status === QuestionStatus.APPROVED) {
+        questionNumber = await this.generateQuestionNumber(dto.type);
+      }
+
+      const allowedLanguages = dto.type === QuestionType.PQ
+        ? (Array.isArray(dto.allowedLanguages) && dto.allowedLanguages.length > 0 ? dto.allowedLanguages : ['Python'])
+        : null;
+
+      const q = this.questionRepo.create({
+        ...dto,
+        allowedLanguages: allowedLanguages as any,
+        targetCompanies: dto.targetCompanies ?? undefined,
+        companiesAppeared: dto.companiesAppeared ?? undefined,
+        questionNumber: questionNumber as any,
+        collegeId: collegeId || undefined,
+        status,
+        createdBy: userId,
+      });
+      return await this.questionRepo.save(q);
+    } catch (err: any) {
+      if (err instanceof BadRequestException || err instanceof ConflictException || err instanceof NotFoundException) {
+        throw err;
+      }
+      console.error('Error creating question:', err);
+      throw new BadRequestException(err.message || 'Failed to create question');
     }
-
-    // Set collegeId: SUPERADMIN can specify, others use their own org or fallback to 1
-    const collegeId = (userRole === UserRole.SUPERADMIN && dto.collegeId)
-      ? dto.collegeId
-      : (userCollegeId || 1);
-
-    await this.assertQuestionIsNew(dto.type, dto.questionText, collegeId);
-
-    if (dto.type === QuestionType.MCQ && dto.correctAnswer) {
-      dto.correctAnswer = normalizeMcqLetter(dto.correctAnswer, dto.options) || dto.correctAnswer;
-    }
-
-    // If QUESTION_CREATOR, mark as DRAFT or PENDING_APPROVAL and record createdBy
-    let status = QuestionStatus.APPROVED;
-    if (userRole === UserRole.QUESTION_CREATOR) {
-      status = dto.status === QuestionStatus.DRAFT ? QuestionStatus.DRAFT : QuestionStatus.PENDING_APPROVAL;
-    } else if (dto.status) {
-      status = dto.status;
-    }
-
-    // Only generate official questionNumber if status is APPROVED
-    let questionNumber: string | null = null;
-    if (status === QuestionStatus.APPROVED) {
-      questionNumber = await this.generateQuestionNumber(dto.type);
-    }
-
-    const allowedLanguages = dto.type === QuestionType.PQ
-      ? (Array.isArray(dto.allowedLanguages) && dto.allowedLanguages.length > 0 ? dto.allowedLanguages : ['Python'])
-      : null;
-
-    const q = this.questionRepo.create({
-      ...dto,
-      allowedLanguages: allowedLanguages as any,
-      targetCompanies: dto.targetCompanies ?? undefined,
-      companiesAppeared: dto.companiesAppeared ?? undefined,
-      questionNumber: questionNumber as any,
-      collegeId,
-      status,
-      createdBy: userId,
-    });
-    return this.questionRepo.save(q);
   }
 
   @Put(':id')

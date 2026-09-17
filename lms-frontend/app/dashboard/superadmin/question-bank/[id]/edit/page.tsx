@@ -13,6 +13,7 @@ import OptionField from '@/components/question-bank/OptionField'
 import { normalizeMcqLetter } from '@/lib/mcq-answer'
 import { getRoleBasePath } from '@/lib/roleUtils'
 import { ADMIN_STARTERS } from '@/lib/starter-code'
+import { toast } from '@/lib/toast'
 
 const COMPANIES = ['Accenture', 'CapGemini', 'Infosys', 'TCS', 'Wipro', 'Amazon', 'Google', 'Microsoft', 'Adobe', 'Flipkart', 'Other']
 const LANGUAGES = ['Python', 'Java', 'C', 'C++', 'JavaScript', 'Any']
@@ -264,12 +265,19 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
                 body: JSON.stringify(submitData),
             })
             if (res.ok) {
+                toast.success('Question updated successfully!')
                 router.push(returnTo || `${getRoleBasePath(userRole)}/question-bank`)
             } else {
-                const data = await res.json()
-                setError(data.message || 'Failed to update question')
+                const data = await res.json().catch(() => ({}))
+                const msg = data.message || 'Failed to update question'
+                setError(msg)
+                toast.error(msg)
             }
-        } catch (e: any) { setError(e.message || 'Failed to update question') }
+        } catch (e: any) {
+            const msg = e.message || 'Failed to update question'
+            setError(msg)
+            toast.error(msg)
+        }
         finally { setSaving(false) }
     }
 

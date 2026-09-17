@@ -13,6 +13,7 @@ import OptionField from '@/components/question-bank/OptionField'
 import { normalizeMcqLetter } from '@/lib/mcq-answer'
 import { getRoleBasePath } from '@/lib/roleUtils'
 import { ADMIN_STARTERS } from '@/lib/starter-code'
+import { toast } from '@/lib/toast'
 
 const COMPANIES = ['Accenture', 'CapGemini', 'Infosys', 'TCS', 'Wipro', 'Amazon', 'Google', 'Microsoft', 'Adobe', 'Flipkart', 'Other']
 const LANGUAGES = ['Python', 'Java', 'C', 'C++', 'JavaScript', 'Any']
@@ -152,8 +153,20 @@ function CreateQuestionForm() {
         setSaving(true); setError('')
 
         // Frontend Validation
-        if (!form.questionText?.trim()) { setError('Question Title is required'); setSaving(false); return }
-        if (!form.problemStatement?.trim()) { setError('Problem Statement is compulsory for all question types'); setSaving(false); return }
+        if (!form.questionText?.trim()) {
+            const err = 'Question Title is required'
+            setError(err)
+            toast.warning(err)
+            setSaving(false)
+            return
+        }
+        if (!form.problemStatement?.trim()) {
+            const err = 'Problem Statement is compulsory for all question types'
+            setError(err)
+            toast.warning(err)
+            setSaving(false)
+            return
+        }
 
         try {
             const submitData = {
@@ -181,12 +194,25 @@ function CreateQuestionForm() {
             })
             if (!res.ok) {
                 const e = await res.json().catch(() => ({}))
-                const msg = Array.isArray(e.message) ? e.message.join(', ') : e.message
-                setError(msg || 'Error saving')
+                const msg = Array.isArray(e.message) ? e.message.join(', ') : (e.message || 'Failed to create question')
+                setError(msg)
+                toast.error(msg)
                 return
             }
+
+            if (statusOverride === 'DRAFT') {
+                toast.success('Question saved as Draft!')
+            } else if (currentRole === 'QUESTION_CREATOR') {
+                toast.success('Question submitted for Super Admin approval!')
+            } else {
+                toast.success('Question created successfully!')
+            }
+
             router.push(returnTo || `${dashboardBase}/question-bank`)
-        } catch (e: any) { setError(e.message) }
+        } catch (e: any) {
+            setError(e.message || 'An unexpected error occurred')
+            toast.error(e.message || 'An unexpected error occurred')
+        }
         finally { setSaving(false) }
     }
 
