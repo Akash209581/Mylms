@@ -633,14 +633,16 @@ export default function ApprovalsPage() {
                                             <th className="pb-3 pr-4">Status</th>
                                             <th className="pb-3 pr-4">Type</th>
                                             <th className="pb-3 pr-4">Question Details</th>
-                                            <th className="pb-3 pr-4">Target Companies</th>
+                                            <th className="pb-3 pr-4">Companies</th>
                                             <th className="pb-3 pr-4">Creator / Author</th>
                                             <th className="pb-3 text-right">Moderation Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100 dark:divide-white/5">
                                         {filteredQuestions.map((q) => {
-                                            const companies = q.targetCompanies || q.companiesAppeared || ''
+                                            const targetComps = q.targetCompanies || ''
+                                            const appearedComps = q.companiesAppeared || ''
+                                            const hasComps = !!(targetComps || appearedComps)
                                             const status = q.status || 'PENDING_APPROVAL'
                                             return (
                                                 <tr key={q.id} className="hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors">
@@ -674,47 +676,28 @@ export default function ApprovalsPage() {
                                                         )}
                                                     </td>
                                                     <td className="py-4 pr-4 min-w-[180px] max-w-xs">
-                                                        {companies ? (() => {
-                                                            const compList = companies.split(',').map((c: string) => c.trim()).filter(Boolean)
-                                                            const isExpanded = !!expandedCompanies[q.id]
-                                                            const visibleList = isExpanded ? compList : compList.slice(0, 2)
-                                                            const remainingCount = compList.length - 2
-
-                                                            return (
-                                                                <div className="flex flex-col gap-1.5">
-                                                                    <div className="flex flex-wrap items-center gap-1.5">
-                                                                        {visibleList.map((c: string, idx: number) => (
-                                                                            <span
-                                                                                key={idx}
-                                                                                className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-[11px] font-medium"
-                                                                                title={`Target Company: ${c}`}
-                                                                            >
-                                                                                🏢 {c}
+                                                        {hasComps ? (
+                                                            <div className="flex flex-col gap-1.5">
+                                                                {targetComps && (
+                                                                    <div className="flex flex-wrap items-center gap-1">
+                                                                        {targetComps.split(',').slice(0, 2).map((c: string, idx: number) => (
+                                                                            <span key={idx} className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-[10px] font-medium truncate" title={`Target: ${c.trim()}`}>
+                                                                                🏢 {c.trim()}
                                                                             </span>
                                                                         ))}
-                                                                        {!isExpanded && remainingCount > 0 && (
-                                                                            <button
-                                                                                type="button"
-                                                                                onClick={(e) => { e.stopPropagation(); toggleCompanyExpand(q.id) }}
-                                                                                className="px-2 py-0.5 rounded-md bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 text-[11px] font-bold hover:bg-indigo-600 hover:text-white transition-all shadow-sm flex items-center gap-0.5 cursor-pointer"
-                                                                                title={`Click to show all ${compList.length} companies`}
-                                                                            >
-                                                                                +{remainingCount} more
-                                                                            </button>
-                                                                        )}
                                                                     </div>
-                                                                    {isExpanded && compList.length > 2 && (
-                                                                        <button
-                                                                            type="button"
-                                                                            onClick={(e) => { e.stopPropagation(); toggleCompanyExpand(q.id) }}
-                                                                            className="text-[10px] text-indigo-500 dark:text-indigo-400 hover:underline font-semibold self-start"
-                                                                        >
-                                                                            ▴ Show less
-                                                                        </button>
-                                                                    )}
-                                                                </div>
-                                                            )
-                                                        })() : (
+                                                                )}
+                                                                {appearedComps && (
+                                                                    <div className="flex flex-wrap items-center gap-1">
+                                                                        {appearedComps.split(',').slice(0, 2).map((c: string, idx: number) => (
+                                                                            <span key={idx} className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-medium truncate" title={`Appeared: ${c.trim()}`}>
+                                                                                🏛️ {c.trim()}
+                                                                        </span>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        ) : (
                                                             <span className="text-xs text-slate-500">General Practice</span>
                                                         )}
                                                     </td>

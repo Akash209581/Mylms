@@ -614,20 +614,39 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                           (form.type === 'PQ' && form.allowedLanguages && form.allowedLanguages.length > 0) ||
                           (form.type !== 'PQ' && form.programmingLanguage && form.programmingLanguage.trim() !== '' && form.programmingLanguage !== 'Any')) && (
                             <div className="flex flex-col gap-3 mt-4 pt-4 border-t border-gray-100 text-xs">
-                                {/* All Companies rendered in preview */}
-                                {(form.targetCompanies || form.companiesAppeared || form.companies) && (() => {
-                                    const rawComps = form.targetCompanies || form.companiesAppeared || form.companies || ''
-                                    const compList = (typeof rawComps === 'string' ? rawComps.split(',') : Array.isArray(rawComps) ? rawComps : [rawComps])
+                                {/* Target Companies */}
+                                {form.targetCompanies && (() => {
+                                    const compList = (typeof form.targetCompanies === 'string' ? form.targetCompanies.split(',') : Array.isArray(form.targetCompanies) ? form.targetCompanies : [form.targetCompanies])
                                         .map((c: any) => String(c).trim())
                                         .filter(Boolean)
                                     if (compList.length === 0) return null
                                     return (
                                         <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                                            <p className="text-[10px] text-slate-400 font-bold uppercase mb-1.5">Target Companies ({compList.length})</p>
+                                            <p className="text-[10px] text-slate-400 font-bold uppercase mb-1.5">🏢 Target Companies ({compList.length})</p>
                                             <div className="flex flex-wrap gap-1.5">
                                                 {compList.map((c: string, idx: number) => (
                                                     <span key={idx} className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 text-xs font-semibold">
                                                         🏢 {c}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )
+                                })()}
+
+                                {/* Companies Appeared */}
+                                {form.companiesAppeared && (() => {
+                                    const compList = (typeof form.companiesAppeared === 'string' ? form.companiesAppeared.split(',') : Array.isArray(form.companiesAppeared) ? form.companiesAppeared : [form.companiesAppeared])
+                                        .map((c: any) => String(c).trim())
+                                        .filter(Boolean)
+                                    if (compList.length === 0) return null
+                                    return (
+                                        <div className="p-3 bg-emerald-50/50 rounded-xl border border-emerald-100">
+                                            <p className="text-[10px] text-emerald-600 font-bold uppercase mb-1.5">🏛️ Companies Appeared ({compList.length})</p>
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {compList.map((c: string, idx: number) => (
+                                                    <span key={idx} className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold">
+                                                        🏛️ {c}
                                                     </span>
                                                 ))}
                                             </div>

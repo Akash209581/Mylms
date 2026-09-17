@@ -391,12 +391,12 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
                                 </select>
                             </div>
                             <div className="col-span-1 sm:col-span-2">
-                                <label className="text-gray-400 text-sm mb-2 block">
-                                    🏢 Target Companies <span className="text-xs text-primary-400">(select quick pills or type custom comma-separated)</span>
+                                <label className="text-gray-400 text-sm mb-2 block font-medium">
+                                    🏢 Target Companies <span className="text-xs text-primary-400 font-normal">(Optional — select quick pills or type custom comma-separated)</span>
                                 </label>
                                 <div className="flex flex-wrap gap-1.5 mb-2.5">
                                     {['TCS', 'Infosys', 'Wipro', 'Accenture', 'Cognizant', 'Capgemini', 'Amazon', 'Microsoft', 'Google', 'Deloitte', 'IBM', 'Oracle', 'Cisco', 'Adobe'].map(c => {
-                                        const currentList = (form.targetCompanies || form.companiesAppeared || '').split(',').map((x: string) => x.trim()).filter(Boolean)
+                                        const currentList = (form.targetCompanies || '').split(',').map((x: string) => x.trim()).filter(Boolean)
                                         const isSelected = currentList.includes(c)
                                         return (
                                             <button
@@ -406,9 +406,7 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
                                                     const updated = isSelected
                                                         ? currentList.filter((x: string) => x !== c)
                                                         : [...currentList, c]
-                                                    const val = updated.join(', ')
-                                                    set('targetCompanies', val)
-                                                    set('companiesAppeared', val)
+                                                    set('targetCompanies', updated.join(', '))
                                                 }}
                                                 className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
                                                     isSelected
@@ -422,12 +420,46 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
                                     })}
                                 </div>
                                 <input 
-                                    value={form.targetCompanies || form.companiesAppeared || ''} 
-                                    onChange={e => {
-                                        set('targetCompanies', e.target.value)
-                                        set('companiesAppeared', e.target.value)
-                                    }}
+                                    value={form.targetCompanies || ''} 
+                                    onChange={e => set('targetCompanies', e.target.value)}
                                     placeholder="Accenture, Capgemini, TCS..." 
+                                    className="input-field" 
+                                />
+                            </div>
+
+                            <div className="col-span-1 sm:col-span-2">
+                                <label className="text-gray-400 text-sm mb-2 block font-medium">
+                                    🏛️ Companies Appeared <span className="text-xs text-emerald-400 font-normal">(Optional — companies where this question previously appeared in interviews)</span>
+                                </label>
+                                <div className="flex flex-wrap gap-1.5 mb-2.5">
+                                    {['Amazon', 'Google', 'Microsoft', 'TCS', 'Infosys', 'Wipro', 'Accenture', 'Cognizant', 'Capgemini', 'Adobe', 'Flipkart', 'Deloitte', 'Goldman Sachs', 'Morgan Stanley', 'Meta', 'Apple'].map(c => {
+                                        const currentList = (form.companiesAppeared || '').split(',').map((x: string) => x.trim()).filter(Boolean)
+                                        const isSelected = currentList.includes(c)
+                                        return (
+                                            <button
+                                                key={c}
+                                                type="button"
+                                                onClick={() => {
+                                                    const updated = isSelected
+                                                        ? currentList.filter((x: string) => x !== c)
+                                                        : [...currentList, c]
+                                                    set('companiesAppeared', updated.join(', '))
+                                                }}
+                                                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                                                    isSelected
+                                                        ? 'bg-emerald-500 text-white shadow-sm shadow-emerald-500/30'
+                                                        : 'bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10'
+                                                }`}
+                                            >
+                                                {isSelected ? '✓ ' : '+ '}{c}
+                                            </button>
+                                        )
+                                    })}
+                                </div>
+                                <input 
+                                    value={form.companiesAppeared || ''} 
+                                    onChange={e => set('companiesAppeared', e.target.value)}
+                                    placeholder="e.g. Amazon, Google, TCS, Infosys..." 
                                     className="input-field" 
                                 />
                             </div>

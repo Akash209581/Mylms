@@ -515,8 +515,8 @@ export class QuestionBankController {
     const q = this.questionRepo.create({
       ...dto,
       allowedLanguages: allowedLanguages as any,
-      targetCompanies: dto.targetCompanies || dto.companiesAppeared,
-      companiesAppeared: dto.companiesAppeared || dto.targetCompanies,
+      targetCompanies: dto.targetCompanies ?? undefined,
+      companiesAppeared: dto.companiesAppeared ?? undefined,
       questionNumber,
       collegeId,
       status,
@@ -570,11 +570,6 @@ export class QuestionBankController {
         )) {
           return { message: 'Cannot update question from different college' };
         }
-      }
-
-      if (dto.targetCompanies || dto.companiesAppeared) {
-        dto.targetCompanies = dto.targetCompanies || dto.companiesAppeared;
-        dto.companiesAppeared = dto.companiesAppeared || dto.targetCompanies;
       }
 
       if ((dto.type === QuestionType.MCQ || question.type === QuestionType.MCQ) && dto.correctAnswer) {

@@ -216,7 +216,7 @@ export default function QuestionBankPage() {
                             <table className="role-data-table w-full">
                                 <thead>
                                     <tr className="border-b" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
-                                        {['#', 'Q. Number', 'Domain', 'Type', 'Topic', 'Target Companies', 'Difficulty', 'Status', 'Question Title', 'Actions'].map(h => (
+                                        {['#', 'Q. Number', 'Domain', 'Type', 'Topic', 'Companies', 'Difficulty', 'Status', 'Question Title', 'Actions'].map(h => (
                                             <th key={h} className="text-left text-xs font-semibold role-text-muted pb-3 pr-4">{h}</th>
                                         ))}
                                     </tr>
@@ -224,7 +224,8 @@ export default function QuestionBankPage() {
                                 <tbody>
                                     {filtered.map((q: any, i: number) => {
                                         const qType = QUESTION_TYPES.find(t => t.key === q.type)
-                                        const companies = q.targetCompanies || q.companiesAppeared || ''
+                                        const targetComps = q.targetCompanies || ''
+                                        const appearedComps = q.companiesAppeared || ''
                                         const status = q.status || 'APPROVED'
                                         return (
                                             <tr key={q.id} className="border-b hover:bg-[var(--bg-surface)]/5 transition-colors"
@@ -243,16 +244,26 @@ export default function QuestionBankPage() {
                                                     </span>
                                                 </td>
                                                 <td className="py-4 pr-4 role-text-secondary text-sm">{q.topicNames}</td>
-                                                <td className="py-4 pr-4 max-w-[160px]">
-                                                    {companies ? (
-                                                        <div className="flex flex-wrap gap-1">
-                                                            {companies.split(',').slice(0, 2).map((c: string) => (
-                                                                <span key={c} className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[11px] font-medium truncate">
-                                                                    🏢 {c.trim()}
-                                                                </span>
-                                                            ))}
-                                                            {companies.split(',').length > 2 && (
-                                                                <span className="text-[10px] text-slate-400">+{companies.split(',').length - 2} more</span>
+                                                <td className="py-4 pr-4 max-w-[180px]">
+                                                    {(targetComps || appearedComps) ? (
+                                                        <div className="flex flex-col gap-1">
+                                                            {targetComps && (
+                                                                <div className="flex flex-wrap gap-1">
+                                                                    {targetComps.split(',').slice(0, 2).map((c: string) => (
+                                                                        <span key={c} className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[10px] font-medium truncate" title={`Target: ${c.trim()}`}>
+                                                                            🏢 {c.trim()}
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                            {appearedComps && (
+                                                                <div className="flex flex-wrap gap-1">
+                                                                    {appearedComps.split(',').slice(0, 2).map((c: string) => (
+                                                                        <span key={c} className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-medium truncate" title={`Appeared: ${c.trim()}`}>
+                                                                            🏛️ {c.trim()}
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
                                                             )}
                                                         </div>
                                                     ) : (
