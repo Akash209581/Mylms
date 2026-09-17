@@ -4,6 +4,7 @@ import './globals.css'
 import './portal.css'
 import './role-foundation.css'
 import { ThemeProvider } from '@/components/ThemeProvider'
+import ToastContainer from '@/components/ToastContainer'
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -31,6 +32,7 @@ export default function RootLayout({
       <body className={`${inter.className} bg-mesh antialiased`}>
         <ThemeProvider attribute="data-theme" defaultTheme="light">
           {children}
+          <ToastContainer />
         </ThemeProvider>
       </body>
     </html>

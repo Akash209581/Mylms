@@ -58,11 +58,11 @@ export default function ApprovalsPage() {
         const u = JSON.parse(stored)
         if (u.role !== 'SUPERADMIN' && u.role !== 'ADMIN') { router.push('/login'); return }
 
-        loadData()
+        loadData(true)
     }, [])
 
-    const loadData = async () => {
-        setLoading(true)
+    const loadData = async (showLoading = false) => {
+        if (showLoading) setLoading(true)
         try {
             const [sumRes, qRes, cRes] = await Promise.all([
                 apiFetch(`${API_URL}/superadmin/approvals/summary`, { credentials: 'include', headers: getAuthHeaders() }),
@@ -76,7 +76,16 @@ export default function ApprovalsPage() {
         } catch (err) {
             console.error('Failed to load approvals:', err)
         } finally {
-            setLoading(false)
+            if (showLoading) setLoading(false)
+        }
+    }
+
+    const refreshSummary = async () => {
+        try {
+            const sumRes = await apiFetch(`${API_URL}/superadmin/approvals/summary`, { credentials: 'include', headers: getAuthHeaders() })
+            if (sumRes.ok) setSummary(await sumRes.json())
+        } catch (err) {
+            console.error('Failed to refresh summary:', err)
         }
     }
 
@@ -90,7 +99,7 @@ export default function ApprovalsPage() {
             })
             if (res.ok) {
                 setQuestions(prev => prev.map(q => q.id === id ? { ...q, status: 'APPROVED', rejectionReason: undefined } : q))
-                loadData()
+                refreshSummary()
             }
         } catch (err) {
             console.error('Approval failed:', err)
@@ -109,7 +118,7 @@ export default function ApprovalsPage() {
             })
             if (res.ok) {
                 setCourses(prev => prev.map(c => c.id === id ? { ...c, status: 'APPROVED', rejectionReason: null } : c))
-                loadData()
+                refreshSummary()
             }
         } catch (err) {
             console.error('Approval failed:', err)
@@ -141,7 +150,7 @@ export default function ApprovalsPage() {
                 }
                 setRejectTarget(null)
                 setRejectReason('')
-                loadData()
+                refreshSummary()
             }
         } catch (err) {
             console.error('Rejection failed:', err)
@@ -170,7 +179,7 @@ export default function ApprovalsPage() {
             if (res.ok) {
                 setQuestions(prev => prev.filter(q => q.id !== id))
                 setDeleteTarget(null)
-                await loadData()
+                refreshSummary()
             } else {
                 const data = await res.json().catch(() => ({}))
                 alert(data.message || 'Failed to delete question')
@@ -289,7 +298,7 @@ export default function ApprovalsPage() {
                     </div>
 
                     <div className="flex items-center gap-3">
-                        <button onClick={loadData} className="btn-secondary text-xs px-4 py-2 flex items-center gap-2">
+                        <button onClick={() => loadData(true)} className="btn-secondary text-xs px-4 py-2 flex items-center gap-2">
                             <span>↻</span> Refresh List
                         </button>
                     </div>

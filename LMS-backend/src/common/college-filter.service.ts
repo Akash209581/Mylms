@@ -16,8 +16,12 @@ export class CollegeFilterService {
     userRole: UserRole,
     userCollegeId?: number,
   ): CollegeFilter {
-    // SUPERADMIN can access all colleges
-    if (userRole === UserRole.SUPERADMIN) {
+    // SUPERADMIN, QUESTION_CREATOR, and CONTENT_CREATOR operate globally across all colleges
+    if (
+      userRole === UserRole.SUPERADMIN ||
+      userRole === UserRole.QUESTION_CREATOR ||
+      userRole === UserRole.CONTENT_CREATOR
+    ) {
       return {};
     }
 
@@ -37,8 +41,12 @@ export class CollegeFilterService {
     userCollegeId: number | undefined,
     targetCollegeId: number,
   ): boolean {
-    // SUPERADMIN can access any college
-    if (userRole === UserRole.SUPERADMIN) {
+    // SUPERADMIN, QUESTION_CREATOR, and CONTENT_CREATOR can access any college
+    if (
+      userRole === UserRole.SUPERADMIN ||
+      userRole === UserRole.QUESTION_CREATOR ||
+      userRole === UserRole.CONTENT_CREATOR
+    ) {
       return true;
     }
 

@@ -367,8 +367,8 @@ export class QuestionBankController {
     const userRole = req.user?.role;
     const userCollegeId = req.user?.collegeId;
 
-    // Validate user has collegeId (except SUPERADMIN can import for any org)
-    if (userRole !== UserRole.SUPERADMIN && !userCollegeId) {
+    // Validate user has collegeId (except SUPERADMIN and QUESTION_CREATOR who can import globally)
+    if (userRole !== UserRole.SUPERADMIN && userRole !== UserRole.QUESTION_CREATOR && !userCollegeId) {
       throw new BadRequestException('User must belong to an organization to import questions');
     }
 
@@ -482,8 +482,8 @@ export class QuestionBankController {
     const userCollegeId = req?.user?.collegeId;
     const userId = req?.user?.sub;
 
-    // Validate user has collegeId
-    if (userRole !== UserRole.SUPERADMIN && !userCollegeId) {
+    // Validate user has collegeId (SUPERADMIN and QUESTION_CREATOR are global roles)
+    if (userRole !== UserRole.SUPERADMIN && userRole !== UserRole.QUESTION_CREATOR && !userCollegeId) {
       throw new BadRequestException('User must belong to an organization to create questions');
     }
 
