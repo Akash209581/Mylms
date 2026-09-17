@@ -83,6 +83,7 @@ class CreateQuestionDto {
   @IsNumber() @IsOptional() collegeId?: number; // SUPERADMIN can specify organization
   @IsEnum(QuestionStatus) @IsOptional() status?: QuestionStatus;
   @IsString() @IsOptional() rejectionReason?: string;
+  @IsString() @IsOptional() questionNumber?: string;
 }
 
 @Controller('question-bank')
@@ -101,11 +102,13 @@ export class QuestionBankController {
   ): Promise<string> {
     const prefix = type; // MCQ, FIB, MQ, JC, PQ, OP
 
-    // Find the last question created of this type to get its number
-    const lastQuestion = await this.questionRepo.findOne({
-      where: { type },
-      order: { id: 'DESC' } // Most recent ID
-    });
+    // Find the last question created of this type with a valid questionNumber
+    const lastQuestion = await this.questionRepo
+      .createQueryBuilder('q')
+      .where('q.type = :type', { type })
+      .andWhere('q.questionNumber IS NOT NULL')
+      .orderBy('q.id', 'DESC')
+      .getOne();
 
     let nextNum = 1;
     if (lastQuestion && lastQuestion.questionNumber) {
@@ -117,12 +120,10 @@ export class QuestionBankController {
       }
     }
 
-    // Ensure we don't accidentally conflict if someone manualy edited numbers
-    // We pad with 4 digits as before
+    // Ensure we don't accidentally conflict if someone manually edited numbers
     let numStr = String(nextNum).padStart(4, '0');
     let finalCode = `${prefix}${numStr}`;
 
-    // Extra safety: double check if this number exists (unlikely given DESC order but good for robustness)
     let exists = await this.questionRepo.findOne({ where: { questionNumber: finalCode } });
     while (exists) {
       nextNum++;
@@ -177,12 +178,17 @@ export class QuestionBankController {
   async approveQuestion(@Param('id', ParseIntPipe) id: number, @Request() req: any) {
     const question = await this.questionRepo.findOne({ where: { id } });
     if (!question) throw new NotFoundException('Question not found');
+    let questionNumber = question.questionNumber;
+    if (!questionNumber) {
+      questionNumber = await this.generateQuestionNumber(question.type);
+    }
     await this.questionRepo.update(id, {
       status: QuestionStatus.APPROVED,
+      questionNumber,
       approvedBy: req.user.sub,
       rejectionReason: undefined,
     });
-    return { success: true, message: 'Question approved successfully' };
+    return { success: true, questionNumber, message: 'Question approved successfully' };
   }
 
   @Put(':id/reject')
@@ -494,8 +500,6 @@ export class QuestionBankController {
 
     await this.assertQuestionIsNew(dto.type, dto.questionText, collegeId);
 
-    const questionNumber = await this.generateQuestionNumber(dto.type);
-
     if (dto.type === QuestionType.MCQ && dto.correctAnswer) {
       dto.correctAnswer = normalizeMcqLetter(dto.correctAnswer, dto.options) || dto.correctAnswer;
     }
@@ -508,6 +512,12 @@ export class QuestionBankController {
       status = dto.status;
     }
 
+    // Only generate official questionNumber if status is APPROVED
+    let questionNumber: string | null = null;
+    if (status === QuestionStatus.APPROVED) {
+      questionNumber = await this.generateQuestionNumber(dto.type);
+    }
+
     const allowedLanguages = dto.type === QuestionType.PQ
       ? (Array.isArray(dto.allowedLanguages) && dto.allowedLanguages.length > 0 ? dto.allowedLanguages : ['Python'])
       : null;
@@ -517,7 +527,7 @@ export class QuestionBankController {
       allowedLanguages: allowedLanguages as any,
       targetCompanies: dto.targetCompanies ?? undefined,
       companiesAppeared: dto.companiesAppeared ?? undefined,
-      questionNumber,
+      questionNumber: questionNumber as any,
       collegeId,
       status,
       createdBy: userId,
@@ -570,6 +580,11 @@ export class QuestionBankController {
         )) {
           return { message: 'Cannot update question from different college' };
         }
+      }
+
+      // If updating a question to APPROVED status and it doesn't have a questionNumber yet, assign one
+      if (dto.status === QuestionStatus.APPROVED && !question.questionNumber && !dto.questionNumber) {
+        dto.questionNumber = await this.generateQuestionNumber(dto.type || question.type);
       }
 
       if ((dto.type === QuestionType.MCQ || question.type === QuestionType.MCQ) && dto.correctAnswer) {

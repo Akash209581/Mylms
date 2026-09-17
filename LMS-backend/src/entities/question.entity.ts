@@ -39,7 +39,7 @@ export class Question {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ unique: true })
+  @Column({ unique: true, nullable: true })
   questionNumber: string; // e.g. MCQ0001, FIB0002
 
   @Column({ type: 'enum', enum: QuestionType })

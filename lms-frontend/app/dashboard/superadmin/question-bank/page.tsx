@@ -232,7 +232,11 @@ export default function QuestionBankPage() {
                                                 style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
                                                 <td className="py-4 pr-4 text-[var(--text-secondary)] text-sm">{i + 1}</td>
                                                 <td className="py-4 pr-4">
-                                                    <span className="text-xs font-mono font-semibold role-text-accent">{q.questionNumber}</span>
+                                                    {q.questionNumber ? (
+                                                        <span className="text-xs font-mono font-semibold role-text-accent">{q.questionNumber}</span>
+                                                    ) : (
+                                                        <span className="text-[10px] font-semibold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20 whitespace-nowrap">⏳ Unassigned</span>
+                                                    )}
                                                 </td>
                                                 <td className="py-4 pr-4">
                                                     <span className="text-xs font-semibold role-text-secondary">{q.domain || 'Programming Domain'}</span>

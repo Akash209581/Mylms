@@ -98,7 +98,13 @@ export default function ApprovalsPage() {
                 headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
             })
             if (res.ok) {
-                setQuestions(prev => prev.map(q => q.id === id ? { ...q, status: 'APPROVED', rejectionReason: undefined } : q))
+                const data = await res.json().catch(() => ({}))
+                setQuestions(prev => prev.map(q => q.id === id ? {
+                    ...q,
+                    status: 'APPROVED',
+                    questionNumber: data.questionNumber || q.questionNumber,
+                    rejectionReason: undefined
+                } : q))
                 refreshSummary()
             }
         } catch (err) {
@@ -647,9 +653,15 @@ export default function ApprovalsPage() {
                                             return (
                                                 <tr key={q.id} className="hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors">
                                                     <td className="py-4 pr-4">
-                                                        <span className="font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 px-2 py-1 rounded-md border border-indigo-500/20">
-                                                            {q.questionNumber}
-                                                        </span>
+                                                        {q.questionNumber ? (
+                                                            <span className="font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 px-2 py-1 rounded-md border border-indigo-500/20">
+                                                                {q.questionNumber}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20 whitespace-nowrap">
+                                                                ⏳ Unassigned
+                                                            </span>
+                                                        )}
                                                     </td>
                                                     <td className="py-4 pr-4">
                                                         <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold inline-flex items-center gap-1 ${status === 'APPROVED' ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30' :

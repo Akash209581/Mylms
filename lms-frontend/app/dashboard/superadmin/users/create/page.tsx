@@ -128,13 +128,14 @@ export default function CreateUserPage() {
         setLoading(true)
 
         try {
+            const isGlobalCreator = form.role === 'QUESTION_CREATOR' || form.role === 'CONTENT_CREATOR'
             const payload: any = {
                 name: form.name,
                 email: form.email,
                 password: form.password,
                 role: form.role,
-                collegeName: form.collegeName,
-                collegeLogo: logoPreview
+                collegeName: isGlobalCreator ? undefined : form.collegeName,
+                collegeLogo: isGlobalCreator ? undefined : logoPreview
             }
 
             // Include additional fields for STUDENT role
@@ -270,121 +271,133 @@ export default function CreateUserPage() {
                                 </div>
                             </div>
 
-                            {/* College Assignment */}
-                            <div className="border-b pb-6">
-                                <h2 className="text-lg font-bold text-[var(--text-primary)] mb-4">🎓 College Assignment</h2>
-                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                                    <p className="text-sm text-blue-800">
-                                        <strong>📝 Important:</strong> Select an existing college or enter a new one. If you enter a new college name, it will be automatically created. 
-                                        The college assignment cannot be changed later, and all users created by this user will automatically inherit this college.
-                                    </p>
+                            {/* College Assignment / Global Role Info */}
+                            {form.role === 'QUESTION_CREATOR' || form.role === 'CONTENT_CREATOR' ? (
+                                <div className="border-b pb-6">
+                                    <h2 className="text-lg font-bold text-[var(--text-primary)] mb-4">🌐 Platform Scope</h2>
+                                    <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 rounded-2xl p-5 flex items-start gap-4 shadow-sm">
+                                        <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center text-xl flex-shrink-0">
+                                            🌍
+                                        </div>
+                                        <div>
+                                            <h3 className="text-sm font-bold text-emerald-900 dark:text-emerald-200 mb-1">
+                                                Global Platform Role ({form.role === 'QUESTION_CREATOR' ? 'Question Creator' : 'Content Creator'})
+                                            </h3>
+                                            <p className="text-xs text-emerald-700 dark:text-emerald-300 leading-relaxed">
+                                                Creators are global platform contributors. Content and questions authored by this account will be available across the entire platform and question banks for all colleges upon approval. No college assignment is required.
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="relative">
-                                    <label className="block text-sm font-semibold mb-1.5 text-[var(--text-primary)]">College/University Name *</label>
-                                    <input
-                                        type="text"
-                                        className="input-field"
-                                        placeholder={loadingColleges ? "Loading colleges..." : "Select or type to create new..."}
-                                        value={form.collegeName}
-                                        onChange={(e) => handleCollegeInputChange(e.target.value)}
-                                        onFocus={handleCollegeFocus}
-                                        onBlur={() => {
-                                            console.log('Input blurred')
-                                            setTimeout(() => setShowCollegeDropdown(false), 150)
-                                        }}
-                                        required
-                                        disabled={loadingColleges}
-                                        autoComplete="off"
-                                    />
-                                    
-                                    {/* Custom Dropdown */}
-                                    {showCollegeDropdown && colleges.length > 0 && (
-                                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                                            {filteredColleges.length > 0 ? (
-                                                <>
-                                                    <div className="px-3 py-2 bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-600 uppercase">
-                                                        Existing Colleges ({filteredColleges.length})
-                                                    </div>
-                                                    {filteredColleges.map((college) => (
-                                                        <div
-                                                            key={college.id}
-                                                            className="px-4 py-2.5 hover:bg-blue-50 cursor-pointer flex items-center gap-2 transition-colors"
-                                                            onMouseDown={(e) => {
-                                                                e.preventDefault() // Prevent input blur
-                                                                handleCollegeSelect(college)
-                                                            }}
-                                                        >
-                                                            <span className="text-blue-600">🎓</span>
-                                                            <span className="text-gray-800">{college.name}</span>
+                            ) : (
+                                <div className="border-b pb-6">
+                                    <h2 className="text-lg font-bold text-[var(--text-primary)] mb-4">🎓 College Assignment</h2>
+                                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                                        <p className="text-sm text-blue-800">
+                                            <strong>📝 Important:</strong> Select an existing college or enter a new one. If you enter a new college name, it will be automatically created. 
+                                            The college assignment cannot be changed later, and all users created by this user will automatically inherit this college.
+                                        </p>
+                                    </div>
+                                    <div className="relative">
+                                        <label className="block text-sm font-semibold mb-1.5 text-[var(--text-primary)]">College/University Name *</label>
+                                        <input
+                                            type="text"
+                                            className="input-field"
+                                            placeholder={loadingColleges ? "Loading colleges..." : "Select or type to create new..."}
+                                            value={form.collegeName}
+                                            onChange={(e) => handleCollegeInputChange(e.target.value)}
+                                            onFocus={handleCollegeFocus}
+                                            onBlur={() => {
+                                                console.log('Input blurred')
+                                                setTimeout(() => setShowCollegeDropdown(false), 150)
+                                            }}
+                                            required
+                                            disabled={loadingColleges}
+                                            autoComplete="off"
+                                        />
+                                        
+                                        {/* Custom Dropdown */}
+                                        {showCollegeDropdown && colleges.length > 0 && (
+                                            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                                {filteredColleges.length > 0 ? (
+                                                    <>
+                                                        <div className="px-3 py-2 bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-600 uppercase">
+                                                            Existing Colleges ({filteredColleges.length})
                                                         </div>
-                                                    ))}
-                                                </>
-                                            ) : (
-                                                <div className="px-4 py-3 text-sm text-gray-500 text-center">
-                                                    No matching colleges found. Press Enter to create "{form.collegeName}"
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                    
-                                    <p className="text-xs text-gray-500 mt-1">
-                                        💡 {loadingColleges 
-                                            ? 'Loading colleges from database...'
-                                            : colleges.length > 0 
-                                                ? `${colleges.length} existing ${colleges.length === 1 ? 'college' : 'colleges'} available. Click field to see dropdown or type to filter/create new.`
-                                                : 'No existing colleges. Type a name to create the first one.'
-                                        }
-                                    </p>
-                                    
-                                    {/* Debug info - remove in production */}
-                                    {process.env.NODE_ENV === 'development' && (
-                                        <p className="text-xs text-purple-600 mt-1">
-                                            Debug: colleges={colleges.length}, showDropdown={showCollegeDropdown.toString()}, loading={loadingColleges.toString()}
+                                                        {filteredColleges.map((college) => (
+                                                            <div
+                                                                key={college.id}
+                                                                className="px-4 py-2.5 hover:bg-blue-50 cursor-pointer flex items-center gap-2 transition-colors"
+                                                                onMouseDown={(e) => {
+                                                                    e.preventDefault() // Prevent input blur
+                                                                    handleCollegeSelect(college)
+                                                                }}
+                                                            >
+                                                                <span className="text-blue-600">🎓</span>
+                                                                <span className="text-gray-800">{college.name}</span>
+                                                            </div>
+                                                        ))}
+                                                    </>
+                                                ) : (
+                                                    <div className="px-4 py-3 text-sm text-gray-500 text-center">
+                                                        No matching colleges found. Press Enter to create "{form.collegeName}"
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                        
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            💡 {loadingColleges 
+                                                ? 'Loading colleges from database...'
+                                                : colleges.length > 0 
+                                                    ? `${colleges.length} existing ${colleges.length === 1 ? 'college' : 'colleges'} available. Click field to see dropdown or type to filter/create new.`
+                                                    : 'No existing colleges. Type a name to create the first one.'
+                                            }
                                         </p>
-                                    )}
-                                </div>
+                                    </div>
 
-                                {/* Logo Management */}
-                                <div className="mt-6 flex flex-col md:flex-row items-start gap-6 p-4 bg-slate-50 rounded-2xl border border-slate-200">
-                                    <div className="flex-shrink-0">
-                                        <div className="w-24 h-24 rounded-2xl bg-white border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden group hover:border-indigo-400 transition-all">
-                                            {logoPreview ? (
-                                                <img src={logoPreview} alt="Logo Preview" className="w-full h-full object-contain" />
-                                            ) : (
-                                                <span className="text-3xl text-slate-300 group-hover:text-indigo-400 transition-colors">🖼️</span>
-                                            )}
+                                    {/* Logo Management */}
+                                    <div className="mt-6 flex flex-col md:flex-row items-start gap-6 p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                                        <div className="flex-shrink-0">
+                                            <div className="w-24 h-24 rounded-2xl bg-white border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden group hover:border-indigo-400 transition-all">
+                                                {logoPreview ? (
+                                                    <img src={logoPreview} alt="Logo Preview" className="w-full h-full object-contain" />
+                                                ) : (
+                                                    <span className="text-3xl text-slate-300 group-hover:text-indigo-400 transition-colors">🖼️</span>
+                                                )}
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div className="flex-1 space-y-2">
-                                        <h3 className="text-sm font-bold text-slate-800">College Logo</h3>
-                                        <p className="text-xs text-slate-500">
-                                            {logoPreview 
-                                                ? "Logo found or uploaded. You can replace it if needed." 
-                                                : "No logo provided. Please upload a logo for this college."}
-                                        </p>
-                                        <div className="flex items-center gap-3">
-                                            <label className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer shadow-sm transition-all">
-                                                {logoPreview ? 'Replace Logo' : 'Upload Logo'}
-                                                <input
-                                                    type="file"
-                                                    className="hidden"
-                                                    accept="image/*"
-                                                    onChange={handleLogoUpload}
-                                                />
-                                            </label>
-                                            {logoPreview && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setLogoPreview(null)}
-                                                    className="px-4 py-2 text-xs font-bold text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                                                >
-                                                    Remove
-                                                </button>
-                                            )}
+                                        <div className="flex-1 space-y-2">
+                                            <h3 className="text-sm font-bold text-slate-800">College Logo</h3>
+                                            <p className="text-xs text-slate-500">
+                                                {logoPreview 
+                                                    ? "Logo found or uploaded. You can replace it if needed." 
+                                                    : "No logo provided. Please upload a logo for this college."}
+                                            </p>
+                                            <div className="flex items-center gap-3">
+                                                <label className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer shadow-sm transition-all">
+                                                    {logoPreview ? 'Replace Logo' : 'Upload Logo'}
+                                                    <input
+                                                        type="file"
+                                                        className="hidden"
+                                                        accept="image/*"
+                                                        onChange={handleLogoUpload}
+                                                    />
+                                                </label>
+                                                {logoPreview && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setLogoPreview(null)}
+                                                        className="px-4 py-2 text-xs font-bold text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                                    >
+                                                        Remove
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
+                            )}
 
                             {/* Additional Information for Students */}
                             {form.role === 'STUDENT' && (

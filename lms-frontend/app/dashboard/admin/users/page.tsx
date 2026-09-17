@@ -135,12 +135,23 @@ export default function AdminUsersPage() {
                                             <td className="py-4 pr-4 role-text-muted text-sm">
                                                 {new Date(u.createdAt).toISOString().slice(0, 10)}
                                             </td>
-                                            <td className="py-4" onClick={(e) => e.stopPropagation()}>
-                                                <button onClick={() => handleDelete(u.id)}
-                                                    className="px-3 py-1 rounded-lg text-xs font-medium transition-colors hover:bg-red-500/30"
-                                                    style={{ background: 'rgba(239,68,68,0.15)', color: '#fca5a5', border: '1px solid rgba(239,68,68,0.3)' }}>
-                                                    Delete
-                                                </button>
+                                            <td className="py-4 text-right pr-2" onClick={(e) => e.stopPropagation()}>
+                                                <div className="flex items-center justify-end gap-1.5">
+                                                    <button
+                                                        onClick={() => handleViewUser(u.id)}
+                                                        className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/20 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-white/10 transition-all flex items-center gap-1"
+                                                        title="View Profile"
+                                                    >
+                                                        👁️ View
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(u.id)}
+                                                        className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 hover:bg-rose-500 hover:text-white transition-all flex items-center gap-1"
+                                                        title="Delete User"
+                                                    >
+                                                        🗑️ Delete
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}

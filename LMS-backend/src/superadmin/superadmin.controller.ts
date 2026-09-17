@@ -192,21 +192,140 @@ export class SuperadminController {
 
   @Get('users/:id')
   async getUserById(@Param('id', ParseIntPipe) id: number) {
-    return this.userRepo.findOne({
+    const user = await this.userRepo.findOne({
       where: { id },
-      select: [
-        'id',
-        'name',
-        'email',
-        'role',
-        'collegeId',
-        'collegeName',
-        'isActive',
-        'lastLoginAt',
-        'createdAt',
-        'updatedAt',
-      ],
     });
+    if (!user) throw new NotFoundException('User not found');
+
+    const { passwordHash, ...safeUser } = user;
+
+    let stats: any = {};
+
+    if (user.role === UserRole.QUESTION_CREATOR) {
+      const [total, approved, pending, rejected, draft] = await Promise.all([
+        this.questionRepo.count({ where: { createdBy: user.id } }),
+        this.questionRepo.count({ where: { createdBy: user.id, status: QuestionStatus.APPROVED } }),
+        this.questionRepo.count({ where: { createdBy: user.id, status: QuestionStatus.PENDING_APPROVAL } }),
+        this.questionRepo.count({ where: { createdBy: user.id, status: QuestionStatus.REJECTED } }),
+        this.questionRepo.count({ where: { createdBy: user.id, status: QuestionStatus.DRAFT } }),
+      ]);
+      const deleted = await this.auditRepo.count({
+        where: { action: 'QUESTION_DELETED', targetId: user.id },
+      }).catch(() => 0);
+
+      stats = {
+        totalQuestions: total,
+        approvedQuestions: approved,
+        pendingQuestions: pending,
+        rejectedQuestions: rejected,
+        draftQuestions: draft,
+        deletedQuestions: deleted,
+      };
+    } else if (user.role === UserRole.CONTENT_CREATOR || user.role === UserRole.INSTRUCTOR) {
+      const [totalCourses, approvedCourses, pendingCourses, rejectedCourses, draftCourses] = await Promise.all([
+        this.courseRepo.count({ where: { instructorId: user.id } }),
+        this.courseRepo.count({ where: { instructorId: user.id, status: CourseStatus.APPROVED } }),
+        this.courseRepo.count({ where: { instructorId: user.id, status: CourseStatus.PENDING_APPROVAL } }),
+        this.courseRepo.count({ where: { instructorId: user.id, status: CourseStatus.REJECTED } }),
+        this.courseRepo.count({ where: { instructorId: user.id, status: CourseStatus.DRAFT } }),
+      ]);
+      stats = {
+        totalCourses,
+        approvedCourses,
+        pendingCourses,
+        rejectedCourses,
+        draftCourses,
+      };
+    } else if (user.role === UserRole.STUDENT) {
+      const totalEnrollments = await this.enrollRepo.count({ where: { studentId: user.id } });
+      stats = {
+        totalEnrollments,
+      };
+    }
+
+    return {
+      ...safeUser,
+      stats,
+    };
+  }
+
+  @Put('users/:id')
+  async updateUser(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: any,
+    @Request() req: any,
+  ) {
+    const user = await this.userRepo.findOne({ where: { id } });
+    if (!user) throw new NotFoundException('User not found');
+
+    const updateData: any = {};
+    if (dto.name !== undefined) updateData.name = dto.name;
+    if (dto.email !== undefined) updateData.email = dto.email;
+    if (dto.role !== undefined) updateData.role = dto.role;
+    if (dto.isActive !== undefined) updateData.isActive = dto.isActive;
+
+    // College update
+    if (dto.role === UserRole.QUESTION_CREATOR || dto.role === UserRole.CONTENT_CREATOR) {
+      updateData.collegeId = null;
+      updateData.collegeName = null;
+    } else if (dto.collegeName !== undefined) {
+      if (dto.collegeName && dto.collegeName.trim()) {
+        let college = await this.collegeRepo.findOne({
+          where: { name: dto.collegeName.trim() },
+        });
+        if (!college) {
+          college = this.collegeRepo.create({
+            name: dto.collegeName.trim(),
+            createdBy: req.user.sub,
+            active: true,
+          });
+          await this.collegeRepo.save(college);
+        }
+        updateData.collegeId = college.id;
+        updateData.collegeName = college.name;
+      } else {
+        updateData.collegeId = null;
+        updateData.collegeName = null;
+      }
+    }
+
+    // Student fields
+    if (dto.mobileNumber !== undefined) updateData.mobileNumber = dto.mobileNumber;
+    if (dto.country !== undefined) updateData.country = dto.country;
+    if (dto.state !== undefined) updateData.state = dto.state;
+    if (dto.course !== undefined) updateData.course = dto.course;
+    if (dto.branch !== undefined) updateData.branch = dto.branch;
+    if (dto.pursuingYear !== undefined) updateData.pursuingYear = dto.pursuingYear ? parseInt(dto.pursuingYear) : null;
+    if (dto.semester !== undefined) updateData.semester = dto.semester ? parseInt(dto.semester) : null;
+    if (dto.registrationNumber !== undefined) updateData.registrationNumber = dto.registrationNumber;
+
+    // Optional password reset
+    if (dto.password && dto.password.trim().length >= 6) {
+      const bcrypt = require('bcrypt');
+      updateData.passwordHash = await bcrypt.hash(dto.password.trim(), 10);
+    }
+
+    await this.userRepo.update(id, updateData);
+
+    // Audit log
+    const audit = this.auditRepo.create({
+      actorId: req.user.sub,
+      actorName: req.user.name || req.user.email,
+      actorRole: req.user.role,
+      action: 'USER_UPDATED',
+      targetType: 'User',
+      targetId: id,
+      targetName: user.name,
+      details: JSON.stringify({ updatedFields: Object.keys(updateData) }),
+    });
+    await this.auditRepo.save(audit);
+
+    const updatedUser = await this.userRepo.findOne({ where: { id } });
+    const { passwordHash: _, ...result } = updatedUser!;
+    return {
+      message: 'User updated successfully',
+      user: result,
+    };
   }
 
   @Put('users/:id/role')
@@ -476,6 +595,41 @@ export class SuperadminController {
     });
   }
 
+  private async generateQuestionNumber(
+    type: string,
+  ): Promise<string> {
+    const prefix = type; // MCQ, FIB, MQ, JC, PQ, OP
+
+    const lastQuestion = await this.questionRepo
+      .createQueryBuilder('q')
+      .where('q.type = :type', { type })
+      .andWhere('q.questionNumber IS NOT NULL')
+      .orderBy('q.id', 'DESC')
+      .getOne();
+
+    let nextNum = 1;
+    if (lastQuestion && lastQuestion.questionNumber) {
+      const numericPart = lastQuestion.questionNumber.replace(prefix, '');
+      const lastNum = parseInt(numericPart, 10);
+      if (!isNaN(lastNum)) {
+        nextNum = lastNum + 1;
+      }
+    }
+
+    let numStr = String(nextNum).padStart(4, '0');
+    let finalCode = `${prefix}${numStr}`;
+
+    let exists = await this.questionRepo.findOne({ where: { questionNumber: finalCode } });
+    while (exists) {
+      nextNum++;
+      numStr = String(nextNum).padStart(4, '0');
+      finalCode = `${prefix}${numStr}`;
+      exists = await this.questionRepo.findOne({ where: { questionNumber: finalCode } });
+    }
+
+    return finalCode;
+  }
+
   @Put('questions/:id/approve')
   async approveQuestion(
     @Param('id', ParseIntPipe) id: number,
@@ -483,12 +637,17 @@ export class SuperadminController {
   ) {
     const question = await this.questionRepo.findOne({ where: { id } });
     if (!question) throw new NotFoundException('Question not found');
+    let questionNumber = question.questionNumber;
+    if (!questionNumber) {
+      questionNumber = await this.generateQuestionNumber(question.type);
+    }
     await this.questionRepo.update(id, {
       status: QuestionStatus.APPROVED,
+      questionNumber,
       approvedBy: req.user.sub,
       rejectionReason: undefined,
     });
-    return { success: true, message: 'Question approved successfully' };
+    return { success: true, questionNumber, message: 'Question approved successfully' };
   }
 
   @Put('questions/:id/reject')

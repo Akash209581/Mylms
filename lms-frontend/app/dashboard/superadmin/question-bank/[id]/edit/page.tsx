@@ -291,7 +291,7 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
                     </button>
                     <div>
                         <h1 className="text-2xl font-bold role-text-primary">Edit Question</h1>
-                        <p className="text-gray-400 text-sm">Update the question details for <span className="text-primary-400 font-mono">{form.questionNumber}</span></p>
+                        <p className="text-gray-400 text-sm">Update the question details {form.questionNumber ? <>for <span className="text-primary-400 font-mono">{form.questionNumber}</span></> : <span className="text-amber-400">(Pending Approval)</span>}</p>
                     </div>
                 </div>
 

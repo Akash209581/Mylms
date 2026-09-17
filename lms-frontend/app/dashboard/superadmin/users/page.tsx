@@ -1,14 +1,15 @@
 'use client'
 
 import { apiFetch } from '@/lib/apiFetch'
-
 import { API_URL } from '@/lib/api'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
 import UserDetailModal from '@/components/UserDetailModal'
+import UserEditModal from '@/components/UserEditModal'
 import { getAuthHeaders } from '@/lib/authHeaders'
+import { toast } from '@/lib/toast'
 
 export default function SuperAdminUsersPage() {
     const router = useRouter()
@@ -17,6 +18,7 @@ export default function SuperAdminUsersPage() {
     const [search, setSearch] = useState('')
     const [filterRole, setFilterRole] = useState('ALL')
     const [selectedUser, setSelectedUser] = useState<any>(null)
+    const [editingUser, setEditingUser] = useState<any>(null)
     const [loadingDetails, setLoadingDetails] = useState(false)
 
     useEffect(() => {
@@ -45,30 +47,71 @@ export default function SuperAdminUsersPage() {
             if (response.ok) {
                 const userData = await response.json()
                 setSelectedUser(userData)
+            } else {
+                toast.error('Failed to load user details')
             }
         } catch (error) {
-            console.error('Failed to fetch user details:', error)
+            toast.error('Failed to fetch user details')
         } finally {
             setLoadingDetails(false)
         }
     }
 
+    const handleEditUser = async (userId: number) => {
+        setLoadingDetails(true)
+        try {
+            const response = await apiFetch(`${API_URL}/superadmin/users/${userId}`, {
+                credentials: 'include',
+                headers: getAuthHeaders(),
+            })
+            if (response.ok) {
+                const userData = await response.json()
+                setEditingUser(userData)
+            } else {
+                toast.error('Failed to load user for editing')
+            }
+        } catch (error) {
+            toast.error('Failed to fetch user details')
+        } finally {
+            setLoadingDetails(false)
+        }
+    }
+
+    const handleUserUpdated = (updatedUser: any) => {
+        setUsers(prev => prev.map(u => u.id === updatedUser.id ? { ...u, ...updatedUser } : u))
+        toast.success(`User ${updatedUser.name} updated successfully!`)
+    }
+
     const handleRoleChange = async (userId: number, newRole: string) => {
-        await apiFetch(`${API_URL}/superadmin/users/${userId}/role`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ role: newRole }),
-        })
-        setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u))
+        try {
+            await apiFetch(`${API_URL}/superadmin/users/${userId}/role`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ role: newRole }),
+            })
+            setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u))
+            toast.success('Role updated successfully')
+        } catch (e) {
+            toast.error('Failed to update role')
+        }
     }
 
     const handleDelete = async (userId: number) => {
-        if (!confirm('Are you sure you want to delete this user?')) return
-        await apiFetch(`${API_URL}/superadmin/users/${userId}`, {
-            method: 'DELETE', credentials: 'include'
-        })
-        setUsers(prev => prev.filter(u => u.id !== userId))
+        if (!confirm('Are you sure you want to permanently delete this user?')) return
+        try {
+            const res = await apiFetch(`${API_URL}/superadmin/users/${userId}`, {
+                method: 'DELETE', credentials: 'include'
+            })
+            if (res.ok) {
+                setUsers(prev => prev.filter(u => u.id !== userId))
+                toast.success('User deleted successfully')
+            } else {
+                toast.error('Failed to delete user')
+            }
+        } catch (e) {
+            toast.error('Error deleting user')
+        }
     }
 
     const filtered = users.filter(u => {
@@ -97,7 +140,7 @@ export default function SuperAdminUsersPage() {
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold role-text-primary mb-1">User Management</h1>
                     <p className="role-text-muted">
-                        Manage all platform users and their roles across all colleges
+                        Manage all platform users, view activity & performance statistics, and update user credentials
                     </p>
                 </div>
 
@@ -156,9 +199,13 @@ export default function SuperAdminUsersPage() {
                             <table className="role-data-table w-full">
                                 <thead>
                                     <tr className="border-b" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
-                                        {['#', 'User', 'Email', 'Role', 'College', 'Joined', 'Actions'].map(h => (
-                                            <th key={h} className="text-left text-xs font-semibold role-text-muted pb-3 pr-4">{h}</th>
-                                        ))}
+                                        <th className="text-left text-xs font-semibold role-text-muted pb-3 pr-4">#</th>
+                                        <th className="text-left text-xs font-semibold role-text-muted pb-3 pr-4">User</th>
+                                        <th className="text-left text-xs font-semibold role-text-muted pb-3 pr-4">Email</th>
+                                        <th className="text-left text-xs font-semibold role-text-muted pb-3 pr-4">Role</th>
+                                        <th className="text-left text-xs font-semibold role-text-muted pb-3 pr-4">College</th>
+                                        <th className="text-left text-xs font-semibold role-text-muted pb-3 pr-4">Joined</th>
+                                        <th className="text-right text-xs font-semibold role-text-muted pb-3 pr-2">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -192,18 +239,41 @@ export default function SuperAdminUsersPage() {
                                                 </select>
                                             </td>
                                             <td className="py-4 pr-4 role-text-muted text-sm">
-                                                {u.collegeName || '—'}
+                                                {u.role === 'QUESTION_CREATOR' || u.role === 'CONTENT_CREATOR' ? (
+                                                    <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                                        🌐 Global Platform
+                                                    </span>
+                                                ) : (
+                                                    u.collegeName || '—'
+                                                )}
                                             </td>
                                             <td className="py-4 pr-4 role-text-muted text-sm">
                                                 {new Date(u.createdAt).toISOString().slice(0, 10)}
                                             </td>
-                                            <td className="py-4" onClick={(e) => e.stopPropagation()}>
-                                                <button
-                                                    onClick={() => handleDelete(u.id)}
-                                                    className="px-3 py-1 rounded-lg text-xs font-medium transition-colors hover:opacity-80"
-                                                    style={{ background: 'rgba(239,68,68,0.15)', color: '#fca5a5', border: '1px solid rgba(239,68,68,0.3)' }}>
-                                                    Delete
-                                                </button>
+                                            <td className="py-4 text-right pr-2" onClick={(e) => e.stopPropagation()}>
+                                                <div className="flex items-center justify-end gap-1.5">
+                                                    <button
+                                                        onClick={() => handleViewUser(u.id)}
+                                                        className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/20 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-white/10 transition-all flex items-center gap-1"
+                                                        title="View Profile & Stats"
+                                                    >
+                                                        👁️ View
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleEditUser(u.id)}
+                                                        className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30 hover:bg-blue-500 hover:text-white transition-all flex items-center gap-1"
+                                                        title="Edit User Profile"
+                                                    >
+                                                        ✏️ Edit
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(u.id)}
+                                                        className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 hover:bg-rose-500 hover:text-white transition-all flex items-center gap-1"
+                                                        title="Delete User"
+                                                    >
+                                                        🗑️ Delete
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
@@ -227,6 +297,19 @@ export default function SuperAdminUsersPage() {
                     onClose={() => setSelectedUser(null)}
                     canDelete={true}
                     onDelete={handleDelete}
+                    onEdit={(u) => {
+                        setSelectedUser(null)
+                        setEditingUser(u)
+                    }}
+                />
+            )}
+
+            {/* User Edit Modal */}
+            {editingUser && (
+                <UserEditModal
+                    user={editingUser}
+                    onClose={() => setEditingUser(null)}
+                    onSuccess={handleUserUpdated}
                 />
             )}
 

@@ -147,10 +147,11 @@ export class CreateUserDto {
 
 // DTO for SUPERADMIN to create users with college name (auto-creates college if doesn't exist)
 export class SuperAdminCreateUserDto extends CreateUserDto {
-  @IsString()
+  @IsOptional()
+  @ValidateIf((o) => o.role !== 'QUESTION_CREATOR' && o.role !== 'CONTENT_CREATOR')
   @IsNotEmpty({ message: 'College/University name is required' })
   @MaxLength(200, { message: 'College name must not exceed 200 characters' })
-  collegeName: string;
+  collegeName?: string;
 
   @IsOptional()
   @IsString()

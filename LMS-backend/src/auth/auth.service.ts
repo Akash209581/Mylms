@@ -145,25 +145,28 @@ export class AuthService {
     // Determine college ID based on creator role
     let collegeId: number | undefined;
     let collegeName: string | undefined;
+    const isGlobalRole = dto.role === 'QUESTION_CREATOR' || dto.role === 'CONTENT_CREATOR';
     
     if (creatorRole === UserRole.ADMIN || creatorRole === UserRole.INSTRUCTOR) {
-      // ADMIN and INSTRUCTOR: automatically inherit college from creator
-      if (!creatorCollegeId) {
-        throw new BadRequestException(
-          `${creatorRole} account is not associated with any college. Please contact SUPERADMIN to assign you to a college first.`
-        );
-      }
-      collegeId = creatorCollegeId;
-      collegeName = creatorCollegeName;
-      
-      // Validate college exists
-      const college = await this.collegeRepository.findOne({
-        where: { id: collegeId },
-      });
-      if (!college) {
-        throw new ConflictException(
-          `Your assigned college (ID: ${collegeId}) no longer exists in the system. Please contact SUPERADMIN.`
-        );
+      if (!isGlobalRole) {
+        // ADMIN and INSTRUCTOR: automatically inherit college from creator
+        if (!creatorCollegeId) {
+          throw new BadRequestException(
+            `${creatorRole} account is not associated with any college. Please contact SUPERADMIN to assign you to a college first.`
+          );
+        }
+        collegeId = creatorCollegeId;
+        collegeName = creatorCollegeName;
+        
+        // Validate college exists
+        const college = await this.collegeRepository.findOne({
+          where: { id: collegeId },
+        });
+        if (!college) {
+          throw new ConflictException(
+            `Your assigned college (ID: ${collegeId}) no longer exists in the system. Please contact SUPERADMIN.`
+          );
+        }
       }
     } else if (creatorRole === UserRole.SUPERADMIN) {
       // SUPERADMIN should use SuperAdminCreateUserDto endpoint
@@ -180,7 +183,7 @@ export class AuthService {
       passwordHash,
       role: dto.role as UserRole,
       collegeId: collegeId,
-      collegeName: collegeName, // Automatically inherit college name from creator
+      collegeName: collegeName, // Automatically inherit college name from creator (or undefined for global roles)
       // Student fields (optional)
       mobileNumber: dto.mobileNumber,
       country: dto.country,
@@ -228,24 +231,37 @@ export class AuthService {
       throw new BadRequestException('Invalid role. Must be ADMIN, INSTRUCTOR, STUDENT, QUESTION_CREATOR, or CONTENT_CREATOR');
     }
 
-    // Find or create college by name
-    let college = await this.collegeRepository.findOne({
-      where: { name: dto.collegeName },
-    });
-    
-    if (!college) {
-      // Auto-create college if it doesn't exist
-      college = this.collegeRepository.create({
-        name: dto.collegeName,
-        createdBy: createdBy,
-        active: true,
-        logoUrl: dto.collegeLogo,
+    const isGlobalRole = dto.role === 'QUESTION_CREATOR' || dto.role === 'CONTENT_CREATOR';
+    let collegeId: number | undefined;
+    let collegeName: string | undefined;
+
+    if (!isGlobalRole) {
+      if (!dto.collegeName || !dto.collegeName.trim()) {
+        throw new BadRequestException('College/University name is required for ' + dto.role);
+      }
+
+      // Find or create college by name
+      let college = await this.collegeRepository.findOne({
+        where: { name: dto.collegeName.trim() },
       });
-      await this.collegeRepository.save(college);
-    } else if (dto.collegeLogo) {
-      // Update logo if provided and college exists
-      college.logoUrl = dto.collegeLogo;
-      await this.collegeRepository.save(college);
+      
+      if (!college) {
+        // Auto-create college if it doesn't exist
+        college = this.collegeRepository.create({
+          name: dto.collegeName.trim(),
+          createdBy: createdBy,
+          active: true,
+          logoUrl: dto.collegeLogo,
+        });
+        await this.collegeRepository.save(college);
+      } else if (dto.collegeLogo) {
+        // Update logo if provided and college exists
+        college.logoUrl = dto.collegeLogo;
+        await this.collegeRepository.save(college);
+      }
+
+      collegeId = college.id;
+      collegeName = college.name;
     }
 
     await this.checkPasswordBreached(dto.password);
@@ -255,8 +271,8 @@ export class AuthService {
       email: dto.email,
       passwordHash,
       role: dto.role as UserRole,
-      collegeId: college.id,
-      collegeName: college.name,
+      collegeId: collegeId,
+      collegeName: collegeName,
       // Student fields (optional)
       mobileNumber: dto.mobileNumber,
       country: dto.country,
@@ -271,7 +287,9 @@ export class AuthService {
 
     const { passwordHash: _, ...result } = user;
     return {
-      message: `${dto.role} account created successfully in ${college.name}`,
+      message: isGlobalRole
+        ? `${dto.role} account created successfully as Global Platform Role`
+        : `${dto.role} account created successfully in ${collegeName}`,
       user: result,
     };
   }
