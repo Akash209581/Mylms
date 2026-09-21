@@ -2,7 +2,10 @@
 import { API_URL } from '@/lib/api'
 import { useEffect, useState } from 'react'
 
+import { useRouter } from 'next/navigation'
+
 export default function DailyStreakDisplay() {
+    const router = useRouter()
     const [streak, setStreak] = useState<any>(null)
     const [loading, setLoading] = useState(true)
 
@@ -33,7 +36,7 @@ export default function DailyStreakDisplay() {
             <h4 className="text-white font-bold text-lg mb-3 line-clamp-2 leading-snug">{streak.question?.questionText}</h4>
             <button
                 className="w-full mt-2 py-3 px-6 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-bold rounded-xl transition-all shadow-lg shadow-amber-500/20"
-                onClick={() => window.location.href = '/dashboard/student/streak'}
+                onClick={() => router.push('/dashboard/student/streak')}
             >
                 Solve Coding Challenge
             </button>

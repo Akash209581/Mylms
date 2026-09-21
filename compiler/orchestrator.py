@@ -55,21 +55,28 @@ def run_code(code, language, stdin):
         # Make the run script executable
         os.chmod(run_script_path, 0o755)
 
+        # Write stdin to file safely without shell interpolation injection
+        input_path = os.path.join(temp_dir, 'input.txt')
+        with open(input_path, 'w', encoding='utf-8') as f:
+            f.write(stdin or '')
+
         container = None
         try:
             container = client.containers.run(
                 image_name,
-                command=f'/bin/sh -c "echo \'{stdin}\' | timeout 30s /bin/sh /app/run.sh"',
+                command='/bin/sh -c "timeout 30s /bin/sh /app/run.sh < /app/input.txt"',
                 volumes={temp_dir: {'bind': '/app', 'mode': 'rw'}},
-                detach=True,
+                network_mode='none',  # Prevent sandbox network access / SSRF
+                pids_limit=50,        # Prevent fork bomb DoS
                 mem_limit='256m',
                 cpu_shares=1,
-                working_dir='/app'
+                working_dir='/app',
+                detach=True
             )
 
             result = container.wait(timeout=35)
-            stdout = container.logs(stdout=True, stderr=False).decode('utf-8')
-            stderr = container.logs(stdout=False, stderr=True).decode('utf-8')
+            stdout = container.logs(stdout=True, stderr=False).decode('utf-8', errors='replace')
+            stderr = container.logs(stdout=False, stderr=True).decode('utf-8', errors='replace')
             
             container.remove()
 

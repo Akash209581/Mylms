@@ -4,7 +4,9 @@ export const API_URL =
   process.env.NEXT_PUBLIC_API_URL || 
   (typeof window !== 'undefined' && window.location.hostname.includes('onrender.com') 
     ? 'https://lms-em7c.onrender.com'
-    : 'http://localhost:3003');
+    : (typeof window !== 'undefined' && (window.location.hostname === '160.187.169.41' || window.location.pathname.startsWith('/mmadastemlab'))
+      ? `${window.location.origin}/api`
+      : 'http://localhost:3003'));
 
 // Create axios instance with default config
 export const api = axios.create({

@@ -1,6 +1,10 @@
 /** @type {import('next').NextConfig} */
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH !== undefined
+    ? process.env.NEXT_PUBLIC_BASE_PATH
+    : '/mmadastemlab';
+
 const nextConfig = {
-    // output: 'export', // Disabled - Course Builder requires dynamic routes and API calls
+    ...(basePath ? { basePath, assetPrefix: basePath } : {}),
     images: {
         unoptimized: true,
     },

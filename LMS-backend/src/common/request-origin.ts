@@ -5,7 +5,7 @@ export function trustedOrigins(env: NodeJS.ProcessEnv = process.env): Set<string
   const local = env.NODE_ENV === 'production' ? [] : [3000, 3001, 3002].flatMap(port => [
     `http://localhost:${port}`, `http://127.0.0.1:${port}`,
   ]);
-  return new Set([...configured, ...local, 'https://lms-0-id5t.onrender.com']
+  return new Set([...configured, ...local, 'https://lms-0-id5t.onrender.com', 'https://160.187.169.41', 'http://160.187.169.41']
     .filter(Boolean).map(value => value!.trim()).filter(Boolean));
 }
 
