@@ -45,8 +45,8 @@ export const LANGUAGE_CONFIGS: Record<string, LanguageRunnerConfig> = {
     aliases: ['java'],
     image: 'java-compiler',
     sourceFile: 'Main.java',
-    compileCmd: 'javac Main.java',
-    runCmd: 'java Main',
+    compileCmd: 'javac -J-Xmx256m Main.java',
+    runCmd: 'java -Xmx256m -Xss512k -XX:+UseSerialGC Main',
   },
   python: {
     languageKey: 'python',
@@ -76,10 +76,10 @@ export function resolveLanguageConfig(lang: string): LanguageRunnerConfig | null
 }
 
 export const SANDBOX_LIMITS = {
-  MEMORY: '256m',
-  MEMORY_SWAP: '256m',
+  MEMORY: '512m',
+  MEMORY_SWAP: '512m',
   CPUS: '1.0',
-  PIDS_LIMIT: 64,
+  PIDS_LIMIT: 128,
   USER: '1000:1000',
   NETWORK: 'none',
   CAP_DROP: 'ALL',

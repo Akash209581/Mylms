@@ -68,8 +68,8 @@ def run_code(code, language, stdin):
                 command='/bin/sh -c "timeout 30s /bin/sh /app/run.sh < /app/input.txt"',
                 volumes={temp_dir: {'bind': '/app', 'mode': 'rw'}},
                 network_mode='none',  # Prevent sandbox network access / SSRF
-                pids_limit=50,        # Prevent fork bomb DoS
-                mem_limit='256m',
+                pids_limit=100,       # Prevent fork bomb DoS
+                mem_limit='512m',
                 cpu_shares=1,
                 working_dir='/app',
                 detach=True
@@ -108,9 +108,9 @@ fi
     elif language == 'java':
         return """
 #!/bin/sh
-javac Main.java
+javac -J-Xmx256m Main.java
 if [ $? -eq 0 ]; then
-    java Main
+    java -Xmx256m -Xss512k -XX:+UseSerialGC Main
 fi
 """
     elif language == 'python':

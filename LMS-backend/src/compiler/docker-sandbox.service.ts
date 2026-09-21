@@ -114,7 +114,7 @@ export class DockerSandboxService {
       '--security-opt', 'no-new-privileges',
       '--cap-drop', 'ALL',
       '--read-only',
-      '--tmpfs', '/tmp:rw,noexec,nosuid,size=16m',
+      '--tmpfs', '/tmp:rw,exec,nosuid,size=64m',
       '--env', 'HOME=/tmp',
       '--env', 'TMPDIR=/tmp',
       '-v', `${source}:/workspace:${mode}`,
