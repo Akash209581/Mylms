@@ -23,6 +23,7 @@ module.exports = {
       script: 'dist/main.js',
       env: {
         NODE_ENV: 'production',
+        NODE_OPTIONS: '--dns-result-order=ipv4first',
         PORT: 3003,
         UPLOADS_DIR: '/data/Mylms/LMS-backend/uploads',
         FRONTEND_URL: 'https://160.187.169.41',
