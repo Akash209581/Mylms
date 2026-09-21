@@ -53,13 +53,15 @@ export default function LoginPage() {
         }
     }
 
+    const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '/mmadastemlab'
+
     return (
         <div className="min-h-screen w-full relative flex items-center justify-center p-4 sm:p-6 lg:p-10 selection:bg-indigo-500 selection:text-white bg-[#f4f7fe] overflow-x-hidden">
             {/* Full Screen Ambient Reference Artwork Background */}
             <div 
                 className="absolute inset-0 bg-no-repeat bg-cover bg-left sm:bg-center pointer-events-none opacity-95 transition-opacity duration-700"
                 style={{
-                    backgroundImage: "url('/auth-bg-art.png')",
+                    backgroundImage: `url('${basePath}/auth-bg-art.png')`,
                     backgroundSize: 'cover',
                     backgroundPosition: 'left center'
                 }}
@@ -72,7 +74,7 @@ export default function LoginPage() {
             {/* Main Split-Screen Container */}
             <div className="relative z-10 w-full max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center min-h-[580px]">
                 
-                {/* Left Side: Learn Today, Lead Tomorrow Brand Message */}
+                {/* Left Side: Learn Today, Lead Tomorrow Brand Message & Visuals */}
                 <div className="lg:col-span-6 xl:col-span-7 flex flex-col justify-between self-stretch py-4 sm:py-8 lg:py-12 pl-2 sm:pl-6 lg:pl-10">
                     <div className="max-w-md">
                         <h1 className="text-3xl sm:text-4xl lg:text-[42px] font-extrabold text-[#111827] tracking-tight leading-[1.15]">
@@ -82,12 +84,32 @@ export default function LoginPage() {
                             Lead Tomorrow.
                         </h1>
                         <p className="text-[#64748b] text-sm sm:text-[15px] mt-4 font-normal leading-relaxed">
-                            Applied Stem labs is your space to learn,<br className="hidden sm:inline" /> grow, and achieve beyond limits.
+                            Applied STEM Labs is your space to learn, grow, and achieve beyond limits.
                         </p>
+
+                        {/* Feature Badges */}
+                        <div className="mt-8 flex flex-wrap gap-2.5">
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100 shadow-sm">
+                                🚀 Instant Practice IDE
+                            </span>
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-100 shadow-sm">
+                                ⚡ Real-Time Auto Grading
+                            </span>
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-100 shadow-sm">
+                                🎓 Academic Certifications
+                            </span>
+                        </div>
                     </div>
 
-                    {/* Spacer to let the 3D artwork in the background shine through */}
-                    <div className="hidden lg:block h-64 xl:h-72 w-full pointer-events-none" />
+                    {/* 3D Illustration Graphic */}
+                    <div className="hidden lg:flex items-center justify-start mt-6 pointer-events-none">
+                        <img
+                            src={`${basePath}/auth-illustration.png`}
+                            alt="STEM Learning"
+                            className="max-h-60 xl:max-h-72 object-contain drop-shadow-xl select-none"
+                            onError={(e) => { (e.target as HTMLElement).style.display = 'none' }}
+                        />
+                    </div>
                 </div>
 
                 {/* Right Side: Auth Card */}
