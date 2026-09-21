@@ -24,14 +24,12 @@ import {
 import { api } from '@/lib/api'
 import { CP_STARTERS } from '@/lib/starter-code'
 
-const MonacoEditor = dynamic(() => import('@monaco-editor/react'), {
-  ssr: false,
-  loading: () => (
-    <div className="flex items-center justify-center h-full bg-[#1e1e1e] text-[var(--text-muted)] font-mono text-sm">
-      Loading editor…
-    </div>
-  ),
-})
+import CodeMirror from '@uiw/react-codemirror'
+import { sublime } from '@uiw/codemirror-theme-sublime'
+import { python } from '@codemirror/lang-python'
+import { java } from '@codemirror/lang-java'
+import { cpp } from '@codemirror/lang-cpp'
+import { javascript } from '@codemirror/lang-javascript'
 
 interface LanguageOption {
   key: string
@@ -626,34 +624,34 @@ export default function StudentIdePage() {
             </span>
             <span>{code.split('\n').length} lines</span>
           </div>
-          <div className="flex-1 min-h-0 bg-[#1e1e1e]">
+          <div className="flex-1 min-h-0 bg-[#1e1e1e] overflow-auto">
             {hydrated && (
-            <MonacoEditor
-              height="100%"
-              language={currentLang.monacoLang}
-              value={code}
-              theme="vs-dark"
-              onChange={handleCodeChange}
-              onMount={(editor) => { editorRef.current = editor }}
-              options={{
-                fontSize,
-                fontFamily: "Consolas, 'Courier New', monospace",
-                minimap: { enabled: false },
-                scrollBeyondLastLine: false,
-                automaticLayout: true,
-                tabSize: 4,
-                wordWrap: 'on',
-                formatOnPaste: false,
-                formatOnType: false,
-                cursorBlinking: 'solid',
-                cursorSmoothCaretAnimation: 'off',
-                smoothScrolling: false,
-                lineNumbers: 'on',
-                renderWhitespace: 'none',
-                overviewRulerBorder: false,
-                padding: { top: 10, bottom: 10 },
-              }}
-            />
+              <CodeMirror
+                value={code}
+                height="100%"
+                theme={sublime}
+                extensions={
+                  selectedLangKey === 'python' ? [python()] :
+                  selectedLangKey === 'java' ? [java()] :
+                  selectedLangKey === 'c' || selectedLangKey === 'cpp' ? [cpp()] :
+                  selectedLangKey === 'javascript' ? [javascript()] : [python()]
+                }
+                onChange={(val) => handleCodeChange(val)}
+                basicSetup={{
+                  lineNumbers: true,
+                  highlightActiveLineGutter: true,
+                  foldGutter: true,
+                  bracketMatching: true,
+                  closeBrackets: true,
+                  autocompletion: true,
+                  highlightActiveLine: true,
+                }}
+                style={{
+                  fontSize: `${fontSize}px`,
+                  fontFamily: "Consolas, 'Courier New', monospace",
+                  height: '100%',
+                }}
+              />
             )}
           </div>
         </section>
