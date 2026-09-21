@@ -63,7 +63,7 @@ import { ExamCodingSubmission } from './entities/exam-coding-submission.entity';
       ssl: 
         process.env.NODE_ENV === 'production' || 
         (process.env.DATABASE_URL && !process.env.DATABASE_URL.includes('localhost'))
-          ? { rejectUnauthorized: true }
+          ? { rejectUnauthorized: false }
           : false,
       entities: [
         User,

@@ -1,3 +1,10 @@
+import dns from 'node:dns';
+try {
+  dns.setDefaultResultOrder('ipv4first');
+} catch (e) {
+  // Ignore if not supported in older Node
+}
+
 import { trustedOrigins, protectMutationOrigin } from './common/request-origin';
 import { ResponsePrivacyInterceptor } from './common/response-privacy.interceptor';
 import { NestFactory } from '@nestjs/core';
