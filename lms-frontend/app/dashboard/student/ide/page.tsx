@@ -270,16 +270,31 @@ function tabClass(active: boolean) {
   }`
 }
 
+function codeRequiresInput(source: string, lang: string): boolean {
+  if (!source) return false
+  const patterns: Record<string, RegExp[]> = {
+    python: [/\binput\s*\(/, /\bsys\.stdin\b/],
+    c: [/\bscanf\s*\(/, /\bgetchar\s*\(/, /\bgets\s*\(/, /\bfgets\s*\(/, /\bread\s*\(/],
+    cpp: [/\bcin\s*>>/, /\bgetline\s*\(/, /\bscanf\s*\(/],
+    java: [/\bScanner\b/, /\bBufferedReader\b/, /\bSystem\.in\b/],
+    javascript: [/\breadFileSync\s*\(\s*0/, /\breadline\b/, /\bprocess\.stdin\b/],
+  }
+  const regexes = patterns[lang] || [/input\s*\(/, /scanf\s*\(/, /cin\s*>>/]
+  return regexes.some((re) => re.test(source))
+}
+
 export default function StudentIdePage() {
   const [selectedLangKey, setSelectedLangKey] = useState('python')
   const [code, setCode] = useState(CP_STARTERS.python)
-  const [stdin, setStdin] = useState('21')
+  const [stdin, setStdin] = useState('')
   const [hydrated, setHydrated] = useState(false)
   const [activeTab, setActiveTab] = useState<'output' | 'input' | 'challenges' | 'reference'>('output')
   const [fontSize, setFontSize] = useState(14)
   const [isRunning, setIsRunning] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [showInputModal, setShowInputModal] = useState(false)
+  const [modalInputVal, setModalInputVal] = useState('')
   const [outputResult, setOutputResult] = useState<{
     stdout?: string
     stderr?: string
@@ -294,6 +309,7 @@ export default function StudentIdePage() {
   const currentLang = LANGUAGES.find((l) => l.key === selectedLangKey) || LANGUAGES[0]
   const containerRef = useRef<HTMLDivElement>(null)
   const editorRef = useRef<{ getValue: () => string } | null>(null)
+  const inputModalRef = useRef<HTMLTextAreaElement>(null)
 
   const showToast = useCallback((msg: string) => {
     setToastMsg(msg)
@@ -309,7 +325,7 @@ export default function StudentIdePage() {
     const savedCode = localStorage.getItem(`student_ide_code_${selectedLangKey}`)
     const savedStdin = localStorage.getItem(`student_ide_stdin_${selectedLangKey}`)
     setCode(savedCode || currentLang.defaultCode)
-    setStdin(savedStdin || (selectedLangKey === 'python' ? '21' : ''))
+    setStdin(savedStdin || '')
     localStorage.setItem('student_ide_selected_language', selectedLangKey)
     setHydrated(true)
   }, [selectedLangKey, currentLang.defaultCode])
@@ -368,7 +384,7 @@ export default function StudentIdePage() {
   const runState = useRef({ code, stdin, selectedLangKey, isRunning })
   runState.current = { code, stdin, selectedLangKey, isRunning }
 
-  const handleRunCode = async () => {
+  const executeCodeWithStdin = async (finalStdin: string) => {
     const snap = runState.current
     const source = (editorRef.current?.getValue?.() || snap.code || '').trim() ? (editorRef.current?.getValue?.() || snap.code) : ''
     const language = snap.selectedLangKey || 'python'
@@ -382,7 +398,7 @@ export default function StudentIdePage() {
     setOutputResult({ status: 'RUNNING' })
     const startTime = Date.now()
     try {
-      const res = await api.post('/compiler/run', { language, code: source, stdin: snap.stdin || '' })
+      const res = await api.post('/compiler/run', { language, code: source, stdin: finalStdin })
       const data = res.data
       if (data.status === 'QUEUED' || data.status === 'RUNNING') {
         const jobId = data.jobId
@@ -414,6 +430,30 @@ export default function StudentIdePage() {
     } finally {
       setIsRunning(false)
     }
+  }
+
+  const handleRunCode = async () => {
+    const snap = runState.current
+    const source = (editorRef.current?.getValue?.() || snap.code || '').trim() ? (editorRef.current?.getValue?.() || snap.code) : ''
+    const language = snap.selectedLangKey || 'python'
+
+    // If code expects input and no stdin has been provided yet, open prompt modal
+    if (codeRequiresInput(source, language) && (!snap.stdin || !snap.stdin.trim())) {
+      setModalInputVal('')
+      setShowInputModal(true)
+      setTimeout(() => inputModalRef.current?.focus(), 100)
+      return
+    }
+
+    await executeCodeWithStdin(snap.stdin || '')
+  }
+
+  const handleModalSubmit = (useInput: boolean) => {
+    const chosenInput = useInput ? modalInputVal : ''
+    setStdin(chosenInput)
+    localStorage.setItem(`student_ide_stdin_${selectedLangKey}`, chosenInput)
+    setShowInputModal(false)
+    executeCodeWithStdin(chosenInput)
   }
 
   const runRef = useRef(handleRunCode)
@@ -452,6 +492,68 @@ export default function StudentIdePage() {
       {toastMsg && (
         <div className="absolute top-3 right-4 z-50 px-3 py-1.5 rounded-md border border-[var(--border)] bg-[var(--bg-surface)] text-xs text-[var(--text-primary)]">
           {toastMsg}
+        </div>
+      )}
+
+      {/* Interactive Input (stdin) Prompt Modal */}
+      {showInputModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl shadow-2xl p-5 flex flex-col gap-4">
+            <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
+              <div className="flex items-center gap-2">
+                <span className="p-2 rounded-lg bg-amber-500/10 text-amber-500 font-bold">
+                  <Terminal className="w-4 h-4" />
+                </span>
+                <div>
+                  <h3 className="text-sm font-bold text-[var(--text-primary)]">Program Input Required</h3>
+                  <p className="text-[11px] text-[var(--text-muted)]">Your code uses standard input (e.g. input() / scanf / cin)</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowInputModal(false)}
+                className="text-[var(--text-muted)] hover:text-[var(--text-primary)] p-1 text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-[var(--text-secondary)]">Enter input values (stdin):</label>
+              <textarea
+                ref={inputModalRef}
+                value={modalInputVal}
+                onChange={(e) => setModalInputVal(e.target.value)}
+                onKeyDown={(e) => {
+                  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                    e.preventDefault()
+                    handleModalSubmit(true)
+                  }
+                }}
+                placeholder="e.g. 4 or 10 20"
+                rows={4}
+                className="w-full p-3 rounded-lg border border-[var(--border)] bg-[var(--bg-raised)] font-mono text-xs text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+              />
+              <span className="text-[10px] text-[var(--text-muted)]">Tip: Press Ctrl+Enter or click Run Program to execute</span>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[var(--border)]">
+              <button
+                type="button"
+                onClick={() => handleModalSubmit(false)}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+              >
+                Run Without Input
+              </button>
+              <button
+                type="button"
+                onClick={() => handleModalSubmit(true)}
+                className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-[var(--accent)] text-white hover:opacity-90 shadow-md"
+              >
+                Run Program (Output)
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
