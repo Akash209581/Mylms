@@ -1,9 +1,13 @@
 import dns from 'node:dns';
+import net from 'node:net';
 try {
   dns.setDefaultResultOrder('ipv4first');
-} catch (e) {
-  // Ignore if not supported in older Node
-}
+} catch (e) {}
+try {
+  if (typeof (net as any).setDefaultAutoSelectFamily === 'function') {
+    (net as any).setDefaultAutoSelectFamily(false);
+  }
+} catch (e) {}
 
 import { trustedOrigins, protectMutationOrigin } from './common/request-origin';
 import { ResponsePrivacyInterceptor } from './common/response-privacy.interceptor';

@@ -21,6 +21,8 @@ module.exports = {
       name: 'lms-backend',
       cwd: '/data/Mylms/LMS-backend',
       script: 'dist/main.js',
+      exec_mode: 'fork',
+      node_args: '--dns-result-order=ipv4first',
       env: {
         NODE_ENV: 'production',
         NODE_OPTIONS: '--dns-result-order=ipv4first',
