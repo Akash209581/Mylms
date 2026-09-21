@@ -66,11 +66,17 @@ export class DockerSandboxService {
   prepareWorkspace(config: LanguageRunnerConfig, code: string): string {
     const tempBase = path.join(os.tmpdir(), 'lms-sandbox');
     if (!fs.existsSync(tempBase)) {
-      fs.mkdirSync(tempBase, { recursive: true });
+      fs.mkdirSync(tempBase, { recursive: true, mode: 0o777 });
     }
+    try { fs.chmodSync(tempBase, 0o777); } catch {}
+
     const jobDir = fs.mkdtempSync(path.join(tempBase, 'job-'));
+    try { fs.chmodSync(jobDir, 0o777); } catch {}
+
     const filePath = path.join(jobDir, config.sourceFile);
-    fs.writeFileSync(filePath, code, { encoding: 'utf-8', mode: 0o644 });
+    fs.writeFileSync(filePath, code, { encoding: 'utf-8', mode: 0o666 });
+    try { fs.chmodSync(filePath, 0o666); } catch {}
+
     return jobDir;
   }
 
