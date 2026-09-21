@@ -117,6 +117,29 @@ export class DockerSandboxService {
     ];
   }
 
+  resolveImage(config: LanguageRunnerConfig): string | null {
+    const candidates = [
+      config.image,
+      config.languageKey === 'python' ? 'python-compiler' : undefined,
+      config.languageKey === 'python' ? 'lms-python-runner' : undefined,
+      config.languageKey === 'python' ? 'python:3.10-slim' : undefined,
+      config.languageKey === 'c' || config.languageKey === 'cpp' ? 'c-compiler' : undefined,
+      config.languageKey === 'c' || config.languageKey === 'cpp' ? 'lms-c-runner' : undefined,
+      config.languageKey === 'c' || config.languageKey === 'cpp' ? 'gcc:latest' : undefined,
+      config.languageKey === 'java' ? 'java-compiler' : undefined,
+      config.languageKey === 'java' ? 'lms-java-runner' : undefined,
+      config.languageKey === 'java' ? 'eclipse-temurin:17-jdk-jammy' : undefined,
+      config.languageKey === 'javascript' ? 'javascript-compiler' : undefined,
+      config.languageKey === 'javascript' ? 'lms-node-runner' : undefined,
+      config.languageKey === 'javascript' ? 'node:18-slim' : undefined,
+    ].filter(Boolean) as string[];
+
+    for (const img of candidates) {
+      if (this.imageExists(img)) return img;
+    }
+    return null;
+  }
+
   /** Run compilation inside the language-specific Docker container */
   async compileCode(
     config: LanguageRunnerConfig,
@@ -134,7 +157,8 @@ export class DockerSandboxService {
       };
     }
 
-    if (!this.imageExists(config.image)) {
+    const targetImage = this.resolveImage(config);
+    if (!targetImage) {
       return {
         success: false,
         compilationError: `Runner image "${config.image}" is not available on this server.`,
@@ -147,7 +171,7 @@ export class DockerSandboxService {
         containerName,
         workspaceDir,
         writableWorkspace: true,
-        image: config.image,
+        image: targetImage,
       }),
       'sh', '-c', config.compileCmd,
     ];
@@ -191,7 +215,8 @@ export class DockerSandboxService {
       return unavailable('Docker sandbox engine is currently unavailable. Please contact the administrator.');
     }
 
-    if (!this.imageExists(config.image)) {
+    const targetImage = this.resolveImage(config);
+    if (!targetImage) {
       return unavailable(`Runner image "${config.image}" is not available on this server.`);
     }
 
@@ -202,7 +227,7 @@ export class DockerSandboxService {
         workspaceDir,
         writableWorkspace: false,
         interactive: true,
-        image: config.image,
+        image: targetImage,
       }),
       'sh', '-c', config.runCmd,
     ];
