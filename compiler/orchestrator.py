@@ -23,8 +23,9 @@ def run_code(code, language, stdin):
     except docker.errors.ImageNotFound:
         try:
             print(f"Building image for {language}...")
+            dockerfile_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dockerfiles', language)
             client.images.build(
-                path=f'./dockerfiles/{language}',
+                path=dockerfile_dir,
                 tag=image_name,
                 rm=True
             )

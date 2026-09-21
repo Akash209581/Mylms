@@ -36,8 +36,8 @@ module.exports = {
     {
       name: 'lms-compiler',
       cwd: '/data/Mylms/compiler',
-      script: 'python3',
-      args: 'app.py',
+      script: 'app.py',
+      interpreter: '/data/Mylms/compiler/venv/bin/python3',
       env: {
         PORT: 5000,
         PYTHONUNBUFFERED: '1'
