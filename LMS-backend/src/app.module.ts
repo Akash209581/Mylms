@@ -65,6 +65,12 @@ import { ExamCodingSubmission } from './entities/exam-coding-submission.entity';
         (process.env.DATABASE_URL && !process.env.DATABASE_URL.includes('localhost'))
           ? { rejectUnauthorized: false }
           : false,
+      extra: {
+        max: 20,
+        connectionTimeoutMillis: 15000,
+        idleTimeoutMillis: 30000,
+        keepAlive: true,
+      },
       entities: [
         User,
         Course,
