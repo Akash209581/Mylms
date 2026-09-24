@@ -17,9 +17,15 @@ export const api = axios.create({
     },
 });
 
-// Add request interceptor for debugging
+// Add request interceptor for auth header and debugging
 api.interceptors.request.use(
     (config) => {
+        if (typeof window !== 'undefined') {
+            const token = localStorage.getItem('token');
+            if (token && !config.headers.Authorization) {
+                config.headers.Authorization = `Bearer ${token}`;
+            }
+        }
         console.log(`🌐 API Request: ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`);
         return config;
     },

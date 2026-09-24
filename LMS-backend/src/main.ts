@@ -9,7 +9,7 @@ try {
   }
 } catch (e) {}
 
-import { trustedOrigins, protectMutationOrigin } from './common/request-origin';
+import { trustedOrigins, protectMutationOrigin, isOriginTrusted } from './common/request-origin';
 import { ResponsePrivacyInterceptor } from './common/response-privacy.interceptor';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
@@ -38,7 +38,7 @@ async function bootstrap() {
   const allowedOrigins = trustedOrigins();
   app.use(protectMutationOrigin(allowedOrigins));
   app.enableCors({
-    origin: (origin, callback) => callback(null, !origin || allowedOrigins.has(origin)),
+    origin: (origin, callback) => callback(null, !origin || isOriginTrusted(origin, allowedOrigins)),
     credentials: true,
   });
   app.useGlobalInterceptors(new ResponsePrivacyInterceptor());
