@@ -103,16 +103,6 @@ export default function LoginPage() {
                             </span>
                         </div>
                     </div>
-
-                    {/* 3D Illustration Graphic */}
-                    <div className="hidden lg:flex items-center justify-start mt-6 pointer-events-none">
-                        <img
-                            src={`${basePath}/auth-illustration.png`}
-                            alt="STEM Learning"
-                            className="max-h-60 xl:max-h-72 object-contain drop-shadow-xl select-none"
-                            onError={(e) => { (e.target as HTMLElement).style.display = 'none' }}
-                        />
-                    </div>
                 </div>
 
                 {/* Right Side: Auth Card */}

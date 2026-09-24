@@ -669,16 +669,6 @@ export default function SignupPage() {
                             </span>
                         </div>
                     </div>
-
-                    {/* 3D Graphic */}
-                    <div className="hidden lg:flex items-center justify-start mt-6 pointer-events-none">
-                        <img
-                            src={`${basePath}/auth-illustration.png`}
-                            alt="STEM Learning"
-                            className="max-h-56 xl:max-h-64 object-contain drop-shadow-xl select-none"
-                            onError={(e) => { (e.target as HTMLElement).style.display = 'none' }}
-                        />
-                    </div>
                 </div>
 
                 {/* Right Side: Auth Card */}
