@@ -68,7 +68,7 @@ export class AuthService {
   async login(dto: LoginDto) {
     const user = await this.userRepository.findOne({
       where: { email: dto.email },
-      select: ['id', 'email', 'name', 'role', 'collegeId', 'collegeName', 'isActive', 'passwordHash'],
+      select: ['id', 'email', 'name', 'role', 'roles', 'collegeId', 'collegeName', 'isActive', 'passwordHash'],
     });
     if (!user || !user.passwordHash || !user.isActive) throw new UnauthorizedException('Invalid credentials');
 
@@ -86,10 +86,21 @@ export class AuthService {
       throw new UnauthorizedException('Your college account is unavailable');
     }
 
+    const rawRoles: any = user.roles || (user.role ? [user.role] : []);
+    const userRoles: string[] = (
+      Array.isArray(rawRoles)
+        ? rawRoles
+        : typeof rawRoles === 'string'
+        ? rawRoles.split(',')
+        : []
+    ).map((r) => String(r).trim()).filter(Boolean);
+    if (userRoles.length === 0 && user.role) userRoles.push(user.role);
+
     const payload = {
       sub: user.id,
       email: user.email,
       role: user.role,
+      roles: userRoles,
       name: user.name,
       collegeId: user.collegeId || college?.id,
       collegeName: college?.name || user.collegeName,
@@ -103,6 +114,7 @@ export class AuthService {
         name: user.name,
         email: user.email,
         role: user.role,
+        roles: userRoles,
         collegeId: user.collegeId || college?.id,
         collegeName: user.collegeName || college?.name,
         collegeLogo: college?.logoUrl,
@@ -120,9 +132,21 @@ export class AuthService {
     } else if (user.collegeName) {
       college = await this.collegeRepository.findOne({ where: { name: user.collegeName } });
     }
+
+    const rawRoles: any = user.roles || (user.role ? [user.role] : []);
+    const userRoles: string[] = (
+      Array.isArray(rawRoles)
+        ? rawRoles
+        : typeof rawRoles === 'string'
+        ? rawRoles.split(',')
+        : []
+    ).map((r) => String(r).trim()).filter(Boolean);
+    if (userRoles.length === 0 && user.role) userRoles.push(user.role);
+
     const { passwordHash, ...result } = user;
     return { 
       ...result, 
+      roles: userRoles,
       collegeId: user.collegeId || college?.id,
       collegeName: user.collegeName || college?.name,
       collegeLogo: college?.logoUrl 
@@ -177,11 +201,18 @@ export class AuthService {
 
     await this.checkPasswordBreached(dto.password);
     const passwordHash = await bcrypt.hash(dto.password, 10);
+    const userRoles = Array.isArray(dto.roles) && dto.roles.length > 0 ? (dto.roles as UserRole[]) : [dto.role as UserRole];
+    if (userRoles.includes(UserRole.STUDENT) && userRoles.length > 1) {
+      throw new BadRequestException('STUDENT role cannot be combined with staff roles');
+    }
+    const primaryRole = userRoles[0] || (dto.role as UserRole);
+
     const user = this.userRepository.create({
       name: dto.name,
       email: dto.email,
       passwordHash,
-      role: dto.role as UserRole,
+      role: primaryRole,
+      roles: userRoles,
       collegeId: collegeId,
       collegeName: collegeName, // Automatically inherit college name from creator (or undefined for global roles)
       // Student fields (optional)
@@ -198,7 +229,7 @@ export class AuthService {
 
     const { passwordHash: _, ...result } = user;
     return {
-      message: `${dto.role} account created successfully`,
+      message: `${primaryRole} account created successfully`,
       user: result,
     };
   }
@@ -227,17 +258,25 @@ export class AuthService {
 
     // Validate role - SUPERADMIN can create ADMIN, INSTRUCTOR, STUDENT, QUESTION_CREATOR, CONTENT_CREATOR
     const allowedRoles = ['ADMIN', 'INSTRUCTOR', 'STUDENT', 'QUESTION_CREATOR', 'CONTENT_CREATOR'];
-    if (!allowedRoles.includes(dto.role)) {
-      throw new BadRequestException('Invalid role. Must be ADMIN, INSTRUCTOR, STUDENT, QUESTION_CREATOR, or CONTENT_CREATOR');
+    const userRoles = Array.isArray(dto.roles) && dto.roles.length > 0 ? (dto.roles as UserRole[]) : [dto.role as UserRole];
+    if (userRoles.includes(UserRole.STUDENT) && userRoles.length > 1) {
+      throw new BadRequestException('STUDENT role cannot be combined with staff roles');
+    }
+    const primaryRole = userRoles[0] || (dto.role as UserRole);
+
+    for (const r of userRoles) {
+      if (!allowedRoles.includes(r)) {
+        throw new BadRequestException(`Invalid role "${r}". Must be ADMIN, INSTRUCTOR, STUDENT, QUESTION_CREATOR, or CONTENT_CREATOR`);
+      }
     }
 
-    const isGlobalRole = dto.role === 'QUESTION_CREATOR' || dto.role === 'CONTENT_CREATOR';
+    const isGlobalRole = userRoles.every((r) => r === UserRole.QUESTION_CREATOR || r === UserRole.CONTENT_CREATOR);
     let collegeId: number | undefined;
     let collegeName: string | undefined;
 
     if (!isGlobalRole) {
       if (!dto.collegeName || !dto.collegeName.trim()) {
-        throw new BadRequestException('College/University name is required for ' + dto.role);
+        throw new BadRequestException('College/University name is required for staff account');
       }
 
       // Find or create college by name
@@ -270,7 +309,8 @@ export class AuthService {
       name: dto.name,
       email: dto.email,
       passwordHash,
-      role: dto.role as UserRole,
+      role: primaryRole,
+      roles: userRoles,
       collegeId: collegeId,
       collegeName: collegeName,
       // Student fields (optional)
@@ -288,8 +328,8 @@ export class AuthService {
     const { passwordHash: _, ...result } = user;
     return {
       message: isGlobalRole
-        ? `${dto.role} account created successfully as Global Platform Role`
-        : `${dto.role} account created successfully in ${collegeName}`,
+        ? `Account created successfully with Global Platform Roles (${userRoles.join(', ')})`
+        : `Account created successfully in ${collegeName} (${userRoles.join(', ')})`,
       user: result,
     };
   }

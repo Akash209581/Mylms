@@ -95,10 +95,17 @@ export default function UserDetailModal({ user, onClose, canDelete = false, onDe
                     </div>
 
                     {/* Role & Status */}
-                    <div className="flex gap-2.5 mt-4">
-                        <span className={`px-3 py-1 rounded-xl text-xs font-bold ${getRoleBadgeStyle(user.role)}`}>
-                            {user.role}
-                        </span>
+                    <div className="flex gap-2.5 mt-4 flex-wrap">
+                        {(Array.isArray(user.roles) && user.roles.length > 0
+                            ? user.roles
+                            : typeof user.roles === 'string' && user.roles.trim()
+                            ? user.roles.split(',')
+                            : [user.role || 'STUDENT']
+                        ).map((r: string) => (
+                            <span key={r} className={`px-3 py-1 rounded-xl text-xs font-bold ${getRoleBadgeStyle(r.trim())}`}>
+                                {r.trim()}
+                            </span>
+                        ))}
                         <span className={`px-3 py-1 rounded-xl text-xs font-bold ${getStatusBadgeStyle(user.isActive ?? true)}`}>
                             {user.isActive ?? true ? '✓ Active Account' : '✕ Suspended / Inactive'}
                         </span>
@@ -177,18 +184,26 @@ export default function UserDetailModal({ user, onClose, canDelete = false, onDe
                                     <p className="text-xs font-bold text-slate-900 dark:text-white mt-0.5">{user.registrationNumber || 'Not provided'}</p>
                                 </div>
                                 <div>
-                                    <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">Course</p>
-                                    <p className="text-xs font-bold text-slate-900 dark:text-white mt-0.5">{user.course || 'Not provided'}</p>
+                                    <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">Department</p>
+                                    <p className="text-xs font-bold text-slate-900 dark:text-white mt-0.5">{user.department || user.branch || 'Not provided'}</p>
                                 </div>
                                 <div>
-                                    <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">Branch</p>
-                                    <p className="text-xs font-bold text-slate-900 dark:text-white mt-0.5">{user.branch || 'Not provided'}</p>
+                                    <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">Section</p>
+                                    <p className="text-xs font-bold text-slate-900 dark:text-white mt-0.5">{user.section || 'Not provided'}</p>
                                 </div>
                                 <div>
-                                    <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">Year & Semester</p>
+                                    <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">Academic Year</p>
+                                    <p className="text-xs font-bold text-slate-900 dark:text-white mt-0.5">{user.academicYear || 'Not provided'}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">Current Year</p>
                                     <p className="text-xs font-bold text-slate-900 dark:text-white mt-0.5">
-                                        {user.pursuingYear ? `Year ${user.pursuingYear}` : '—'} {user.semester ? `(Sem ${user.semester})` : ''}
+                                        {user.currentYear || (user.pursuingYear ? `Year ${user.pursuingYear}` : 'Not provided')}
                                     </p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">Batch No</p>
+                                    <p className="text-xs font-bold text-slate-900 dark:text-white mt-0.5">{user.batchNo || 'Not provided'}</p>
                                 </div>
                                 <div>
                                     <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">Mobile Number</p>

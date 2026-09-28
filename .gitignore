@@ -1,2 +1,4 @@
 .tools/
 node_modules/
+.env
+.env.*

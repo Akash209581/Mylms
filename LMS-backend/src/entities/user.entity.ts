@@ -37,6 +37,10 @@ export class User {
   @Column({ type: 'enum', enum: UserRole, default: UserRole.STUDENT })
   role: UserRole;
 
+  @Column({ type: 'simple-array', nullable: true })
+  roles?: UserRole[];
+
+
   // College/University - Multi-tenant support (nullable for SUPERADMIN)
   @Column({ name: 'college_id', nullable: true })
   collegeId?: number;
@@ -74,6 +78,21 @@ export class User {
 
   @Column({ name: 'registration_number', length: 100, nullable: true })
   registrationNumber?: string;
+
+  @Column({ length: 100, nullable: true })
+  department?: string;
+
+  @Column({ length: 50, nullable: true })
+  section?: string;
+
+  @Column({ name: 'academic_year', length: 50, nullable: true })
+  academicYear?: string;
+
+  @Column({ name: 'current_year', length: 50, nullable: true })
+  currentYear?: string;
+
+  @Column({ name: 'batch_no', length: 50, nullable: true })
+  batchNo?: string;
 
   @Column({ name: 'college_name', length: 200, nullable: true })
   collegeName?: string;

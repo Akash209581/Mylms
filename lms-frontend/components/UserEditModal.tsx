@@ -10,10 +10,15 @@ interface UserEditModalProps {
 }
 
 export default function UserEditModal({ user, onClose, onSuccess }: UserEditModalProps) {
+    const initialRoles = Array.isArray(user.roles) && user.roles.length > 0
+        ? user.roles
+        : (typeof user.roles === 'string' && user.roles.trim() ? user.roles.split(',').map((r: string) => r.trim()) : [user.role || 'STUDENT'])
+
     const [form, setForm] = useState({
         name: user.name || '',
         email: user.email || '',
         role: user.role || 'STUDENT',
+        roles: initialRoles as string[],
         collegeName: user.collegeName || '',
         isActive: user.isActive ?? true,
         mobileNumber: user.mobileNumber || '',
@@ -26,31 +31,25 @@ export default function UserEditModal({ user, onClose, onSuccess }: UserEditModa
         registrationNumber: user.registrationNumber || '',
         password: '',
     })
-    const [loading, setLoading] = useState(false)
-    const [error, setError] = useState('')
-    const [colleges, setColleges] = useState<any[]>([])
 
-    useEffect(() => {
-        const handleEscape = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') onClose()
+    const isStudent = form.roles.includes('STUDENT')
+
+    const toggleRole = (r: string) => {
+        if (r === 'STUDENT') {
+            setForm({ ...form, role: 'STUDENT', roles: ['STUDENT'] })
+            return
         }
-        window.addEventListener('keydown', handleEscape)
-        return () => window.removeEventListener('keydown', handleEscape)
-    }, [onClose])
+        let updated = form.roles.filter(x => x !== 'STUDENT')
+        if (updated.includes(r)) {
+            updated = updated.filter(x => x !== r)
+        } else {
+            updated.push(r)
+        }
+        if (updated.length === 0) updated = ['STUDENT']
+        setForm({ ...form, role: updated[0], roles: updated })
+    }
 
-    useEffect(() => {
-        apiFetch(`${API_URL}/colleges`, {
-            credentials: 'include',
-            headers: getAuthHeaders(),
-        })
-            .then(res => res.json())
-            .then(data => {
-                if (Array.isArray(data)) setColleges(data)
-            })
-            .catch(() => {})
-    }, [])
-
-    const isGlobalRole = form.role === 'QUESTION_CREATOR' || form.role === 'CONTENT_CREATOR'
+    const isGlobalRole = form.roles.every(r => r === 'QUESTION_CREATOR' || r === 'CONTENT_CREATOR')
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -61,7 +60,8 @@ export default function UserEditModal({ user, onClose, onSuccess }: UserEditModa
             const payload: any = {
                 name: form.name,
                 email: form.email,
-                role: form.role,
+                role: form.roles[0] || 'STUDENT',
+                roles: form.roles,
                 isActive: form.isActive,
                 collegeName: isGlobalRole ? null : form.collegeName,
             }
@@ -70,7 +70,7 @@ export default function UserEditModal({ user, onClose, onSuccess }: UserEditModa
                 payload.password = form.password.trim()
             }
 
-            if (form.role === 'STUDENT') {
+            if (form.roles.includes('STUDENT')) {
                 payload.mobileNumber = form.mobileNumber
                 payload.country = form.country
                 payload.state = form.state
@@ -160,17 +160,41 @@ export default function UserEditModal({ user, onClose, onSuccess }: UserEditModa
                             />
                         </div>
 
-                        <div>
-                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Role *</label>
-                            <select
-                                value={form.role}
-                                onChange={e => setForm({ ...form, role: e.target.value })}
-                                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-indigo-500 transition-colors font-medium"
-                            >
-                                {['STUDENT', 'INSTRUCTOR', 'QUESTION_CREATOR', 'CONTENT_CREATOR', 'ADMIN', 'SUPERADMIN'].map(r => (
-                                    <option key={r} value={r} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">{r}</option>
-                                ))}
-                            </select>
+                        <div className="col-span-1 md:col-span-2">
+                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
+                                User Roles & Permissions * <span className="text-[11px] font-normal text-slate-500">(Assign multiple roles for staff, or single Student role)</span>
+                            </label>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-white/10">
+                                {[
+                                    { key: 'STUDENT', label: '🎓 Student' },
+                                    { key: 'QUESTION_CREATOR', label: '📝 Question Creator' },
+                                    { key: 'CONTENT_CREATOR', label: '📚 Content Creator' },
+                                    { key: 'INSTRUCTOR', label: '👨‍🏫 Instructor' },
+                                    { key: 'ADMIN', label: '🏛️ College Admin' },
+                                    { key: 'SUPERADMIN', label: '⚡ Super Admin' },
+                                ].map((item) => {
+                                    const checked = form.roles.includes(item.key)
+                                    return (
+                                        <button
+                                            key={item.key}
+                                            type="button"
+                                            onClick={() => toggleRole(item.key)}
+                                            className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold transition-all ${
+                                                checked
+                                                    ? 'bg-indigo-500/15 border-indigo-500 text-indigo-700 dark:text-indigo-300 shadow-sm'
+                                                    : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-white/20'
+                                            }`}
+                                        >
+                                            <div className={`w-4 h-4 rounded flex items-center justify-center border ${
+                                                checked ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-300 dark:border-slate-600'
+                                            }`}>
+                                                {checked && <span className="text-[10px]">✓</span>}
+                                            </div>
+                                            <span>{item.label}</span>
+                                        </button>
+                                    )
+                                })}
+                            </div>
                         </div>
 
                         <div>

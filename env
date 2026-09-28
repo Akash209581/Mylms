@@ -1,0 +1,6 @@
+DATABASE_URL=postgresql://neondb_owner:npg_1wnFCiGM0DzV@ep-gentle-moon-aiq823ba-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+JWT_SECRET=lms_jwt_secret_key_2024
+PORT=3003
+CLOUDINARY_CLOUD_NAME=xukcseuy
+CLOUDINARY_API_KEY=686417838186993
+CLOUDINARY_API_SECRET=bJV9zKJ7oLNVugMP1Pl9GQ1UkNo

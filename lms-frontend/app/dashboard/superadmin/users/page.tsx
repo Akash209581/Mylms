@@ -8,8 +8,10 @@ import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
 import UserDetailModal from '@/components/UserDetailModal'
 import UserEditModal from '@/components/UserEditModal'
+import BulkStudentUploadModal from '@/components/BulkStudentUploadModal'
 import { getAuthHeaders } from '@/lib/authHeaders'
 import { toast } from '@/lib/toast'
+import { Users, FileSpreadsheet } from 'lucide-react'
 
 export default function SuperAdminUsersPage() {
     const router = useRouter()
@@ -20,13 +22,10 @@ export default function SuperAdminUsersPage() {
     const [selectedUser, setSelectedUser] = useState<any>(null)
     const [editingUser, setEditingUser] = useState<any>(null)
     const [loadingDetails, setLoadingDetails] = useState(false)
+    const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false)
 
-    useEffect(() => {
-        const stored = localStorage.getItem('user')
-        if (!stored) { router.push('/login'); return }
-        const u = JSON.parse(stored)
-        if (u.role !== 'SUPERADMIN') { router.push('/login'); return }
-
+    const fetchUsers = () => {
+        setLoading(true)
         apiFetch(`${API_URL}/superadmin/users`, {
             credentials: 'include',
             headers: getAuthHeaders(),
@@ -35,6 +34,15 @@ export default function SuperAdminUsersPage() {
             .then(data => { if (Array.isArray(data)) setUsers(data) })
             .catch(() => { })
             .finally(() => setLoading(false))
+    }
+
+    useEffect(() => {
+        const stored = localStorage.getItem('user')
+        if (!stored) { router.push('/login'); return }
+        const u = JSON.parse(stored)
+        if (u.role !== 'SUPERADMIN') { router.push('/login'); return }
+
+        fetchUsers()
     }, [])
 
     const handleViewUser = async (userId: number) => {
@@ -182,12 +190,21 @@ export default function SuperAdminUsersPage() {
                         <h3 className="text-lg font-semibold role-text-primary">
                             {filtered.length} user{filtered.length !== 1 ? 's' : ''}
                         </h3>
-                        <button
-                            onClick={() => router.push('/dashboard/superadmin/users/create')}
-                            className="btn-primary px-4 py-2 text-sm"
-                        >
-                            + Add User
-                        </button>
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={() => setIsBulkUploadOpen(true)}
+                                className="px-4 py-2 text-sm font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition-all duration-200 flex items-center gap-2 shadow-lg shadow-indigo-600/20"
+                            >
+                                <FileSpreadsheet className="w-4 h-4" />
+                                Bulk Create Students
+                            </button>
+                            <button
+                                onClick={() => router.push('/dashboard/superadmin/users/create')}
+                                className="btn-primary px-4 py-2 text-sm"
+                            >
+                                + Add User
+                            </button>
+                        </div>
                     </div>
 
                     {loading ? (
@@ -228,15 +245,18 @@ export default function SuperAdminUsersPage() {
                                             </td>
                                             <td className="py-4 pr-4 role-text-muted text-sm">{u.email}</td>
                                             <td className="py-4 pr-4" onClick={(e) => e.stopPropagation()}>
-                                                <select
-                                                    value={u.role}
-                                                    onChange={e => handleRoleChange(u.id, e.target.value)}
-                                                    className="text-xs font-semibold rounded-lg px-2 py-1.5 outline-none cursor-pointer"
-                                                    style={{ background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)', color: '#a5b4fc' }}>
-                                                    {['STUDENT', 'INSTRUCTOR', 'QUESTION_CREATOR', 'CONTENT_CREATOR', 'ADMIN', 'SUPERADMIN'].map(r => (
-                                                        <option key={r} value={r} style={{ background: '#1a1a2e' }}>{r}</option>
+                                                <div className="flex gap-1.5 flex-wrap items-center">
+                                                    {(Array.isArray(u.roles) && u.roles.length > 0
+                                                        ? u.roles
+                                                        : typeof u.roles === 'string' && u.roles.trim()
+                                                        ? u.roles.split(',')
+                                                        : [u.role || 'STUDENT']
+                                                    ).map((r: string) => (
+                                                        <span key={r.trim()} className="text-[11px] font-bold rounded-lg px-2 py-0.5" style={{ background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)', color: '#a5b4fc' }}>
+                                                            {r.trim()}
+                                                        </span>
                                                     ))}
-                                                </select>
+                                                </div>
                                             </td>
                                             <td className="py-4 pr-4 role-text-muted text-sm">
                                                 {u.role === 'QUESTION_CREATOR' || u.role === 'CONTENT_CREATOR' ? (
@@ -312,6 +332,13 @@ export default function SuperAdminUsersPage() {
                     onSuccess={handleUserUpdated}
                 />
             )}
+
+            {/* Bulk Student Upload Modal */}
+            <BulkStudentUploadModal
+                isOpen={isBulkUploadOpen}
+                onClose={() => setIsBulkUploadOpen(false)}
+                onSuccess={fetchUsers}
+            />
 
             {/* Loading Details Overlay */}
             {loadingDetails && (

@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Post,
   Put,
   Delete,
   Param,
@@ -10,7 +11,16 @@ import {
   ParseIntPipe,
   Request,
   NotFoundException,
+  BadRequestException,
+  UseInterceptors,
+  UploadedFile,
+  Res,
+  OnModuleInit,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import type { Response } from 'express';
+import * as bcrypt from 'bcrypt';
+import * as ExcelJS from 'exceljs';
 import { JwtAuthGuard } from '../common/jwt.guard';
 import { RolesGuard } from '../common/roles.guard';
 import { Roles } from '../common/roles.decorator';
@@ -29,10 +39,51 @@ class UpdateRoleDto {
   @IsEnum(UserRole) role: UserRole;
 }
 
+function generateStudent8CharPassword(): string {
+  const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const lower = 'abcdefghijkmnopqrstuvwxyz';
+  const numbers = '23456789';
+  const special = '@#$%&*!';
+
+  const all = upper + lower + numbers + special;
+
+  const chars = [
+    upper.charAt(Math.floor(Math.random() * upper.length)),
+    lower.charAt(Math.floor(Math.random() * lower.length)),
+    numbers.charAt(Math.floor(Math.random() * numbers.length)),
+    special.charAt(Math.floor(Math.random() * special.length)),
+  ];
+
+  for (let i = 0; i < 4; i++) {
+    chars.push(all.charAt(Math.floor(Math.random() * all.length)));
+  }
+
+  for (let i = chars.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [chars[i], chars[j]] = [chars[j], chars[i]];
+  }
+
+  return chars.join('');
+}
+
+function extractVal(row: Record<string, any>, targetKeys: string[]): string {
+  const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const targets = targetKeys.map(normalize);
+
+  for (const [key, val] of Object.entries(row)) {
+    if (targets.includes(normalize(key))) {
+      if (val !== undefined && val !== null) {
+        return String(val).trim();
+      }
+    }
+  }
+  return '';
+}
+
 @Controller('superadmin')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.SUPERADMIN)
-export class SuperadminController {
+export class SuperadminController implements OnModuleInit {
   constructor(
     @InjectRepository(User) private userRepo: Repository<User>,
     @InjectRepository(Course) private courseRepo: Repository<Course>,
@@ -42,6 +93,280 @@ export class SuperadminController {
     @InjectRepository(Settings) private settingsRepo: Repository<Settings>,
     @InjectRepository(Question) private questionRepo: Repository<Question>,
   ) { }
+
+  async onModuleInit() {
+    await this.userRepo.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS department VARCHAR(100);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS section VARCHAR(50);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS academic_year VARCHAR(50);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS current_year VARCHAR(50);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS batch_no VARCHAR(50);
+    `).catch((err) => console.error('Auto migration failed for bulk student fields:', err));
+  }
+
+  @Get('users/bulk-template')
+  async downloadBulkTemplate(@Res() res: Response) {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Students Import Template');
+
+    worksheet.columns = [
+      { header: 'S.No', key: 'sNo', width: 8 },
+      { header: 'Registration No', key: 'registrationNo', width: 18 },
+      { header: 'Department', key: 'department', width: 15 },
+      { header: 'Section', key: 'section', width: 10 },
+      { header: 'Full Name', key: 'name', width: 22 },
+      { header: 'Email ID', key: 'email', width: 25 },
+      { header: 'Mobile Number', key: 'mobileNumber', width: 16 },
+      { header: 'Academic Year', key: 'academicYear', width: 15 },
+      { header: 'Current Year', key: 'currentYear', width: 14 },
+      { header: 'college name', key: 'collegeName', width: 25 },
+      { header: 'Batch No', key: 'batchNo', width: 12 },
+    ];
+
+    // Add sample rows
+    worksheet.addRow({
+      sNo: 1,
+      registrationNo: 'REG2024001',
+      department: 'Computer Science',
+      section: 'A',
+      name: 'John Doe',
+      email: 'john.doe@example.com',
+      mobileNumber: '9876543210',
+      academicYear: '2024-2028',
+      currentYear: '1st Year',
+      collegeName: 'Harvard University',
+      batchNo: 'B1',
+    });
+
+    worksheet.addRow({
+      sNo: 2,
+      registrationNo: 'REG2024002',
+      department: 'Information Technology',
+      section: 'B',
+      name: 'Jane Smith',
+      email: 'jane.smith@example.com',
+      mobileNumber: '9876543211',
+      academicYear: '2024-2028',
+      currentYear: '1st Year',
+      collegeName: 'Harvard University',
+      batchNo: 'B1',
+    });
+
+    // Style header row
+    const headerRow = worksheet.getRow(1);
+    headerRow.font = { bold: true, color: { argb: 'FFFFFF' } };
+    headerRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: '4F46E5' },
+    };
+
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename=Student_Bulk_Import_Template.xlsx',
+    );
+
+    await workbook.xlsx.write(res);
+    res.end();
+  }
+
+  @Post('users/bulk-upload')
+  @UseInterceptors(FileInterceptor('file'))
+  async bulkUploadStudents(
+    @UploadedFile() file: any,
+    @Request() req: any,
+  ) {
+    return this.processBulkStudentFile(file, req);
+  }
+
+  @Post('users/bulk-upload-students')
+  @UseInterceptors(FileInterceptor('file'))
+  async bulkUploadStudentsAlias(
+    @UploadedFile() file: any,
+    @Request() req: any,
+  ) {
+    return this.processBulkStudentFile(file, req);
+  }
+
+  private async processBulkStudentFile(file: any, req: any) {
+    if (!file) {
+      throw new BadRequestException('No Excel file uploaded');
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    try {
+      await workbook.xlsx.load(file.buffer);
+    } catch (err: any) {
+      throw new BadRequestException('Failed to parse Excel file: ' + err.message);
+    }
+
+    const worksheet = workbook.worksheets[0];
+    if (!worksheet) {
+      throw new BadRequestException('Excel file contains no worksheets');
+    }
+
+    const headers: string[] = [];
+    const firstRow = worksheet.getRow(1);
+    firstRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+      headers[colNumber] = cell.text ? cell.text.trim() : '';
+    });
+
+    const createdUsers: any[] = [];
+    const skippedUsers: any[] = [];
+
+    // Fetch existing colleges for fast mapping
+    const existingColleges = await this.collegeRepo.find();
+    const collegeMap = new Map<string, College>();
+    existingColleges.forEach((c) => collegeMap.set(c.name.toLowerCase().trim(), c));
+
+    // Existing emails set
+    const allUsers = await this.userRepo.find({ select: ['email'] });
+    const existingEmails = new Set(
+      allUsers.filter((u) => u.email).map((u) => u.email.toLowerCase().trim()),
+    );
+
+    const rows: { rowData: Record<string, any>; rowNum: number }[] = [];
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return;
+      const rowData: Record<string, any> = {};
+      let hasValue = false;
+      row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+        const header = headers[colNumber];
+        if (header) {
+          const val = cell.text;
+          if (val !== undefined && val !== null) {
+            rowData[header] = val;
+            if (val.trim() !== '') hasValue = true;
+          }
+        }
+      });
+      if (hasValue) {
+        rows.push({ rowData, rowNum: rowNumber });
+      }
+    });
+
+    for (const { rowData } of rows) {
+      const sNo = extractVal(rowData, ['sno', 's.no', 'slno', 'sl.no', 'serialno']);
+      const registrationNo = extractVal(rowData, ['registrationno', 'registration number', 'regno', 'reg.no', 'registration_number']);
+      const department = extractVal(rowData, ['department', 'dept', 'branch']);
+      const section = extractVal(rowData, ['section', 'sec']);
+      const name = extractVal(rowData, ['fullname', 'full name', 'name', 'student name']);
+      const rawEmail = extractVal(rowData, ['emailid', 'email id', 'email', 'email address']);
+      const email = rawEmail ? rawEmail.toLowerCase().trim() : '';
+      const mobileNumber = extractVal(rowData, ['mobilenumber', 'mobile number', 'mobile', 'phone', 'contact']);
+      const academicYear = extractVal(rowData, ['academicyear', 'academic year', 'academic_year']);
+      const currentYear = extractVal(rowData, ['currentyear', 'current year', 'pursuingyear', 'year']);
+      const rawCollegeName = extractVal(rowData, ['collegename', 'college name', 'college']);
+      const batchNo = extractVal(rowData, ['batchno', 'batch no', 'batch', 'batch number']);
+
+      if (!email || !name) {
+        skippedUsers.push({
+          sNo,
+          registrationNo,
+          name: name || 'N/A',
+          email: rawEmail || 'N/A',
+          reason: 'Missing required field (Email ID or Full Name)',
+        });
+        continue;
+      }
+
+      if (existingEmails.has(email)) {
+        skippedUsers.push({
+          sNo,
+          registrationNo,
+          name,
+          email,
+          reason: 'Email already exists in system',
+        });
+        continue;
+      }
+
+      // College resolution
+      let targetCollege: College | undefined;
+      if (rawCollegeName) {
+        const normName = rawCollegeName.toLowerCase().trim();
+        targetCollege = collegeMap.get(normName);
+        if (!targetCollege) {
+          // Auto create college if missing
+          const newCol = this.collegeRepo.create({
+            name: rawCollegeName.trim(),
+            createdBy: req.user?.sub,
+            active: true,
+          });
+          targetCollege = await this.collegeRepo.save(newCol);
+          collegeMap.set(normName, targetCollege);
+        }
+      }
+
+      const plainPassword = generateStudent8CharPassword();
+      const passwordHash = await bcrypt.hash(plainPassword, 10);
+
+      const user = this.userRepo.create({
+        name,
+        email,
+        passwordHash,
+        role: UserRole.STUDENT,
+        roles: [UserRole.STUDENT],
+        isActive: true,
+        registrationNumber: registrationNo || undefined,
+        department: department || undefined,
+        section: section || undefined,
+        academicYear: academicYear || undefined,
+        currentYear: currentYear || undefined,
+        batchNo: batchNo || undefined,
+        mobileNumber: mobileNumber || undefined,
+        collegeId: targetCollege?.id,
+        collegeName: targetCollege?.name || rawCollegeName || undefined,
+      });
+
+      const savedUser = await this.userRepo.save(user);
+      existingEmails.add(email);
+
+      createdUsers.push({
+        id: savedUser.id,
+        sNo,
+        registrationNo: savedUser.registrationNumber || registrationNo || '',
+        name: savedUser.name,
+        email: savedUser.email,
+        password: plainPassword,
+        collegeName: savedUser.collegeName || '',
+        department: savedUser.department || '',
+        section: savedUser.section || '',
+        academicYear: savedUser.academicYear || '',
+        currentYear: savedUser.currentYear || '',
+        batchNo: savedUser.batchNo || '',
+        mobileNumber: savedUser.mobileNumber || '',
+      });
+    }
+
+    // Log Audit
+    const audit = this.auditRepo.create({
+      actorId: req.user.sub,
+      actorName: req.user.name || req.user.email,
+      actorRole: req.user.role,
+      action: 'BULK_USERS_CREATED',
+      targetType: 'User',
+      details: JSON.stringify({
+        totalProcessed: rows.length,
+        createdCount: createdUsers.length,
+        skippedCount: skippedUsers.length,
+      }),
+    });
+    await this.auditRepo.save(audit);
+
+    return {
+      success: true,
+      totalProcessed: rows.length,
+      createdCount: createdUsers.length,
+      skippedCount: skippedUsers.length,
+      createdUsers,
+      skippedUsers,
+    };
+  }
 
   @Get('dashboard')
   async getDashboard() {
@@ -155,6 +480,7 @@ export class SuperadminController {
         'name',
         'email',
         'role',
+        'roles',
         'createdAt',
         'collegeId',
         'collegeName',
@@ -181,6 +507,7 @@ export class SuperadminController {
         'u.name',
         'u.email',
         'u.role',
+        'u.roles',
         'u.createdAt',
         'u.collegeId',
         'u.collegeName',
@@ -261,11 +588,26 @@ export class SuperadminController {
     const updateData: any = {};
     if (dto.name !== undefined) updateData.name = dto.name;
     if (dto.email !== undefined) updateData.email = dto.email;
-    if (dto.role !== undefined) updateData.role = dto.role;
     if (dto.isActive !== undefined) updateData.isActive = dto.isActive;
 
+    if (dto.roles !== undefined && Array.isArray(dto.roles) && dto.roles.length > 0) {
+      if (dto.roles.includes(UserRole.STUDENT) && dto.roles.length > 1) {
+        throw new BadRequestException('STUDENT role cannot be combined with staff roles');
+      }
+      updateData.roles = dto.roles;
+      updateData.role = dto.roles[0];
+    } else if (dto.role !== undefined) {
+      updateData.role = dto.role;
+      updateData.roles = [dto.role];
+    }
+
+    const effectiveRoles: string[] = updateData.roles || (user.roles || [user.role]);
+    const isGlobalOnly = effectiveRoles.every(
+      (r) => r === UserRole.QUESTION_CREATOR || r === UserRole.CONTENT_CREATOR,
+    );
+
     // College update
-    if (dto.role === UserRole.QUESTION_CREATOR || dto.role === UserRole.CONTENT_CREATOR) {
+    if (isGlobalOnly) {
       updateData.collegeId = null;
       updateData.collegeName = null;
     } else if (dto.collegeName !== undefined) {

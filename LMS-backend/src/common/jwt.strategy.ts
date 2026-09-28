@@ -41,10 +41,21 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if ((user.collegeId || user.collegeName) && !college?.active) {
       throw new UnauthorizedException('College is unavailable');
     }
+    const rawRoles: any = user.roles || (user.role ? [user.role] : []);
+    const userRoles: string[] = (
+      Array.isArray(rawRoles)
+        ? rawRoles
+        : typeof rawRoles === 'string'
+        ? rawRoles.split(',')
+        : []
+    ).map((r) => String(r).trim()).filter(Boolean);
+    if (userRoles.length === 0 && user.role) userRoles.push(user.role);
+
     return {
       sub: user.id,
       email: user.email,
       role: user.role,
+      roles: userRoles,
       name: user.name,
       collegeId: college?.id,
       collegeName: college?.name,

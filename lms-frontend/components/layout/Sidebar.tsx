@@ -72,13 +72,46 @@ export default function Sidebar({ role }: { role?: string }) {
     const menuButton = useRef<HTMLButtonElement>(null)
     const pathname = usePathname()
     const router = useRouter()
-    const navItems =
-        role === 'STUDENT' ? studentNav :
-            role === 'INSTRUCTOR' ? instructorNav :
-                role === 'ADMIN' ? adminNav :
-                    role === 'SUPERADMIN' ? superadminNav :
-                        role === 'QUESTION_CREATOR' ? questionCreatorNav :
-                            role === 'CONTENT_CREATOR' ? contentCreatorNav : studentNav
+
+    let userRoles: string[] = []
+    if (typeof window !== 'undefined') {
+        try {
+            const stored = localStorage.getItem('user')
+            if (stored) {
+                const u = JSON.parse(stored)
+                if (Array.isArray(u.roles) && u.roles.length > 0) {
+                    userRoles = u.roles
+                } else if (u.role) {
+                    userRoles = [u.role]
+                }
+            }
+        } catch {}
+    }
+    if (userRoles.length === 0 && role) {
+        userRoles = [role]
+    }
+
+    let navItems: NavItem[] = []
+    if (userRoles.includes('SUPERADMIN')) {
+        navItems = superadminNav
+    } else if (userRoles.includes('STUDENT') && userRoles.length === 1) {
+        navItems = studentNav
+    } else {
+        const itemsMap = new Map<string, NavItem>()
+        for (const r of userRoles) {
+            let list: NavItem[] = []
+            if (r === 'INSTRUCTOR') list = instructorNav
+            else if (r === 'ADMIN') list = adminNav
+            else if (r === 'QUESTION_CREATOR') list = questionCreatorNav
+            else if (r === 'CONTENT_CREATOR') list = contentCreatorNav
+            for (const item of list) {
+                if (!itemsMap.has(item.href)) {
+                    itemsMap.set(item.href, item)
+                }
+            }
+        }
+        navItems = itemsMap.size > 0 ? Array.from(itemsMap.values()) : (role === 'STUDENT' ? studentNav : instructorNav)
+    }
 
     const handleLogout = () => {
         // Immediate local teardown and navigation for instant UI responsiveness

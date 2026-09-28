@@ -10,6 +10,7 @@ import {
   Max,
   MaxLength,
   ValidateIf,
+  IsArray,
 } from 'class-validator';
 
 export class SignupDto {
@@ -96,7 +97,12 @@ export class CreateUserDto {
 
   @IsString()
   @IsNotEmpty({ message: 'Role is required' })
-  role: string; // ADMIN, INSTRUCTOR, STUDENT
+  role: string; // ADMIN, INSTRUCTOR, STUDENT, etc.
+
+  @IsOptional()
+  @IsArray()
+  roles?: string[];
+
 
   // collegeId is NOT in the DTO for ADMIN/INSTRUCTOR creation
   // It will be automatically inherited from the creator
