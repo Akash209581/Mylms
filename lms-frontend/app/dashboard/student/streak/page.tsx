@@ -5,8 +5,11 @@ import { apiFetch } from '@/lib/apiFetch'
 import { API_URL } from '@/lib/api'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Sidebar from '@/components/layout/Sidebar'
-import Navbar from '@/components/layout/Navbar'
+import Link from 'next/link'
+import StudentReferenceShell from '@/components/layout/StudentReferenceShell'
+import { EmptyState, Loading, PageHeader } from '@/components/ui'
+import { api } from '@/lib/api'
+import { CheckCircle2, Flame, MoonStar, Send, XCircle } from 'lucide-react'
 
 export default function DailyChallengePage() {
     const router = useRouter()
@@ -16,6 +19,11 @@ export default function DailyChallengePage() {
     const [submitted, setSubmitted] = useState(false)
     const [result, setResult] = useState<any>(null)
     const [selectedLang, setSelectedLang] = useState<string>('')
+    const [streakDays, setStreakDays] = useState<number | null>(null)
+
+    useEffect(() => {
+        api.get('/student/stats').then(r => setStreakDays(Number(r.data?.streak) || 0)).catch(() => setStreakDays(null))
+    }, [])
 
     useEffect(() => {
         const today = new Date().toISOString().slice(0, 10)
@@ -88,153 +96,118 @@ export default function DailyChallengePage() {
         setAnswer(snippetObj[lang] || '')
     }
 
-    if (loading) return (
-        <div className="flex items-center justify-center min-h-screen">
-            <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+    const shell = (content: React.ReactNode) => (
+        <div className="portal-page">
+            <StudentReferenceShell active="dashboard" />
+            <main id="student-main" tabIndex={-1} className="portal-main">
+                <PageHeader
+                    eyebrow="Daily challenge"
+                    title="Learning streak"
+                    description="Solve one question a day to keep your streak alive and earn points."
+                    actions={streakDays !== null && (
+                        <span className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] shadow-sm">
+                            <Flame className="w-5 h-5 text-[var(--gold)]" aria-hidden="true" />
+                            <span className="font-display text-xl font-semibold role-text-primary ui-num">{streakDays}</span>
+                            <span className="text-sm role-text-muted">day streak</span>
+                        </span>
+                    )}
+                />
+                {content}
+            </main>
         </div>
     )
 
-    if (!streak) return (
-        <div className="min-h-screen bg-mesh">
-            <Sidebar role="STUDENT" />
-            <Navbar title="Daily Challenge" />
-            <main className="page-content flex items-center justify-center">
-                <div className="text-center">
-                    <div className="text-6xl mb-4">🌙</div>
-                    <h1 className="text-2xl font-bold text-[var(--text-primary)]">No Daily Challenge</h1>
-                    <p className="text-[var(--text-secondary)] mt-2">Come back tomorrow for a new coding challenge!</p>
-                    <button onClick={() => router.push('/dashboard/student')} className="btn-primary mt-6 px-6 py-2.5">Back to Dashboard</button>
-                </div>
-            </main>
-        </div>
+    if (loading) return shell(<Loading label="Loading today's challenge" />)
+
+    if (!streak) return shell(
+        <EmptyState icon={MoonStar} title="No challenge today" action={<Link href="/dashboard/student" className="ui-btn ui-btn-secondary">Back to overview</Link>}>
+            There is no daily challenge scheduled for today. Check back tomorrow.
+        </EmptyState>
     )
 
     const q = streak.question
 
-    return (
-        <div className="min-h-screen bg-mesh">
-            <Sidebar role="STUDENT" />
-            <Navbar title="Daily Coding Streak" />
-            <main className="page-content">
-                <div className="max-w-3xl mx-auto">
-                    <div className="mb-8 flex items-center justify-between">
-                        <div>
-                            <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-1">Daily Challenge</h1>
-                            <p className="text-[var(--text-secondary)]">Earn streak points by solving today's puzzle.</p>
-                        </div>
-                        <div className="bg-amber-100 px-4 py-2 rounded-2xl flex items-center gap-2 border border-amber-200">
-                            <span className="text-xl">🔥</span>
-                            <span className="text-amber-700 font-bold">12 Day Streak</span>
-                        </div>
+    return shell(
+        <section className="ui-card ui-card-pad max-w-3xl" style={{ padding: 32 }}>
+            <div className="flex items-center gap-3 mb-5">
+                <span className="ui-badge is-accent no-dot">{q.type}</span>
+                {q.questionNumber && <span className="text-sm role-text-muted ui-num">Question #{q.questionNumber}</span>}
+            </div>
+
+            <p className="font-display text-2xl leading-snug role-text-primary mb-8">{q.questionText}</p>
+
+            {submitted ? (
+                <div className={`ui-alert ${result.success ? 'is-success' : 'is-danger'}`} style={{ padding: 20 }}>
+                    {result.success ? <CheckCircle2 aria-hidden="true" /> : <XCircle aria-hidden="true" />}
+                    <div className="flex-1">
+                        <p className="font-semibold text-base">{result.success ? 'Correct answer' : 'Not quite'}</p>
+                        <p className="mt-1">{result.message}</p>
+                        {result.explanation && <p className="mt-2 text-sm opacity-80">{result.explanation}</p>}
+                        <Link href="/dashboard/student" className="ui-btn ui-btn-secondary ui-btn-sm mt-4">Back to overview</Link>
                     </div>
-
-                    <div className="glass-card p-8">
-                        <div className="flex items-center gap-3 mb-6">
-                            <span className="px-3 py-1 bg-indigo-100 text-indigo-700 text-xs font-bold rounded-full uppercase tracking-wider">{q.type}</span>
-                            <span className="text-gray-400 font-mono text-sm">Question #{q.questionNumber}</span>
+                </div>
+            ) : (
+                <div className="grid gap-6">
+                    {q.type === 'MCQ' && (
+                        <div className="grid gap-3" role="radiogroup" aria-label="Answer options">
+                            {q.options?.map((opt: string, i: number) => {
+                                const selected = answer === opt
+                                return (
+                                    <button
+                                        key={i}
+                                        role="radio"
+                                        aria-checked={selected}
+                                        onClick={() => setAnswer(opt)}
+                                        className={`flex items-center gap-4 p-4 rounded-xl border text-left transition-colors ${selected ? 'border-[var(--accent)] bg-[var(--accent-soft)]' : 'border-[var(--border)] bg-[var(--bg-surface)] hover:border-[var(--border-strong)] hover:bg-[var(--bg-raised)]'}`}
+                                    >
+                                        <span className={`grid place-items-center w-8 h-8 rounded-lg text-sm font-semibold shrink-0 ${selected ? 'bg-[var(--accent)] text-white' : 'bg-[var(--bg-raised)] role-text-secondary'}`}>{String.fromCharCode(65 + i)}</span>
+                                        <span className="role-text-primary">{opt}</span>
+                                    </button>
+                                )
+                            })}
                         </div>
+                    )}
 
-                        <div className="prose prose-indigo max-w-none">
-                            <p className="text-xl text-[var(--text-primary)] leading-relaxed font-medium mb-8">
-                                {q.questionText}
-                            </p>
+                    {(q.type === 'FIB' || q.type === 'OP') && (
+                        <div className="ui-field">
+                            <label className="ui-label" htmlFor="streak-answer">Your answer</label>
+                            <input id="streak-answer" type="text" value={answer} onChange={e => setAnswer(e.target.value)} placeholder="Type your answer" className="ui-input font-mono" style={{ minHeight: 52, fontSize: 16 }} />
                         </div>
+                    )}
 
-                        {submitted ? (
-                            <div className={`p-6 rounded-2xl mb-8 animate-fade-in ${result.success ? 'bg-emerald-50 border border-emerald-100' : 'bg-rose-50 border border-rose-100'}`}>
-                                <div className="flex items-center gap-3 mb-2">
-                                    <span className="text-2xl">{result.success ? '🎉' : '❌'}</span>
-                                    <h3 className={`text-lg font-bold ${result.success ? 'text-emerald-800' : 'text-rose-800'}`}>
-                                        {result.success ? 'Correct Answer!' : 'Incorrect'}
-                                    </h3>
-                                </div>
-                                <p className={`${result.success ? 'text-emerald-700' : 'text-rose-700'} mb-4`}>{result.message}</p>
-                                {result.explanation && <p className="text-sm text-[var(--text-secondary)] mt-2 italic font-mono">{result.explanation}</p>}
-
-                                <button onClick={() => router.push('/dashboard/student')} className="btn-primary mt-4 px-6 py-2">Return to Dashboard</button>
-                            </div>
-                        ) : (
-                            <div className="space-y-6">
-                                {q.type === 'MCQ' && (
-                                    <div className="grid grid-cols-1 gap-3">
-                                        {q.options?.map((opt: string, i: number) => (
-                                            <button
-                                                key={i}
-                                                onClick={() => setAnswer(opt)}
-                                                className={`p-4 rounded-xl border text-left transition-all hover:border-indigo-500 ${answer === opt ? 'bg-indigo-50 border-indigo-500 ring-2 ring-indigo-200' : 'bg-gray-50 border-[var(--border)]'}`}
-                                            >
-                                                <span className="font-bold mr-3 text-indigo-400">{String.fromCharCode(65 + i)}</span>
-                                                <span className="text-[var(--text-primary)]">{opt}</span>
-                                            </button>
+                    {q.type === 'PQ' && (() => {
+                        const langs = q.allowedLanguages || ['Python']
+                        return (
+                            <div className="grid gap-3">
+                                {langs.length > 1 && (
+                                    <div className="ui-tabs" role="tablist" aria-label="Language">
+                                        {langs.map((l: string) => (
+                                            <button key={l} type="button" role="tab" aria-selected={selectedLang === l} onClick={() => handleLanguageChange(l)} className="ui-tab">{l}</button>
                                         ))}
                                     </div>
                                 )}
-
-                                {(q.type === 'FIB' || q.type === 'OP') && (
-                                    <div>
-                                        <label className="block text-sm font-bold text-[var(--text-primary)] mb-2 uppercase tracking-wide">Enter your answer</label>
-                                        <input
-                                            type="text"
-                                            value={answer}
-                                            onChange={e => setAnswer(e.target.value)}
-                                            placeholder="Type your answer here..."
-                                            className="input-field py-4 text-lg font-mono"
-                                        />
+                                <div className="rounded-xl overflow-hidden border border-[#2c313c] bg-[#14161c]">
+                                    <div className="flex items-center justify-between px-4 py-2 border-b border-[#2c313c] text-[11px] tracking-wider uppercase text-[#9d9a92] font-semibold">
+                                        <span>{selectedLang}</span><span>solution.{selectedLang?.toLowerCase().startsWith('py') ? 'py' : 'txt'}</span>
                                     </div>
-                                )}
-
-                                {q.type === 'PQ' && (() => {
-                                    const langs = q.allowedLanguages || ['Python']
-                                    return (
-                                        <div className="space-y-4 mb-6 animate-in fade-in duration-300">
-                                            {langs.length > 0 && (
-                                                <div className="flex items-center gap-3 bg-[var(--bg-surface)]/5 p-2 rounded-2xl border border-white/10 max-w-max">
-                                                    <span className="text-xs font-bold text-gray-400 pl-2">Language:</span>
-                                                    <div className="flex gap-2">
-                                                        {langs.map((l: string) => (
-                                                            <button
-                                                                key={l}
-                                                                type="button"
-                                                                onClick={() => handleLanguageChange(l)}
-                                                                className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
-                                                                    selectedLang === l
-                                                                        ? 'bg-indigo-500 border-indigo-500 text-white shadow-lg'
-                                                                        : 'bg-white/5 border-white/10 text-gray-300 hover:border-white/30'
-                                                                }`}
-                                                            >
-                                                                {l}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
-                                            <div className="bg-gray-900 rounded-2xl p-6 border border-white/5">
-                                                <div className="flex justify-between items-center text-[10px] text-gray-500 uppercase tracking-wider font-bold border-b border-white/5 pb-2 mb-4">
-                                                    <span>{selectedLang} Solution Editor</span>
-                                                </div>
-                                                <textarea
-                                                    value={answer}
-                                                    onChange={e => setAnswer(e.target.value)}
-                                                    className="w-full h-64 bg-transparent text-emerald-400 font-mono focus:outline-none resize-none text-sm leading-relaxed"
-                                                    placeholder="Implement your solution here..."
-                                                />
-                                            </div>
-                                        </div>
-                                    )
-                                })()}
-
-                                <button
-                                    onClick={handleSubmit}
-                                    disabled={!answer}
-                                    className="btn-primary w-full py-4 text-lg mt-4 disabled:opacity-50 shadow-xl shadow-indigo-500/20"
-                                >
-                                    Submit Answer
-                                </button>
+                                    <textarea
+                                        value={answer}
+                                        onChange={e => setAnswer(e.target.value)}
+                                        spellCheck={false}
+                                        aria-label="Solution code"
+                                        className="w-full h-64 p-4 bg-transparent text-[#e6e1d6] font-mono focus:outline-none resize-y text-sm leading-relaxed"
+                                        placeholder="Write your solution here…"
+                                    />
+                                </div>
                             </div>
-                        )}
-                    </div>
+                        )
+                    })()}
+
+                    <button onClick={handleSubmit} disabled={!answer} className="ui-btn ui-btn-primary ui-btn-lg ui-btn-block">
+                        <Send aria-hidden="true" /> Submit answer
+                    </button>
                 </div>
-            </main>
-        </div>
+            )}
+        </section>
     )
 }

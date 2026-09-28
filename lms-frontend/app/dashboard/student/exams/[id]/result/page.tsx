@@ -6,6 +6,9 @@ import StudentReferenceShell from '@/components/layout/StudentReferenceShell'
 import { api } from '@/lib/api'
 import MarkdownRenderer from '@/components/editor/MarkdownRenderer'
 import { normalizeMcqLetter, optionTextForLetter } from '@/lib/mcq-answer'
+import Link from 'next/link'
+import { EmptyState, Loading } from '@/components/ui'
+import { ArrowLeft, BarChart3, Check, CheckCircle2, Code2, Lightbulb, ListChecks, PieChart, X } from 'lucide-react'
 
 export default function ExamResultPage() {
   const router = useRouter()
@@ -22,133 +25,123 @@ export default function ExamResultPage() {
     if (!attemptId) { router.push('/dashboard/student/exams'); return }
     api.get(`/student/exams/attempts/${attemptId}/result`)
       .then(r => setResult(r.data))
+      .catch(e => setResult({ message: e.response?.data?.message || 'Results could not be loaded.' }))
       .finally(() => setLoading(false))
   }, [attemptId])
 
   if (loading) return (
     <div className="portal-page"><StudentReferenceShell active="exams" />
-      <main id="student-main" tabIndex={-1} className="portal-main flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
-      </main>
+      <main id="student-main" tabIndex={-1} className="portal-main"><Loading label="Loading results" /></main>
     </div>
   )
 
   if (!result || result.message) return (
     <div className="portal-page"><StudentReferenceShell active="exams" />
-      <main id="student-main" tabIndex={-1} className="portal-main max-w-2xl">
-        <div className="glass-card p-12 text-center">
-          <div className="text-5xl mb-4">📊</div>
-          <h1 className="text-xl font-bold role-text-primary mb-2">Results Not Yet Available</h1>
-          <p className="role-text-muted text-sm">{result?.message || 'Please check back later.'}</p>
-          <button onClick={() => router.push('/dashboard/student/exams')} className="btn-primary mt-6">← Back to Exams</button>
-        </div>
+      <main id="student-main" tabIndex={-1} className="portal-main">
+        <EmptyState icon={BarChart3} title="Results not available yet" action={<Link href="/dashboard/student/exams" className="ui-btn ui-btn-primary">Back to exams</Link>}>
+          {result?.message || 'Your results will appear here once they have been published.'}
+        </EmptyState>
       </main>
     </div>
   )
 
-  const percentage = Math.round((result.totalScore / result.totalMarks) * 100)
+  const percentage = result.totalMarks ? Math.round((Number(result.totalScore) / Number(result.totalMarks)) * 100) : 0
+  const mcqTotal = result.mcqDetails?.length || 0
+  const mcqCorrect = result.mcqDetails?.filter((q: any) => q.correct).length || 0
+  const mcqWrong = result.mcqDetails?.filter((q: any) => !q.correct && q.yourAnswer).length || 0
+  const mcqSkipped = mcqTotal - mcqCorrect - mcqWrong
+  const LETTERS = ['A', 'B', 'C', 'D']
+  const tone = result.passed ? 'var(--success)' : 'var(--error)'
 
   return (
     <div className="portal-page">
       <StudentReferenceShell active="exams" />
-      <main id="student-main" tabIndex={-1} className="portal-main max-w-4xl">
-        <button onClick={() => router.push('/dashboard/student/exams')} className="btn-secondary mb-6 text-sm">← Back to Exams</button>
+      <main id="student-main" tabIndex={-1} className="portal-main">
+        <Link href="/dashboard/student/exams" className="ui-back"><ArrowLeft aria-hidden="true" /> All exams</Link>
 
-        {/* Hero Result Card */}
-        <div className={`glass-card p-8 mb-6 relative overflow-hidden ${result.passed ? 'border-green-500/30' : 'border-red-500/30'}`}>
-          <div className={`absolute inset-0 opacity-10 ${result.passed ? 'bg-green-500' : 'bg-red-500'}`} />
-          <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
-            {/* Score Circle */}
-            <div className="shrink-0 text-center">
-              <div className={`w-36 h-36 rounded-full border-4 flex flex-col items-center justify-center
-                ${result.passed ? 'border-green-500 bg-green-500/10' : 'border-red-500 bg-red-500/10'}`}>
-                <p className="text-4xl font-black role-text-primary">{percentage}%</p>
-                <p className="text-xs role-text-muted font-semibold">Score</p>
+        {/* Result summary */}
+        <section className="ui-card ui-card-pad mb-6" style={{ borderTop: `3px solid ${tone}` }}>
+          <div className="flex flex-col md:flex-row md:items-center gap-8">
+            <div className="shrink-0 grid place-items-center">
+              <div
+                className="grid place-items-center w-36 h-36 rounded-full"
+                style={{ background: `conic-gradient(${tone} ${percentage * 3.6}deg, var(--bg-hover) 0)` }}
+                role="img"
+                aria-label={`Score ${percentage} percent`}
+              >
+                <div className="grid place-items-center w-[120px] h-[120px] rounded-full bg-[var(--bg-surface)]">
+                  <div className="text-center">
+                    <p className="font-display text-4xl font-semibold role-text-primary ui-num leading-none">{percentage}%</p>
+                    <p className="text-xs role-text-muted mt-1">score</p>
+                  </div>
+                </div>
               </div>
-              <p className={`text-xl font-black mt-3 ${result.passed ? 'text-green-400' : 'text-red-400'}`}>
-                {result.passed ? '🎉 PASSED' : '❌ FAILED'}
-              </p>
             </div>
 
-            {/* Stats */}
-            <div className="flex-1 space-y-3">
-              <h1 className="text-xl font-bold role-text-primary">{result.examTitle}</h1>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {[
-                  { label: 'Total Score', value: `${result.totalScore} / ${result.totalMarks}`, highlight: true },
-                  { label: 'MCQ Score', value: result.mcqScore ?? '—' },
-                  { label: 'Coding Score', value: result.codingScore ?? '—' },
-                  { label: 'Passing Marks', value: result.passingMarks },
-                  { label: 'Time Taken', value: result.timeTaken ? `${Math.round(result.timeTaken / 60)}m ${result.timeTaken % 60}s` : '—' },
-                  ...(result.rank ? [{ label: 'Your Rank', value: `#${result.rank} 🏆` }] : []),
-                ].map(s => (
-                  <div key={s.label} className={`p-3 rounded-xl ${s.highlight ? 'bg-[var(--accent-soft)] border border-[var(--accent)]/30' : 'bg-[var(--bg-raised)]'}`}>
-                    <p className="text-xs role-text-muted">{s.label}</p>
-                    <p className={`text-lg font-bold ${s.highlight ? 'text-[var(--accent-text)]' : 'role-text-primary'}`}>{s.value}</p>
-                  </div>
-                ))}
-              </div>
+            <div className="flex-1 min-w-0">
+              <span className={`ui-badge ${result.passed ? 'is-success' : 'is-danger'}`}>{result.passed ? 'Passed' : 'Not passed'}</span>
+              <h1 className="font-display text-3xl font-semibold role-text-primary mt-3 leading-tight">{result.examTitle}</h1>
+              <dl className="ui-kv mt-5">
+                <div><dt>Total</dt><dd>{result.totalScore} / {result.totalMarks}</dd></div>
+                <div><dt>MCQ</dt><dd>{result.mcqScore ?? '—'}</dd></div>
+                <div><dt>Coding</dt><dd>{result.codingScore ?? '—'}</dd></div>
+                <div><dt>Pass mark</dt><dd>{result.passingMarks}</dd></div>
+                <div><dt>Time taken</dt><dd>{result.timeTaken ? `${Math.floor(result.timeTaken / 60)}m ${result.timeTaken % 60}s` : '—'}</dd></div>
+                {result.rank ? <div><dt>Rank</dt><dd>#{result.rank}</dd></div> : null}
+              </dl>
             </div>
           </div>
-        </div>
+        </section>
 
         {/* Tabs */}
-        <div className="flex gap-1 mb-6 p-1 glass-subtle rounded-xl w-fit">
-          {(['summary', 'mcq', 'coding'] as const).map(t => (
-            <button key={t} onClick={() => setActiveTab(t)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all capitalize ${activeTab === t ? 'bg-[var(--accent)] text-white shadow' : 'role-text-muted hover:role-text-primary'}`}>
-              {t === 'summary' ? '📈 Summary' : t === 'mcq' ? '📝 MCQ Detail' : '💻 Coding Detail'}
+        <div className="ui-tabs mb-6" role="tablist">
+          {([
+            ['summary', 'Summary', PieChart],
+            ['mcq', 'MCQ review', ListChecks],
+            ['coding', 'Coding review', Code2],
+          ] as const).map(([key, label, Icon]) => (
+            <button key={key} role="tab" aria-selected={activeTab === key} onClick={() => setActiveTab(key)} className="ui-tab">
+              <Icon className="w-4 h-4" aria-hidden="true" /> {label}
             </button>
           ))}
         </div>
 
-        {/* Summary */}
         {activeTab === 'summary' && (
-          <div className="grid md:grid-cols-2 gap-4">
-            {/* MCQ Summary */}
-            <div className="glass-card p-6">
-              <h2 className="font-bold role-text-primary mb-4">Section A — MCQ</h2>
-              <div className="space-y-2 text-sm">
-                {(() => {
-                  const total = result.mcqDetails?.length || 0
-                  const correct = result.mcqDetails?.filter((q: any) => q.correct).length || 0
-                  const wrong = result.mcqDetails?.filter((q: any) => !q.correct && q.yourAnswer).length || 0
-                  const skipped = total - correct - wrong
-                  return [
-                    { label: 'Correct', value: correct, color: 'text-green-400' },
-                    { label: 'Wrong', value: wrong, color: 'text-red-400' },
-                    { label: 'Skipped', value: skipped, color: 'text-gray-400' },
-                    { label: 'Total', value: total, color: 'role-text-primary' },
-                  ].map(item => (
-                    <div key={item.label} className="flex justify-between items-center">
-                      <span className="role-text-muted">{item.label}</span>
-                      <span className={`font-bold ${item.color}`}>{item.value}</span>
-                    </div>
-                  ))
-                })()}
+          <div className="grid md:grid-cols-2 gap-5">
+            <section className="ui-card ui-card-pad">
+              <h2 className="ui-section-title mb-4">Section A · Multiple choice</h2>
+              <div className="grid grid-cols-3 gap-3 mb-5">
+                <div className="p-3 rounded-lg bg-[var(--success-soft)]"><p className="text-xs text-[var(--success)] font-semibold">Correct</p><p className="font-display text-2xl text-[var(--success)] ui-num">{mcqCorrect}</p></div>
+                <div className="p-3 rounded-lg bg-[var(--error-soft)]"><p className="text-xs text-[var(--error)] font-semibold">Wrong</p><p className="font-display text-2xl text-[var(--error)] ui-num">{mcqWrong}</p></div>
+                <div className="p-3 rounded-lg bg-[var(--bg-raised)]"><p className="text-xs role-text-muted font-semibold">Skipped</p><p className="font-display text-2xl role-text-primary ui-num">{mcqSkipped}</p></div>
               </div>
-            </div>
-            {/* Coding Summary */}
-            <div className="glass-card p-6">
-              <h2 className="font-bold role-text-primary mb-4">Section B — Coding</h2>
-              <div className="space-y-3">
-                {result.codingDetails?.map((q: any, i: number) => (
-                  <div key={q.questionId} className="flex items-center justify-between text-sm">
-                    <span className="role-text-muted line-clamp-1 flex-1 pr-4">Q{i + 1}. {q.problemStatement?.substring(0, 40)}...</span>
-                    <span className={`font-bold shrink-0 ${q.status === 'ACCEPTED' ? 'text-green-400' : q.status === 'PARTIAL' ? 'text-yellow-400' : 'role-text-muted'}`}>
-                      {q.score}/{q.marks}
-                    </span>
-                  </div>
-                ))}
-                {!result.codingDetails?.length && <p className="text-sm role-text-muted">No coding questions</p>}
-              </div>
-            </div>
+              {mcqTotal > 0 && (
+                <div className="flex h-2 rounded-full overflow-hidden bg-[var(--bg-hover)]" aria-hidden="true">
+                  <span style={{ width: `${(mcqCorrect / mcqTotal) * 100}%`, background: 'var(--success)' }} />
+                  <span style={{ width: `${(mcqWrong / mcqTotal) * 100}%`, background: 'var(--error)' }} />
+                </div>
+              )}
+              <p className="ui-hint mt-3">{mcqTotal} questions in this section</p>
+            </section>
+
+            <section className="ui-card ui-card-pad">
+              <h2 className="ui-section-title mb-4">Section B · Coding</h2>
+              {result.codingDetails?.length ? (
+                <ul className="grid gap-3">
+                  {result.codingDetails.map((q: any, i: number) => (
+                    <li key={q.questionId} className="flex items-center gap-3">
+                      <span className="text-sm role-text-secondary line-clamp-1 flex-1">Q{i + 1}. {q.problemStatement?.substring(0, 60)}</span>
+                      <span className={`ui-badge no-dot ${q.status === 'ACCEPTED' ? 'is-success' : q.status === 'PARTIAL' ? 'is-warning' : 'is-neutral'}`}>{q.score}/{q.marks}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : <p className="text-sm role-text-muted">No coding questions in this exam.</p>}
+            </section>
           </div>
         )}
 
-        {/* MCQ Detail */}
         {activeTab === 'mcq' && (
-          <div className="space-y-3">
+          <div className="grid gap-4">
             {result.mcqDetails?.map((q: any, i: number) => {
               const yourLetter = normalizeMcqLetter(q.yourAnswer, q.options)
               const correctLetter = q.correctAnswer ? normalizeMcqLetter(q.correctAnswer, q.options) : null
@@ -157,102 +150,79 @@ export default function ExamResultPage() {
               const showTitle = !!title && !!body && title !== body
               const statement = body || title
               const correctText = correctLetter ? optionTextForLetter(correctLetter, q.options) : null
+              const state = q.correct ? 'correct' : q.yourAnswer ? 'wrong' : 'skipped'
               return (
-              <div key={q.questionId} className={`glass-card p-5 border ${q.correct ? 'border-green-500/20' : q.yourAnswer ? 'border-red-500/20' : 'border-[var(--border)]'}`}>
-                <div className="flex items-start gap-3">
-                  <span className={`text-xl shrink-0 ${q.correct ? 'text-green-400' : q.yourAnswer ? 'text-red-400' : 'text-gray-500'}`}>
-                    {q.correct ? '✓' : q.yourAnswer ? '✗' : '—'}
-                  </span>
-                  <div className="flex-1">
-                    <p className="text-xs role-text-muted mb-1">Q{i + 1}</p>
-                    {showTitle && <p className="text-sm font-semibold role-text-primary mb-2">{title}</p>}
-                    {statement && (
-                      <div className="text-sm role-text-primary font-medium mb-3">
-                        <MarkdownRenderer content={statement} className="text-sm role-text-primary" />
-                      </div>
-                    )}
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      {['A', 'B', 'C', 'D'].map((opt, idx) => (
-                        <div key={opt} className={`p-2 rounded-lg border
-                          ${correctLetter === opt && yourLetter === opt ? 'bg-green-500/20 border-green-500/30 text-green-400' :
-                            correctLetter === opt ? 'bg-green-500/10 border-green-500/20 text-green-300' :
-                            yourLetter === opt ? 'bg-red-500/15 border-red-500/30 text-red-400' :
-                            'border-[var(--border)] role-text-muted'}`}>
-                          <span className="font-bold mr-1">{opt}.</span>{q.options?.[idx]}
-                        </div>
-                      ))}
-                    </div>
-                    <div className="flex flex-wrap gap-2 mt-3 text-xs">
-                      <span className="px-2 py-1 rounded bg-[var(--bg-raised)] role-text-muted">
-                        Your answer: {yourLetter ? `${yourLetter}${q.options?.[['A','B','C','D'].indexOf(yourLetter)] ? ` — ${q.options[['A','B','C','D'].indexOf(yourLetter)]}` : ''}` : 'Skipped'}
-                      </span>
-                      {correctLetter && (
-                        <span className="px-2 py-1 rounded bg-green-500/15 text-green-300 border border-green-500/20">
-                          Correct answer: {correctLetter}{correctText ? ` — ${correctText}` : ''}
-                        </span>
-                      )}
-                    </div>
-                    {q.explanation && (
-                      <div className="mt-3 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                        <p className="text-xs text-blue-400"><strong>💡 Explanation:</strong> {q.explanation}</p>
-                      </div>
-                    )}
-                    <div className="flex items-center gap-3 mt-2 text-xs">
-                      <span className={q.correct ? 'text-green-400' : 'text-red-400'}>
-                        {q.earned >= 0 ? `+${q.earned}` : q.earned} marks
-                      </span>
-                    </div>
+                <article key={q.questionId} className="ui-card ui-card-pad" style={{ borderLeft: `3px solid ${state === 'correct' ? 'var(--success)' : state === 'wrong' ? 'var(--error)' : 'var(--border-strong)'}` }}>
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <span className="text-xs font-semibold tracking-wider uppercase role-text-muted">Question {i + 1}</span>
+                    <span className={`ui-badge ${state === 'correct' ? 'is-success' : state === 'wrong' ? 'is-danger' : 'is-neutral'}`}>
+                      {state === 'correct' ? 'Correct' : state === 'wrong' ? 'Incorrect' : 'Skipped'} · {q.earned >= 0 ? `+${q.earned}` : q.earned}
+                    </span>
                   </div>
-                </div>
-              </div>
+                  {showTitle && <p className="text-sm font-semibold role-text-primary mb-2">{title}</p>}
+                  {statement && <div className="mb-4"><MarkdownRenderer content={statement} className="text-sm role-text-primary" /></div>}
+                  <div className="grid sm:grid-cols-2 gap-2">
+                    {LETTERS.map((opt, idx) => {
+                      const isCorrect = correctLetter === opt
+                      const isYours = yourLetter === opt
+                      const cls = isCorrect
+                        ? 'border-[var(--success)] bg-[var(--success-soft)] text-[var(--success)]'
+                        : isYours
+                          ? 'border-[var(--error)] bg-[var(--error-soft)] text-[var(--error)]'
+                          : 'border-[var(--border)] role-text-secondary'
+                      return (
+                        <div key={opt} className={`flex items-start gap-2 p-3 rounded-lg border text-sm ${cls}`}>
+                          <span className="font-semibold shrink-0">{opt}.</span>
+                          <span className="flex-1">{q.options?.[idx]}</span>
+                          {isCorrect && <Check className="w-4 h-4 shrink-0" aria-label="Correct answer" />}
+                          {isYours && !isCorrect && <X className="w-4 h-4 shrink-0" aria-label="Your answer" />}
+                        </div>
+                      )
+                    })}
+                  </div>
+                  <p className="text-xs role-text-muted mt-3">
+                    Your answer: <strong className="role-text-primary">{yourLetter || 'Skipped'}</strong>
+                    {correctLetter && <> · Correct: <strong className="text-[var(--success)]">{correctLetter}{correctText ? ` — ${correctText}` : ''}</strong></>}
+                  </p>
+                  {q.explanation && (
+                    <div className="ui-alert is-info mt-3"><Lightbulb aria-hidden="true" /><div><strong>Explanation.</strong> {q.explanation}</div></div>
+                  )}
+                </article>
               )
             })}
+            {!result.mcqDetails?.length && <EmptyState icon={ListChecks} title="No multiple-choice questions" />}
           </div>
         )}
 
-        {/* Coding Detail */}
         {activeTab === 'coding' && (
-          <div className="space-y-4">
-            {result.codingDetails?.map((q: any, i: number) => (
-              <div key={q.questionId} className="glass-card p-6">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-semibold role-text-primary text-sm">
-                    Q{i + 1}. {q.problemStatement?.substring(0, 60)}...
-                  </h3>
-                  <div className="flex items-center gap-2">
-                    <span className={`badge text-xs ${q.status === 'ACCEPTED' ? 'bg-green-500/20 text-green-400' : q.status === 'PARTIAL' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-gray-500/20 text-gray-400'}`}>
-                      {q.status}
-                    </span>
-                    <span className="text-sm font-bold role-text-primary">{q.score}/{q.marks}</span>
+          <div className="grid gap-4">
+            {result.codingDetails?.map((q: any, i: number) => {
+              const hints = q.hintsUnlocked || result.unlockedHints?.[String(q.questionId)]?.length || 0
+              return (
+                <article key={q.questionId} className="ui-card ui-card-pad">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <h3 className="text-sm font-semibold role-text-primary flex-1 min-w-0">Q{i + 1}. {q.problemStatement?.substring(0, 90)}</h3>
+                    <div className="flex items-center gap-3">
+                      <span className={`ui-badge ${q.status === 'ACCEPTED' ? 'is-success' : q.status === 'PARTIAL' ? 'is-warning' : 'is-neutral'}`}>{String(q.status || 'Not attempted').replace(/_/g, ' ').toLowerCase()}</span>
+                      <span className="font-display text-lg role-text-primary ui-num">{q.score}/{q.marks}</span>
+                    </div>
                   </div>
-                </div>
-                <div className="flex gap-4 text-xs role-text-muted">
-                  <span>Public: {q.passedPublic}/{q.totalPublic} passed</span>
-                  {q.language && <span>Language: {q.language}</span>}
-                </div>
-                {(q.hintsUnlocked > 0 || (result.unlockedHints && result.unlockedHints[String(q.questionId)]?.length > 0)) && (
-                  <div className="mt-3 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs flex items-center justify-between">
-                    <span className="text-amber-300 font-medium flex items-center gap-1.5">
-                      <span>💡</span> {q.hintsUnlocked || result.unlockedHints[String(q.questionId)]?.length} Hint(s) Unlocked
-                    </span>
-                    {q.hintDeduction > 0 && (
-                      <span className="text-rose-400 font-bold">
-                        -{q.hintDeduction} Marks Hint Penalty
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))}
-            {!result.codingDetails?.length && (
-              <div className="glass-card p-10 text-center role-text-muted">No coding questions in this exam</div>
-            )}
+                  <ul className="ui-meta mt-3">
+                    <li><CheckCircle2 /> {q.passedPublic}/{q.totalPublic} public tests passed</li>
+                    {q.language && <li><Code2 /> {q.language}</li>}
+                  </ul>
+                  {hints > 0 && (
+                    <div className="ui-alert is-warning mt-4">
+                      <Lightbulb aria-hidden="true" />
+                      <div className="flex-1">{hints} hint{hints > 1 ? 's' : ''} unlocked{q.hintDeduction > 0 && <> · <strong>−{q.hintDeduction} marks</strong> penalty</>}</div>
+                    </div>
+                  )}
+                </article>
+              )
+            })}
+            {!result.codingDetails?.length && <EmptyState icon={Code2} title="No coding questions" />}
           </div>
         )}
-
-        <div className="flex justify-center mt-8">
-          <button onClick={() => router.push('/dashboard/student/exams')} className="btn-primary px-8">← Back to Exams</button>
-        </div>
       </main>
     </div>
   )

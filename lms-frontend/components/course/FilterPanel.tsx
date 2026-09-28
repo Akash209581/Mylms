@@ -43,7 +43,7 @@ export default function FilterPanel({
                             onClick={() => setFilterTab(tab)}
                             className={`px-4 py-2 rounded-xl text-xs font-black transition-all capitalize ${
                                 filterTab === tab
-                                    ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md shadow-indigo-500/20'
+                                    ? 'bg-[#1f3a5f] text-white shadow-md shadow-indigo-500/20'
                                     : 'text-gray-500 hover:text-[var(--text-primary)] hover:bg-[var(--bg-base)]'
                             }`}
                         >

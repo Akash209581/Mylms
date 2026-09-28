@@ -339,7 +339,7 @@ export default function CreateUserPage() {
                                 <button
                                     type="submit"
                                     disabled={loading}
-                                    className="px-6 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg hover:from-blue-700 hover:to-purple-700 transition disabled:opacity-50"
+                                    className="px-6 py-2.5 text-sm font-medium text-white bg-[#1f3a5f] rounded-lg hover:brightness-110 transition disabled:opacity-50"
                                 >
                                     {loading ? 'Creating...' : 'Create User'}
                                 </button>

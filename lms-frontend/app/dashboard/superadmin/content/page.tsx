@@ -73,8 +73,8 @@ export default function ContentCreationPage() {
             <main className="page-content">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                     <div>
-                        <h1 className="text-2xl font-bold text-white">Content Library</h1>
-                        <p className="text-gray-400 text-sm">Select a course to build or edit its notebook content</p>
+                        <h1 className="font-display text-3xl font-semibold role-text-primary">Content library</h1>
+                        <p className="role-text-muted text-sm mt-1">Select a course to build or edit its lesson content.</p>
                     </div>
                     
                     <div className="relative w-full md:w-96">

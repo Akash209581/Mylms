@@ -171,6 +171,34 @@ function renderMarkdown(md: string): string {
     if (raw === undefined) { i++; continue }
     const t = raw.trim()
 
+    const fence = t.match(/^(```|~~~)\s*([\w+#.-]*)/)
+    if (fence) {
+      const code: string[] = []
+      i++
+      while (i < lines.length && !lines[i]?.trim().startsWith(fence[1])) { code.push(lines[i] ?? ''); i++ }
+      i++
+      const lang = fence[2] ? ` data-lang="${esc(fence[2])}"` : ''
+      out.push(`<pre class="nb-pre"${lang}><code>${esc(code.join('\n'))}</code></pre>`)
+      continue
+    }
+
+    const heading = t.match(/^(#{1,6})\s+(.*)$/)
+    if (heading) {
+      const level = heading[1].length
+      out.push(`<h${level} class="nb-h${level}">${inlineHTML(heading[2])}</h${level}>`)
+      i++
+      continue
+    }
+
+    if (/^(-{3,}|\*{3,}|_{3,})$/.test(t)) { out.push('<hr class="nb-hr" />'); i++; continue }
+
+    if (t.startsWith('>')) {
+      const quote: string[] = []
+      while (i < lines.length && lines[i]?.trim().startsWith('>')) { quote.push(inlineHTML(lines[i]!.trim().replace(/^>\s?/, ''))); i++ }
+      out.push(`<blockquote class="nb-quote">${quote.join('<br />')}</blockquote>`)
+      continue
+    }
+
     if (t.startsWith('|') && i + 1 < lines.length && /^\|[-:|\s]+\|$/.test(lines[i + 1]?.trim() || '')) {
       const tbl: string[] = []
       while (i < lines.length && lines[i]?.trim().startsWith('|')) { tbl.push(lines[i]); i++ }

@@ -114,7 +114,7 @@ export default function FeaturedCourses({
                                         disabled={enrollingId === c.id}
                                         className={`px-5 py-2.5 rounded-2xl text-xs font-black transition-all shadow-md flex items-center gap-2 ${
                                             isEnrolled
-                                                ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:opacity-90'
+                                                ? 'bg-[#1f3a5f] text-white hover:opacity-90'
                                                 : 'bg-[var(--bg-base)] text-[var(--text-primary)] border border-[var(--border)] hover:border-indigo-500/50'
                                         }`}
                                     >

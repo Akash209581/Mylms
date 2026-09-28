@@ -35,7 +35,7 @@ export default function DailyStreakDisplay() {
             </div>
             <h4 className="text-white font-bold text-lg mb-3 line-clamp-2 leading-snug">{streak.question?.questionText}</h4>
             <button
-                className="w-full mt-2 py-3 px-6 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-bold rounded-xl transition-all shadow-lg shadow-amber-500/20"
+                className="w-full mt-2 py-3 px-6 bg-[#1f3a5f] hover:brightness-110 text-white font-bold rounded-xl transition-all shadow-lg shadow-amber-500/20"
                 onClick={() => router.push('/dashboard/student/streak')}
             >
                 Solve Coding Challenge

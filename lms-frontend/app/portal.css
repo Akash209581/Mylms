@@ -12,11 +12,11 @@ input::placeholder, textarea::placeholder { color: var(--text-muted); opacity: 1
 .stat-card .text-gray-400 { color: var(--text-muted); }
 .portal-page { min-height: 100vh; background: var(--bg-base); color: var(--text-primary); }
 .portal-main { margin-left: 256px; padding: 112px 40px 48px; max-width: 1600px; }
-.portal-main h1, .portal-main h2, .portal-main h3, .portal-main p { margin: 0; }
-.portal-main h1 { font-size: clamp(26px, 3vw, 34px); font-weight: 700; letter-spacing: -.03em; line-height: 1.25; }
-.portal-main h2 { font-size: 21px; font-weight: 650; letter-spacing: -.02em; }
-.portal-main h3 { font-size: 16px; font-weight: 650; }
-.portal-main p { color: var(--text-secondary); line-height: 1.65; }
+:where(.portal-main) :where(h1, h2, h3, p) { margin: 0; }
+:where(.portal-main) :where(h1) { font-size: clamp(26px, 3vw, 34px); font-weight: 700; letter-spacing: -.03em; line-height: 1.25; }
+:where(.portal-main) :where(h2) { font-size: 21px; font-weight: 650; letter-spacing: -.02em; }
+:where(.portal-main) :where(h3) { font-size: 16px; font-weight: 650; }
+:where(.portal-main) :where(p) { color: var(--text-secondary); line-height: 1.65; }
 .portal-page-heading { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-bottom: 30px; }
 .portal-page-heading p:not(.portal-eyebrow) { margin-top: 10px; font-size: 14px; }
 .portal-main .portal-eyebrow { color: var(--accent-text); font-size: 12px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 10px; }

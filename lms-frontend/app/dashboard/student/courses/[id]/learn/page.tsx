@@ -197,21 +197,20 @@ export default function LearningPathPage() {
     }, [currentLesson])
 
     if (loading) return (
-        <div className="flex h-screen w-full items-center justify-center bg-[#0f172a]">
+        <div className="flex h-screen w-full items-center justify-center bg-[#111318]">
             <div className="flex flex-col items-center gap-4">
-                <div className="h-12 w-12 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent"></div>
-                <p className="text-indigo-400 font-medium animate-pulse text-lg">Preparing your classroom...</p>
+                <div className="h-10 w-10 animate-spin rounded-full border-2 border-[#2c313c] border-t-[#d2b27c]"></div>
+                <p className="text-[#c6c2b8] text-base">Preparing your lesson…</p>
             </div>
         </div>
     )
 
     if (error || !data) return (
-        <div className="flex h-screen w-full items-center justify-center bg-[#0f172a] p-6 text-center">
+        <div data-theme="dark" className="flex h-screen w-full items-center justify-center bg-[#111318] p-6 text-center">
             <div className="glass-card p-8 max-w-md">
-                <div className="text-6xl mb-6">⚠️</div>
-                <h2 className="text-2xl font-bold text-white mb-2">{error || 'Something went wrong'}</h2>
+                <h2 className="font-display text-2xl font-semibold text-white mb-2">{error || 'Something went wrong'}</h2>
                 <p className="text-gray-400 mb-6 font-medium">We couldn&apos;t load the learning path. Please make sure you are enrolled and try again.</p>
-                <button onClick={() => router.back()} className="btn-primary w-full shadow-lg shadow-indigo-500/20">Go Back</button>
+                <button onClick={() => router.back()} className="ui-btn ui-btn-primary ui-btn-block">Go back</button>
             </div>
         </div>
     )
@@ -219,25 +218,25 @@ export default function LearningPathPage() {
     const progressPercent = flatLessons.length > 0 ? Math.round((flatLessons.filter(l => data.completedLessonIds.includes(l.id)).length / flatLessons.length) * 100) : 0
 
     return (
-        <div data-theme="dark" className="learning-workspace flex h-[100dvh] w-full overflow-hidden text-slate-100 bg-[#0a0c10]">
+        <div data-theme="dark" className="learning-workspace font-sans flex h-[100dvh] w-full overflow-hidden text-slate-100 bg-[var(--bg-base)]">
             {/* Sidebar Overlay for Mobile */}
             {!isSidebarOpen && (
                 <button 
                   onClick={() => setIsSidebarOpen(true)}
-                  className="fixed bottom-6 left-6 z-[60] flex h-14 w-14 items-center justify-center rounded-full bg-indigo-600 text-white shadow-2xl hover:scale-110 active:scale-95 transition-all lg:hidden"
+                  className="fixed bottom-6 left-6 z-[60] flex h-14 w-14 items-center justify-center rounded-full bg-[var(--action-bg)] text-white shadow-2xl hover:scale-110 active:scale-95 transition-all lg:hidden"
                 >
                     <Menu size={28} />
                 </button>
             )}
 
             {/* Curriculum Sidebar */}
-            <aside className={`fixed inset-y-0 left-0 z-50 w-full max-w-sm transform flex flex-col bg-[#0f172a] shadow-2xl transition-all duration-300 ease-in-out lg:relative lg:flex lg:w-80 lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-                <div className="flex h-20 items-center justify-between border-b border-white/5 px-6">
+            <aside className={`fixed inset-y-0 left-0 z-50 w-full max-w-sm transform flex flex-col bg-[var(--bg-surface)] shadow-2xl transition-all duration-300 ease-in-out lg:relative lg:flex lg:w-80 lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+                <div className="flex h-20 items-center justify-between border-b border-[var(--border)] px-6">
                     <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/20 text-indigo-400 ring-1 ring-indigo-500/30">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--gold-soft)] text-[var(--gold)] ring-1 ring-[var(--gold)]/30">
                             <BookOpen size={20} />
                         </div>
-                        <h2 className="font-bold text-white tracking-tight">Course Outline</h2>
+                        <h2 className="font-display text-lg font-semibold text-white">Course outline</h2>
                     </div>
                     <button onClick={() => setIsSidebarOpen(false)} aria-label="Close course outline" className="text-gray-500 hover:text-white transition-colors lg:hidden">
                         <X size={20} />
@@ -249,11 +248,11 @@ export default function LearningPathPage() {
                     {/* Course Progress */}
                     <div className="mb-6 p-4 rounded-2xl bg-white/5 ring-1 ring-white/10">
                         <div className="flex justify-between items-center mb-2">
-                            <span className="text-[10px] font-extrabold text-indigo-400 uppercase tracking-widest">Progress</span>
+                            <span className="text-[10px] font-semibold text-[var(--gold)] uppercase tracking-[0.14em]">Progress</span>
                             <span className="text-xs font-bold text-white">{progressPercent}%</span>
                         </div>
                         <div className="h-2 w-full rounded-full bg-white/5 overflow-hidden">
-                            <div className="h-full bg-indigo-500 transition-all duration-500" style={{ width: `${progressPercent}%` }} />
+                            <div className="h-full bg-[var(--gold)] transition-all duration-500" style={{ width: `${progressPercent}%` }} />
                         </div>
                     </div>
 
@@ -262,7 +261,7 @@ export default function LearningPathPage() {
                         {data.modules.map((m, mIdx) => (
                             <div key={m.id} className="space-y-2">
                                 <div className="flex items-center gap-2 px-2">
-                                    <span className="text-[11px] font-black text-indigo-400 uppercase tracking-widest">
+                                    <span className="text-[11px] font-semibold text-[var(--gold)] uppercase tracking-[0.12em]">
                                         Module {mIdx + 1}: {m.title}
                                     </span>
                                 </div>
@@ -274,7 +273,7 @@ export default function LearningPathPage() {
                                                 const idx = flatLessons.findIndex(item => item.id === lesson.id)
                                                 const active = currentLessonIndex === idx
                                                 const done = data.completedLessonIds.includes(lesson.id)
-                                                return <button key={lesson.id} disabled={completing !== null} aria-current={active ? 'step' : undefined} onClick={() => { setCurrentLessonIndex(idx); setSaveError(''); if (window.innerWidth < 1024) setIsSidebarOpen(false) }} className={`flex w-full items-center gap-3 rounded-xl p-3 text-left text-sm transition-colors ${active ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-white/5'}`}>
+                                                return <button key={lesson.id} disabled={completing !== null} aria-current={active ? 'step' : undefined} onClick={() => { setCurrentLessonIndex(idx); setSaveError(''); if (window.innerWidth < 1024) setIsSidebarOpen(false) }} className={`flex w-full items-center gap-3 rounded-xl p-3 text-left text-sm transition-colors ${active ? 'bg-[var(--accent-soft)] text-white ring-1 ring-[var(--accent)]/40' : 'text-slate-300 hover:bg-white/5'}`}>
                                                     {done ? <CheckCircle2 size={18} className="shrink-0 text-emerald-400" /> : <Circle size={18} className="shrink-0" />}
                                                     <span className="min-w-0"><span className="block font-medium">{lesson.title}</span><span className="text-xs opacity-60 capitalize">{lesson.type}{lesson.duration ? ` · ${lesson.duration} min` : ''}</span></span>
                                                 </button>
@@ -288,7 +287,7 @@ export default function LearningPathPage() {
                     </div>
                 </div>
 
-                <div className="p-6 border-t border-white/5 bg-black/10">
+                <div className="p-6 border-t border-[var(--border)] bg-black/10">
                     <button 
                       onClick={() => router.push(`/dashboard/student/courses/${courseId}`)}
                       className="flex w-full items-center justify-center gap-2 p-3 text-sm font-bold text-gray-400 hover:text-white transition-all bg-white/5 hover:bg-white/10 rounded-xl"
@@ -302,56 +301,52 @@ export default function LearningPathPage() {
             {/* Main Learning Content Area */}
             <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden bg-mesh">
                 {/* Header Bar */}
-                <header className="flex h-20 items-center justify-between border-b border-white/5 bg-[#0f172a] px-4 sm:px-8 z-40">
+                <header className="flex h-20 items-center justify-between border-b border-[var(--border)] bg-[var(--bg-surface)] px-4 sm:px-8 z-40">
                     <div className="flex items-center gap-4">
                         <button aria-label="Open lesson outline" onClick={() => setIsSidebarOpen(true)} className="text-gray-400 hover:text-white lg:hidden">
                             <Menu size={24} />
                         </button>
                         <div className="hidden sm:block">
-                            <h1 className="text-lg font-bold text-white line-clamp-1">{data.course.title}</h1>
+                            <h1 className="font-display text-lg font-semibold text-white line-clamp-1">{data.course.title}</h1>
                             <div className="flex items-center gap-4 mt-0.5">
-                                <span className="text-xs font-semibold text-indigo-400">
+                                <span className="text-xs font-semibold text-[var(--gold)]">
                                     Module {currentLesson?.moduleIndex}: {currentLesson?.moduleTitle}
                                 </span>
                                 <span className="h-1 w-1 rounded-full bg-gray-600" />
                                 <span className="text-xs font-medium text-gray-300">
-                                    Chapter {currentLesson?.moduleIndex}.${currentLesson?.chapterIndex}: {currentLesson?.chapterTitle}
+                                    Chapter {currentLesson?.moduleIndex}.{currentLesson?.chapterIndex}: {currentLesson?.chapterTitle}
                                 </span>
                             </div>
                         </div>
                     </div>
 
                     <div className="flex items-center gap-4">
-                        <div className="hidden lg:flex items-center gap-6 px-6 border-x border-white/5 h-10">
+                        <div className="hidden lg:flex items-center gap-6 px-6 border-x border-[var(--border)] h-10">
                              <div className="flex items-center gap-2 text-xs text-gray-400 font-bold">
-                                <Clock size={14} className="text-indigo-400" />
-                                <span>{currentLesson?.duration || 15}m</span>
-                             </div>
-                             <div className="flex items-center gap-2 text-xs text-gray-400 font-bold">
-                                <Award size={14} className="text-amber-400" />
-                                <span>10 XP</span>
+                                <Clock size={14} className="text-[var(--gold)]" />
+                                <span>{currentLesson?.duration ? `${currentLesson.duration} min` : "—"}</span>
                              </div>
                         </div>
                         <div className="text-right">
-                           <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest leading-none mb-1">Chapter</p>
-                           <p className="text-sm font-black text-white leading-none">{currentLessonIndex + 1} / {flatLessons.length}</p>
+                           <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-[0.14em] leading-none mb-1">Lesson</p>
+                           <p className="text-sm font-semibold text-white leading-none ui-num">{currentLessonIndex + 1} / {flatLessons.length}</p>
                         </div>
                     </div>
                 </header>
 
                 {/* Content View Container */}
-                <div className="flex-1 overflow-y-auto px-4 py-8 lg:px-16 custom-scrollbar bg-[#0f172a]/20">
+                <div className="flex-1 overflow-y-auto px-4 py-8 lg:px-16 custom-scrollbar bg-[var(--bg-base)]">
                     <div className="mx-auto max-w-5xl animate-in fade-in duration-300">{progressPercent === 100 && flatLessons.length > 0 && <section className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-6"><div><h2 className="text-xl font-bold text-emerald-300">Course completed</h2><p className="mt-1 text-sm text-slate-300">You have completed every published lesson. Your certificate is ready.</p></div><button onClick={() => router.push('/dashboard/student/certificates')} className="rounded-xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-500">View certificate</button></section>}{saveError && <p role="alert" className="mb-4 rounded-xl bg-red-950 p-4 text-red-200">{saveError}</p>}{!currentLesson && <div className="rounded-2xl border border-slate-700 p-8"><h2 className="text-2xl font-bold">No lessons available yet</h2><p className="mt-2 text-slate-400">Your instructor has not published learning content for this course.</p></div>}
                         {currentLesson && (
                             <div key={currentLesson.id}>
                                 {/* Header section for current Chapter */}
                                 <div className="mb-8">
-                                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[10px] font-black uppercase tracking-widest mb-3">
+                                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--gold-soft)] text-[var(--gold)] border border-[var(--gold)]/25 text-[10px] font-semibold uppercase tracking-[0.14em] mb-3">
                                         Module {currentLesson.moduleIndex} • Chapter {currentLesson.chapterIndex}
                                      </div>
-                                     <h2 className="text-4xl font-black text-white tracking-tight leading-tight">{currentLesson.title}</h2>
+                                     <h2 className="font-display text-4xl font-semibold text-white leading-tight">{currentLesson.title}</h2>
                                      {currentLesson.description && (
-                                         <p className="mt-3 text-lg text-gray-400 font-medium leading-relaxed max-w-3xl">{currentLesson.description}</p>
+                                         <p className="mt-3 text-lg text-[var(--text-secondary)] leading-relaxed max-w-3xl">{currentLesson.description}</p>
                                      )}
                                 </div>
 
@@ -388,15 +383,15 @@ export default function LearningPathPage() {
                                 
                                 {/* Bottom Complete & Navigation Action Bar */}
                                 <div className="mt-12 pt-8 border-t border-white/10 pb-16">
-                                    <div className="flex flex-col sm:flex-row items-center justify-between gap-6 bg-slate-900/80 p-6 rounded-2xl border border-slate-800 shadow-xl">
+                                    <div className="flex flex-col sm:flex-row items-center justify-between gap-6 bg-[var(--bg-surface)] p-6 rounded-2xl border border-[var(--border)] shadow-xl">
                                         <div>
                                             <p className="text-sm font-bold text-white mb-1">
                                                 {data.completedLessonIds.includes(currentLesson.id) 
-                                                    ? '✨ Module Completed!' 
-                                                    : 'Finished studying this module?'}
+                                                    ? 'Lesson completed' 
+                                                    : 'Finished this lesson?'}
                                             </p>
                                             <p className="text-xs text-gray-400">
-                                                Marking complete saves your progress across all chapters.
+                                                Marking it complete saves your progress in this course.
                                             </p>
                                         </div>
 
@@ -407,7 +402,7 @@ export default function LearningPathPage() {
                                               className={`w-full sm:w-auto px-8 py-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 shadow-lg ${
                                                 data.completedLessonIds.includes(currentLesson.id) 
                                                   ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
-                                                  : 'bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white shadow-indigo-500/20'
+                                                  : 'bg-[var(--action-bg)] hover:brightness-110 text-white'
                                               }`}
                                             >
                                                 {data.completedLessonIds.includes(currentLesson.id) ? (
@@ -422,7 +417,7 @@ export default function LearningPathPage() {
                                                     </>
                                                 ) : (
                                                     <>
-                                                     <span>✓ Mark Module Complete</span>
+                                                     <><CheckCircle2 size={18} /><span>Mark as complete</span></>
                                                     </>
                                                 )}
                                             </button>
@@ -430,9 +425,9 @@ export default function LearningPathPage() {
                                             {currentLessonIndex < flatLessons.length - 1 && (
                                                 <button
                                                     onClick={() => setCurrentLessonIndex(prev => prev + 1)}
-                                                    className="w-full sm:w-auto px-6 py-4 bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm rounded-xl transition-all flex items-center justify-center gap-2 border border-slate-700"
+                                                    className="w-full sm:w-auto px-6 py-4 bg-transparent hover:bg-white/5 text-white font-semibold text-sm rounded-xl transition-all flex items-center justify-center gap-2 border border-[var(--border-strong)]"
                                                 >
-                                                    <span>{isLastChapterOfModule ? '📂 Next Module →' : '📄 Next Chapter →'}</span>
+                                                    <span>{isLastChapterOfModule ? 'Next module' : 'Next lesson'}</span><ChevronRight size={16} />
                                                 </button>
                                             )}
                                         </div>
@@ -446,13 +441,13 @@ export default function LearningPathPage() {
                 </div>
 
                 {/* Footer Navigation Bar */}
-                <footer className="flex h-20 items-center justify-between border-t border-white/5 bg-[#0f172a] px-4 sm:px-8 z-40">
+                <footer className="flex h-20 items-center justify-between border-t border-[var(--border)] bg-[var(--bg-surface)] px-4 sm:px-8 z-40">
                     <button 
                       onClick={() => setCurrentLessonIndex(prev => Math.max(0, prev - 1))}
                       disabled={completing !== null || currentLessonIndex === 0}
-                      className="group flex items-center gap-3 text-xs font-black uppercase tracking-widest text-gray-400 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed transition-all"
+                      className="group flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.12em] text-gray-400 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed transition-all"
                     >
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 ring-1 ring-white/10 group-hover:bg-indigo-500 group-hover:text-white group-hover:ring-indigo-500 transition-all">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 ring-1 ring-white/10 group-hover:bg-[var(--accent-soft)] group-hover:text-white group-hover:ring-[var(--accent)] transition-all">
                            <ChevronLeft size={20} />
                         </div>
                         <span className="hidden sm:inline">Previous</span>
@@ -465,7 +460,7 @@ export default function LearningPathPage() {
                               onClick={() => setCurrentLessonIndex(idx)}
                               title={`${l.moduleTitle} - ${l.chapterTitle}`}
                               className={`h-2 rounded-full cursor-pointer transition-all duration-300 ${
-                                currentLessonIndex === idx ? 'w-8 bg-indigo-500' : 
+                                currentLessonIndex === idx ? 'w-8 bg-[var(--gold)]' : 
                                 data.completedLessonIds.includes(l.id) ? 'w-3 bg-emerald-500/60' : 'w-3 bg-white/10'
                               }`} 
                             />
@@ -475,10 +470,10 @@ export default function LearningPathPage() {
                     <button 
                       onClick={() => setCurrentLessonIndex(prev => Math.min(flatLessons.length - 1, prev + 1))}
                       disabled={completing !== null || currentLessonIndex >= flatLessons.length - 1}
-                      className="group flex items-center gap-3 text-xs font-black uppercase tracking-widest text-gray-400 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed transition-all"
+                      className="group flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.12em] text-gray-400 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed transition-all"
                     >
                         <span className="hidden sm:inline">{nextNavLabel}</span>
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 ring-1 ring-white/10 group-hover:bg-indigo-500 group-hover:text-white group-hover:ring-indigo-500 transition-all">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 ring-1 ring-white/10 group-hover:bg-[var(--accent-soft)] group-hover:text-white group-hover:ring-[var(--accent)] transition-all">
                            <ChevronRight size={20} />
                         </div>
                     </button>

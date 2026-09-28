@@ -195,8 +195,7 @@ code, pre, kbd, .font-mono { font-feature-settings: normal; }
   height: 2px;
   background: var(--gold);
 }
-.role-page-header h1,
-.portal-main h1 {
+.role-page-header h1 {
   font-family: var(--font-display), Georgia, serif;
   font-size: clamp(28px, 3.2vw, 38px);
   font-weight: 600;
@@ -204,7 +203,7 @@ code, pre, kbd, .font-mono { font-feature-settings: normal; }
 }
 .role-page-header .role-eyebrow,
 .portal-main .portal-eyebrow { color: var(--gold); letter-spacing: 0.14em; font-size: 11px; font-weight: 600; }
-.portal-main h2 { font-family: var(--font-display), Georgia, serif; font-weight: 600; }
+:where(.portal-main) :where(h2) { font-family: var(--font-display), Georgia, serif; font-weight: 600; }
 
 /* ---------- Cards ---------- */
 .glass-card,
@@ -359,7 +358,7 @@ code, pre, kbd, .font-mono { font-feature-settings: normal; }
 
 /* ---------- Small screens ---------- */
 @media (max-width: 900px) {
-  .role-page-header h1, .portal-main h1 { font-size: 26px; }
+  .role-page-header h1 { font-size: 26px; }
 }
 
 /* ============================================================
@@ -577,3 +576,46 @@ body:has([data-role-shell]) main.page-content { padding-top: 104px; padding-left
   body:has([data-role-shell]) main.page-content { padding: 96px 18px 32px; }
 }
 .shell-nav > div + div { margin-top: 10px; padding-top: 6px; border-top: 1px solid var(--border); }
+
+
+/* ---------- Legibility guard for legacy staff pages ----------
+   Older pages were written for a dark theme. Headings in text-white and
+   gray-200/300 copy become invisible on light surfaces, so remap them unless
+   they sit inside a genuinely dark or gradient container. */
+:root:not([data-theme='dark']):not([data-theme='ocean']):not([data-theme='forest']):not([data-theme='rose']):not([data-theme='lavender'])
+  .page-content :is(h1, h2, h3, h4, h5, label, p, span, td, th, div).text-white:not(:is(
+    .bg-slate-950, .bg-slate-900, .bg-slate-800, .bg-gray-950, .bg-gray-900, .bg-gray-800, .bg-black,
+    .dark-modal, .hero-dark, .superadmin-hero, [class*='bg-gradient'], [style*='gradient'], [style*='background'],
+    [class*='bg-indigo-5'], [class*='bg-indigo-6'], [class*='bg-indigo-7'], [class*='bg-purple-6'], [class*='bg-emerald-6'],
+    [class*='bg-rose-6'], [class*='bg-red-6'], [class*='bg-blue-6'], [class*='bg-green-6'], [class*='bg-amber-6'],
+    button, a, [role='dialog'], .fixed
+  ) *):not([class*='bg-']):not(button):not(a) {
+  color: var(--text-primary);
+}
+:root:not([data-theme='dark']):not([data-theme='ocean']):not([data-theme='forest']):not([data-theme='rose']):not([data-theme='lavender'])
+  .page-content :is(p, span, div, label, td, li):is(.text-gray-300, .text-gray-200, .text-slate-300, .text-slate-200, .text-white\/60, .text-white\/70, .text-white\/50):not(:is(
+    .bg-slate-950, .bg-slate-900, .bg-slate-800, .bg-gray-900, .bg-black, .dark-modal, .hero-dark, .superadmin-hero,
+    [class*='bg-gradient'], [style*='gradient'], [role='dialog'], .fixed
+  ) *) {
+  color: var(--text-muted);
+}
+
+/* Legacy gradient pills/buttons with white text become solid theme actions. */
+.page-content :is(button, a)[class*='bg-gradient-to'].text-white {
+  background-image: none !important;
+  background-color: var(--action-bg) !important;
+  box-shadow: 0 1px 2px rgba(22, 26, 35, .12), inset 0 -2px 0 rgba(0, 0, 0, .12) !important;
+}
+.page-content :is(button, a)[class*='bg-gradient-to'].text-white:hover:not(:disabled) { filter: brightness(1.12); }
+
+/* Inline-styled gradient icon tiles and avatars → classic navy tile. */
+.page-content :is(.stat-card, .glass-card, .role-page-header, table) [style*='linear-gradient'] {
+  background: #1f3a5f !important;
+  box-shadow: inset 0 -2px 0 #9a7a43;
+}
+
+.page-content :is(.stat-card, .glass-card, table) :is(div, span)[class*='bg-gradient-to']:not([class*='/']):not(:has(> *:not(svg, img, span:empty))) {
+  background-image: none !important;
+  background-color: #1f3a5f !important;
+  box-shadow: inset 0 -2px 0 #9a7a43 !important;
+}

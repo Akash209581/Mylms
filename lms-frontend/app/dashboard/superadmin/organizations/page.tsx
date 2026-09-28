@@ -307,7 +307,7 @@ export default function OrganizationsPage() {
                 </button>
                 <button
                     type="submit"
-                    className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg hover:from-blue-700 hover:to-purple-700 transition"
+                    className="px-4 py-2 text-sm font-medium text-white bg-[#1f3a5f] rounded-lg hover:brightness-110 transition"
                 >
                     {isEdit ? 'Update Organization' : 'Create Organization'}
                 </button>
@@ -329,7 +329,7 @@ export default function OrganizationsPage() {
                         </div>
                         <button
                             onClick={() => setShowCreateModal(true)}
-                            className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition shadow-md"
+                            className="px-6 py-2.5 bg-[#1f3a5f] text-white rounded-lg hover:brightness-110 transition shadow-md"
                         >
                             + Create Organization
                         </button>

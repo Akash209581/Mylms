@@ -181,7 +181,7 @@ export default function SuperAdminCoursesPage() {
                     </div>
                     <button
                         onClick={() => router.push(`/dashboard/${userRole.toLowerCase()}/courses/create`)}
-                        className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl font-semibold hover:shadow-lg hover:scale-105 transition-all"
+                        className="px-6 py-3 bg-[#1f3a5f] text-white rounded-xl font-semibold hover:shadow-lg hover:scale-105 transition-all"
                     >
                         ➕ Create New Course
                     </button>
@@ -384,7 +384,7 @@ export default function SuperAdminCoursesPage() {
                     <div className="bg-white border border-slate-200 shadow-2xl rounded-2xl w-full max-w-md overflow-hidden">
 
                         {/* Header */}
-                        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-5">
+                        <div className="bg-[#1f3a5f] px-6 py-5">
                             <div className="flex items-center justify-between">
                                 <div>
                                     <h3 className="text-lg font-bold text-white">Assign to Colleges</h3>
@@ -587,7 +587,7 @@ export default function SuperAdminCoursesPage() {
                             </button>
                             <button
                                 onClick={handleAssign}
-                                className="flex-1 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold rounded-xl transition-all shadow-md shadow-indigo-200 text-sm"
+                                className="flex-1 py-2.5 bg-[#1f3a5f] hover:brightness-110 text-white font-semibold rounded-xl transition-all shadow-md shadow-indigo-200 text-sm"
                             >
                                 Save Assignment
                             </button>

@@ -401,7 +401,7 @@ export default function PdfSlideViewer({
                             onClick={() => {
                                 if (!isCompleted && onModuleComplete) onModuleComplete(); else if (onNextModuleClick) onNextModuleClick()
                             }}
-                            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-black text-sm shadow-xl shadow-emerald-500/20 transition-all hover:scale-105 active:scale-95 animate-pulse"
+                            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-[#1f3a5f] hover:brightness-110 text-white font-black text-sm shadow-xl shadow-emerald-500/20 transition-all hover:scale-105 active:scale-95 animate-pulse"
                         >
                             <span>{!isCompleted ? 'Mark complete & continue' : 'Continue'}</span>
                             <ArrowRight size={18} />

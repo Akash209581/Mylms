@@ -1,32 +1,108 @@
 'use client'
 
-import { apiFetch } from '@/lib/apiFetch'
-
-import { API_URL } from '@/lib/api'
-
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowRight, BookOpen, CircleCheck, ChevronRight, Clock3, GraduationCap } from 'lucide-react'
+import { ArrowRight, BookOpen, CircleCheck, Clock3, GraduationCap } from 'lucide-react'
 import StudentReferenceShell from '@/components/layout/StudentReferenceShell'
-import { getAuthHeaders } from '@/lib/authHeaders'
-import { asset } from '@/lib/asset'
+import { api } from '@/lib/api'
+import { hasRole } from '@/lib/roleUtils'
+import { EmptyState, PageHeader, Stat } from '@/components/ui'
 
 interface CourseProgress { id: number; course: { id: number; title: string; thumbnail?: string; category?: string }; completedLessons: number; totalLessons: number; progressPercent: number; enrolledAt: string }
-const Skeleton = ({ className = '' }: { className?: string }) => <div className={`animate-pulse rounded-xl bg-slate-100 ${className}`} />
 
 export default function StudentProgressPage() {
-    const router = useRouter(), [enrollments, setEnrollments] = useState<CourseProgress[]>([]), [loading, setLoading] = useState(true)
-    useEffect(() => { const stored = localStorage.getItem('user'); if (!stored) { router.replace('/login'); return }; const user = JSON.parse(stored); if (user.role !== 'STUDENT') { router.replace(`/dashboard/${user.role.toLowerCase()}`); return }; const headers = getAuthHeaders(), apiBase = API_URL; apiFetch(`${apiBase}/student/dashboard-details`, { headers }).then(r => r.ok ? r.json() : []).then(data => { if (Array.isArray(data.coursesProgress)) setEnrollments(data.coursesProgress.map((e: any) => ({ id: e.id, course: { id: e.courseId, title: e.title, thumbnail: e.thumbnail, category: e.category }, completedLessons: e.completedLessons ?? 0, totalLessons: e.totalLessons ?? 0, progressPercent: e.progressPercent ?? 0, enrolledAt: e.enrolledAt }))) }).catch(() => {}).finally(() => setLoading(false)) }, [router])
-    const overall = enrollments.length ? Math.round(enrollments.reduce((sum, item) => sum + item.progressPercent, 0) / enrollments.length) : 0
-    const completed = enrollments.filter(item => item.progressPercent >= 100).length, active = enrollments.filter(item => item.progressPercent > 0 && item.progressPercent < 100).length, untouched = enrollments.filter(item => item.progressPercent === 0).length
-    const stats = [{ label: 'Overall Progress', value: `${overall}%`, icon: <GraduationCap />, tone: 'bg-indigo-50 text-indigo-500' }, { label: 'Completed', value: completed, icon: <CircleCheck />, tone: 'bg-emerald-50 text-emerald-500' }, { label: 'In Progress', value: active, icon: <Clock3 />, tone: 'bg-orange-50 text-orange-500' }, { label: 'Not Started', value: untouched, icon: <BookOpen />, tone: 'bg-slate-100 text-slate-500' }]
-    return <div className="learning-progress-page min-h-screen bg-[#f8faff]"><StudentReferenceShell active="progress" /><main id="student-main" tabIndex={-1} className="learning-progress-main page-content pt-20 pb-12 px-0 max-w-none">
-        <section className="progress-hero relative min-h-[170px] overflow-hidden px-7 py-6 lg:px-10"><img src={asset("/images/learning-progress-hero.webp")} decoding="async" alt="University campus" className="absolute inset-0 h-full w-full object-cover object-right" /><div className="absolute inset-0 bg-[linear-gradient(90deg,#fff_0%,rgba(255,255,255,.97)_47%,rgba(255,255,255,.2)_75%,rgba(11,31,59,.2)_100%)]" /><div className="relative z-10"><p className="mb-3 text-xs text-slate-500">Home <span className="mx-2 text-indigo-400">/</span> <span className="font-semibold text-[#12264b]">Learning Progress</span></p><h1 className="font-serif text-4xl font-bold text-[#0b193a] lg:text-5xl">Learning Progress</h1><p className="mt-1 font-serif text-lg text-slate-600">Track your journey across all enrolled courses</p></div><blockquote className="absolute right-[22%] top-10 z-10 hidden max-w-[250px] border-b-2 border-indigo-500 pb-3 font-serif text-base italic leading-6 text-slate-600 xl:block">“Progress is not a destination,<br />but a continuous journey.”<span className="mt-2 block text-xs not-italic">— Unknown</span></blockquote><div className="absolute right-[5%] top-1/2 z-10 hidden -translate-y-1/2 border-l-2 border-amber-400 pl-4 text-[11px] font-semibold leading-6 tracking-wider text-white xl:block">LEARN<br />PRACTICE<br />GROW<br />SUCCEED</div></section>
-        {loading ? <div className="mx-6 mt-5 grid grid-cols-2 gap-4 lg:mx-10 lg:grid-cols-4">{[1,2,3,4].map(i => <Skeleton key={i} className="h-24" />)}</div> : <div className="progress-summary mx-6 mt-5 grid grid-cols-2 lg:mx-10 lg:grid-cols-4">{stats.map(stat => <div key={stat.label} className="flex items-center gap-4 bg-white p-5"><span className={`grid h-14 w-14 shrink-0 place-items-center rounded-2xl ${stat.tone}`}>{stat.icon}</span><div><p className="font-serif text-3xl font-bold text-[#0b193a]">{stat.value}</p><p className="text-xs text-slate-500">{stat.label}</p></div><ChevronRight className="ml-auto h-5 w-5 rounded-full bg-slate-50 p-1 text-slate-600" /></div>)}</div>}
-        <section className="progress-breakdown mx-6 mt-5 rounded-xl border border-slate-200 bg-white p-6 lg:mx-10"><h2 className="font-serif text-2xl font-bold text-[#0b193a]"><span className="mr-3 inline-block h-6 w-2 rounded-full bg-indigo-500 align-middle" />Course-by-Course Breakdown</h2><p className="ml-5 mt-1 text-sm text-slate-500">View the progress of each course you are enrolled in.</p>{loading ? <div className="mt-6 space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-20" />)}</div> : enrollments.length === 0 ? <EmptyProgress onBrowse={() => router.push('/dashboard/student/courses')} /> : <div className="mt-6 space-y-3">{enrollments.map(item => <CourseRow key={item.id} item={item} onClick={() => router.push(`/dashboard/student/courses/${item.course?.id}/learn`)} />)}</div>}</section>
-    </main></div>
-}
+  const router = useRouter()
+  const [enrollments, setEnrollments] = useState<CourseProgress[]>([])
+  const [loading, setLoading] = useState(true)
 
-function EmptyProgress({ onBrowse }: { onBrowse: () => void }) { return <div className="relative overflow-hidden py-12 text-center"><div className="mx-auto mb-4 grid h-28 w-44 place-items-center rounded-[45%] bg-gradient-to-b from-indigo-50 to-white"><GraduationCap className="h-14 w-14 text-indigo-400" /></div><h3 className="font-serif text-2xl font-bold text-[#0b193a]">No enrollments yet</h3><p className="mx-auto mt-2 max-w-sm text-slate-500">Enroll in a course to start tracking your progress and see your learning journey here.</p><button onClick={onBrowse} className="progress-browse-button mt-6 inline-flex items-center gap-3 rounded-lg bg-indigo-600 px-6 py-3 text-sm font-bold text-white hover:bg-indigo-700">Browse Courses <ArrowRight className="h-4 w-4" /></button><div className="mt-12 grid grid-cols-1 gap-5 border-t border-slate-100 pt-5 text-left md:grid-cols-3"><ProgressTip icon={<BookOpen />} title="Discover Courses" text="Explore a wide range of courses" /><ProgressTip icon={<CircleCheck />} title="Learn from Experts" text="Gain skills from industry professionals" /><ProgressTip icon={<GraduationCap />} title="Track Your Progress" text="See your improvement over time" /></div></div> }
-function ProgressTip({ icon, title, text }: any) { return <div className="flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-xl bg-indigo-50 text-indigo-500">{icon}</span><div><p className="font-serif text-sm font-bold text-[#102142]">{title}</p><p className="text-xs text-slate-500">{text}</p></div></div> }
-function CourseRow({ item, onClick }: { item: CourseProgress; onClick: () => void }) { return <button onClick={onClick} className="w-full rounded-lg border border-slate-200 p-4 text-left transition hover:border-indigo-300 hover:shadow-sm"><div className="flex items-center justify-between gap-4"><div className="min-w-0"><p className="truncate font-serif text-lg font-bold text-[#102142]">{item.course?.title}</p><p className="mt-1 text-xs text-slate-500">{item.course?.category || 'Course'} · {item.completedLessons} of {item.totalLessons || 0} lessons completed</p></div><span className="font-serif text-xl font-bold text-indigo-600">{item.progressPercent}%</span></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-indigo-500" style={{ width: `${item.progressPercent}%` }} /></div></button> }
+  useEffect(() => {
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || 'null')
+      if (!user) { router.replace('/login'); return }
+      if (!hasRole(user, 'STUDENT')) { router.replace(`/dashboard/${String(user.role).toLowerCase()}`); return }
+    } catch { router.replace('/login'); return }
+    api.get('/student/dashboard-details')
+      .then(({ data }) => {
+        if (!Array.isArray(data?.coursesProgress)) return
+        setEnrollments(data.coursesProgress.map((e: any) => ({
+          id: e.id ?? e.courseId,
+          course: { id: e.courseId, title: e.title, thumbnail: e.thumbnail, category: e.category },
+          completedLessons: e.completedLessons ?? 0,
+          totalLessons: e.totalLessons ?? 0,
+          progressPercent: e.progressPercent ?? 0,
+          enrolledAt: e.enrolledAt,
+        })))
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [router])
+
+  const overall = enrollments.length ? Math.round(enrollments.reduce((sum, item) => sum + item.progressPercent, 0) / enrollments.length) : 0
+  const completed = enrollments.filter(item => item.progressPercent >= 100).length
+  const active = enrollments.filter(item => item.progressPercent > 0 && item.progressPercent < 100).length
+  const untouched = enrollments.filter(item => item.progressPercent === 0).length
+  const sorted = [...enrollments].sort((a, b) => {
+    const rank = (p: number) => (p > 0 && p < 100 ? 0 : p === 0 ? 1 : 2)
+    return rank(a.progressPercent) - rank(b.progressPercent) || b.progressPercent - a.progressPercent
+  })
+
+  return (
+    <div className="portal-page">
+      <StudentReferenceShell active="progress" />
+      <main id="student-main" tabIndex={-1} className="portal-main">
+        <PageHeader eyebrow="Your journey" title="Learning progress" description="How far you've come in every course you're enrolled in." />
+
+        <div className="grid gap-4 mb-8" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+          {loading ? [1, 2, 3, 4].map(i => <div key={i} className="ui-skeleton h-[108px]" />) : <>
+            <Stat label="Overall progress" value={`${overall}%`} icon={GraduationCap} />
+            <Stat label="Completed" value={completed} icon={CircleCheck} tone="success" />
+            <Stat label="In progress" value={active} icon={Clock3} tone="gold" />
+            <Stat label="Not started" value={untouched} icon={BookOpen} />
+          </>}
+        </div>
+
+        <section>
+          <div className="ui-section-head">
+            <div>
+              <h2 className="ui-section-title">Course by course</h2>
+              <p className="ui-section-sub">Courses in progress are listed first.</p>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="grid gap-3">{[1, 2, 3].map(i => <div key={i} className="ui-skeleton h-24" />)}</div>
+          ) : enrollments.length === 0 ? (
+            <EmptyState icon={GraduationCap} title="No enrollments yet" action={<Link href="/dashboard/student/courses" className="ui-btn ui-btn-primary">Browse courses <ArrowRight aria-hidden="true" /></Link>}>
+              Enrol in a course to start tracking your progress here.
+            </EmptyState>
+          ) : (
+            <div className="grid gap-3">
+              {sorted.map(item => {
+                const done = item.progressPercent >= 100
+                return (
+                  <Link key={item.id} href={`/dashboard/student/courses/${item.course?.id}/learn`} className="ui-card ui-card-interactive p-5 no-underline">
+                    <div className="flex items-center gap-4">
+                      <span className={`ui-icon-tile ${done ? 'is-success' : ''}`} aria-hidden="true">{done ? <CircleCheck /> : <BookOpen />}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[11px] font-semibold tracking-[0.1em] uppercase text-[var(--gold)]">{item.course?.category || 'Course'}</p>
+                        <p className="font-display text-lg font-semibold role-text-primary truncate">{item.course?.title}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="font-display text-2xl font-semibold role-text-primary ui-num">{item.progressPercent}%</p>
+                        <p className="text-xs role-text-muted ui-num">{item.completedLessons} / {item.totalLessons || 0} lessons</p>
+                      </div>
+                    </div>
+                    <div className={`ui-progress mt-4 ${done ? 'is-success' : ''}`} role="progressbar" aria-valuenow={item.progressPercent} aria-valuemin={0} aria-valuemax={100} aria-label={`${item.course?.title} progress`}>
+                      <span style={{ width: `${Math.min(100, item.progressPercent)}%` }} />
+                    </div>
+                  </Link>
+                )
+              })}
+            </div>
+          )}
+        </section>
+      </main>
+    </div>
+  )
+}

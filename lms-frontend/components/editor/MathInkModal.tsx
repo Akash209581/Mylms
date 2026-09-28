@@ -846,7 +846,7 @@ export default function MathInkModal({ isOpen, onClose, onInsert }: MathInkModal
           <button
             onClick={handleInsert}
             disabled={!latex.trim()}
-            className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-sm font-bold shadow-lg shadow-indigo-500/20 disabled:opacity-50 transition-all flex items-center gap-2"
+            className="px-6 py-2.5 rounded-xl bg-[#1f3a5f] hover:brightness-110 text-white text-sm font-bold shadow-lg shadow-indigo-500/20 disabled:opacity-50 transition-all flex items-center gap-2"
           >
             📥 Insert Into Cell
           </button>

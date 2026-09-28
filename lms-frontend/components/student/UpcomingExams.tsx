@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, ClipboardList } from 'lucide-react'
+import { StatusBadge } from '@/components/ui'
 import { api } from '@/lib/api'
 
 export default function UpcomingExams() {
@@ -31,8 +32,9 @@ export default function UpcomingExams() {
       <ul className="portal-course-list">
         {upcoming.map((exam) => (
           <li key={exam.id}>
+            <span className="ui-icon-tile" aria-hidden="true"><ClipboardList /></span>
             <div className="portal-course-info">
-              <small>{exam.attemptStatus === 'IN_PROGRESS' ? 'In progress' : exam.status}</small>
+              <StatusBadge status={exam.attemptStatus === 'IN_PROGRESS' ? 'IN_PROGRESS' : exam.status} label={exam.attemptStatus === 'IN_PROGRESS' ? 'In progress' : undefined} />
               <h3>
                 <Link href={exam.attemptStatus === 'IN_PROGRESS'
                   ? `/dashboard/student/exams/${exam.id}/attempt?attemptId=${exam.attemptId}`
@@ -46,7 +48,7 @@ export default function UpcomingExams() {
               </p>
             </div>
             <Link
-              className="portal-link"
+              className={`ui-btn ui-btn-sm ${exam.status === 'LIVE' || exam.attemptStatus === 'IN_PROGRESS' ? 'ui-btn-primary' : 'ui-btn-secondary'}`}
               href={exam.attemptStatus === 'IN_PROGRESS'
                 ? `/dashboard/student/exams/${exam.id}/attempt?attemptId=${exam.attemptId}`
                 : `/dashboard/student/exams/${exam.id}`}

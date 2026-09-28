@@ -148,7 +148,7 @@ export default function CollegesPage() {
           </div>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold rounded-xl hover:shadow-lg hover:shadow-indigo-500/20 transform hover:scale-105 transition-all flex items-center gap-2 self-start md:self-auto"
+            className="px-6 py-3 bg-[#1f3a5f] hover:brightness-110 text-white font-bold rounded-xl hover:shadow-lg hover:shadow-indigo-500/20 transform hover:scale-105 transition-all flex items-center gap-2 self-start md:self-auto"
           >
             <span>➕</span> Add New College
           </button>
@@ -175,13 +175,13 @@ export default function CollegesPage() {
             {/* Summary Cards */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
               <div className="stat-card">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl mb-3 bg-gradient-to-br from-amber-500 to-orange-600">🏛️</div>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl mb-3 bg-[#1f3a5f]">🏛️</div>
                 <p className="text-2xl font-bold text-slate-900 dark:text-white mb-0.5">{colleges.length}</p>
                 <p className="text-slate-500 dark:text-gray-400 text-xs">Total Colleges</p>
               </div>
 
               <div className="stat-card">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl mb-3 bg-gradient-to-br from-emerald-500 to-teal-600">👨‍💼</div>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl mb-3 bg-[#1f3a5f]">👨‍💼</div>
                 <p className="text-2xl font-bold text-slate-900 dark:text-white mb-0.5">
                   {colleges.reduce((sum, c) => sum + c.adminCount, 0)}
                 </p>
@@ -189,7 +189,7 @@ export default function CollegesPage() {
               </div>
 
               <div className="stat-card">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl mb-3 bg-gradient-to-br from-blue-500 to-cyan-600">👨‍🏫</div>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl mb-3 bg-[#1f3a5f]">👨‍🏫</div>
                 <p className="text-2xl font-bold text-slate-900 dark:text-white mb-0.5">
                   {colleges.reduce((sum, c) => sum + c.instructorCount, 0)}
                 </p>
@@ -197,7 +197,7 @@ export default function CollegesPage() {
               </div>
 
               <div className="stat-card">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl mb-3 bg-gradient-to-br from-purple-500 to-pink-600">👨‍🎓</div>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl mb-3 bg-[#1f3a5f]">👨‍🎓</div>
                 <p className="text-2xl font-bold text-slate-900 dark:text-white mb-0.5">
                   {colleges.reduce((sum, c) => sum + c.studentCount, 0)}
                 </p>
@@ -260,7 +260,7 @@ export default function CollegesPage() {
 
                     <div className="pt-4 border-t border-white/5 flex justify-between items-center">
                       <span className="text-gray-400 font-semibold">Total Users</span>
-                      <span className="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+                      <span className="text-2xl font-bold bg-[#1f3a5f] bg-clip-text text-transparent">
                         {college.totalUsers}
                       </span>
                     </div>
@@ -268,7 +268,7 @@ export default function CollegesPage() {
                     {/* View Button */}
                     <button
                       onClick={() => router.push(`/dashboard/superadmin/colleges/${college.id}?name=${encodeURIComponent(college.name)}`)}
-                      className="w-full px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-indigo-500/20 transition-all flex items-center justify-center gap-2"
+                      className="w-full px-4 py-3 bg-[#1f3a5f] hover:brightness-110 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-indigo-500/20 transition-all flex items-center justify-center gap-2"
                     >
                       <span>View Details</span>
                       <span className="text-xl">→</span>
@@ -287,7 +287,7 @@ export default function CollegesPage() {
                 </p>
                 <button
                   onClick={() => setShowCreateModal(true)}
-                  className="px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-xl hover:shadow-lg transform hover:scale-105 transition-all duration-200"
+                  className="px-8 py-4 bg-[#1f3a5f] text-white font-bold rounded-xl hover:shadow-lg transform hover:scale-105 transition-all duration-200"
                 >
                   + Add First College
                 </button>
@@ -424,7 +424,7 @@ export default function CollegesPage() {
                 <button
                   type="submit"
                   disabled={creating}
-                  className="px-6 py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-lg shadow-indigo-600/30 transition-all flex items-center gap-2 disabled:opacity-50"
+                  className="px-6 py-2.5 rounded-xl text-xs font-bold bg-[#1f3a5f] hover:brightness-110 text-white shadow-lg shadow-indigo-600/30 transition-all flex items-center gap-2 disabled:opacity-50"
                 >
                   {creating ? 'Adding College...' : 'Add College'}
                 </button>

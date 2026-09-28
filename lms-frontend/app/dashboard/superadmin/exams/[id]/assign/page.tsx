@@ -395,7 +395,7 @@ export default function ExamAssignPage() {
                 {assignedColleges.map(ac => (
                   <div key={ac.id} className="p-4 bg-[var(--bg-raised)] rounded-2xl border border-[var(--border)] flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-base font-black shrink-0">
+                      <div className="w-10 h-10 rounded-xl bg-[#1f3a5f] flex items-center justify-center text-white text-base font-black shrink-0">
                         {ac.name?.charAt(0).toUpperCase()}
                       </div>
                       <div className="min-w-0">
@@ -494,7 +494,7 @@ export default function ExamAssignPage() {
               <div className="space-y-2 max-h-96 overflow-y-auto">
                 {assignedStudents.map(a => (
                   <div key={a.id} className="flex items-center gap-3 p-3 bg-[var(--bg-raised)] rounded-xl">
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold shrink-0">
+                    <div className="w-8 h-8 rounded-lg bg-[#1f3a5f] flex items-center justify-center text-white text-sm font-bold shrink-0">
                       {a.name?.charAt(0).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">

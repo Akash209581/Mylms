@@ -2,8 +2,10 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import Sidebar from '@/components/layout/Sidebar'
-import Navbar from '@/components/layout/Navbar'
+import StudentReferenceShell from '@/components/layout/StudentReferenceShell'
+import { toast } from '@/lib/toast'
+import { EmptyState, PageHeader } from '@/components/ui'
+import { ArrowLeft, CheckCircle2, Eye, Heart, Loader2, MessageCircle, SearchX, Send } from 'lucide-react'
 import { getForumPost, createReply, likePost, likeReply } from '@/lib/forumService'
 
 function timeAgo(date: string) {
@@ -22,15 +24,6 @@ function getInitials(name: string) {
   return name?.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || '?'
 }
 
-const CATEGORY_COLORS: Record<string, string> = {
-  'General Discussion': 'from-blue-500 to-cyan-500',
-  'Data Structures & Algorithms': 'from-purple-500 to-indigo-500',
-  'Machine Learning': 'from-pink-500 to-rose-500',
-  'Web Development': 'from-emerald-500 to-teal-500',
-  'Career Guidance': 'from-amber-500 to-orange-500',
-  'Study Groups': 'from-violet-500 to-purple-600',
-}
-
 export default function ForumThreadPage() {
   const params = useParams()
   const router = useRouter()
@@ -40,7 +33,6 @@ export default function ForumThreadPage() {
   const [loading, setLoading] = useState(true)
   const [replyContent, setReplyContent] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [replyMsg, setReplyMsg] = useState('')
   const [likedPost, setLikedPost] = useState(false)
   const [likedReplies, setLikedReplies] = useState<Set<number>>(new Set())
   const [user, setUser] = useState<any>(null)
@@ -53,7 +45,7 @@ export default function ForumThreadPage() {
 
   const loadPost = async () => {
     setLoading(true)
-    const data = await getForumPost(id)
+    const data = await getForumPost(id).catch(() => null)
     setPost(data)
     setLoading(false)
   }
@@ -62,19 +54,17 @@ export default function ForumThreadPage() {
     e.preventDefault()
     if (!replyContent.trim()) return
     setSubmitting(true)
-    setReplyMsg('')
     try {
       const result = await createReply(id, replyContent)
       if (result?.id) {
         setReplyContent('')
-        setReplyMsg('✅ Reply posted!')
+        toast.success('Reply posted')
         await loadPost()
-        setTimeout(() => setReplyMsg(''), 3000)
       } else {
-        setReplyMsg('❌ Failed to post reply.')
+        toast.error('Your reply could not be posted.')
       }
     } catch {
-      setReplyMsg('❌ Something went wrong.')
+      toast.error('Something went wrong. Please try again.')
     } finally {
       setSubmitting(false)
     }
@@ -94,229 +84,109 @@ export default function ForumThreadPage() {
     await loadPost()
   }
 
-  const gradientClass = post ? (CATEGORY_COLORS[post.category] || 'from-indigo-500 to-purple-500') : 'from-indigo-500 to-purple-500'
+  const avatar = (person: any, size = 36) => (
+    <span className="ui-avatar overflow-hidden" style={{ width: size, height: size }}>
+      {person?.profilePicture ? <img src={person.profilePicture} alt="" className="w-full h-full object-cover" /> : getInitials(person?.name)}
+    </span>
+  )
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[var(--bg-base)]">
-        <Sidebar role="STUDENT" />
-        <Navbar title="Forum Thread" />
-        <main className="page-content pt-20">
-          <div className="max-w-4xl mx-auto space-y-4">
-            <div className="h-48 bg-[var(--bg-raised)] rounded-3xl animate-pulse" />
-            <div className="h-32 bg-[var(--bg-raised)] rounded-3xl animate-pulse" />
-            <div className="h-32 bg-[var(--bg-raised)] rounded-3xl animate-pulse" />
-          </div>
-        </main>
-      </div>
-    )
-  }
-
-  if (!post) {
-    return (
-      <div className="min-h-screen bg-[var(--bg-base)]">
-        <Sidebar role="STUDENT" />
-        <Navbar title="Forum Thread" />
-        <main className="page-content pt-20 text-center">
-          <p className="text-6xl mb-4">🔍</p>
-          <p className="text-[var(--text-muted)] font-medium">Post not found.</p>
-          <Link href="/dashboard/student/forums" className="mt-4 inline-block px-6 py-3 bg-[var(--accent)] text-white font-bold rounded-2xl">
-            Back to Forums
-          </Link>
-        </main>
-      </div>
-    )
-  }
-
-  return (
-    <div className="min-h-screen bg-[var(--bg-base)] text-[var(--text-primary)]">
-      <Sidebar role="STUDENT" />
-      <Navbar title={post.title} />
-
-      <main className="page-content pt-20 pb-12">
-        <div className="max-w-4xl mx-auto">
-          {/* Breadcrumb */}
-          <div className="flex items-center gap-2 text-sm text-[var(--text-muted)] mb-6">
-            <Link href="/dashboard/student/forums" className="hover:text-[var(--accent)] transition-colors font-medium">Forums</Link>
-            <span>›</span>
-            <span className="text-[var(--text-muted)]">{post.category}</span>
-            <span>›</span>
-            <span className="text-[var(--text-primary)] font-medium line-clamp-1">{post.title}</span>
-          </div>
-
-          {/* Main Post Card */}
-          <div className="glass-card mb-6 overflow-hidden">
-            {/* Category Banner */}
-            <div className={`h-2 bg-gradient-to-r ${gradientClass}`} />
-
-            <div className="p-8">
-              {/* Tags */}
-              {post.tags?.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {post.tags.map((tag: string, i: number) => (
-                    <span key={i} className="px-2.5 py-0.5 text-[10px] font-black uppercase tracking-widest rounded-full bg-[var(--bg-raised)] text-[var(--text-muted)] border border-[var(--border)]">
-                      #{tag}
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              <h1 className="text-2xl md:text-3xl font-black mb-6">{post.title}</h1>
-
-              {/* Author Row */}
-              <div className="flex items-center gap-3 mb-8">
-                <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${gradientClass} flex items-center justify-center text-white font-black shadow-lg`}>
-                  {post.author?.profilePicture
-                    ? <img src={post.author.profilePicture} className="w-full h-full object-cover rounded-2xl" alt="" />
-                    : getInitials(post.author?.name)}
-                </div>
-                <div>
-                  <p className="font-black text-[var(--text-primary)] text-sm">{post.author?.name || 'Anonymous'}</p>
-                  <p className="text-[var(--text-muted)] text-xs">{post.author?.collegeName || 'Student'} • {timeAgo(post.createdAt)}</p>
-                </div>
-                <div className="ml-auto flex items-center gap-3 text-xs text-[var(--text-muted)]">
-                  <span className="flex items-center gap-1.5">👁 {post.viewsCount} views</span>
-                  <span className="flex items-center gap-1.5">💬 {post.replies?.length || 0} replies</span>
-                </div>
-              </div>
-
-              {/* Post Content */}
-              <div className="prose prose-sm max-w-none text-[var(--text-secondary)] leading-relaxed whitespace-pre-wrap text-base border-t border-[var(--border)] pt-6">
-                {post.content}
-              </div>
-
-              {/* Like Button */}
-              <div className="flex items-center gap-4 mt-8 pt-6 border-t border-[var(--border)]">
-                <button
-                  onClick={handleLikePost}
-                  disabled={likedPost}
-                  className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all ${
-                    likedPost
-                      ? 'bg-red-500/20 text-red-500 border border-red-500/30'
-                      : 'bg-[var(--bg-raised)] text-[var(--text-muted)] border border-[var(--border)] hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/20'
-                  }`}
-                >
-                  ❤️ {post.likesCount} {likedPost ? 'Liked' : 'Like'}
-                </button>
-                <button
-                  onClick={() => document.getElementById('reply-box')?.focus()}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm bg-[var(--bg-raised)] text-[var(--text-muted)] border border-[var(--border)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent-text)] hover:border-[var(--accent)]/20 transition-all"
-                >
-                  💬 Reply
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Replies Section */}
-          <div className="mb-6">
-            <h2 className="text-lg font-black mb-4 flex items-center gap-2">
-              <span>💬</span>
-              {post.replies?.length || 0} Replies
-            </h2>
-
-            {post.replies?.length === 0 ? (
-              <div className="text-center py-12 glass-card">
-                <p className="text-4xl mb-3">🤫</p>
-                <p className="text-[var(--text-muted)] font-medium">No replies yet. Be the first to respond!</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {post.replies.map((reply: any, idx: number) => (
-                  <div key={reply.id} className={`glass-card p-6 ${reply.isAccepted ? 'ring-2 ring-emerald-500/40' : ''}`}>
-                    {reply.isAccepted && (
-                      <div className="flex items-center gap-2 mb-3 text-emerald-500 text-xs font-black uppercase tracking-widest">
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        Accepted Answer
-                      </div>
-                    )}
-                    <div className="flex items-start gap-3">
-                      {/* Reply number */}
-                      <span className="text-[var(--text-muted)] text-xs font-black w-6 mt-1 flex-shrink-0">#{idx + 1}</span>
-
-                      {/* Avatar */}
-                      <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-black text-xs flex-shrink-0">
-                        {reply.author?.profilePicture
-                          ? <img src={reply.author.profilePicture} className="w-full h-full object-cover rounded-xl" alt="" />
-                          : getInitials(reply.author?.name)}
-                      </div>
-
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-2">
-                          <div>
-                            <span className="font-black text-sm text-[var(--text-primary)]">{reply.author?.name || 'Anonymous'}</span>
-                            <span className="text-[var(--text-muted)] text-xs ml-3">{timeAgo(reply.createdAt)}</span>
-                          </div>
-                          <button
-                            onClick={() => handleLikeReply(reply.id)}
-                            disabled={likedReplies.has(reply.id)}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                              likedReplies.has(reply.id)
-                                ? 'bg-red-500/20 text-red-500'
-                                : 'bg-[var(--bg-raised)] text-[var(--text-muted)] hover:bg-red-500/10 hover:text-red-500'
-                            }`}
-                          >
-                            ❤️ {reply.likesCount}
-                          </button>
-                        </div>
-                        <p className="text-[var(--text-secondary)] leading-relaxed whitespace-pre-wrap text-sm">
-                          {reply.content}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Reply Form */}
-          <div className="glass-card p-8">
-            <h3 className="text-lg font-black mb-4">Add Your Reply</h3>
-
-            {replyMsg && (
-              <div className={`p-3 rounded-xl mb-4 text-sm font-bold ${replyMsg.includes('✅') ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-400'}`}>
-                {replyMsg}
-              </div>
-            )}
-
-            <form onSubmit={handleReply} className="space-y-4">
-              {/* Author Info */}
-              {user && (
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-black text-xs">
-                    {getInitials(user.name)}
-                  </div>
-                  <span className="text-sm font-bold text-[var(--text-primary)]">Replying as {user.name}</span>
-                </div>
-              )}
-              <textarea
-                id="reply-box"
-                rows={5}
-                placeholder="Share your thoughts, answer, or ask a follow-up question..."
-                value={replyContent}
-                onChange={e => setReplyContent(e.target.value)}
-                className="w-full px-4 py-3 rounded-2xl bg-[var(--bg-raised)] border border-[var(--border)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30 resize-none transition-all"
-              />
-              <div className="flex gap-4">
-                <button
-                  type="submit"
-                  disabled={submitting || !replyContent.trim()}
-                  className="px-8 py-3 bg-[var(--accent)] text-white font-black rounded-2xl hover:opacity-90 hover:scale-[1.02] transition-all disabled:opacity-40 shadow-lg shadow-[var(--accent)]/20"
-                >
-                  {submitting ? 'Posting...' : '💬 Post Reply'}
-                </button>
-                <Link
-                  href="/dashboard/student/forums"
-                  className="px-6 py-3 bg-[var(--bg-raised)] text-[var(--text-primary)] font-bold rounded-2xl border border-[var(--border)] hover:bg-[var(--bg-hover)] transition-all inline-flex items-center"
-                >
-                  ← Back to Forums
-                </Link>
-              </div>
-            </form>
-          </div>
+  const shell = (content: React.ReactNode) => (
+    <div className="portal-page">
+      <StudentReferenceShell active="discussions" />
+      <main id="student-main" tabIndex={-1} className="portal-main">
+        <div className="max-w-4xl">
+          <Link href="/dashboard/student/forums" className="ui-back"><ArrowLeft aria-hidden="true" /> All discussions</Link>
+          {content}
         </div>
       </main>
     </div>
+  )
+
+  if (loading) return shell(
+    <div className="grid gap-4"><div className="ui-skeleton h-56" /><div className="ui-skeleton h-28" /><div className="ui-skeleton h-28" /></div>
+  )
+
+  if (!post) return shell(
+    <EmptyState icon={SearchX} title="Discussion not found">It may have been removed by a moderator.</EmptyState>
+  )
+
+  const replies = post.replies || []
+
+  return shell(
+    <>
+      <article className="ui-card ui-card-accent mb-8" style={{ padding: 32 }}>
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <span className="ui-badge is-gold no-dot">{post.category || 'Discussion'}</span>
+          {post.tags?.map((tag: string, i: number) => <span key={i} className="ui-badge is-neutral no-dot" style={{ textTransform: 'none', letterSpacing: 0 }}>#{tag}</span>)}
+        </div>
+        <h1 className="font-display text-3xl font-semibold role-text-primary leading-tight">{post.title}</h1>
+
+        <div className="flex flex-wrap items-center gap-3 mt-5 pb-5 border-b border-[var(--border)]">
+          <div className="ui-person">
+            {avatar(post.author, 40)}
+            <div><strong>{post.author?.name || 'Anonymous'}</strong><small>{post.author?.collegeName || 'Student'} · {timeAgo(post.createdAt)}</small></div>
+          </div>
+          <ul className="ui-meta ml-auto">
+            <li><Eye /> {post.viewsCount ?? 0} views</li>
+            <li><MessageCircle /> {replies.length} replies</li>
+          </ul>
+        </div>
+
+        <div className="role-text-secondary whitespace-pre-wrap leading-7 mt-5 text-[15px]">{post.content}</div>
+
+        <div className="flex gap-2 mt-6">
+          <button onClick={handleLikePost} disabled={likedPost} aria-pressed={likedPost} className={`ui-btn ui-btn-sm ${likedPost ? 'ui-btn-danger' : 'ui-btn-secondary'}`}>
+            <Heart aria-hidden="true" fill={likedPost ? 'currentColor' : 'none'} /> {post.likesCount ?? 0}
+          </button>
+          <button onClick={() => document.getElementById('reply-box')?.focus()} className="ui-btn ui-btn-secondary ui-btn-sm"><MessageCircle aria-hidden="true" /> Reply</button>
+        </div>
+      </article>
+
+      <section className="mb-8">
+        <h2 className="ui-section-title mb-4">{replies.length} {replies.length === 1 ? 'reply' : 'replies'}</h2>
+        {replies.length === 0 ? (
+          <EmptyState icon={MessageCircle} title="No replies yet">Be the first to respond.</EmptyState>
+        ) : (
+          <div className="grid gap-3">
+            {replies.map((reply: any) => (
+              <div key={reply.id} className="ui-card p-5" style={reply.isAccepted ? { borderLeft: '3px solid var(--success)' } : undefined}>
+                {reply.isAccepted && <p className="flex items-center gap-1.5 mb-3 text-xs font-semibold tracking-wider uppercase text-[var(--success)]"><CheckCircle2 className="w-4 h-4" aria-hidden="true" /> Accepted answer</p>}
+                <div className="flex items-start gap-3">
+                  {avatar(reply.author, 34)}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm"><strong className="role-text-primary">{reply.author?.name || 'Anonymous'}</strong> <span className="role-text-muted ml-2 text-xs">{timeAgo(reply.createdAt)}</span></p>
+                      <button onClick={() => handleLikeReply(reply.id)} disabled={likedReplies.has(reply.id)} aria-pressed={likedReplies.has(reply.id)} aria-label="Like reply" className={`ui-btn ui-btn-sm ${likedReplies.has(reply.id) ? 'ui-btn-danger' : 'ui-btn-ghost'}`} style={{ minHeight: 28, padding: '2px 8px' }}>
+                        <Heart aria-hidden="true" fill={likedReplies.has(reply.id) ? 'currentColor' : 'none'} /> {reply.likesCount ?? 0}
+                      </button>
+                    </div>
+                    <p className="role-text-secondary whitespace-pre-wrap text-sm leading-6 mt-1">{reply.content}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <form onSubmit={handleReply} className="ui-card ui-card-pad grid gap-4">
+        <h2 className="ui-section-title" style={{ fontSize: 18 }}>Add your reply</h2>
+        {user && <div className="ui-person">{avatar(user, 30)}<small>Replying as <strong className="inline role-text-primary">{user.name}</strong></small></div>}
+        <textarea
+          id="reply-box"
+          rows={5}
+          placeholder="Share an answer or ask a follow-up question"
+          value={replyContent}
+          onChange={e => setReplyContent(e.target.value)}
+          className="ui-textarea"
+          aria-label="Reply"
+        />
+        <div className="flex justify-end">
+          <button type="submit" disabled={submitting || !replyContent.trim()} className="ui-btn ui-btn-primary">
+            {submitting ? <><Loader2 className="animate-spin" aria-hidden="true" /> Posting…</> : <><Send aria-hidden="true" /> Post reply</>}
+          </button>
+        </div>
+      </form>
+    </>
   )
 }

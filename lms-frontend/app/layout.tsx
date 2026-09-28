@@ -4,6 +4,8 @@ import './globals.css'
 import './portal.css'
 import './role-foundation.css'
 import './theme-classic.css'
+import './ui-kit.css'
+import './ui-portal.css'
 import { ThemeProvider } from '@/components/ThemeProvider'
 import ToastContainer from '@/components/ToastContainer'
 

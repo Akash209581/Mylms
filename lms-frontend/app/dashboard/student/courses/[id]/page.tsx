@@ -5,11 +5,13 @@ import { apiFetch } from '@/lib/apiFetch'
 import { API_URL } from '@/lib/api'
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import Sidebar from '@/components/layout/Sidebar'
-import Navbar from '@/components/layout/Navbar'
+import Link from 'next/link'
+import StudentReferenceShell from '@/components/layout/StudentReferenceShell'
+import { toast } from '@/lib/toast'
+import { EmptyState, Loading } from '@/components/ui'
 import { api } from '@/lib/api'
 import { getAuthHeaders } from '@/lib/authHeaders'
-import { CheckCircle2, ChevronRight } from 'lucide-react'
+import { ArrowLeft, ArrowRight, BookOpen, CheckCircle2, ChevronDown, Clock3, FileText, Layers, ListTree, Loader2, PlayCircle, SearchX, Target, UserRound, Users } from 'lucide-react'
 import MarkdownRenderer from '@/components/editor/MarkdownRenderer'
 
 interface Resource {
@@ -73,22 +75,6 @@ interface Course {
     modules?: Module[]
 }
 
-const levelColors: Record<string, string> = {
-    'Beginner': 'bg-green-500/20 text-green-400 border-green-500/30',
-    'Intermediate': 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-    'Advanced': 'bg-red-500/20 text-red-400 border-red-500/30',
-    'Expert': 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-}
-
-const typeIcons: Record<string, string> = {
-    'video': '🎥',
-    'article': '📄',
-    'quiz': '📝',
-    'test': '📝',
-    'assessment': '🏆',
-    'assignment': '📋',
-}
-
 export default function StudentCourseDetailsPage() {
     const router = useRouter()
     const params = useParams()
@@ -137,7 +123,6 @@ export default function StudentCourseDetailsPage() {
         try {
             const response = await api.get(`/courses/${courseId}`)
             if (response.data) {
-                console.log('Course data:', response.data)
                 setCourse(response.data)
                 
                 // Expand all modules by default
@@ -176,8 +161,9 @@ export default function StudentCourseDetailsPage() {
         try {
             await api.post('/enrollments', { courseId: parseInt(courseId as string) })
             setIsEnrolled(true)
-        } catch (error) {
-            console.error('Error enrolling:', error)
+            toast.success('You are enrolled. Happy learning!')
+        } catch (error: any) {
+            toast.error(error?.response?.data?.message || 'Enrollment failed. Please try again.')
         }
         setEnrolling(false)
     }
@@ -234,350 +220,168 @@ export default function StudentCourseDetailsPage() {
         return `${mb.toFixed(2)} MB`
     }
 
-    if (loading) {
-        return (
-            <div className="min-h-screen bg-mesh">
-                <Sidebar role="STUDENT" />
-                <Navbar title="Course Details" />
-                <main className="page-content">
-                    <div className="flex items-center justify-center py-20">
-                        <div className="w-10 h-10 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
-                    </div>
-                </main>
-            </div>
-        )
-    }
+    const shell = (content: React.ReactNode) => (
+        <div className="portal-page">
+            <StudentReferenceShell active="courses" />
+            <main id="student-main" tabIndex={-1} className="portal-main">
+                <Link href="/dashboard/student/courses" className="ui-back"><ArrowLeft aria-hidden="true" /> Course catalog</Link>
+                {content}
+            </main>
+        </div>
+    )
 
-    if (error || !course) {
-        return (
-            <div className="min-h-screen bg-mesh">
-                <Sidebar role="STUDENT" />
-                <Navbar title="Course Details" />
-                <main className="page-content">
-                    <div className="text-center py-20">
-                        <div className="text-6xl mb-4">🚫</div>
-                        <p className="text-white font-semibold text-lg mb-2">{error || 'Course Not Found'}</p>
-                        <p className="text-gray-400 text-sm mb-6">
-                            This course may not exist, is not yet approved, or you don&apos;t have permission to view it.
-                        </p>
-                        <button onClick={() => router.push('/dashboard/student/courses')} className="btn-primary">
-                            ← Back to Courses
-                        </button>
-                    </div>
-                </main>
-            </div>
-        )
-    }
+    if (loading) return shell(<Loading label="Loading course" />)
 
-    const totalChapters = course.modules?.reduce((acc, m) => acc + (m.chapters?.length || 0), 0) || 0
-    const totalLectures = course.modules?.reduce((acc, m) => 
+    if (error || !course) return shell(
+        <EmptyState icon={SearchX} title="Course unavailable" action={<Link href="/dashboard/student/courses" className="ui-btn ui-btn-primary">Browse courses</Link>}>
+            {error || 'This course may not exist, is not yet approved, or is not available to your college.'}
+        </EmptyState>
+    )
+
+    const totalLectures = course.modules?.reduce((acc, m) =>
         acc + (m.chapters?.reduce((accChapter, c) => accChapter + (c.lessons?.length || 0), 0) || 0), 0
     ) || 0
-    
-    const totalDuration = course.modules?.reduce((acc, m) => 
-        acc + (m.chapters?.reduce((accChapter, c) => 
-            accChapter + (c.lessons?.reduce((sum, l) => sum + (l.duration || 0), 0) || 0), 0
-        ) || 0), 0
-    ) || 0
+    const totalChapters = course.modules?.reduce((acc, m) => acc + (m.chapters?.length || 0), 0) || 0
+    const learnHref = `/dashboard/student/courses/${courseId}/learn`
+    const aboutSections = [
+        { key: 'objectives', title: 'What you will learn', icon: Target, body: course.objectives },
+        { key: 'prerequisites', title: 'Prerequisites', icon: ListTree, body: course.prerequisites },
+        { key: 'audience', title: 'Who this course is for', icon: Users, body: course.targetAudience },
+    ].filter(section => section.body)
 
-
-    return (
-        <div className="min-h-screen bg-mesh">
-            <Sidebar role="STUDENT" />
-            <Navbar title="Course Details" />
-            <main className="page-content max-w-7xl">
-                {/* Back Button */}
-                <button 
-                    onClick={() => router.push('/dashboard/student/courses')}
-                    className="btn-secondary mb-6 inline-flex items-center gap-2"
-                >
-                    ← Back to Courses
-                </button>
-
-                {/* Course Header */}
-                <div className="glass-card p-8 mb-8">
-                    <div className="flex flex-col lg:flex-row gap-8">
-                        {/* Course Image */}
-                        <div className="lg:w-1/3">
-                            <div 
-                                className="h-64 rounded-xl overflow-hidden"
-                                style={{ 
-                                    background: course.thumbnail 
-                                        ? `url(${course.thumbnail}) center/cover` 
-                                        : 'linear-gradient(135deg, #1f3a5f, #172a45)' 
-                                }}
-                            >
-                                {!course.thumbnail && (
-                                    <div className="h-full flex items-center justify-center text-6xl opacity-50">
-                                        📚
-                                    </div>
-                                )}
-                            </div>
+    return shell(
+        <>
+            {/* Hero */}
+            <section className="ui-card overflow-hidden mb-8">
+                <div className="grid lg:grid-cols-[minmax(0,1fr)_340px]">
+                    <div className="p-8 lg:p-10">
+                        <div className="flex flex-wrap gap-2 mb-4">
+                            {course.category && <span className="ui-badge is-gold no-dot">{course.category}</span>}
+                            {course.level && <span className="ui-badge is-accent no-dot">{course.level}</span>}
+                            {isEnrolled && <span className="ui-badge is-success">Enrolled</span>}
                         </div>
-
-                        {/* Course Info */}
-                        <div className="lg:w-2/3">
-                            {/* Category & Level */}
-                            <div className="flex flex-wrap gap-2 mb-3">
-                                {course.category && (
-                                    <span className="badge bg-purple-500/20 text-purple-400 border-purple-500/30">
-                                        {course.category}
-                                    </span>
-                                )}
-                                {course.level && (
-                                    <span className={`badge border ${levelColors[course.level]}`}>
-                                        {course.level}
-                                    </span>
-                                )}
-                                <span className="badge bg-green-500/20 text-green-400 border-green-500/30">
-                                    ✅ APPROVED
-                                </span>
-                                {isEnrolled && (
-                                    <span className="badge badge-student">
-                                        ✓ Enrolled
-                                    </span>
-                                )}
+                        <h1 className="font-display text-4xl font-semibold role-text-primary leading-tight">{course.title}</h1>
+                        {course.description && (
+                            <div className="role-text-secondary mt-4 leading-7 max-w-3xl">
+                                <MarkdownRenderer content={course.description} />
                             </div>
-
-                            {/* Title */}
-                            <h1 className="text-4xl font-bold text-white mb-4">{course.title}</h1>
-
-                            {/* Description */}
-                            <div className="text-gray-300 text-lg mb-4 leading-relaxed prose prose-invert max-w-none">
-                                {course.description ? (
-                                    <MarkdownRenderer content={course.description} />
-                                ) : (
-                                    'No description available'
-                                )}
-                            </div>
-
-                            {/* Instructor */}
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-xl">
-                                    {course.instructor?.name?.charAt(0).toUpperCase()}
+                        )}
+                        <div className="flex flex-wrap items-center gap-x-6 gap-y-3 mt-6">
+                            {course.instructor?.name && (
+                                <div className="ui-person">
+                                    <span className="ui-avatar">{course.instructor.name.charAt(0).toUpperCase()}</span>
+                                    <div><small>Instructor</small><strong>{course.instructor.name}</strong></div>
                                 </div>
-                                <div>
-                                    <p className="text-gray-400 text-sm">Instructor</p>
-                                    <p className="text-white font-semibold">{course.instructor?.name}</p>
-                                </div>
-                            </div>
+                            )}
+                            <ul className="ui-meta">
+                                <li><Layers /> {course.modules?.length || 0} modules</li>
+                                <li><BookOpen /> {totalChapters} chapters</li>
+                                <li><FileText /> {totalLectures} lessons</li>
+                                {!!course.duration && <li><Clock3 /> {course.duration} hours</li>}
+                            </ul>
+                        </div>
+                    </div>
 
-                            {/* Stats */}
-                            <div className="flex flex-wrap gap-6 mb-6">
-                                <div className="flex items-center gap-2 text-gray-300">
-                                    <span className="text-2xl">📑</span>
-                                    <div>
-                                        <p className="text-sm text-gray-400">Sections</p>
-                                        <p className="font-semibold">{course.modules?.length || 0}</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-2 text-gray-300">
-                                    <span className="text-2xl">🎥</span>
-                                    <div>
-                                        <p className="text-sm text-gray-400">Lectures</p>
-                                        <p className="font-semibold">{totalLectures}</p>
-                                    </div>
-                                </div>
-                                {course.duration && (
-                                    <div className="flex items-center gap-2 text-gray-300">
-                                        <span className="text-2xl">⏱️</span>
-                                        <div>
-                                            <p className="text-sm text-gray-400">Duration</p>
-                                            <p className="font-semibold">{course.duration}h</p>
-                                        </div>
-                                    </div>
-                                )}
-                                <div className="flex items-center gap-2 text-gray-300">
-                                    <span className="text-2xl">💰</span>
-                                    <div>
-                                        <p className="text-sm text-gray-400">Price</p>
-                                        <p className="font-semibold">
-                                            {course.price && course.price > 0 ? `$${course.price}` : 'FREE'}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Enroll / Start Learning Button */}
-                            {!isEnrolled && (
-                                <button
-                                    onClick={handleEnroll}
-                                    disabled={enrolling}
-                                    className="btn-primary px-8 py-3 text-lg shadow-xl shadow-indigo-500/20 hover:scale-105 transition-all"
-                                >
-                                    {enrolling ? 'Enrolling...' : '🎓 Enroll Now'}
+                    <aside className="p-8 lg:border-l border-t lg:border-t-0 border-[var(--border)] bg-[var(--bg-raised)] flex flex-col">
+                        <div className="h-36 rounded-xl overflow-hidden mb-6 bg-[#1f3a5f] grid place-items-center" style={{ boxShadow: 'inset 0 -3px 0 #9a7a43' }}>
+                            {course.thumbnail
+                                ? <img src={course.thumbnail} alt="" className="w-full h-full object-cover" />
+                                : <span className="font-display text-6xl font-semibold text-white/90">{course.title.trim().charAt(0)}</span>}
+                        </div>
+                        <p className="text-sm role-text-muted">Course fee</p>
+                        <p className="font-display text-3xl font-semibold role-text-primary">{course.price && course.price > 0 ? course.price : 'Free'}</p>
+                        <div className="mt-6">
+                            {isEnrolled ? (
+                                <>
+                                    <button onClick={() => router.push(`${learnHref}?start=true`)} className="ui-btn ui-btn-primary ui-btn-lg ui-btn-block">
+                                        <PlayCircle aria-hidden="true" /> {completedLessons.length > 0 ? 'Resume course' : 'Start course'}
+                                    </button>
+                                    <p className="flex items-center justify-center gap-1.5 mt-3 text-sm text-[var(--success)]"><CheckCircle2 className="w-4 h-4" aria-hidden="true" /> {completedLessons.length} lessons completed</p>
+                                </>
+                            ) : (
+                                <button onClick={handleEnroll} disabled={enrolling} className="ui-btn ui-btn-primary ui-btn-lg ui-btn-block">
+                                    {enrolling ? <><Loader2 className="animate-spin" aria-hidden="true" /> Enrolling…</> : <>Enroll now <ArrowRight aria-hidden="true" /></>}
                                 </button>
                             )}
-                            {isEnrolled && (
-                                <div className="space-y-4">
-                                    <div className="flex flex-wrap items-center gap-4">
-                                        <button
-                                            onClick={() => router.push(`/dashboard/student/courses/${courseId}/learn?start=true`)}
-                                            className="btn-primary px-10 py-4 text-xl font-black rounded-2xl shadow-2xl shadow-indigo-500/40 hover:scale-105 transition-all flex items-center gap-3 group"
-                                        >
-                                            <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 -translate-x-full group-hover:animate-shimmer" />
-                                            <span>{completedLessons.length > 0 ? '▶ Resume Course' : '🚀 Start Course'}</span>
-                                            <ChevronRight size={24} />
-                                        </button>
-                                    </div>
-                                    <div className="flex items-center gap-2 text-emerald-400 font-bold px-1">
-                                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-400/20 ring-1 ring-emerald-400/30">
-                                            <CheckCircle2 size={14} />
-                                        </div>
-                                        <span className="text-sm">Enrolled & Ready to learn</span>
-                                    </div>
-                                </div>
-                            )}
+                        </div>
+                    </aside>
+                </div>
+            </section>
+
+            <div className={`grid gap-8 ${aboutSections.length ? 'lg:grid-cols-[minmax(0,1fr)_360px]' : ''} items-start`}>
+                {/* Curriculum */}
+                <section className="min-w-0">
+                    <div className="ui-section-head">
+                        <div>
+                            <h2 className="ui-section-title">Curriculum</h2>
+                            <p className="ui-section-sub">{course.modules?.length || 0} modules · {totalChapters} chapters · {totalLectures} lessons</p>
                         </div>
                     </div>
-                </div>
 
-                {/* Course Content Sections */}
-                <div className="grid lg:grid-cols-3 gap-8">
-                    {/* Left Column - Course Details */}
-                    <div className="lg:col-span-1 space-y-6">
-                        {/* Learning Objectives */}
-                        {course.objectives && (
-                            <div className="glass-card p-6">
-                                <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                                    <span>🎯</span> Learning Objectives
-                                </h3>
-                                <div className="text-gray-300 prose prose-invert max-w-none">
-                                    <MarkdownRenderer content={course.objectives} />
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Prerequisites */}
-                        {course.prerequisites && (
-                            <div className="glass-card p-6">
-                                <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                                    <span>📋</span> Prerequisites
-                                </h3>
-                                <div className="text-gray-300 prose prose-invert max-w-none">
-                                    <MarkdownRenderer content={course.prerequisites} />
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Target Audience */}
-                        {course.targetAudience && (
-                            <div className="glass-card p-6">
-                                <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                                    <span>👥</span> Target Audience
-                                </h3>
-                                <div className="text-gray-300 prose prose-invert max-w-none">
-                                    <MarkdownRenderer content={course.targetAudience} />
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Right Column - Course Curriculum */}
-                    <div className="lg:col-span-2">
-                        <div className="glass-card p-6">
-                            <div className="flex justify-between items-center mb-6">
-                                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                                    <span>📚</span> Course Chapters & Modules
-                                </h2>
-                                {isEnrolled && course.modules && course.modules.length > 0 && (
-                                    <button
-                                        onClick={() => router.push(`/dashboard/student/courses/${courseId}/learn`)}
-                                        className="btn-primary px-4 py-2 text-xs font-bold flex items-center gap-1.5"
-                                    >
-                                        <span>🚀</span> Start Learning
-                                    </button>
-                                )}
-                            </div>
-
-                            {course.modules && course.modules.length > 0 ? (
-                                <div className="space-y-6">
-                                    {course.modules.map((module, moduleIndex) => (
-                                        <div key={module.id} className="border border-white/10 rounded-xl overflow-hidden bg-slate-900/50">
-                                            {/* Chapter Header */}
-                                            <div className="p-4 bg-white/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-white/10">
-                                                <button
-                                                    onClick={() => toggleModule(module.id)}
-                                                    className="flex items-center gap-3 text-left flex-1"
-                                                >
-                                                    <span className="text-xl">
-                                                        {expandedModules.has(module.id) ? '📂' : '📁'}
-                                                    </span>
-                                                    <div>
-                                                        <p className="text-white font-bold text-lg flex items-center gap-2">
-                                                            <span className="px-2.5 py-0.5 bg-indigo-500/20 text-indigo-400 rounded text-xs font-bold">
-                                                                Module {moduleIndex + 1}
-                                                            </span>
-                                                            <span>{module.title}</span>
-                                                        </p>
-                                                        {module.description && (
-                                                            <p className="text-gray-400 text-xs mt-1">
-                                                                {module.description}
-                                                            </p>
-                                                        )}
-                                                        <p className="text-gray-400 text-[11px] mt-1 font-semibold">
-                                                            {module.chapters?.length || 0} Chapters inside Module
-                                                        </p>
-                                                    </div>
-                                                </button>
-
-                                                {isEnrolled && (
-                                                    <button
-                                                        onClick={() => router.push(`/dashboard/student/courses/${courseId}/learn?chapterId=${module.id}&start=true`)}
-                                                        className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 shadow"
-                                                    >
-                                                        <span>▶</span> Start Module {moduleIndex + 1}
-                                                    </button>
-                                                )}
-                                            </div>
-
-                                            {/* Chapters inside Module */}
-                                            {expandedModules.has(module.id) && (
-                                                <div className="p-4 space-y-3 bg-black/20">
-                                                    {module.chapters?.map((chapter, chapterIndex) => (
-                                                        <div key={chapter.id} className="p-3.5 bg-white/5 rounded-lg border border-white/5 hover:bg-white/10 transition-colors">
-                                                            <div className="flex items-center justify-between gap-3">
-                                                                <div className="flex items-center gap-3">
-                                                                    <span className="text-base">📄</span>
-                                                                    <div>
-                                                                        <p className="text-white font-medium text-sm flex items-center gap-2">
-                                                                            <span className="text-purple-400 text-xs font-bold">
-                                                                                Chapter {moduleIndex + 1}.{chapterIndex + 1}
-                                                                            </span>
-                                                                            <span>{chapter.title}</span>
-                                                                        </p>
-                                                                        {chapter.description && (
-                                                                            <p className="text-gray-400 text-xs mt-0.5">{chapter.description}</p>
-                                                                        )}
-                                                                    </div>
-                                                                </div>
-
-                                                                {isEnrolled && (
-                                                                    <button
-                                                                        onClick={() => router.push(`/dashboard/student/courses/${courseId}/learn?moduleId=${chapter.id}&start=true`)}
-                                                                        className="text-xs font-bold text-indigo-400 hover:text-indigo-300 hover:underline"
-                                                                    >
-                                                                        Start Chapter →
-                                                                    </button>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    ))}
+                    {course.modules && course.modules.length > 0 ? (
+                        <div className="grid gap-3">
+                            {course.modules.map((module, moduleIndex) => {
+                                const open = expandedModules.has(module.id)
+                                return (
+                                    <div key={module.id} className="ui-card overflow-hidden">
+                                        <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-4">
+                                            <button onClick={() => toggleModule(module.id)} aria-expanded={open} className="flex items-center gap-4 text-left flex-1 min-w-0">
+                                                <span className="grid place-items-center w-10 h-10 rounded-lg bg-[var(--accent-soft)] text-[var(--accent-text)] font-display font-semibold shrink-0">{moduleIndex + 1}</span>
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="font-semibold role-text-primary">{module.title}</p>
+                                                    <p className="text-xs role-text-muted mt-0.5">{module.chapters?.length || 0} chapters{module.description ? ` · ${module.description}` : ''}</p>
                                                 </div>
+                                                <ChevronDown className={`w-5 h-5 role-text-muted shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
+                                            </button>
+                                            {isEnrolled && (
+                                                <button onClick={() => router.push(`${learnHref}?chapterId=${module.id}&start=true`)} className="ui-btn ui-btn-secondary ui-btn-sm shrink-0">
+                                                    <PlayCircle aria-hidden="true" /> Start module
+                                                </button>
                                             )}
                                         </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="text-center py-12 text-gray-400">
-                                    <p className="text-4xl mb-2">📭</p>
-                                    <p>No chapters or modules added to this course yet.</p>
-                                </div>
-                            )}
+                                        {open && module.chapters?.length > 0 && (
+                                            <ul className="border-t border-[var(--border)] bg-[var(--bg-raised)]" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+                                                {module.chapters.map((chapter, chapterIndex) => (
+                                                    <li key={chapter.id} className="flex items-center gap-3 px-4 py-3 border-b last:border-b-0 border-[var(--border)]">
+                                                        <span className="text-xs font-semibold role-text-muted w-10 shrink-0 ui-num">{moduleIndex + 1}.{chapterIndex + 1}</span>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-sm role-text-primary">{chapter.title}</p>
+                                                            {chapter.description && <p className="text-xs role-text-muted mt-0.5 truncate">{chapter.description}</p>}
+                                                        </div>
+                                                        <span className="text-xs role-text-muted shrink-0">{chapter.lessons?.length || 0} lessons</span>
+                                                        {isEnrolled && (
+                                                            <button onClick={() => router.push(`${learnHref}?moduleId=${chapter.id}&start=true`)} className="ui-btn ui-btn-ghost ui-btn-sm shrink-0">Open</button>
+                                                        )}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        )}
+                                    </div>
+                                )
+                            })}
                         </div>
-                    </div>
-                    </div>
-                </main>
-        </div>
+                    ) : (
+                        <EmptyState icon={Layers} title="Curriculum coming soon">Modules and lessons have not been published for this course yet.</EmptyState>
+                    )}
+                </section>
+
+                {aboutSections.length > 0 && (
+                    <aside className="grid gap-5">
+                        {aboutSections.map(({ key, title, icon: Icon, body }) => (
+                            <section key={key} className="ui-card ui-card-pad">
+                                <h3 className="flex items-center gap-2 font-display text-lg font-semibold role-text-primary mb-3"><Icon className="w-5 h-5 text-[var(--gold)]" aria-hidden="true" /> {title}</h3>
+                                <div className="role-text-secondary text-sm leading-7"><MarkdownRenderer content={body as string} /></div>
+                            </section>
+                        ))}
+                        {course.instructor?.name && (
+                            <section className="ui-card ui-card-pad">
+                                <h3 className="flex items-center gap-2 font-display text-lg font-semibold role-text-primary mb-3"><UserRound className="w-5 h-5 text-[var(--gold)]" aria-hidden="true" /> Instructor</h3>
+                                <p className="role-text-secondary text-sm">{course.instructor.name}</p>
+                            </section>
+                        )}
+                    </aside>
+                )}
+            </div>
+        </>
     )
 }

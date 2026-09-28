@@ -521,7 +521,7 @@ export default function GlobalCreateCoursePage() {
                             type="button"
                             onClick={() => { setCourseType('pdf_builder'); setError('') }}
                             className={`px-5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${courseType === 'pdf_builder'
-                                    ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md'
+                                    ? 'bg-[#1f3a5f] text-white shadow-md'
                                     : 'text-gray-400 hover:text-white'
                                 }`}
                         >
@@ -531,7 +531,7 @@ export default function GlobalCreateCoursePage() {
                             type="button"
                             onClick={() => { setCourseType('standard'); setError('') }}
                             className={`px-5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${courseType === 'standard'
-                                    ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md'
+                                    ? 'bg-[#1f3a5f] text-white shadow-md'
                                     : 'text-gray-400 hover:text-white'
                                 }`}
                         >
@@ -593,7 +593,7 @@ export default function GlobalCreateCoursePage() {
                                                             className="w-full h-full object-cover"
                                                         />
                                                     ) : (
-                                                        <div className="w-full h-full bg-gradient-to-r from-indigo-600 to-purple-600 flex items-center justify-center text-4xl">
+                                                        <div className="w-full h-full bg-[#1f3a5f] flex items-center justify-center text-4xl">
                                                             📚
                                                         </div>
                                                     )}
@@ -919,7 +919,7 @@ export default function GlobalCreateCoursePage() {
                                                                                     </div>
                                                                                     <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
                                                                                         <div
-                                                                                            className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full transition-all duration-200"
+                                                                                            className="bg-[#1f3a5f] h-full transition-all duration-200"
                                                                                             style={{ width: `${ch.uploadProgress || 0}%` }}
                                                                                         />
                                                                                     </div>
@@ -987,7 +987,7 @@ export default function GlobalCreateCoursePage() {
                                             </div>
                                             <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
                                                 <div
-                                                    className="bg-gradient-to-r from-indigo-500 to-purple-600 h-full transition-all duration-300"
+                                                    className="bg-[#1f3a5f] h-full transition-all duration-300"
                                                     style={{ width: `${overallProgress}%` }}
                                                 />
                                             </div>
@@ -1002,7 +1002,7 @@ export default function GlobalCreateCoursePage() {
                                             type="button"
                                             onClick={handleSubmitPdfCourse}
                                             disabled={saving}
-                                            className="w-full sm:w-auto px-10 py-4 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold text-base rounded-2xl shadow-xl transition-all disabled:opacity-50 flex items-center justify-center gap-3"
+                                            className="w-full sm:w-auto px-10 py-4 bg-[#1f3a5f] hover:brightness-110 text-white font-bold text-base rounded-2xl shadow-xl transition-all disabled:opacity-50 flex items-center justify-center gap-3"
                                         >
                                             {saving ? (
                                                 <>
@@ -1101,7 +1101,7 @@ export default function GlobalCreateCoursePage() {
                                         type="button"
                                         onClick={handleSubmitStandard}
                                         disabled={saving}
-                                        className="px-8 py-3.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-bold text-sm rounded-2xl shadow-xl"
+                                        className="px-8 py-3.5 bg-[#1f3a5f] text-white font-bold text-sm rounded-2xl shadow-xl"
                                     >
                                         {saving ? 'Creating Course...' : 'Create Course'}
                                     </button>

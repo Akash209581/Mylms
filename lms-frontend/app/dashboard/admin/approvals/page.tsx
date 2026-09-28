@@ -230,8 +230,8 @@ export default function AdminApprovalsPage() {
                             onClick={() => setActiveTab(tab.id as TabType)}
                             className={`px-6 py-3 rounded-lg font-medium transition-all whitespace-nowrap ${
                                 activeTab === tab.id
-                                    ? 'bg-[var(--bg-surface)]/10 text-white border-2 border-primary-500'
-                                    : 'bg-[var(--bg-surface)]/5 text-gray-400 border-2 border-transparent hover:bg-[var(--bg-surface)]/10 hover:text-white'
+                                    ? 'bg-[var(--bg-surface)] text-[var(--accent-text)] border-2 border-[var(--accent)] shadow-sm'
+                                    : 'bg-transparent role-text-secondary border-2 border-transparent hover:bg-[var(--bg-raised)]'
                             }`}
                         >
                             <span className="flex items-center gap-2">
@@ -276,7 +276,7 @@ export default function AdminApprovalsPage() {
                                     {/* Course Info */}
                                     <div className="flex-1">
                                         <div className="flex items-start gap-3 mb-3">
-                                            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-primary-500 to-purple-600 flex items-center justify-center text-2xl flex-shrink-0">
+                                            <div className="w-12 h-12 rounded-lg bg-[#1f3a5f] flex items-center justify-center text-2xl flex-shrink-0">
                                                 📚
                                             </div>
                                             <div className="flex-1 min-w-0">

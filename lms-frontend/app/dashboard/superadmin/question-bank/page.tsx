@@ -101,8 +101,8 @@ export default function QuestionBankPage() {
                     </div>
                     <div className="flex gap-3">
                         <button onClick={() => router.push(`${getRoleBasePath(userRole)}/question-bank/bulk-import`)}
-                            className="px-5 py-2.5 text-sm flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors">
-                            <span>📊</span> Bulk Import
+                            className="ui-btn ui-btn-secondary">
+                            Bulk import
                         </button>
                         <button onClick={() => router.push(`${getRoleBasePath(userRole)}/question-bank/create`)}
                             className="btn-primary px-5 py-2.5 text-sm flex items-center gap-2">

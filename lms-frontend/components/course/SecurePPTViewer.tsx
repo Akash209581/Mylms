@@ -347,7 +347,7 @@ export default function SecurePPTViewer({
           </p>
           <button
             onClick={() => setIsWindowBlurred(false)}
-            className="px-6 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-xs font-bold rounded-xl shadow-lg hover:from-indigo-600 hover:to-purple-700 transition-all flex items-center gap-2"
+            className="px-6 py-2.5 bg-[#1f3a5f] text-white text-xs font-bold rounded-xl shadow-lg hover:brightness-110 transition-all flex items-center gap-2"
           >
             <RefreshCw className="w-4 h-4" /> Resume Presentation
           </button>
@@ -372,7 +372,7 @@ export default function SecurePPTViewer({
           {/* Button 1: BACK BUTTON */}
           <button
             onClick={handleBack}
-            className="px-3.5 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white border border-indigo-500/40 text-xs font-bold rounded-xl transition-all flex items-center gap-2 active:scale-95 shadow-md"
+            className="px-3.5 py-2 bg-[#1f3a5f] hover:brightness-110 text-white border border-indigo-500/40 text-xs font-bold rounded-xl transition-all flex items-center gap-2 active:scale-95 shadow-md"
             title="Back to Course"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -447,7 +447,7 @@ export default function SecurePPTViewer({
                   <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
                     <button
                       onClick={() => setViewMode('deck')}
-                      className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white text-xs font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2"
+                      className="w-full sm:w-auto px-6 py-3 bg-[#1f3a5f] hover:brightness-110 text-white text-xs font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2"
                     >
                       <Monitor className="w-4 h-4" /> View Slide Deck
                     </button>
@@ -523,7 +523,7 @@ export default function SecurePPTViewer({
         <div className="hidden sm:flex flex-1 max-w-md items-center gap-3 px-4">
           <div className="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden border border-slate-700/60">
             <div
-              className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-300 rounded-full"
+              className="h-full bg-[#1f3a5f] transition-all duration-300 rounded-full"
               style={{ width: `${((currentSlideIndex + 1) / totalSlides) * 100}%` }}
             />
           </div>
@@ -539,7 +539,7 @@ export default function SecurePPTViewer({
           className={`px-6 py-2.5 rounded-xl text-xs font-bold tracking-wide flex items-center gap-2 transition-all shadow-md ${
             currentSlideIndex === totalSlides - 1
               ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 cursor-not-allowed'
-              : 'bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white shadow-indigo-500/25 active:scale-95'
+              : 'bg-[#1f3a5f] hover:brightness-110 text-white shadow-indigo-500/25 active:scale-95'
           }`}
         >
           {currentSlideIndex === totalSlides - 1 ? 'Completed' : 'Next'} <ChevronRight className="w-4 h-4" />

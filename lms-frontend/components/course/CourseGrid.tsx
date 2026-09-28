@@ -31,8 +31,8 @@ export default function CourseGrid({
     const saved = useSavedCourses()
     return (
         <>
-        {saved.error && <p role="alert" className="portal-error">{saved.error}<button onClick={saved.reload}>Retry</button></p>}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {saved.error && <div role="alert" className="ui-alert is-warning mb-4"><span className="flex-1">{saved.error}</span><button className="ui-btn ui-btn-ghost ui-btn-sm" onClick={saved.reload}>Retry</button></div>}
+        <div className="grid gap-5" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))" }}>
             {courses.map((c, idx) => (
                 <CourseCard
                     key={c.id}
