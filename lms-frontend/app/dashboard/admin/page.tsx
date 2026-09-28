@@ -5,6 +5,7 @@ import { apiFetch } from '@/lib/apiFetch'
 
 import { API_URL } from '@/lib/api'
 import { useEffect, useState } from 'react'
+import { getCurrentUser } from '@/lib/session'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
@@ -26,16 +27,8 @@ export default function AdminDashboard() {
         setUser(u)
 
         // Refresh user profile to get latest college logo
-        apiFetch(`${API_URL}/auth/me`, {
-            headers: getAuthHeaders(),
-        })
-            .then(r => r.json())
-            .then(updatedUser => {
-                if (updatedUser && !updatedUser.message) {
-                    setUser(updatedUser)
-                    localStorage.setItem('user', JSON.stringify(updatedUser))
-                }
-            })
+        getCurrentUser()
+            .then(updatedUser => { if (updatedUser) setUser(updatedUser) })
             .catch(() => { })
 
         apiFetch(`${API_URL}/admin/dashboard`, {

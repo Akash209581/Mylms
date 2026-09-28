@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { api } from './api'
+import { getCurrentUser } from './session'
 
 export type LearningCourse = {
   courseId: number; title: string; thumbnail?: string; category?: string;
@@ -24,10 +25,10 @@ export function useStudentLearning() {
   const reload = useCallback(async () => {
     setLoading(true); setError('')
     try {
-      const profile = await api.get('/auth/me')
-      if (profile.data.role !== 'STUDENT') { router.replace(`/dashboard/${profile.data.role.toLowerCase()}`); return }
-      setUser(profile.data)
-      const [details, statistics] = await Promise.all([api.get('/student/dashboard-details'), api.get('/student/stats')])
+      // All three requests run in parallel rather than waiting for the profile first.
+      const [profile, details, statistics] = await Promise.all([getCurrentUser(), api.get('/student/dashboard-details'), api.get('/student/stats')])
+      if (profile.role !== 'STUDENT') { router.replace(`/dashboard/${profile.role.toLowerCase()}`); return }
+      setUser(profile)
       setCourses(details.data.coursesProgress || [])
       setStats(statistics.data)
     } catch (failure: any) {

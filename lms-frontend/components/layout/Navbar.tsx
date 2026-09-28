@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ThemeToggle } from '@/components/ThemeToggle'
-import { api } from '@/lib/api'
+import { getCurrentUser } from '@/lib/session'
 
 export default function Navbar({ title }: { title?: string }) {
   const router = useRouter()
@@ -10,11 +10,7 @@ export default function Navbar({ title }: { title?: string }) {
   useEffect(() => {
     let active = true
     try { setUser(JSON.parse(localStorage.getItem('user') || 'null')) } catch { /* Profile is refreshed below. */ }
-    api.get('/auth/me').then(response => {
-      if (!active) return
-      setUser(response.data)
-      localStorage.setItem('user', JSON.stringify(response.data))
-    }).catch(error => { if (active && error.response?.status === 401) router.replace('/login') })
+    getCurrentUser().then(profile => { if (active) setUser(profile) }).catch(error => { if (active && error.response?.status === 401) router.replace('/login') })
     return () => { active = false }
   }, [router])
   if (user?.role === 'STUDENT') return null

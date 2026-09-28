@@ -1,9 +1,10 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Mail, Lock, Eye, EyeOff, AlertCircle, Loader2, ArrowRight } from 'lucide-react'
 import { API_URL } from '@/lib/api'
+import { clearCurrentUser, getCurrentUser } from '@/lib/session'
 import { readJson, apiErrorMessage } from '@/lib/http'
 import { getRoleHomePath } from '@/lib/roleUtils'
 import AuthLayout from '@/components/auth/AuthLayout'
@@ -14,6 +15,12 @@ export default function LoginPage() {
     const [showPassword, setShowPassword] = useState(false)
     const [error, setError] = useState('')
     const [loading, setLoading] = useState(false)
+
+    useEffect(() => {
+        // Wake the API and database while the user is typing, so sign-in is not
+        // the request that pays for a cold start.
+        fetch(`${API_URL}/health`, { credentials: 'omit' }).catch(() => { })
+    }, [])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -30,6 +37,8 @@ export default function LoginPage() {
             if (!res.ok || !data?.user) throw new Error(apiErrorMessage(res, data, 'Invalid email or password'))
             if (data.access_token) localStorage.setItem('token', data.access_token)
             localStorage.setItem('user', JSON.stringify(data.user))
+            clearCurrentUser()
+            void getCurrentUser().catch(() => { })
             router.replace(getRoleHomePath(data.user.role))
         } catch (err: any) {
             setError(err instanceof TypeError

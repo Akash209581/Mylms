@@ -9,6 +9,15 @@ import { Request } from 'express';
 
 import { ConfigService } from '@nestjs/config';
 
+// Every authenticated request used to run two DB round trips (user + college)
+// before its handler started. Principals are cached briefly; any mutating
+// request clears the cache (see main.ts) so role/active changes apply at once.
+const PRINCIPAL_TTL_MS = 15_000;
+const principalCache = new Map<number, { value: any; expires: number }>();
+export function clearAuthCache() {
+  principalCache.clear();
+}
+
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(private configService: ConfigService,
@@ -33,7 +42,16 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
   async validate(payload: any) {
     if (!Number.isInteger(payload.sub) || payload.sub <= 0) throw new UnauthorizedException();
-    const user = await this.users.findOne({ where: { id: payload.sub } });
+    const hit = principalCache.get(payload.sub);
+    if (hit && hit.expires > Date.now()) return hit.value;
+    const principal = await this.loadPrincipal(payload.sub);
+    if (principalCache.size > 5000) principalCache.clear();
+    principalCache.set(payload.sub, { value: principal, expires: Date.now() + PRINCIPAL_TTL_MS });
+    return principal;
+  }
+
+  private async loadPrincipal(userId: number) {
+    const user = await this.users.findOne({ where: { id: userId } });
     if (!user?.isActive) throw new UnauthorizedException('Account is unavailable');
     const college = user.collegeId
       ? await this.colleges.findOne({ where: { id: user.collegeId } })

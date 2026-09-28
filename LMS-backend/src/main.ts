@@ -16,6 +16,8 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { HttpExceptionFilter } from './common/http-exception.filter';
 const cookieParser = require('cookie-parser');
+const compression = require('compression');
+import { clearAuthCache } from './common/jwt.strategy';
 async function bootstrap() {
   const dbUrl = process.env.DATABASE_URL;
   if (!dbUrl) {
@@ -29,7 +31,12 @@ async function bootstrap() {
     console.warn('[DB] DATABASE_URL is not a valid URL. Connection may fail at startup.');
   }
   const app = await NestFactory.create(AppModule);
+  app.use(compression());
   app.use(cookieParser());
+  app.use((req: any, res: any, next: any) => {
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)) res.on('finish', clearAuthCache);
+    next();
+  });
   // Increase payload size limit for base64 images
   const express = require('express');
   const path = require('path');

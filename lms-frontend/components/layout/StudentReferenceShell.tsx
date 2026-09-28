@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { BookOpen, LogOut, Menu, Search, X } from 'lucide-react'
 import { api } from '@/lib/api'
+import { clearCurrentUser } from '@/lib/session'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { isStudentRouteActive, studentNavigation } from './studentNavigation'
 import styles from './StudentShell.module.css'
@@ -30,6 +31,7 @@ export default function StudentReferenceShell(_props: { active?: ActivePage }) {
     setSigningOut(true); setError('')
     localStorage.removeItem('user')
     localStorage.removeItem('token')
+    clearCurrentUser()
     router.replace('/login')
 
     api.post('/auth/logout').catch((err) => {

@@ -6,6 +6,7 @@ import StudentReferenceShell from './StudentReferenceShell'
 import { studentNavigation } from './studentNavigation'
 import { usePathname, useRouter } from 'next/navigation'
 import { API_URL } from '@/lib/api'
+import { clearCurrentUser } from '@/lib/session'
 import { getAuthHeaders } from '@/lib/authHeaders'
 
 type NavItem = { label: string; href: string; icon: React.ReactNode; badge?: string | number }
@@ -117,6 +118,7 @@ export default function Sidebar({ role }: { role?: string }) {
         // Immediate local teardown and navigation for instant UI responsiveness
         localStorage.removeItem('user');
         localStorage.removeItem('token');
+        clearCurrentUser();
         router.replace('/login');
 
         // Dispatched in background to clear cookies on server

@@ -69,7 +69,8 @@ import { ExamCodingSubmission } from './entities/exam-coding-submission.entity';
       extra: {
         max: 20,
         connectionTimeoutMillis: 15000,
-        idleTimeoutMillis: 30000,
+        // Keep warm TLS connections around; reopening one to Neon costs hundreds of ms.
+        idleTimeoutMillis: 600000,
         keepAlive: true,
       },
       entities: [
