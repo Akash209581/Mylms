@@ -1,31 +1,24 @@
 'use client'
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { getRoleHomePath } from '@/lib/roleUtils'
 
 export default function Home() {
   const router = useRouter()
 
   useEffect(() => {
-    const stored = localStorage.getItem('user')
-    if (!stored) {
-      router.push('/login')
-    } else {
-      try {
-        const user = JSON.parse(stored)
-        if (user.role === 'STUDENT') router.push('/dashboard/student')
-        else if (user.role === 'INSTRUCTOR') router.push('/dashboard/instructor')
-        else if (user.role === 'ADMIN' || user.role === 'SUPERADMIN') router.push('/dashboard/superadmin')
-        else router.push('/login')
-      } catch {
-        localStorage.removeItem('user')
-        router.push('/login')
-      }
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || 'null')
+      router.replace(user?.role ? getRoleHomePath(user.role) : '/login')
+    } catch {
+      localStorage.removeItem('user')
+      router.replace('/login')
     }
   }, [router])
 
   return (
-    <div className="min-h-screen bg-mesh flex items-center justify-center">
-      <div className="w-10 h-10 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+    <div className="min-h-screen bg-mesh flex items-center justify-center" aria-busy="true">
+      <div className="w-8 h-8 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
     </div>
   )
 }

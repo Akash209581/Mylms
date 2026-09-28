@@ -162,14 +162,19 @@ export class AuthService {
 
     // Validate role based on creator's role
     const validRoles = this.getAllowedRolesToCreate(creatorRole || '');
-    if (!validRoles.includes(dto.role)) {
+    const userRoles = Array.isArray(dto.roles) && dto.roles.length > 0 ? (dto.roles as UserRole[]) : [dto.role as UserRole];
+    if (!userRoles.every((r) => validRoles.includes(r))) {
       throw new BadRequestException(`${creatorRole} can only create: ${validRoles.join(', ')}`);
     }
+    if (userRoles.includes(UserRole.STUDENT) && userRoles.length > 1) {
+      throw new BadRequestException('STUDENT role cannot be combined with staff roles');
+    }
+    const primaryRole = userRoles[0];
 
     // Determine college ID based on creator role
     let collegeId: number | undefined;
     let collegeName: string | undefined;
-    const isGlobalRole = dto.role === 'QUESTION_CREATOR' || dto.role === 'CONTENT_CREATOR';
+    const isGlobalRole = userRoles.every((r) => r === UserRole.QUESTION_CREATOR || r === UserRole.CONTENT_CREATOR);
     
     if (creatorRole === UserRole.ADMIN || creatorRole === UserRole.INSTRUCTOR) {
       if (!isGlobalRole) {
@@ -201,11 +206,6 @@ export class AuthService {
 
     await this.checkPasswordBreached(dto.password);
     const passwordHash = await bcrypt.hash(dto.password, 10);
-    const userRoles = Array.isArray(dto.roles) && dto.roles.length > 0 ? (dto.roles as UserRole[]) : [dto.role as UserRole];
-    if (userRoles.includes(UserRole.STUDENT) && userRoles.length > 1) {
-      throw new BadRequestException('STUDENT role cannot be combined with staff roles');
-    }
-    const primaryRole = userRoles[0] || (dto.role as UserRole);
 
     const user = this.userRepository.create({
       name: dto.name,

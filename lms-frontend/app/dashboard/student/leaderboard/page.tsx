@@ -1,4 +1,5 @@
 'use client'
+import { hasRole } from '@/lib/roleUtils'
 
 import { apiFetch } from '@/lib/apiFetch'
 
@@ -40,7 +41,7 @@ export default function StudentLeaderboardPage() {
         const stored = localStorage.getItem('user')
         if (!stored) { router.push('/login'); return }
         const u = JSON.parse(stored)
-        if (u.role !== 'STUDENT') { router.push(`/dashboard/${u.role.toLowerCase()}`); return }
+        if (!hasRole(u, 'STUDENT')) { router.push(`/dashboard/${u.role.toLowerCase()}`); return }
         setCurrentUser(u)
         fetchLeaderboard(u, filter)
     }, [])

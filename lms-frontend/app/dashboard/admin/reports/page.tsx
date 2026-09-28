@@ -1,4 +1,5 @@
 'use client'
+import { hasRole } from '@/lib/roleUtils'
 
 import { apiFetch } from '@/lib/apiFetch'
 
@@ -45,7 +46,7 @@ export default function AdminReportsPage() {
         const stored = localStorage.getItem('user')
         if (!stored) { router.push('/login'); return }
         const u = JSON.parse(stored)
-        if (u.role !== 'ADMIN' && u.role !== 'SUPERADMIN') { router.push('/login'); return }
+        if (!hasRole(u, 'ADMIN') && !hasRole(u, 'SUPERADMIN')) { router.push('/login'); return }
 
         const headers = getAuthHeaders()
         const apiBase = API_URL

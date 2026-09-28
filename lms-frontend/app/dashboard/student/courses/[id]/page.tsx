@@ -304,7 +304,7 @@ export default function StudentCourseDetailsPage() {
                                 style={{ 
                                     background: course.thumbnail 
                                         ? `url(${course.thumbnail}) center/cover` 
-                                        : 'linear-gradient(135deg, #667eea, #764ba2)' 
+                                        : 'linear-gradient(135deg, #1f3a5f, #172a45)' 
                                 }}
                             >
                                 {!course.thumbnail && (

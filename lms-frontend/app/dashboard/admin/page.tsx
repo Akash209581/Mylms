@@ -1,4 +1,5 @@
 'use client'
+import { hasRole } from '@/lib/roleUtils'
 
 import { apiFetch } from '@/lib/apiFetch'
 
@@ -8,6 +9,7 @@ import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
 import { getAuthHeaders } from '@/lib/authHeaders'
+import { BookOpen, ClipboardList, Hourglass, Info, Landmark, Users } from 'lucide-react'
 
 export default function AdminDashboard() {
     const router = useRouter()
@@ -20,7 +22,7 @@ export default function AdminDashboard() {
         const stored = localStorage.getItem('user')
         if (!stored) { router.push('/login'); return }
         const u = JSON.parse(stored)
-        if (u.role !== 'ADMIN') { router.push(`/dashboard/${u.role.toLowerCase()}`); return }
+        if (!hasRole(u, 'ADMIN')) { router.push(`/dashboard/${u.role.toLowerCase()}`); return }
         setUser(u)
 
         // Refresh user profile to get latest college logo
@@ -47,10 +49,10 @@ export default function AdminDashboard() {
     }, [])
 
     const statItems = [
-        { label: 'Total Users', value: stats?.totalUsers ?? 0, icon: '👥', gradient: 'linear-gradient(135deg,#6366f1,#8b5cf6)' },
-        { label: 'Total Courses', value: stats?.totalCourses ?? 0, icon: '📚', gradient: 'linear-gradient(135deg,#10b981,#059669)' },
-        { label: 'Enrollments', value: stats?.totalEnrollments ?? 0, icon: '📋', gradient: 'linear-gradient(135deg,#f59e0b,#d97706)' },
-        { label: 'Pending Approvals', value: stats?.pendingApprovals ?? 0, icon: '⏳', gradient: 'linear-gradient(135deg,#f59e0b,#d97706)' },
+        { label: 'Total users', value: stats?.totalUsers ?? 0, icon: Users },
+        { label: 'Courses', value: stats?.totalCourses ?? 0, icon: BookOpen },
+        { label: 'Enrollments', value: stats?.totalEnrollments ?? 0, icon: ClipboardList },
+        { label: 'Pending approvals', value: stats?.pendingApprovals ?? 0, icon: Hourglass },
     ]
 
     return (
@@ -80,14 +82,12 @@ export default function AdminDashboard() {
                                         src={user.collegeLogo}
                                         alt={user.collegeName || 'College Logo'}
                                         className="max-w-full max-h-full object-contain p-1"
-                                        onError={(e) => {
-                                            (e.target as HTMLImageElement).src = 'https://cdn-icons-png.flaticon.com/512/5322/5322033.png';
-                                        }}
+                                        onError={(e) => { (e.target as HTMLImageElement).style.visibility = 'hidden' }}
                                     />
                                 </div>
                             ) : (
-                                <div className="w-24 h-24 flex items-center justify-center text-5xl bg-white/5 rounded-xl">
-                                    🏫
+                                <div className="w-24 h-24 flex items-center justify-center rounded-xl role-text-accent">
+                                    <Landmark className="w-10 h-10" aria-hidden="true" />
                                 </div>
                             )}
                         </div>
@@ -100,19 +100,19 @@ export default function AdminDashboard() {
                         onClick={() => router.push('/dashboard/admin/users')}
                         className="btn-primary"
                     >
-                        👥 Manage Users
+                        <Users className="w-4 h-4 mr-2" aria-hidden="true" /> Manage users
                     </button>
                     <button
                         onClick={() => router.push('/dashboard/admin/courses')}
                         className="btn-secondary"
                     >
-                        📚 View Courses
+                        <BookOpen className="w-4 h-4 mr-2" aria-hidden="true" /> View courses
                     </button>
                     <button
                         onClick={() => router.push('/dashboard/admin/approvals')}
                         className="btn-secondary relative"
                     >
-                        ⏳ Course Approvals
+                        <Hourglass className="w-4 h-4 mr-2" aria-hidden="true" /> Course approvals
                         {stats?.pendingApprovals > 0 && (
                             <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
                                 {stats.pendingApprovals}
@@ -123,11 +123,11 @@ export default function AdminDashboard() {
 
                 {/* Stats */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                    {statItems.map((s, i) => (
-                        <div key={i} className="stat-card">
-                            <div className="role-stat-icon w-10 h-10 flex items-center justify-center text-xl mb-4" aria-hidden="true">{s.icon}</div>
-                            <p className="text-3xl font-bold role-text-primary mb-1">{loading ? '—' : s.value}</p>
-                            <p className="role-text-muted text-sm">{s.label}</p>
+                    {statItems.map(({ label, value, icon: Icon }) => (
+                        <div key={label} className="stat-card">
+                            <div className="role-stat-icon w-9 h-9 flex items-center justify-center mb-4" aria-hidden="true"><Icon className="w-[18px] h-[18px]" /></div>
+                            <p className="text-3xl role-text-primary mb-1">{loading ? '—' : Number(value).toLocaleString()}</p>
+                            <p className="role-text-muted text-[13px]">{label}</p>
                         </div>
                     ))}
                 </div>
@@ -135,13 +135,13 @@ export default function AdminDashboard() {
                 {/* Activity Notice */}
                 <div className="glass-card p-6">
                     <div className="flex items-center gap-3 mb-2">
-                        <div className="role-stat-icon w-10 h-10 flex items-center justify-center text-xl" aria-hidden="true">
-                            ℹ️
+                        <div className="role-stat-icon w-9 h-9 flex items-center justify-center" aria-hidden="true">
+                            <Info className="w-[18px] h-[18px]" />
                         </div>
-                        <h3 className="text-lg font-semibold role-text-primary">College Overview</h3>
+                        <h2 className="text-xl role-text-primary">College overview</h2>
                     </div>
                     <p className="role-text-muted leading-relaxed">
-                        You are managing users and content within your college. Use the navigation above to access user management, courses, and approval workflows.
+                        You are managing users and content within your college. Use the navigation on the left to access user management, courses, and approval workflows.
                     </p>
                 </div>
             </main>

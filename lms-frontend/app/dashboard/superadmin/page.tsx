@@ -1,4 +1,5 @@
 'use client'
+import { hasRole } from '@/lib/roleUtils'
 
 import { apiFetch } from '@/lib/apiFetch'
 import { useEffect, useState } from 'react'
@@ -8,6 +9,8 @@ import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
 import { api, API_URL } from '@/lib/api'
 import { getAuthHeaders } from '@/lib/authHeaders'
+import { toast } from '@/lib/toast'
+import { BookOpen, ClipboardList, GraduationCap, Landmark, Presentation, ShieldCheck, Users } from 'lucide-react'
 
 export default function SuperAdminDashboard() {
     const router = useRouter()
@@ -19,7 +22,7 @@ export default function SuperAdminDashboard() {
         const stored = localStorage.getItem('user')
         if (!stored) { router.push('/login'); return }
         const u = JSON.parse(stored)
-        if (u.role !== 'SUPERADMIN') { router.push(`/dashboard/${u.role.toLowerCase()}`); return }
+        if (!hasRole(u, 'SUPERADMIN')) { router.push(`/dashboard/${u.role.toLowerCase()}`); return }
         setUser(u)
 
         api.get('/superadmin/dashboard')
@@ -29,22 +32,28 @@ export default function SuperAdminDashboard() {
     }, [])
 
     const statItems = [
-        { label: 'Colleges', value: stats?.totalColleges ?? 0, icon: '🏛️', gradient: 'linear-gradient(135deg,#f59e0b,#d97706)', link: '/dashboard/superadmin/colleges' },
-        { label: 'Total Users', value: stats?.totalUsers ?? 0, icon: '👥', gradient: 'linear-gradient(135deg,#6366f1,#8b5cf6)' },
-        { label: 'Total Courses', value: stats?.totalCourses ?? 0, icon: '📚', gradient: 'linear-gradient(135deg,#10b981,#059669)' },
-        { label: 'Enrollments', value: stats?.totalEnrollments ?? 0, icon: '📋', gradient: 'linear-gradient(135deg,#f59e0b,#d97706)' },
-        { label: 'Students', value: stats?.studentCount ?? 0, icon: '🎓', gradient: 'linear-gradient(135deg,#a855f7,#ec4899)' },
-        { label: 'Instructors', value: stats?.instructorCount ?? 0, icon: '👨‍🏫', gradient: 'linear-gradient(135deg,#3b82f6,#06b6d4)' },
-        { label: 'Admins', value: stats?.adminCount ?? 0, icon: '🛡️', gradient: 'linear-gradient(135deg,#ef4444,#dc2626)' },
+        { label: 'Colleges', value: stats?.totalColleges ?? 0, icon: Landmark, link: '/dashboard/superadmin/colleges' },
+        { label: 'Total users', value: stats?.totalUsers ?? 0, icon: Users, link: '/dashboard/superadmin/users' },
+        { label: 'Courses', value: stats?.totalCourses ?? 0, icon: BookOpen, link: '/dashboard/superadmin/courses' },
+        { label: 'Enrollments', value: stats?.totalEnrollments ?? 0, icon: ClipboardList },
+        { label: 'Students', value: stats?.studentCount ?? 0, icon: GraduationCap },
+        { label: 'Instructors', value: stats?.instructorCount ?? 0, icon: Presentation },
+        { label: 'Admins', value: stats?.adminCount ?? 0, icon: ShieldCheck },
     ]
 
     const handleRoleChange = async (userId: number, newRole: string) => {
-        await apiFetch(`${API_URL}/superadmin/users/${userId}/role`, {
-            method: 'PUT',
-            headers: getAuthHeaders(),
-            credentials: 'include',
-            body: JSON.stringify({ role: newRole }),
-        })
+        try {
+            const res = await apiFetch(`${API_URL}/superadmin/users/${userId}/role`, {
+                method: 'PUT',
+                headers: getAuthHeaders(),
+                credentials: 'include',
+                body: JSON.stringify({ role: newRole }),
+            })
+            if (!res.ok) throw new Error()
+            toast.success('Role updated')
+        } catch {
+            toast.error('Could not update the role. Please try again.')
+        }
     }
 
     return (
@@ -62,28 +71,23 @@ export default function SuperAdminDashboard() {
                 </div>
 
                 {/* Stats */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-4 mb-8">
-                    {statItems.map((s, i) => (
-                        s.link ? (
-                            <Link key={i} className="stat-card role-stat-link" href={s.link}>
-                                <div className="role-stat-icon w-10 h-10 flex items-center justify-center text-xl mb-3" aria-hidden="true">{s.icon}</div>
-                                <p className="text-2xl font-bold role-text-primary mb-0.5">{loading ? '—' : s.value}</p>
-                                <p className="role-text-muted text-xs">{s.label}</p>
-                            </Link>
-                        ) : (
-                            <div key={i} className="stat-card">
-                                <div className="role-stat-icon w-10 h-10 flex items-center justify-center text-xl mb-3" aria-hidden="true">{s.icon}</div>
-                                <p className="text-2xl font-bold role-text-primary mb-0.5">{loading ? '—' : s.value}</p>
-                                <p className="role-text-muted text-xs">{s.label}</p>
-                            </div>
-                        )
-                    ))}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4 mb-8">
+                    {statItems.map(({ label, value, icon: Icon, link }) => {
+                        const body = <>
+                            <div className="role-stat-icon w-9 h-9 flex items-center justify-center mb-4" aria-hidden="true"><Icon className="w-[18px] h-[18px]" /></div>
+                            <p className="text-3xl role-text-primary mb-1">{loading ? '—' : Number(value).toLocaleString()}</p>
+                            <p className="role-text-muted text-[13px]">{label}</p>
+                        </>
+                        return link
+                            ? <Link key={label} className="stat-card role-stat-link" href={link}>{body}</Link>
+                            : <div key={label} className="stat-card">{body}</div>
+                    })}
                 </div>
 
                 {/* Recent Users */}
                 <div className="glass-card p-6">
                     <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-lg font-semibold role-text-primary">Recent Users</h2>
+                        <h2 className="text-xl role-text-primary">Recent users</h2>
                         <Link href="/dashboard/superadmin/users" className="role-table-action">View all users →</Link>
                     </div>
                     {loading ? (
@@ -92,14 +96,14 @@ export default function SuperAdminDashboard() {
                         </div>
                     ) : !stats?.recentUsers || stats.recentUsers.length === 0 ? (
                         <div className="text-center py-16">
-                            <div className="text-5xl mb-3">👥</div>
+                            <Users className="w-10 h-10 mx-auto mb-3 role-text-muted" aria-hidden="true" />
                             <p className="role-text-muted">No users yet.</p>
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
                             <table className="role-data-table w-full">
                                 <thead>
-                                    <tr className="border-b" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+                                    <tr>
                                         {['User', 'Email', 'Role', 'Joined', 'Actions'].map(h => (
                                              <th key={h} className="text-left text-xs font-semibold role-text-muted pb-3 pr-4">{h}</th>
                                         ))}
@@ -107,12 +111,10 @@ export default function SuperAdminDashboard() {
                                 </thead>
                                 <tbody>
                                     {stats.recentUsers.map((u: any) => (
-                                        <tr key={u.id} className="border-b hover:bg-[var(--bg-surface)]/5 transition-colors"
-                                            style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
+                                        <tr key={u.id}>
                                             <td className="py-4 pr-4">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-sm font-bold"
-                                                        style={{ background: 'linear-gradient(135deg,#6366f1,#a855f7)' }}>
+                                                    <div className="shell-avatar" aria-hidden="true">
                                                         {u.name?.charAt(0).toUpperCase()}
                                                     </div>
                                                     <span className="role-text-primary text-sm font-medium">{u.name}</span>

@@ -1,5 +1,6 @@
 /* Semantic foundations for the LMS. Literal utility colors keep their meaning. */
-:root { --action-bg: #4338ca; --action-text: #fff; --success: #166534; --success-soft: #dcfce7; --warning: #92400e; --warning-soft: #fef3c7; --error: #b91c1c; --error-soft: #fee2e2; --info: #1d4ed8; --info-soft: #dbeafe; --focus-ring: #4f46e5; }
+:root { --action-bg: #1f3a5f; --action-text: #fff; --success: #1f6b45; --success-soft: #e3f1e8; --warning: #8a5a12; --warning-soft: #f8edd6; --error: #a42a2a; --error-soft: #f8e4e2; --info: #1f4f86; --info-soft: #e2ebf5; --focus-ring: #2f5382; }
+[data-theme='dark'] { --action-bg: #36598a; }
 [data-theme='dark'], [data-theme='ocean'], [data-theme='forest'], [data-theme='rose'], [data-theme='lavender'] { --success: #86efac; --success-soft: #143323; --warning: #fcd34d; --warning-soft: #3d2c12; --error: #fca5a5; --error-soft: #401d22; --info: #93c5fd; --info-soft: #172b4d; --focus-ring: #a5b4fc; }
 :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 3px; }
 input::placeholder, textarea::placeholder { color: var(--text-muted); opacity: 1; }

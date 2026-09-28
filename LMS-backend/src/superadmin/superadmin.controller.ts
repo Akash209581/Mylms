@@ -12,10 +12,10 @@ import {
   Request,
   NotFoundException,
   BadRequestException,
+  ConflictException,
   UseInterceptors,
   UploadedFile,
   Res,
-  OnModuleInit,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
@@ -83,7 +83,7 @@ function extractVal(row: Record<string, any>, targetKeys: string[]): string {
 @Controller('superadmin')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.SUPERADMIN)
-export class SuperadminController implements OnModuleInit {
+export class SuperadminController {
   constructor(
     @InjectRepository(User) private userRepo: Repository<User>,
     @InjectRepository(Course) private courseRepo: Repository<Course>,
@@ -93,16 +93,6 @@ export class SuperadminController implements OnModuleInit {
     @InjectRepository(Settings) private settingsRepo: Repository<Settings>,
     @InjectRepository(Question) private questionRepo: Repository<Question>,
   ) { }
-
-  async onModuleInit() {
-    await this.userRepo.query(`
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS department VARCHAR(100);
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS section VARCHAR(50);
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS academic_year VARCHAR(50);
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS current_year VARCHAR(50);
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS batch_no VARCHAR(50);
-    `).catch((err) => console.error('Auto migration failed for bulk student fields:', err));
-  }
 
   @Get('users/bulk-template')
   async downloadBulkTemplate(@Res() res: Response) {
@@ -175,7 +165,7 @@ export class SuperadminController implements OnModuleInit {
   }
 
   @Post('users/bulk-upload')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
   async bulkUploadStudents(
     @UploadedFile() file: any,
     @Request() req: any,
@@ -184,7 +174,7 @@ export class SuperadminController implements OnModuleInit {
   }
 
   @Post('users/bulk-upload-students')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
   async bulkUploadStudentsAlias(
     @UploadedFile() file: any,
     @Request() req: any,
@@ -223,12 +213,6 @@ export class SuperadminController implements OnModuleInit {
     const collegeMap = new Map<string, College>();
     existingColleges.forEach((c) => collegeMap.set(c.name.toLowerCase().trim(), c));
 
-    // Existing emails set
-    const allUsers = await this.userRepo.find({ select: ['email'] });
-    const existingEmails = new Set(
-      allUsers.filter((u) => u.email).map((u) => u.email.toLowerCase().trim()),
-    );
-
     const rows: { rowData: Record<string, any>; rowNum: number }[] = [];
     worksheet.eachRow((row, rowNumber) => {
       if (rowNumber === 1) return;
@@ -248,6 +232,25 @@ export class SuperadminController implements OnModuleInit {
         rows.push({ rowData, rowNum: rowNumber });
       }
     });
+
+    if (rows.length > 5000) {
+      throw new BadRequestException('A single upload can contain at most 5000 students');
+    }
+
+    const fileEmails = rows
+      .map(({ rowData }) => extractVal(rowData, ['emailid', 'email id', 'email', 'email address']).toLowerCase().trim())
+      .filter(Boolean);
+    const existingEmails = new Set<string>();
+    for (let i = 0; i < fileEmails.length; i += 1000) {
+      const found: { email: string }[] = await this.userRepo
+        .createQueryBuilder('u')
+        .select('LOWER(u.email)', 'email')
+        .where('LOWER(u.email) IN (:...emails)', { emails: fileEmails.slice(i, i + 1000) })
+        .getRawMany();
+      found.forEach((f) => existingEmails.add(f.email));
+    }
+
+    const pending: { user: User; plainPassword: string; sNo: string; registrationNo: string }[] = [];
 
     for (const { rowData } of rows) {
       const sNo = extractVal(rowData, ['sno', 's.no', 'slno', 'sl.no', 'serialno']);
@@ -303,12 +306,10 @@ export class SuperadminController implements OnModuleInit {
       }
 
       const plainPassword = generateStudent8CharPassword();
-      const passwordHash = await bcrypt.hash(plainPassword, 10);
 
       const user = this.userRepo.create({
         name,
         email,
-        passwordHash,
         role: UserRole.STUDENT,
         roles: [UserRole.STUDENT],
         isActive: true,
@@ -322,25 +323,61 @@ export class SuperadminController implements OnModuleInit {
         collegeId: targetCollege?.id,
         collegeName: targetCollege?.name || rawCollegeName || undefined,
       });
-
-      const savedUser = await this.userRepo.save(user);
       existingEmails.add(email);
+      pending.push({ user, plainPassword, sNo, registrationNo });
+    }
 
-      createdUsers.push({
-        id: savedUser.id,
-        sNo,
-        registrationNo: savedUser.registrationNumber || registrationNo || '',
-        name: savedUser.name,
-        email: savedUser.email,
-        password: plainPassword,
-        collegeName: savedUser.collegeName || '',
-        department: savedUser.department || '',
-        section: savedUser.section || '',
-        academicYear: savedUser.academicYear || '',
-        currentYear: savedUser.currentYear || '',
-        batchNo: savedUser.batchNo || '',
-        mobileNumber: savedUser.mobileNumber || '',
-      });
+    // bcrypt runs on the libuv threadpool, so hashing a batch concurrently is
+    // much faster than awaiting each hash in turn.
+    const HASH_BATCH = 16;
+    for (let i = 0; i < pending.length; i += HASH_BATCH) {
+      const batch = pending.slice(i, i + HASH_BATCH);
+      const hashes = await Promise.all(batch.map((p) => bcrypt.hash(p.plainPassword, 10)));
+      batch.forEach((p, idx) => (p.user.passwordHash = hashes[idx]));
+    }
+
+    const toCreated = (p: (typeof pending)[number]) => ({
+      id: p.user.id,
+      sNo: p.sNo,
+      registrationNo: p.user.registrationNumber || p.registrationNo || '',
+      name: p.user.name,
+      email: p.user.email,
+      password: p.plainPassword,
+      collegeName: p.user.collegeName || '',
+      department: p.user.department || '',
+      section: p.user.section || '',
+      academicYear: p.user.academicYear || '',
+      currentYear: p.user.currentYear || '',
+      batchNo: p.user.batchNo || '',
+      mobileNumber: p.user.mobileNumber || '',
+    });
+
+    const SAVE_CHUNK = 200;
+    for (let i = 0; i < pending.length; i += SAVE_CHUNK) {
+      const chunk = pending.slice(i, i + SAVE_CHUNK);
+      try {
+        await this.userRepo.save(chunk.map((p) => p.user), { chunk: 100 });
+        chunk.forEach((p) => createdUsers.push(toCreated(p)));
+      } catch {
+        // Fall back to row-by-row so one bad row doesn't sink the whole chunk.
+        for (const p of chunk) {
+          try {
+            // The batch transaction rolled back, but ids generated inside it may
+            // already be merged onto the entity.
+            delete (p.user as any).id;
+            await this.userRepo.save(p.user);
+            createdUsers.push(toCreated(p));
+          } catch (err: any) {
+            skippedUsers.push({
+              sNo: p.sNo,
+              registrationNo: p.registrationNo,
+              name: p.user.name,
+              email: p.user.email,
+              reason: err?.code === '23505' ? 'Duplicate value already exists in system' : 'Could not be saved',
+            });
+          }
+        }
+      }
     }
 
     // Log Audit
@@ -426,40 +463,46 @@ export class SuperadminController implements OnModuleInit {
       order: { name: 'ASC' },
     });
 
-    const collegesWithStats = await Promise.all(
-      colleges.map(async (college) => {
-        // Count users matched by collegeId OR by collegeName (for legacy users without FK set)
-        const countByRole = async (role: UserRole) => {
-          const qb = this.userRepo.createQueryBuilder('u');
-          qb.where(
-            '(u.college_id = :cid OR LOWER(TRIM(u.college_name)) = LOWER(TRIM(:cname)))',
-            { cid: college.id, cname: college.name },
-          ).andWhere('u.role = :role', { role });
-          return qb.getCount();
-        };
+    if (colleges.length === 0) return [];
 
-        const adminCount = await countByRole(UserRole.ADMIN);
-        const instructorCount = await countByRole(UserRole.INSTRUCTOR);
-        const studentCount = await countByRole(UserRole.STUDENT);
+    // Users match by collegeId OR by collegeName (legacy users without FK set).
+    const counts: { college_id: number; admins: string; instructors: string; students: string }[] =
+      await this.userRepo.query(
+        `SELECT c.id AS college_id,
+                COUNT(*) FILTER (WHERE u.role = 'ADMIN') AS admins,
+                COUNT(*) FILTER (WHERE u.role = 'INSTRUCTOR') AS instructors,
+                COUNT(*) FILTER (WHERE u.role = 'STUDENT') AS students
+           FROM colleges c
+           JOIN users u
+             ON u.college_id = c.id
+             OR LOWER(TRIM(u.college_name)) = LOWER(TRIM(c.name))
+          WHERE c.id = ANY($1)
+          GROUP BY c.id`,
+        [colleges.map((c) => c.id)],
+      );
+    const countMap = new Map(counts.map((r) => [Number(r.college_id), r]));
 
-        return {
-          id: college.id,
-          name: college.name,
-          type: college.type,
-          city: college.city,
-          state: college.state,
-          country: college.country,
-          logoUrl: college.logoUrl,
-          adminCount,
-          instructorCount,
-          studentCount,
-          totalUsers: adminCount + instructorCount + studentCount,
-          createdAt: college.createdAt,
-        };
-      }),
-    );
+    return colleges.map((college) => {
+      const row = countMap.get(college.id);
+      const adminCount = Number(row?.admins || 0);
+      const instructorCount = Number(row?.instructors || 0);
+      const studentCount = Number(row?.students || 0);
 
-    return collegesWithStats;
+      return {
+        id: college.id,
+        name: college.name,
+        type: college.type,
+        city: college.city,
+        state: college.state,
+        country: college.country,
+        logoUrl: college.logoUrl,
+        adminCount,
+        instructorCount,
+        studentCount,
+        totalUsers: adminCount + instructorCount + studentCount,
+        createdAt: college.createdAt,
+      };
+    });
   }
 
   // Get simple list of all college names for dropdown
@@ -587,8 +630,23 @@ export class SuperadminController implements OnModuleInit {
 
     const updateData: any = {};
     if (dto.name !== undefined) updateData.name = dto.name;
-    if (dto.email !== undefined) updateData.email = dto.email;
-    if (dto.isActive !== undefined) updateData.isActive = dto.isActive;
+    if (dto.email !== undefined) {
+      const email = String(dto.email).toLowerCase().trim();
+      if (email !== (user.email || '').toLowerCase()) {
+        const taken = await this.userRepo.findOne({ where: { email }, select: ['id'] });
+        if (taken && taken.id !== id) throw new ConflictException('Email already registered');
+      }
+      updateData.email = email;
+    }
+    if (dto.isActive !== undefined) updateData.isActive = !!dto.isActive;
+
+    const validRoles = Object.values(UserRole) as string[];
+    const requestedRoles: any[] = Array.isArray(dto.roles) && dto.roles.length > 0
+      ? dto.roles
+      : dto.role !== undefined ? [dto.role] : [];
+    if (requestedRoles.some((r) => !validRoles.includes(r))) {
+      throw new BadRequestException(`Invalid role. Must be one of: ${validRoles.join(', ')}`);
+    }
 
     if (dto.roles !== undefined && Array.isArray(dto.roles) && dto.roles.length > 0) {
       if (dto.roles.includes(UserRole.STUDENT) && dto.roles.length > 1) {
@@ -637,13 +695,16 @@ export class SuperadminController implements OnModuleInit {
     if (dto.state !== undefined) updateData.state = dto.state;
     if (dto.course !== undefined) updateData.course = dto.course;
     if (dto.branch !== undefined) updateData.branch = dto.branch;
-    if (dto.pursuingYear !== undefined) updateData.pursuingYear = dto.pursuingYear ? parseInt(dto.pursuingYear) : null;
-    if (dto.semester !== undefined) updateData.semester = dto.semester ? parseInt(dto.semester) : null;
+    const toIntOrNull = (v: any) => {
+      const n = parseInt(v, 10);
+      return Number.isFinite(n) ? n : null;
+    };
+    if (dto.pursuingYear !== undefined) updateData.pursuingYear = toIntOrNull(dto.pursuingYear);
+    if (dto.semester !== undefined) updateData.semester = toIntOrNull(dto.semester);
     if (dto.registrationNumber !== undefined) updateData.registrationNumber = dto.registrationNumber;
 
     // Optional password reset
-    if (dto.password && dto.password.trim().length >= 6) {
-      const bcrypt = require('bcrypt');
+    if (typeof dto.password === 'string' && dto.password.trim().length >= 6) {
       updateData.passwordHash = await bcrypt.hash(dto.password.trim(), 10);
     }
 

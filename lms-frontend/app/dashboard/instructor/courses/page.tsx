@@ -1,4 +1,5 @@
 'use client'
+import { hasRole } from '@/lib/roleUtils'
 
 import { apiFetch } from '@/lib/apiFetch'
 
@@ -7,7 +8,9 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
-import CoursePreviewModal from '@/components/course/CoursePreviewModal'
+import dynamic from 'next/dynamic'
+
+const CoursePreviewModal = dynamic(() => import('@/components/course/CoursePreviewModal'), { ssr: false })
 
 interface Course {
     id: number
@@ -43,7 +46,7 @@ export default function InstructorCoursesPage() {
         const stored = localStorage.getItem('user')
         if (!stored) { router.push('/login'); return }
         const u = JSON.parse(stored)
-        if (u.role !== 'INSTRUCTOR' && u.role !== 'CONTENT_CREATOR') { router.push(`/dashboard/${u.role.toLowerCase()}`); return }
+        if (!hasRole(u, 'INSTRUCTOR') && !hasRole(u, 'CONTENT_CREATOR')) { router.push(`/dashboard/${u.role.toLowerCase()}`); return }
         setUser(u)
 
         fetchCourses()
@@ -310,11 +313,13 @@ export default function InstructorCoursesPage() {
                 )}
 
                 {/* Full-Screen Course Preview Modal */}
-                <CoursePreviewModal
-                    isOpen={previewCourseId !== null}
-                    courseId={previewCourseId}
-                    onClose={() => setPreviewCourseId(null)}
-                />
+                {previewCourseId !== null && (
+                    <CoursePreviewModal
+                        isOpen
+                        courseId={previewCourseId}
+                        onClose={() => setPreviewCourseId(null)}
+                    />
+                )}
             </main>
         </div>
     )

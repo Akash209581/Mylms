@@ -1,4 +1,5 @@
 'use client'
+import { hasRole } from '@/lib/roleUtils'
 
 import { apiFetch } from '@/lib/apiFetch'
 
@@ -54,7 +55,7 @@ export default function AdminApprovalsPage() {
         }
         const u = JSON.parse(stored)
         // ONLY ADMIN can access course approvals (NOT SUPERADMIN)
-        if (u.role !== 'ADMIN') {
+        if (!hasRole(u, 'ADMIN')) {
             router.push(`/dashboard/${u.role.toLowerCase()}`)
             return
         }

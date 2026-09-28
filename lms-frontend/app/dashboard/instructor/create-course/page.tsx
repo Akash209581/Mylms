@@ -1,4 +1,5 @@
 'use client'
+import { hasRole } from '@/lib/roleUtils'
 
 import { apiFetch } from '@/lib/apiFetch'
 
@@ -57,7 +58,7 @@ export default function CreateCoursePage() {
         const stored = localStorage.getItem('user')
         if (!stored) { router.push('/login'); return }
         const u = JSON.parse(stored)
-        if (u.role !== 'INSTRUCTOR') router.push(`/dashboard/${u.role.toLowerCase()}`)
+        if (!hasRole(u, 'INSTRUCTOR')) router.push(`/dashboard/${u.role.toLowerCase()}`)
         setUser(u)
     }, [router])
 

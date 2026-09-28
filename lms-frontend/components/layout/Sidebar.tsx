@@ -1,6 +1,6 @@
 'use client'
 import Link from 'next/link'
-import { useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Menu, X } from 'lucide-react'
 import StudentReferenceShell from './StudentReferenceShell'
 import { studentNavigation } from './studentNavigation'
@@ -67,50 +67,50 @@ const superadminNav: NavItem[] = [
     { label: 'Settings', href: '/dashboard/superadmin/settings', icon: <SettingsIcon /> },
 ]
 
+type NavSection = { label: string; items: NavItem[] }
+
+const roleNav: Record<string, NavSection> = {
+    INSTRUCTOR: { label: 'Instructor', items: instructorNav },
+    ADMIN: { label: 'College admin', items: adminNav },
+    QUESTION_CREATOR: { label: 'Question creator', items: questionCreatorNav },
+    CONTENT_CREATOR: { label: 'Content creator', items: contentCreatorNav },
+}
+
 export default function Sidebar({ role }: { role?: string }) {
     const drawer = useRef<HTMLDialogElement>(null)
     const menuButton = useRef<HTMLButtonElement>(null)
     const pathname = usePathname()
     const router = useRouter()
 
-    let userRoles: string[] = []
-    if (typeof window !== 'undefined') {
+    // Read after mount so server and client render the same markup first.
+    const [storedRoles, setStoredRoles] = useState<string[]>([])
+    useEffect(() => {
         try {
-            const stored = localStorage.getItem('user')
-            if (stored) {
-                const u = JSON.parse(stored)
-                if (Array.isArray(u.roles) && u.roles.length > 0) {
-                    userRoles = u.roles
-                } else if (u.role) {
-                    userRoles = [u.role]
-                }
-            }
-        } catch {}
-    }
-    if (userRoles.length === 0 && role) {
-        userRoles = [role]
-    }
+            const u = JSON.parse(localStorage.getItem('user') || 'null')
+            if (Array.isArray(u?.roles) && u.roles.length > 0) setStoredRoles(u.roles)
+            else if (u?.role) setStoredRoles([u.role])
+        } catch { /* fall back to the role prop */ }
+    }, [])
+    const userRoles: string[] = storedRoles.length > 0 ? storedRoles : role ? [role] : []
 
-    let navItems: NavItem[] = []
+    let navSections: NavSection[] = []
     if (userRoles.includes('SUPERADMIN')) {
-        navItems = superadminNav
+        navSections = [{ label: 'Workspace', items: superadminNav }]
     } else if (userRoles.includes('STUDENT') && userRoles.length === 1) {
-        navItems = studentNav
+        navSections = [{ label: 'Workspace', items: studentNav }]
     } else {
-        const itemsMap = new Map<string, NavItem>()
+        const seen = new Set<string>()
         for (const r of userRoles) {
-            let list: NavItem[] = []
-            if (r === 'INSTRUCTOR') list = instructorNav
-            else if (r === 'ADMIN') list = adminNav
-            else if (r === 'QUESTION_CREATOR') list = questionCreatorNav
-            else if (r === 'CONTENT_CREATOR') list = contentCreatorNav
-            for (const item of list) {
-                if (!itemsMap.has(item.href)) {
-                    itemsMap.set(item.href, item)
-                }
-            }
+            const section = roleNav[r]
+            if (!section) continue
+            const items = section.items.filter(item => !seen.has(item.href))
+            items.forEach(item => seen.add(item.href))
+            if (items.length) navSections.push({ label: section.label, items })
         }
-        navItems = itemsMap.size > 0 ? Array.from(itemsMap.values()) : (role === 'STUDENT' ? studentNav : instructorNav)
+        if (navSections.length === 1) navSections[0].label = 'Workspace'
+        if (navSections.length === 0) {
+            navSections = [{ label: 'Workspace', items: role === 'STUDENT' ? studentNav : instructorNav }]
+        }
     }
 
     const handleLogout = () => {
@@ -131,63 +131,41 @@ export default function Sidebar({ role }: { role?: string }) {
 
     if (role === 'STUDENT') return <StudentReferenceShell />
     const content = (<>
-        {/* Logo */}
-        <div className="p-5 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
-            <Link href="/" className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white shadow-md shadow-indigo-500/20"
-                    style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
-                    <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5}
-                            d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                    </svg>
-                </div>
-                <div>
-                    <p className="text-[var(--text-primary)] font-black text-xl tracking-tight leading-none">Applied Stem labs</p>
-                    <p className="text-[11px] text-indigo-400/80 font-medium mt-1">Learn. Grow. Succeed.</p>
-                </div>
-            </Link>
-        </div>
+        <Link href="/" className="shell-brand">
+            <span className="shell-brand-mark" aria-hidden="true"><BookIcon /></span>
+            <span>
+                <span className="shell-brand-name">Applied STEM Labs</span>
+                <span className="shell-brand-tag">Learn · Grow · Lead</span>
+            </span>
+        </Link>
 
-        {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1.5">
-            {navItems.map(item => {
-                const isActive = pathname === item.href
-                return (
-                    <Link
-                        key={item.label}
-                        href={item.href}
-                        prefetch={true}
-                        aria-current={isActive ? 'page' : undefined}
-                        onClick={() => drawer.current?.close()}
-                        className={`flex items-center justify-between px-4 py-3 rounded-2xl text-sm font-semibold transition-all group ${isActive
-                                ? 'bg-[var(--accent-soft)] text-[var(--accent-text)]'
-                                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-raised)]'
-                            }`}
-                    >
-                        <div className="flex items-center gap-3">
-                            <span className={`w-5 h-5 transition-transform group-hover:scale-110 ${isActive ? 'text-[var(--accent-text)]' : 'text-[var(--text-muted)] group-hover:text-[var(--accent-text)]'}`}>
+        <nav className="shell-nav" aria-label="Workspace navigation">
+            {navSections.map(section => (
+                <div key={section.label} className="grid gap-0.5">
+                    <p className="shell-nav-label">{section.label}</p>
+                    {section.items.map(item => (
+                        <Link
+                            key={item.href}
+                            href={item.href}
+                            aria-current={pathname === item.href ? 'page' : undefined}
+                            onClick={() => drawer.current?.close()}
+                            className="shell-link"
+                        >
+                            <span>
                                 {item.icon}
+                                <span>{item.label}</span>
                             </span>
-                            <span>{item.label}</span>
-                        </div>
-                        {item.badge !== undefined && (
-                            <span className="bg-indigo-500 text-white text-[11px] font-extrabold px-2 py-0.5 rounded-full shadow-sm">
-                                {item.badge}
-                            </span>
-                        )}
-                    </Link>
-                )
-            })}
+                            {item.badge !== undefined && <span className="shell-link-badge">{item.badge}</span>}
+                        </Link>
+                    ))}
+                </div>
+            ))}
         </nav>
 
-        {/* Footer */}
-        <div className="p-3 border-t" style={{ borderColor: 'var(--border)' }}>
-            <button
-                onClick={handleLogout}
-                className="flex items-center gap-3 w-full px-4 py-2.5 rounded-xl text-sm font-semibold text-rose-500 hover:bg-rose-500/10 transition-all"
-            >
+        <div className="shell-footer">
+            <button onClick={handleLogout} className="shell-signout">
                 <LogoutIcon />
-                Sign Out
+                Sign out
             </button>
         </div>
     </>)

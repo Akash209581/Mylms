@@ -1,4 +1,5 @@
 'use client'
+import { hasRole } from '@/lib/roleUtils'
 
 import { apiFetch } from '@/lib/apiFetch'
 
@@ -44,7 +45,7 @@ export default function CreateUserPage() {
             return
         }
         const u = JSON.parse(stored)
-        if (u.role !== 'SUPERADMIN') {
+        if (!hasRole(u, 'SUPERADMIN')) {
             router.push(`/dashboard/${u.role.toLowerCase()}`)
             return
         }

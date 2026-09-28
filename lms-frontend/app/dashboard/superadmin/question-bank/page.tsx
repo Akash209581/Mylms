@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
 import QuestionPreview from '@/components/question-bank/QuestionPreview'
-import { getRoleBasePath } from '@/lib/roleUtils'
+import { getRoleBasePath, hasRole } from '@/lib/roleUtils'
 
 const QUESTION_TYPES = [
     { key: 'MCQ', label: 'MCQ', icon: '🔘', desc: 'Multiple Choice', color: '#6366f1' },
@@ -38,7 +38,7 @@ export default function QuestionBankPage() {
         const stored = localStorage.getItem('user')
         if (!stored) { router.push('/login'); return }
         const u = JSON.parse(stored)
-        if (u.role !== 'SUPERADMIN' && u.role !== 'ADMIN' && u.role !== 'INSTRUCTOR' && u.role !== 'QUESTION_CREATOR') { router.push('/login'); return }
+        if (!hasRole(u, 'SUPERADMIN') && !hasRole(u, 'ADMIN') && !hasRole(u, 'INSTRUCTOR') && !hasRole(u, 'QUESTION_CREATOR')) { router.push('/login'); return }
         setUserRole(u.role)
 
         Promise.all([

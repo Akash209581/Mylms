@@ -7,15 +7,17 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
-import CoursePreviewModal from '@/components/course/CoursePreviewModal'
+import dynamic from 'next/dynamic'
+
+const CoursePreviewModal = dynamic(() => import('@/components/course/CoursePreviewModal'), { ssr: false })
 
 const gradients = [
-    'linear-gradient(135deg, #667eea, #764ba2)',
-    'linear-gradient(135deg, #f093fb, #f5576c)',
-    'linear-gradient(135deg, #4facfe, #00f2fe)',
-    'linear-gradient(135deg, #43e97b, #38f9d7)',
-    'linear-gradient(135deg, #fa709a, #fee140)',
-    'linear-gradient(135deg, #a18cd1, #fbc2eb)',
+    'linear-gradient(135deg, #1f3a5f, #172a45)',
+    'linear-gradient(135deg, #722e3d, #4f242e)',
+    'linear-gradient(135deg, #24436b, #1c3556)',
+    'linear-gradient(135deg, #7c5f33, #554128)',
+    'linear-gradient(135deg, #2f5e4e, #1f4237)',
+    'linear-gradient(135deg, #3d3f4a, #262a35)',
 ]
 
 export default function SuperAdminCoursesPage() {
@@ -361,19 +363,20 @@ export default function SuperAdminCoursesPage() {
                     </div>
                 ) : (
                     <div className="text-center py-20 glass-card">
-                        <div className="text-6xl mb-4">📚</div>
-                        <p className="text-white font-semibold text-lg mb-1">No courses yet</p>
-                        <p className="text-gray-400 text-sm">Courses created by instructors will appear here</p>
+                        <p className="role-text-primary font-display text-xl mb-1">No courses yet</p>
+                        <p className="role-text-muted text-sm">Courses created by instructors will appear here</p>
                     </div>
                 )}
             </main>
 
+            {previewCourseId && (
             <CoursePreviewModal
                 isOpen={!!previewCourseId}
 
                 courseId={previewCourseId}
                 onClose={() => setPreviewCourseId(null)}
             />
+            )}
 
             {/* ── Assignment Modal ─────────────────────────────────────────── */}
             {assignCourseId && (

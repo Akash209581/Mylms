@@ -17,6 +17,7 @@ import { DailyStreakModule } from './daily-streak/daily-streak.module';
 import { ModulesModule } from './modules/modules.module';
 import { LessonsModule } from './lessons/lessons.module';
 import { KeepAliveService } from './common/keepalive.service';
+import { SchemaGuardService } from './common/schema-guard.service';
 import { User } from './entities/user.entity';
 import { Course } from './entities/course.entity';
 import { CourseModule } from './entities/module.entity';
@@ -123,6 +124,7 @@ import { ExamCodingSubmission } from './entities/exam-coding-submission.entity';
     ExamModule,
   ],
   providers: [
+    SchemaGuardService,
     KeepAliveService,
     {
       provide: APP_GUARD,

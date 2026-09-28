@@ -1,4 +1,5 @@
 'use client'
+import { hasRole } from '@/lib/roleUtils'
 
 import { apiFetch } from '@/lib/apiFetch'
 
@@ -22,7 +23,7 @@ export default function InstructorStudentsPage() {
         const stored = localStorage.getItem('user')
         if (!stored) { router.push('/login'); return }
         const u = JSON.parse(stored)
-        if (u.role !== 'INSTRUCTOR') { router.push(`/dashboard/${u.role.toLowerCase()}`); return }
+        if (!hasRole(u, 'INSTRUCTOR')) { router.push(`/dashboard/${u.role.toLowerCase()}`); return }
 
         apiFetch(`${API_URL}/instructor/students`, {
             credentials: 'include',

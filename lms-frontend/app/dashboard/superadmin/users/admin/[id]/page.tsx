@@ -1,4 +1,5 @@
 'use client'
+import { hasRole } from '@/lib/roleUtils'
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
@@ -38,7 +39,7 @@ export default function AdminDetailPage() {
             return
         }
         const u = JSON.parse(stored)
-        if (u.role !== 'SUPERADMIN') {
+        if (!hasRole(u, 'SUPERADMIN')) {
             router.push('/dashboard/superadmin')
             return
         }

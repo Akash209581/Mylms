@@ -1,4 +1,5 @@
 'use client'
+import { hasRole } from '@/lib/roleUtils'
 
 import { apiFetch } from '@/lib/apiFetch'
 
@@ -26,7 +27,7 @@ const Skeleton = ({ className = '' }: { className?: string }) => (
 export default function SuperAdminSettingsPage() {
     const router = useRouter()
     const [settings, setSettings] = useState<PlatformSettings>({
-        platformName: 'Applied Stem labs',
+        platformName: 'Applied STEM Labs',
         platformLogo: '',
         supportEmail: 'support@appliedstemlabs.com',
         maintenanceMode: false,
@@ -42,7 +43,7 @@ export default function SuperAdminSettingsPage() {
         const stored = localStorage.getItem('user')
         if (!stored) { router.push('/login'); return }
         const u = JSON.parse(stored)
-        if (u.role !== 'SUPERADMIN') { router.push('/login'); return }
+        if (!hasRole(u, 'SUPERADMIN')) { router.push('/login'); return }
 
         const headers = getAuthHeaders()
         const apiBase = API_URL

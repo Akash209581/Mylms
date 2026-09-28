@@ -1,4 +1,5 @@
 'use client'
+import { hasRole } from '@/lib/roleUtils'
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
@@ -90,7 +91,7 @@ export default function InstructorCoursePreviewPage() {
         }
 
         const u = JSON.parse(stored)
-        if (u.role !== 'INSTRUCTOR' && u.role !== 'ADMIN') {
+        if (!hasRole(u, 'INSTRUCTOR') && !hasRole(u, 'ADMIN')) {
             router.push(`/dashboard/${u.role.toLowerCase()}`)
             return
         }
@@ -230,7 +231,7 @@ export default function InstructorCoursePreviewPage() {
                                 style={{
                                     background: course.thumbnail
                                         ? `url(${course.thumbnail}) center/cover`
-                                        : 'linear-gradient(135deg, #667eea, #764ba2)'
+                                        : 'linear-gradient(135deg, #1f3a5f, #172a45)'
                                 }}
                             >
                                 {!course.thumbnail && (

@@ -11,7 +11,7 @@ import QuestionPreview from '@/components/question-bank/QuestionPreview'
 import MarkdownToolbar from '@/components/editor/MarkdownToolbar'
 import OptionField from '@/components/question-bank/OptionField'
 import { normalizeMcqLetter } from '@/lib/mcq-answer'
-import { getRoleBasePath } from '@/lib/roleUtils'
+import { getRoleBasePath, hasRole } from '@/lib/roleUtils'
 import { ADMIN_STARTERS } from '@/lib/starter-code'
 import { toast } from '@/lib/toast'
 
@@ -75,7 +75,7 @@ function CreateQuestionForm() {
         const stored = localStorage.getItem('user')
         if (!stored) { router.push('/login'); return }
         const u = JSON.parse(stored)
-        if (u.role !== 'SUPERADMIN' && u.role !== 'ADMIN' && u.role !== 'INSTRUCTOR' && u.role !== 'QUESTION_CREATOR') { router.push('/login'); return }
+        if (!hasRole(u, 'SUPERADMIN') && !hasRole(u, 'ADMIN') && !hasRole(u, 'INSTRUCTOR') && !hasRole(u, 'QUESTION_CREATOR')) { router.push('/login'); return }
         setCurrentRole(u.role)
         fetchDomains()
     }, [])

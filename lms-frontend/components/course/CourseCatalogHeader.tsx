@@ -1,6 +1,7 @@
 'use client'
 
 import { BookOpen, GraduationCap, Layers3, UsersRound } from 'lucide-react'
+import { asset } from '@/lib/asset'
 
 interface HeaderProps { totalCourses: number; totalCategories?: number; totalInstructors?: number; totalStudents?: number }
 
@@ -12,7 +13,7 @@ export default function CourseCatalogHeader({ totalCourses, totalCategories = 0,
         { label: 'Students Enrolled', value: totalStudents, icon: <UsersRound />, tone: 'bg-indigo-50 text-indigo-600' },
     ]
     return <section className="catalog-hero relative overflow-hidden rounded-none border-b border-slate-100 bg-white px-6 py-6 lg:px-10">
-        <img src="/images/course-catalog-hero.png" alt="Student walking toward a university campus" className="absolute inset-0 h-full w-full object-cover object-right" />
+        <img src={asset("/images/course-catalog-hero.webp")} decoding="async" alt="Student walking toward a university campus" className="absolute inset-0 h-full w-full object-cover object-right" />
         <div className="absolute inset-0 bg-[linear-gradient(90deg,#fff_0%,rgba(255,255,255,.98)_43%,rgba(255,255,255,.44)_66%,rgba(255,255,255,.06)_100%)]" />
         <div className="relative z-10 max-w-3xl">
             <p className="mb-4 text-xs text-slate-500">Home <span className="mx-2 text-indigo-400">/</span> <span className="font-semibold text-indigo-700">Course Catalog</span></p>

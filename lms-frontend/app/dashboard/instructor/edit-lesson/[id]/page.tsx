@@ -10,7 +10,7 @@ import dynamic from 'next/dynamic'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
 import { getAuthHeaders } from '@/lib/authHeaders'
-import { getRoleBasePath } from '@/lib/roleUtils'
+import { getRoleBasePath, hasRole } from '@/lib/roleUtils'
 
 // Dynamically import the cell-based notebook editor to avoid SSR issues
 type LessonEditorProps = {
@@ -122,7 +122,7 @@ export default function EditLessonPage() {
       const u = stored ? JSON.parse(stored) : null
 
       let readOnlyFlag = false
-      if (u && u.role !== 'SUPERADMIN') {
+      if (u && !hasRole(u, 'SUPERADMIN')) {
         // If course created by SUPERADMIN, it's view-only for everyone else
         if (courseData.instructor?.role === 'SUPERADMIN') {
           readOnlyFlag = true

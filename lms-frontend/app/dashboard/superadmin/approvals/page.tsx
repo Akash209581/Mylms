@@ -1,4 +1,5 @@
 'use client'
+import { hasRole } from '@/lib/roleUtils'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
@@ -56,7 +57,7 @@ export default function ApprovalsPage() {
         const stored = localStorage.getItem('user')
         if (!stored) { router.push('/login'); return }
         const u = JSON.parse(stored)
-        if (u.role !== 'SUPERADMIN' && u.role !== 'ADMIN') { router.push('/login'); return }
+        if (!hasRole(u, 'SUPERADMIN') && !hasRole(u, 'ADMIN')) { router.push('/login'); return }
 
         loadData(true)
     }, [])

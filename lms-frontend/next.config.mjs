@@ -5,6 +5,17 @@ const basePath = process.env.NEXT_PUBLIC_BASE_PATH !== undefined
 
 const nextConfig = {
     ...(basePath ? { basePath, assetPrefix: basePath } : {}),
+    env: {
+        NEXT_PUBLIC_BASE_PATH: basePath,
+    },
+    poweredByHeader: false,
+    compress: true,
+    compiler: {
+        removeConsole: process.env.NODE_ENV === 'production' ? { exclude: ['error', 'warn'] } : false,
+    },
+    experimental: {
+        optimizePackageImports: ['lucide-react', 'recharts'],
+    },
     images: {
         unoptimized: true,
     },

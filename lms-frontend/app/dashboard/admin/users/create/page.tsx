@@ -1,4 +1,5 @@
 'use client'
+import { hasRole } from '@/lib/roleUtils'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
@@ -33,7 +34,7 @@ export default function CreateUserPage() {
             return
         }
         const u = JSON.parse(stored)
-        if (u.role !== 'ADMIN') {
+        if (!hasRole(u, 'ADMIN')) {
             router.push(`/dashboard/${u.role.toLowerCase()}`)
             return
         }

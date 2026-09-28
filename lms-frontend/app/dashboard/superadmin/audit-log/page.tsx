@@ -1,4 +1,5 @@
 'use client'
+import { hasRole } from '@/lib/roleUtils'
 
 import { apiFetch } from '@/lib/apiFetch'
 
@@ -47,7 +48,7 @@ export default function AuditLogPage() {
         const stored = localStorage.getItem('user')
         if (!stored) { router.push('/login'); return }
         const u = JSON.parse(stored)
-        if (u.role !== 'SUPERADMIN') { router.push('/login'); return }
+        if (!hasRole(u, 'SUPERADMIN')) { router.push('/login'); return }
 
         const headers = getAuthHeaders()
         const apiBase = API_URL

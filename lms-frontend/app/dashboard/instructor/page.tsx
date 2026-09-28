@@ -1,4 +1,5 @@
 'use client'
+import { hasRole } from '@/lib/roleUtils'
 
 import { apiFetch } from '@/lib/apiFetch'
 
@@ -8,6 +9,7 @@ import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
 import { getAuthHeaders } from '@/lib/authHeaders'
+import { BadgeCheck, BookOpen, Hourglass, Landmark, Plus, UserPlus, Users } from 'lucide-react'
 
 export default function InstructorDashboard() {
     const router = useRouter()
@@ -20,7 +22,7 @@ export default function InstructorDashboard() {
         const stored = localStorage.getItem('user')
         if (!stored) { router.push('/login'); return }
         const u = JSON.parse(stored)
-        if (u.role !== 'INSTRUCTOR') { router.push(`/dashboard/${u.role.toLowerCase()}`); return }
+        if (!hasRole(u, 'INSTRUCTOR')) { router.push(`/dashboard/${u.role.toLowerCase()}`); return }
         setUser(u)
 
         // Refresh user profile to get latest college logo
@@ -47,11 +49,18 @@ export default function InstructorDashboard() {
     }, [])
 
     const statItems = [
-        { label: 'Total Courses', value: stats?.totalCourses ?? 0, icon: '📚', gradient: 'linear-gradient(135deg,#6366f1,#8b5cf6)', color: 'text-indigo-600' },
-        { label: 'Pending Approval', value: stats?.pendingCourses ?? 0, icon: '⏳', gradient: 'linear-gradient(135deg,#f59e0b,#d97706)', color: 'text-yellow-600' },
-        { label: 'Approved Courses', value: stats?.approvedCourses ?? 0, icon: '✅', gradient: 'linear-gradient(135deg,#10b981,#059669)', color: 'text-green-600' },
-        { label: 'Total Students', value: stats?.totalStudents ?? 0, icon: '👥', gradient: 'linear-gradient(135deg,#3b82f6,#2563eb)', color: 'text-blue-600' },
+        { label: 'Courses', value: stats?.totalCourses ?? 0, icon: BookOpen },
+        { label: 'Pending approval', value: stats?.pendingCourses ?? 0, icon: Hourglass },
+        { label: 'Approved', value: stats?.approvedCourses ?? 0, icon: BadgeCheck },
+        { label: 'Students', value: stats?.totalStudents ?? 0, icon: Users },
     ]
+
+    const statusBadge: Record<string, { label: string; cls: string }> = {
+        APPROVED: { label: 'Approved', cls: 'role-badge role-badge-success' },
+        PENDING_APPROVAL: { label: 'Pending', cls: 'role-badge bg-[var(--warning-soft)] text-[var(--warning)]' },
+        REJECTED: { label: 'Rejected', cls: 'role-badge role-badge-error' },
+        DRAFT: { label: 'Draft', cls: 'role-badge bg-[var(--bg-raised)] text-[var(--text-secondary)]' },
+    }
 
     return (
         <div className="min-h-screen bg-mesh">
@@ -80,14 +89,12 @@ export default function InstructorDashboard() {
                                         src={user.collegeLogo}
                                         alt={user.collegeName || 'College Logo'}
                                         className="max-w-full max-h-full object-contain p-1"
-                                        onError={(e) => {
-                                            (e.target as HTMLImageElement).src = 'https://cdn-icons-png.flaticon.com/512/5322/5322033.png';
-                                        }}
+                                        onError={(e) => { (e.target as HTMLImageElement).style.visibility = 'hidden' }}
                                     />
                                 </div>
                             ) : (
-                                <div className="w-24 h-24 flex items-center justify-center text-5xl bg-white/5 rounded-xl">
-                                    🏫
+                                <div className="w-24 h-24 flex items-center justify-center rounded-xl role-text-accent">
+                                    <Landmark className="w-10 h-10" aria-hidden="true" />
                                 </div>
                             )}
                         </div>
@@ -100,52 +107,50 @@ export default function InstructorDashboard() {
                         onClick={() => router.push('/dashboard/instructor/courses')}
                         className="btn-primary"
                     >
-                        📚 View All Courses
+                        <BookOpen className="w-4 h-4 mr-2" aria-hidden="true" /> View all courses
                     </button>
                     <button
                         onClick={() => router.push('/dashboard/instructor/create-course')}
                         className="btn-secondary"
                     >
-                        ➕ Create New Course
+                        <Plus className="w-4 h-4 mr-2" aria-hidden="true" /> Create course
                     </button>
                     <button
                         onClick={() => router.push('/dashboard/instructor/students/create')}
                         className="btn-secondary"
                     >
-                        👤 Create New Student
+                        <UserPlus className="w-4 h-4 mr-2" aria-hidden="true" /> Add student
                     </button>
                 </div>
 
                 {/* Stats */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                    {statItems.map((s, i) => (
-                        <div key={i} className="stat-card">
-                            <div className="role-stat-icon w-10 h-10 flex items-center justify-center text-xl mb-4" aria-hidden="true">{s.icon}</div>
-                            <p className="text-3xl font-bold role-text-primary mb-1">
-                                {loading ? '—' : s.value}
-                            </p>
-                            <p className="role-text-muted text-sm">{s.label}</p>
+                    {statItems.map(({ label, value, icon: Icon }) => (
+                        <div key={label} className="stat-card">
+                            <div className="role-stat-icon w-9 h-9 flex items-center justify-center mb-4" aria-hidden="true"><Icon className="w-[18px] h-[18px]" /></div>
+                            <p className="text-3xl role-text-primary mb-1">{loading ? '—' : Number(value).toLocaleString()}</p>
+                            <p className="role-text-muted text-[13px]">{label}</p>
                         </div>
                     ))}
                 </div>
 
                 {/* Course Table */}
                 <div className="glass-card p-6">
-                    <h3 className="text-lg font-semibold role-text-primary mb-6">My Courses</h3>
+                    <h2 className="text-xl role-text-primary mb-5">My courses</h2>
                     {loading ? (
                         <div className="flex justify-center py-10">
                             <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
                         </div>
                     ) : !stats?.courses || stats.courses.length === 0 ? (
                         <div className="text-center py-16">
-                            <div className="text-5xl mb-3">📚</div>
+                            <BookOpen className="w-10 h-10 mx-auto mb-3 role-text-muted" aria-hidden="true" />
                             <p className="role-text-muted">You haven't created any courses yet.</p>
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
                             <table className="role-data-table w-full">
                                 <thead>
-                                    <tr className="border-b" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+                                    <tr>
                                         {['Course', 'Status', 'Created'].map(h => (
                                             <th key={h} className="text-left text-xs font-semibold role-text-muted pb-3 pr-4">{h}</th>
                                         ))}
@@ -153,21 +158,11 @@ export default function InstructorDashboard() {
                                 </thead>
                                 <tbody>
                                     {stats.courses.map((c: any) => (
-                                        <tr key={c.id} className="border-b hover:bg-[var(--bg-surface)]/5 transition-colors"
-                                            style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
+                                        <tr key={c.id}>
                                             <td className="py-4 pr-4 role-text-primary font-medium text-sm">{c.title}</td>
                                             <td className="py-4 pr-4">
-                                                <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${c.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
-                                                        c.status === 'PENDING_APPROVAL' ? 'bg-yellow-100 text-yellow-800' :
-                                                            c.status === 'REJECTED' ? 'bg-red-100 text-red-800' :
-                                                                c.status === 'DRAFT' ? 'bg-[var(--bg-hover)] text-[var(--text-primary)]' :
-                                                                    'bg-gray-100 text-[var(--text-primary)]'
-                                                    }`}>
-                                                    {c.status === 'APPROVED' ? '✅ Approved' :
-                                                        c.status === 'PENDING_APPROVAL' ? '⏳ Pending' :
-                                                            c.status === 'REJECTED' ? '❌ Rejected' :
-                                                                c.status === 'DRAFT' ? '📝 Draft' :
-                                                                    c.published ? '✓ Published' : '○ Unknown'}
+                                                <span className={statusBadge[c.status]?.cls || 'role-badge'}>
+                                                    {statusBadge[c.status]?.label || (c.published ? 'Published' : 'Unknown')}
                                                 </span>
                                             </td>
                                             <td className="py-4 role-text-muted text-sm">

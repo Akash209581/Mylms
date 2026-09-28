@@ -31,6 +31,29 @@ export default function UserEditModal({ user, onClose, onSuccess }: UserEditModa
         registrationNumber: user.registrationNumber || '',
         password: '',
     })
+    const [loading, setLoading] = useState(false)
+    const [error, setError] = useState('')
+    const [colleges, setColleges] = useState<any[]>([])
+
+    useEffect(() => {
+        const handleEscape = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') onClose()
+        }
+        window.addEventListener('keydown', handleEscape)
+        return () => window.removeEventListener('keydown', handleEscape)
+    }, [onClose])
+
+    useEffect(() => {
+        apiFetch(`${API_URL}/colleges`, {
+            credentials: 'include',
+            headers: getAuthHeaders(),
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (Array.isArray(data)) setColleges(data)
+            })
+            .catch(() => {})
+    }, [])
 
     const isStudent = form.roles.includes('STUDENT')
 
