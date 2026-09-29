@@ -342,7 +342,7 @@ export class SuperadminController {
       registrationNo: p.user.registrationNumber || p.registrationNo || '',
       name: p.user.name,
       email: p.user.email,
-      password: p.plainPassword,
+      generatedPassword: p.plainPassword,
       collegeName: p.user.collegeName || '',
       department: p.user.department || '',
       section: p.user.section || '',

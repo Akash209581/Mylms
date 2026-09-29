@@ -19,7 +19,6 @@ import {
     Users,
     KeyRound,
     RefreshCw,
-    Sparkles,
     Search
 } from 'lucide-react'
 
@@ -29,7 +28,7 @@ interface CreatedUserResult {
     registrationNo: string
     name: string
     email: string
-    password: string
+    generatedPassword: string
     collegeName: string
     department: string
     section: string
@@ -61,6 +60,20 @@ interface BulkStudentUploadModalProps {
     onClose: () => void
     onSuccess?: () => void
 }
+
+const TEMPLATE_COLUMNS = [
+    'S.No',
+    'Registration No',
+    'Department',
+    'Section',
+    'Full Name',
+    'Email ID',
+    'Mobile Number',
+    'Academic Year',
+    'Current Year',
+    'college name',
+    'Batch No'
+]
 
 export default function BulkStudentUploadModal({ isOpen, onClose, onSuccess }: BulkStudentUploadModalProps) {
     const [file, setFile] = useState<File | null>(null)
@@ -219,7 +232,7 @@ export default function BulkStudentUploadModal({ isOpen, onClose, onSuccess }: B
 
         let text = `REGISTRATION NO\tFULL NAME\tEMAIL ID\tPASSWORD\tCOLLEGE\tDEPARTMENT\tSECTION\n`
         results.createdUsers.forEach(u => {
-            text += `${u.registrationNo || '-'}\t${u.name}\t${u.email}\t${u.password}\t${u.collegeName || '-'}\t${u.department || '-'}\t${u.section || '-'}\n`
+            text += `${u.registrationNo || '-'}\t${u.name}\t${u.email}\t${u.generatedPassword}\t${u.collegeName || '-'}\t${u.department || '-'}\t${u.section || '-'}\n`
         })
 
         navigator.clipboard.writeText(text)
@@ -253,7 +266,7 @@ export default function BulkStudentUploadModal({ isOpen, onClose, onSuccess }: B
                 `"${(u.registrationNo || '').replace(/"/g, '""')}"`,
                 `"${(u.name || '').replace(/"/g, '""')}"`,
                 `"${(u.email || '').replace(/"/g, '""')}"`,
-                `"${(u.password || '').replace(/"/g, '""')}"`,
+                `"${(u.generatedPassword || '').replace(/"/g, '""')}"`,
                 `"${(u.collegeName || '').replace(/"/g, '""')}"`,
                 `"${(u.department || '').replace(/"/g, '""')}"`,
                 `"${(u.section || '').replace(/"/g, '""')}"`,
@@ -289,88 +302,64 @@ export default function BulkStudentUploadModal({ isOpen, onClose, onSuccess }: B
     }) || []
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fadeIn">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm">
             <div
-                className="relative w-full max-w-5xl bg-[#0f172a]/95 border border-slate-700/60 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] text-slate-100"
+                className="relative w-full max-w-5xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]"
                 onClick={e => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="px-6 py-5 border-b border-slate-800 flex items-center justify-between bg-slate-900/80">
+                <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <div className="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-400">
-                            <Users className="w-6 h-6" />
+                        <div className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
+                            <Users className="w-5 h-5" />
                         </div>
                         <div>
-                            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                            <h2 className="text-base font-semibold text-slate-900 dark:text-white">
                                 Bulk Create Student Accounts
-                                <span className="px-2 py-0.5 text-xs rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-medium">
-                                    Excel Import
-                                </span>
                             </h2>
-                            <p className="text-xs text-slate-400">
-                                Upload college Excel roster to generate student accounts with auto-generated 8-char passwords
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                Upload a roster file to generate student accounts with unique passwords
                             </p>
                         </div>
                     </div>
                     <button
                         onClick={handleModalClose}
                         disabled={loading}
-                        className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors disabled:opacity-50"
+                        className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50"
                     >
                         <X className="w-5 h-5" />
                     </button>
                 </div>
 
                 {/* Content Body */}
-                <div className="p-6 overflow-y-auto flex-1 space-y-6">
+                <div className="p-6 overflow-y-auto flex-1 space-y-5">
                     {!results ? (
                         <>
                             {/* Template Download & Format Info */}
-                            <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 space-y-3">
-                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                            <div className="border border-slate-200 dark:border-slate-800 rounded-lg p-4 space-y-3">
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                                     <div>
-                                        <h3 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
-                                            <FileSpreadsheet className="w-4 h-4 text-indigo-400" />
-                                            Expected Excel Columns
+                                        <h3 className="text-sm font-medium text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                                            <FileSpreadsheet className="w-4 h-4 text-slate-400" />
+                                            Expected columns
                                         </h3>
-                                        <p className="text-xs text-slate-400 mt-1">
-                                            Your file should include headers matching: Registration No, Department, Section, Full Name, Email ID, Mobile Number, Academic Year, Current Year, college name, Batch No
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                            Headers should match: {TEMPLATE_COLUMNS.join(', ')}
                                         </p>
                                     </div>
                                     <button
                                         type="button"
                                         onClick={handleDownloadTemplate}
                                         disabled={downloadingTemplate}
-                                        className="px-3.5 py-2 text-xs font-semibold rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 transition-all duration-200 flex items-center gap-2 shrink-0"
+                                        className="px-3 py-1.5 text-xs font-medium rounded-md border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center gap-1.5 shrink-0"
                                     >
                                         {downloadingTemplate ? (
-                                            <RefreshCw className="w-4 h-4 animate-spin" />
+                                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                                         ) : (
-                                            <Download className="w-4 h-4" />
+                                            <Download className="w-3.5 h-3.5" />
                                         )}
-                                        Download Sample Excel Template
+                                        Download template
                                     </button>
-                                </div>
-
-                                {/* Columns Badges List */}
-                                <div className="flex flex-wrap gap-1.5 pt-2 border-t border-slate-800">
-                                    {[
-                                        'S.No',
-                                        'Registration No',
-                                        'Department',
-                                        'Section',
-                                        'Full Name',
-                                        'Email ID',
-                                        'Mobile Number',
-                                        'Academic Year',
-                                        'Current Year',
-                                        'college name',
-                                        'Batch No'
-                                    ].map(col => (
-                                        <span key={col} className="px-2.5 py-1 text-[11px] rounded-md bg-slate-800 text-slate-300 border border-slate-700">
-                                            {col}
-                                        </span>
-                                    ))}
                                 </div>
                             </div>
 
@@ -380,11 +369,11 @@ export default function BulkStudentUploadModal({ isOpen, onClose, onSuccess }: B
                                 onDragLeave={handleDragLeave}
                                 onDrop={handleDrop}
                                 onClick={() => fileInputRef.current?.click()}
-                                className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all duration-200 flex flex-col items-center justify-center ${isDragging
-                                        ? 'border-indigo-500 bg-indigo-500/10 scale-[0.99]'
+                                className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors flex flex-col items-center justify-center ${isDragging
+                                        ? 'border-slate-400 bg-slate-50 dark:bg-slate-800/50'
                                         : file
-                                            ? 'border-emerald-500/50 bg-emerald-500/5'
-                                            : 'border-slate-700/80 hover:border-slate-500 bg-slate-900/40 hover:bg-slate-900/60'
+                                            ? 'border-emerald-400 bg-emerald-50/50 dark:bg-emerald-500/5'
+                                            : 'border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-600'
                                     }`}
                             >
                                 <input
@@ -397,13 +386,13 @@ export default function BulkStudentUploadModal({ isOpen, onClose, onSuccess }: B
 
                                 {file ? (
                                     <div className="flex flex-col items-center gap-3">
-                                        <div className="p-3 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                                            <FileSpreadsheet className="w-10 h-10" />
+                                        <div className="p-3 rounded-full bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                                            <FileSpreadsheet className="w-6 h-6" />
                                         </div>
                                         <div>
-                                            <p className="text-sm font-semibold text-emerald-300">{file.name}</p>
-                                            <p className="text-xs text-slate-400">
-                                                {(file.size / 1024).toFixed(1)} KB — Ready for processing
+                                            <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{file.name}</p>
+                                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                                {(file.size / 1024).toFixed(1)} KB — ready for processing
                                             </p>
                                         </div>
                                         <button
@@ -412,20 +401,21 @@ export default function BulkStudentUploadModal({ isOpen, onClose, onSuccess }: B
                                                 e.stopPropagation()
                                                 setFile(null)
                                             }}
-                                            className="text-xs text-rose-400 hover:underline mt-1"
+                                            className="text-xs text-red-500 hover:underline"
                                         >
                                             Remove file
                                         </button>
                                     </div>
                                 ) : (
                                     <div className="flex flex-col items-center gap-3">
-                                        <div className="p-4 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                                            <Upload className="w-8 h-8" />
+                                        <div className="p-3 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+                                            <Upload className="w-6 h-6" />
                                         </div>
                                         <div>
-                                            <p className="text-sm font-semibold text-slate-200">
-                                                Click to upload or drag & drop Excel file
-                                            </p>                                            <p className="text-xs text-slate-400 mt-1">
+                                            <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                                                Click to upload or drag and drop
+                                            </p>
+                                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                                                 Supports .xlsx, .xls, or .csv files up to 10MB
                                             </p>
                                         </div>
@@ -434,59 +424,53 @@ export default function BulkStudentUploadModal({ isOpen, onClose, onSuccess }: B
                             </div>
 
                             {/* Info Callout */}
-                            <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs">
-                                <KeyRound className="w-4 h-4 shrink-0 mt-0.5 text-amber-400" />
+                            <div className="flex items-start gap-2.5 p-3.5 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 text-amber-800 dark:text-amber-300 text-xs">
+                                <KeyRound className="w-4 h-4 shrink-0 mt-0.5" />
                                 <div>
-                                    <span className="font-semibold">Automatic Password Generation:</span> For each row in the Excel sheet, a unique 8-character password containing mixed uppercase, lowercase, numbers, and special characters will be automatically generated, hashed in the database, and returned in the summary output.
+                                    A unique 8-character password is generated for each student, stored securely, and shown once in the results below — save or export it before closing this window.
                                 </div>
                             </div>
                         </>
                     ) : (
                         /* Results View */
-                        <div className="space-y-6 animate-fadeIn">
+                        <div className="space-y-5">
                             {/* Summary Stat Cards */}
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-between">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div className="p-3.5 rounded-lg border border-slate-200 dark:border-slate-800 flex items-center justify-between">
                                     <div>
-                                        <p className="text-xs text-slate-400 font-medium">Total Rows Processed</p>
-                                        <p className="text-2xl font-bold text-slate-100">{results.totalProcessed}</p>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400">Total rows processed</p>
+                                        <p className="text-xl font-semibold text-slate-900 dark:text-slate-100">{results.totalProcessed}</p>
                                     </div>
-                                    <div className="p-2.5 rounded-lg bg-slate-800 text-slate-400">
-                                        <FileSpreadsheet className="w-5 h-5" />
-                                    </div>
+                                    <FileSpreadsheet className="w-4 h-4 text-slate-400" />
                                 </div>
 
-                                <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between">
+                                <div className="p-3.5 rounded-lg border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50/50 dark:bg-emerald-500/5 flex items-center justify-between">
                                     <div>
-                                        <p className="text-xs text-emerald-300 font-medium">Accounts Created</p>
-                                        <p className="text-2xl font-bold text-emerald-400">{results.createdCount}</p>
+                                        <p className="text-xs text-emerald-700 dark:text-emerald-300">Accounts created</p>
+                                        <p className="text-xl font-semibold text-emerald-700 dark:text-emerald-400">{results.createdCount}</p>
                                     </div>
-                                    <div className="p-2.5 rounded-lg bg-emerald-500/20 text-emerald-400">
-                                        <CheckCircle2 className="w-5 h-5" />
-                                    </div>
+                                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                                 </div>
 
-                                <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between">
+                                <div className="p-3.5 rounded-lg border border-amber-200 dark:border-amber-500/30 bg-amber-50/50 dark:bg-amber-500/5 flex items-center justify-between">
                                     <div>
-                                        <p className="text-xs text-amber-300 font-medium">Skipped / Exists</p>
-                                        <p className="text-2xl font-bold text-amber-400">{results.skippedCount}</p>
+                                        <p className="text-xs text-amber-700 dark:text-amber-300">Skipped / exists</p>
+                                        <p className="text-xl font-semibold text-amber-700 dark:text-amber-400">{results.skippedCount}</p>
                                     </div>
-                                    <div className="p-2.5 rounded-lg bg-amber-500/20 text-amber-400">
-                                        <AlertCircle className="w-5 h-5" />
-                                    </div>
+                                    <AlertCircle className="w-4 h-4 text-amber-500" />
                                 </div>
                             </div>
 
                             {/* Action Bar & Search */}
-                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                                 <div className="relative flex-1 max-w-md">
                                     <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                                     <input
                                         type="text"
-                                        placeholder="Search created accounts by name, email, reg no..."
+                                        placeholder="Search created accounts..."
                                         value={searchQuery}
                                         onChange={e => setSearchQuery(e.target.value)}
-                                        className="w-full pl-9 pr-4 py-2 text-xs rounded-xl bg-slate-900 border border-slate-700 text-slate-200 placeholder-slate-400 focus:outline-none focus:border-indigo-500"
+                                        className="w-full pl-9 pr-3 py-2 text-sm rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400"
                                     />
                                 </div>
 
@@ -494,92 +478,91 @@ export default function BulkStudentUploadModal({ isOpen, onClose, onSuccess }: B
                                     <button
                                         type="button"
                                         onClick={copyAllCredentialsText}
-                                        className="px-3.5 py-2 text-xs font-semibold rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors flex items-center gap-2"
+                                        className="px-3 py-2 text-xs font-medium rounded-md border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center gap-1.5"
                                     >
-                                        {copiedAll ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4 text-slate-400" />}
-                                        {copiedAll ? 'Copied Table!' : 'Copy Table Credentials'}
+                                        {copiedAll ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                                        {copiedAll ? 'Copied' : 'Copy table'}
                                     </button>
 
                                     <button
                                         type="button"
                                         onClick={exportCredentialsCSV}
-                                        className="px-4 py-2 text-xs font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white transition-colors flex items-center gap-2 shadow-lg shadow-emerald-600/20"
+                                        className="px-3.5 py-2 text-xs font-medium rounded-md bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors flex items-center gap-1.5"
                                     >
-                                        <Download className="w-4 h-4" />
-                                        Export Credentials CSV
+                                        <Download className="w-3.5 h-3.5" />
+                                        Export CSV
                                     </button>
                                 </div>
                             </div>
 
                             {/* Credentials Table */}
                             {results.createdUsers.length > 0 && (
-                                <div className="border border-slate-800 rounded-xl overflow-hidden bg-slate-900/60">
-                                    <div className="px-4 py-3 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
-                                        <h4 className="text-xs font-semibold text-slate-300 flex items-center gap-2">
-                                            <Sparkles className="w-4 h-4 text-indigo-400" />
-                                            Generated Student User Credentials ({filteredCreatedUsers.length})
+                                <div className="border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden">
+                                    <div className="px-4 py-2.5 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                                        <h4 className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                                            Generated credentials ({filteredCreatedUsers.length})
                                         </h4>
                                         <button
                                             type="button"
                                             onClick={() => setShowAllPasswords(!showAllPasswords)}
-                                            className="text-[11px] text-indigo-400 hover:underline flex items-center gap-1"
+                                            className="text-xs text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white flex items-center gap-1"
                                         >
                                             {showAllPasswords ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                                            {showAllPasswords ? 'Hide All Passwords' : 'Show All Passwords'}
+                                            {showAllPasswords ? 'Hide passwords' : 'Show passwords'}
                                         </button>
                                     </div>
 
                                     <div className="overflow-x-auto max-h-[350px] overflow-y-auto">
                                         <table className="w-full text-left text-xs">
-                                            <thead className="bg-slate-950/80 text-slate-400 sticky top-0 z-10 border-b border-slate-800">
+                                            <thead className="bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 sticky top-0 z-10 border-b border-slate-200 dark:border-slate-800">
                                                 <tr>
-                                                    <th className="py-2.5 px-3">#</th>
-                                                    <th className="py-2.5 px-3">Reg No</th>
-                                                    <th className="py-2.5 px-3">Full Name</th>
-                                                    <th className="py-2.5 px-3">Email ID</th>
-                                                    <th className="py-2.5 px-3">Generated Password</th>
-                                                    <th className="py-2.5 px-3">College</th>
-                                                    <th className="py-2.5 px-3">Dept / Sec</th>
+                                                    <th className="py-2.5 px-3 font-medium">#</th>
+                                                    <th className="py-2.5 px-3 font-medium">Reg No</th>
+                                                    <th className="py-2.5 px-3 font-medium">Full Name</th>
+                                                    <th className="py-2.5 px-3 font-medium">Email ID</th>
+                                                    <th className="py-2.5 px-3 font-medium">Password</th>
+                                                    <th className="py-2.5 px-3 font-medium">College</th>
+                                                    <th className="py-2.5 px-3 font-medium">Dept / Sec</th>
                                                 </tr>
                                             </thead>
-                                            <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
                                                 {filteredCreatedUsers.map((u, i) => {
                                                     const isVisible = showAllPasswords || showPasswords[i]
                                                     return (
-                                                        <tr key={u.id} className="hover:bg-slate-800/40 transition-colors">
-                                                            <td className="py-2.5 px-3 text-slate-500 font-mono">{i + 1}</td>
-                                                            <td className="py-2.5 px-3 font-semibold text-slate-200">
+                                                        <tr key={u.id ?? `${u.email}-${i}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                                                            <td className="py-2.5 px-3 text-slate-400 font-mono">{i + 1}</td>
+                                                            <td className="py-2.5 px-3 font-medium text-slate-800 dark:text-slate-200">
                                                                 {u.registrationNo || '-'}
                                                             </td>
-                                                            <td className="py-2.5 px-3 font-medium text-white">{u.name}</td>
-                                                            <td className="py-2.5 px-3 text-indigo-300">{u.email}</td>
+                                                            <td className="py-2.5 px-3 font-medium text-slate-900 dark:text-white">{u.name}</td>
+                                                            <td className="py-2.5 px-3 text-slate-600 dark:text-slate-300">{u.email}</td>
                                                             <td className="py-2.5 px-3 font-mono">
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="px-2 py-1 rounded bg-slate-950 border border-slate-800 text-amber-300 tracking-wider">
-                                                                        {isVisible ? u.password : '••••••••'}
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <span className="px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-200 tracking-wider">
+                                                                        {isVisible ? u.generatedPassword : '••••••••'}
                                                                     </span>
                                                                     <button
                                                                         type="button"
                                                                         onClick={() => togglePasswordVisibility(i)}
-                                                                        className="p-1 text-slate-400 hover:text-white transition-colors"
+                                                                        className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors"
                                                                         title={isVisible ? 'Hide' : 'Show'}
                                                                     >
                                                                         {isVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                                                                     </button>
                                                                     <button
                                                                         type="button"
-                                                                        onClick={() => copyToClipboard(u.password, i)}
-                                                                        className="p-1 text-slate-400 hover:text-emerald-400 transition-colors"
+                                                                        onClick={() => copyToClipboard(u.generatedPassword, i)}
+                                                                        className="p-1 text-slate-400 hover:text-emerald-500 transition-colors"
                                                                         title="Copy password"
                                                                     >
-                                                                        {copiedIndex === i ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                                                                        {copiedIndex === i ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
                                                                     </button>
                                                                 </div>
                                                             </td>
-                                                            <td className="py-2.5 px-3 text-slate-400 truncate max-w-[150px]">
+                                                            <td className="py-2.5 px-3 text-slate-500 dark:text-slate-400 truncate max-w-[150px]">
                                                                 {u.collegeName || '-'}
                                                             </td>
-                                                            <td className="py-2.5 px-3 text-slate-400">
+                                                            <td className="py-2.5 px-3 text-slate-500 dark:text-slate-400">
                                                                 {u.department ? `${u.department}${u.section ? ` (${u.section})` : ''}` : '-'}
                                                             </td>
                                                         </tr>
@@ -593,21 +576,19 @@ export default function BulkStudentUploadModal({ isOpen, onClose, onSuccess }: B
 
                             {/* Skipped Rows Section */}
                             {results.skippedUsers.length > 0 && (
-                                <div className="border border-amber-500/30 rounded-xl overflow-hidden bg-amber-500/5">
-                                    <div className="px-4 py-2.5 bg-amber-500/10 border-b border-amber-500/20 text-amber-300 font-semibold text-xs flex items-center justify-between">
-                                        <span className="flex items-center gap-2">
-                                            <AlertCircle className="w-4 h-4 text-amber-400" />
-                                            Skipped Rows ({results.skippedUsers.length})
-                                        </span>
+                                <div className="border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden">
+                                    <div className="px-4 py-2.5 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-medium text-xs flex items-center gap-2">
+                                        <AlertCircle className="w-4 h-4 text-amber-500" />
+                                        Skipped rows ({results.skippedUsers.length})
                                     </div>
                                     <div className="p-3 max-h-[160px] overflow-y-auto space-y-2">
                                         {results.skippedUsers.map((su, idx) => (
-                                            <div key={idx} className="flex items-center justify-between text-xs p-2 rounded bg-slate-900/80 border border-slate-800">
+                                            <div key={idx} className="flex items-center justify-between text-xs p-2 rounded border border-slate-100 dark:border-slate-800">
                                                 <div>
-                                                    <span className="font-medium text-slate-200">{su.name}</span>{' '}
+                                                    <span className="font-medium text-slate-700 dark:text-slate-200">{su.name}</span>{' '}
                                                     <span className="text-slate-400">({su.email})</span>
                                                 </div>
-                                                <span className="px-2 py-0.5 rounded text-[11px] bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                                <span className="px-2 py-0.5 rounded text-[11px] bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-500/20">
                                                     {su.reason}
                                                 </span>
                                             </div>
@@ -620,14 +601,14 @@ export default function BulkStudentUploadModal({ isOpen, onClose, onSuccess }: B
                 </div>
 
                 {/* Footer Buttons */}
-                <div className="px-6 py-4 border-t border-slate-800 bg-slate-900/80 flex items-center justify-between">
+                <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
                     <button
                         type="button"
                         onClick={handleModalClose}
                         disabled={loading}
-                        className="px-4 py-2 text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl transition-colors disabled:opacity-50"
+                        className="px-3.5 py-2 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors disabled:opacity-50"
                     >
-                        {results ? 'Close Window' : 'Cancel'}
+                        {results ? 'Close' : 'Cancel'}
                     </button>
 
                     {!results ? (
@@ -635,17 +616,17 @@ export default function BulkStudentUploadModal({ isOpen, onClose, onSuccess }: B
                             type="button"
                             onClick={handleUpload}
                             disabled={!file || loading}
-                            className="px-6 py-2.5 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg shadow-indigo-600/30"
+                            className="px-5 py-2 text-xs font-medium rounded-md bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                         >
                             {loading ? (
                                 <>
-                                    <RefreshCw className="w-4 h-4 animate-spin" />
-                                    Creating Accounts...
+                                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                    Creating accounts...
                                 </>
                             ) : (
                                 <>
-                                    <Upload className="w-4 h-4" />
-                                    Upload & Create Accounts
+                                    <Upload className="w-3.5 h-3.5" />
+                                    Upload and create accounts
                                 </>
                             )}
                         </button>
@@ -653,10 +634,10 @@ export default function BulkStudentUploadModal({ isOpen, onClose, onSuccess }: B
                         <button
                             type="button"
                             onClick={() => setResults(null)}
-                            className="px-4 py-2 text-xs font-semibold text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 rounded-xl transition-colors flex items-center gap-1.5"
+                            className="px-3.5 py-2 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors flex items-center gap-1.5"
                         >
                             <RefreshCw className="w-3.5 h-3.5" />
-                            Upload Another Sheet
+                            Upload another sheet
                         </button>
                     )}
                 </div>
