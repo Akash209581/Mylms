@@ -10,7 +10,7 @@ import MarkdownToolbar from '@/components/editor/MarkdownToolbar'
 import { API_URL, api } from '@/lib/api'
 import axios from 'axios'
 import { UploadCloud, CheckCircle2, Image as ImageIcon, Sparkles, BookOpen, Layers, Trash2, Plus, ArrowRight, Eye } from 'lucide-react'
-import { getRoleBasePath } from '@/lib/roleUtils'
+import { getRoleBasePath, hasRole } from '@/lib/roleUtils'
 
 interface College {
     id: number
@@ -122,7 +122,7 @@ export default function GlobalCreateCoursePage() {
     })
 
     const [colleges, setColleges] = useState<College[]>([])
-    const [userRole, setUserRole] = useState<'STUDENT' | 'INSTRUCTOR' | 'ADMIN' | 'SUPERADMIN'>('SUPERADMIN')
+    const [userRole, setUserRole] = useState<string>('SUPERADMIN')
     const [saving, setSaving] = useState(false)
     const [overallProgress, setOverallProgress] = useState<number>(0)
     const [uploadStatusText, setUploadStatusText] = useState('')
@@ -141,8 +141,10 @@ export default function GlobalCreateCoursePage() {
         const stored = localStorage.getItem('user')
         if (!stored) { router.push('/login'); return }
         const u = JSON.parse(stored)
-        if (!['SUPERADMIN', 'ADMIN', 'INSTRUCTOR', 'CONTENT_CREATOR'].includes(u.role)) { router.push('/login'); return }
-        setUserRole(u.role)
+        const allowedRoles = ['SUPERADMIN', 'ADMIN', 'INSTRUCTOR', 'CONTENT_CREATOR']
+        const matchedRole = allowedRoles.find(r => hasRole(u, r))
+        if (!matchedRole) { router.push('/login'); return }
+        setUserRole(matchedRole)
         fetchColleges()
     }, [router])
 

@@ -57,6 +57,11 @@ export default function UserEditModal({ user, onClose, onSuccess }: UserEditModa
 
     const isStudent = form.roles.includes('STUDENT')
 
+    // Highest-privilege staff role wins the legacy singular `role` column when a
+    // user holds several roles — must match the backend's primaryRole() priority.
+    const ROLE_PRIORITY = ['SUPERADMIN', 'ADMIN', 'INSTRUCTOR', 'QUESTION_CREATOR', 'CONTENT_CREATOR', 'STUDENT']
+    const primaryRole = (roles: string[]) => ROLE_PRIORITY.find(r => roles.includes(r)) || roles[0]
+
     const toggleRole = (r: string) => {
         if (r === 'STUDENT') {
             setForm({ ...form, role: 'STUDENT', roles: ['STUDENT'] })
@@ -69,7 +74,7 @@ export default function UserEditModal({ user, onClose, onSuccess }: UserEditModa
             updated.push(r)
         }
         if (updated.length === 0) updated = ['STUDENT']
-        setForm({ ...form, role: updated[0], roles: updated })
+        setForm({ ...form, role: primaryRole(updated), roles: updated })
     }
 
     const isGlobalRole = form.roles.every(r => r === 'QUESTION_CREATOR' || r === 'CONTENT_CREATOR')
@@ -83,7 +88,7 @@ export default function UserEditModal({ user, onClose, onSuccess }: UserEditModa
             const payload: any = {
                 name: form.name,
                 email: form.email,
-                role: form.roles[0] || 'STUDENT',
+                role: primaryRole(form.roles) || 'STUDENT',
                 roles: form.roles,
                 isActive: form.isActive,
                 collegeName: isGlobalRole ? null : form.collegeName,

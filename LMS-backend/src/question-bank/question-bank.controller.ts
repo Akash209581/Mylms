@@ -593,7 +593,16 @@ export class QuestionBankController implements OnModuleInit {
         return { message: 'Question not found' };
       }
 
-      const userRole = req?.user?.role;
+      const userRoles: string[] = req?.user?.roles || (req?.user?.role ? [req.user.role] : []);
+      const userRole = userRoles.includes(UserRole.SUPERADMIN)
+        ? UserRole.SUPERADMIN
+        : userRoles.includes(UserRole.ADMIN)
+          ? UserRole.ADMIN
+          : userRoles.includes(UserRole.INSTRUCTOR)
+            ? UserRole.INSTRUCTOR
+            : userRoles.includes(UserRole.QUESTION_CREATOR)
+              ? UserRole.QUESTION_CREATOR
+              : req?.user?.role;
       const userCollegeId = req?.user?.collegeId;
       const userId = req?.user?.sub;
       const targetCollegeId = question.collegeId;

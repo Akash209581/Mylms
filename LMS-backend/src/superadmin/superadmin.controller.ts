@@ -66,6 +66,21 @@ function generateStudent8CharPassword(): string {
   return chars.join('');
 }
 
+// Priority order for the legacy singular `role` column when a user holds several
+// roles at once — highest-privilege staff role wins over the narrower content roles.
+const ROLE_PRIORITY: UserRole[] = [
+  UserRole.SUPERADMIN,
+  UserRole.ADMIN,
+  UserRole.INSTRUCTOR,
+  UserRole.QUESTION_CREATOR,
+  UserRole.CONTENT_CREATOR,
+  UserRole.STUDENT,
+];
+
+function primaryRole(roles: UserRole[]): UserRole {
+  return ROLE_PRIORITY.find((r) => roles.includes(r)) || roles[0];
+}
+
 function extractVal(row: Record<string, any>, targetKeys: string[]): string {
   const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
   const targets = targetKeys.map(normalize);
@@ -653,7 +668,7 @@ export class SuperadminController {
         throw new BadRequestException('STUDENT role cannot be combined with staff roles');
       }
       updateData.roles = dto.roles;
-      updateData.role = dto.roles[0];
+      updateData.role = primaryRole(dto.roles);
     } else if (dto.role !== undefined) {
       updateData.role = dto.role;
       updateData.roles = [dto.role];

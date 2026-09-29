@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
 import { getAuthHeaders } from '@/lib/authHeaders'
-import { getRoleBasePath } from '@/lib/roleUtils'
+import { getRoleBasePath, hasRole } from '@/lib/roleUtils'
 
 interface Course {
     id: number
@@ -32,11 +32,13 @@ export default function ContentCreationPage() {
         if (!stored) { router.push('/login'); return }
         try {
             const u = JSON.parse(stored)
-            if (u?.role) setUserRole(u.role)
-            if (u?.role && !['SUPERADMIN', 'ADMIN', 'INSTRUCTOR', 'CONTENT_CREATOR'].includes(u.role)) {
+            const allowedRoles = ['SUPERADMIN', 'ADMIN', 'INSTRUCTOR', 'CONTENT_CREATOR']
+            const matchedRole = allowedRoles.find(r => hasRole(u, r))
+            if (!matchedRole) {
                 router.push('/login')
                 return
             }
+            setUserRole(matchedRole)
         } catch (e) {
             console.error(e)
         }

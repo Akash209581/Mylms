@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
 import dynamic from 'next/dynamic'
+import { hasRole } from '@/lib/roleUtils'
 
 const CoursePreviewModal = dynamic(() => import('@/components/course/CoursePreviewModal'), { ssr: false })
 
@@ -22,7 +23,7 @@ const gradients = [
 
 export default function SuperAdminCoursesPage() {
     const router = useRouter()
-    const [userRole, setUserRole] = useState<'SUPERADMIN' | 'ADMIN'>('SUPERADMIN')
+    const [userRole, setUserRole] = useState<string>('SUPERADMIN')
     const [courses, setCourses] = useState<any[]>([])
     const [colleges, setColleges] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
@@ -37,8 +38,10 @@ export default function SuperAdminCoursesPage() {
         const stored = localStorage.getItem('user')
         if (!stored) { router.push('/login'); return }
         const u = JSON.parse(stored)
-        if (!['SUPERADMIN', 'ADMIN', 'INSTRUCTOR', 'CONTENT_CREATOR'].includes(u.role)) { router.push('/login'); return }
-        setUserRole(u.role)
+        const allowedRoles = ['SUPERADMIN', 'ADMIN', 'INSTRUCTOR', 'CONTENT_CREATOR']
+        const matchedRole = allowedRoles.find(r => hasRole(u, r))
+        if (!matchedRole) { router.push('/login'); return }
+        setUserRole(matchedRole)
 
         const apiUrl = API_URL
         Promise.all([

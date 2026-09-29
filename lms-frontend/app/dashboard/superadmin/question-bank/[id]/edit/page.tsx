@@ -11,7 +11,7 @@ import QuestionPreview from '@/components/question-bank/QuestionPreview'
 import MarkdownToolbar from '@/components/editor/MarkdownToolbar'
 import OptionField from '@/components/question-bank/OptionField'
 import { normalizeMcqLetter } from '@/lib/mcq-answer'
-import { getRoleBasePath } from '@/lib/roleUtils'
+import { getRoleBasePath, hasRole } from '@/lib/roleUtils'
 import { ADMIN_STARTERS } from '@/lib/starter-code'
 import { toast } from '@/lib/toast'
 
@@ -142,9 +142,13 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
         const stored = localStorage.getItem('user')
         if (!stored) { router.push('/login'); return }
         const u = JSON.parse(stored)
-        if (!['SUPERADMIN', 'ADMIN', 'INSTRUCTOR', 'QUESTION_CREATOR'].includes(u.role)) { router.push('/login'); return }
-        setUserRole(u.role)
-        
+        const allowedRoles = ['SUPERADMIN', 'ADMIN', 'INSTRUCTOR', 'QUESTION_CREATOR'] as const
+        const matchedRole = allowedRoles.find(r => hasRole(u, r))
+        if (!matchedRole) { router.push('/login'); return }
+        // QUESTION_CREATOR carries the most restrictive editing rules, so prefer it
+        // whenever the user holds it alongside another role.
+        setUserRole(hasRole(u, 'QUESTION_CREATOR') ? 'QUESTION_CREATOR' : matchedRole)
+
         fetchDomains()
 
         // Fetch question data
