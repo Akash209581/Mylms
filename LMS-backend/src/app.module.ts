@@ -50,6 +50,8 @@ import { ExamAssignment } from './entities/exam-assignment.entity';
 import { ExamAttempt } from './entities/exam-attempt.entity';
 import { ExamCodingSubmission } from './entities/exam-coding-submission.entity';
 
+import { MadmeetModule } from './madmeet/madmeet.module';
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -123,6 +125,7 @@ import { ExamCodingSubmission } from './entities/exam-coding-submission.entity';
     LearningStateModule,
     AssessmentModule,
     ExamModule,
+    MadmeetModule,
   ],
   providers: [
     SchemaGuardService,
