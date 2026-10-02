@@ -25,12 +25,30 @@ import {
 } from 'lucide-react'
 import { API_URL } from '@/lib/api'
 
-// Public Google STUN servers for WebRTC NAT discovery
+// Public Google STUN servers and OpenRelay TURN servers for WebRTC NAT discovery across strict networks
 const ICE_SERVERS: RTCConfiguration = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
     { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun3.l.google.com:19302' },
+    { urls: 'stun:stun4.l.google.com:19302' },
+    { urls: 'stun:global.stun.twilio.com:3478' },
+    {
+      urls: 'turn:openrelay.metered.ca:80',
+      username: 'openrelay',
+      credential: 'openrelay',
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443',
+      username: 'openrelay',
+      credential: 'openrelay',
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+      username: 'openrelay',
+      credential: 'openrelay',
+    },
   ],
 }
 
@@ -39,6 +57,7 @@ interface PeerConnection {
   name: string;
   pc: RTCPeerConnection;
   stream?: MediaStream;
+  pendingCandidates?: any[];
   audioEnabled: boolean;
   videoEnabled: boolean;
 }
@@ -172,15 +191,21 @@ export default function MadmeetPage() {
       }
     }
 
-    // Handle remote tracks
+    // Handle remote tracks safely across browsers
     pc.ontrack = (event) => {
-      console.log(`[Madmeet] Received remote track from ${targetSocketId}:`, event.streams[0])
-      const remoteStream = event.streams[0]
+      console.log(`[Madmeet] Received remote track (${event.track.kind}) from ${targetSocketId}:`, event.track)
       setPeers((prev) => {
         const next = new Map(prev)
         const existing = next.get(targetSocketId)
         if (existing) {
-          existing.stream = remoteStream
+          let stream = existing.stream
+          if (!stream) {
+            stream = event.streams[0] || new MediaStream()
+          }
+          if (!stream.getTracks().some((t) => t.id === event.track.id)) {
+            stream.addTrack(event.track)
+          }
+          existing.stream = stream
           next.set(targetSocketId, { ...existing })
         }
         return next
@@ -198,6 +223,7 @@ export default function MadmeetPage() {
       socketId: targetSocketId,
       name: targetName,
       pc,
+      pendingCandidates: [],
       audioEnabled: true,
       videoEnabled: true,
     }
@@ -251,7 +277,7 @@ export default function MadmeetPage() {
       socket.on('connect_error', (err) => {
         console.error('[Madmeet] Socket connection error:', err)
         setJoining(false)
-        setErrorMessage(`Unable to connect to video server at ${socketUrl}. Please ensure NestJS backend (LMS-backend) is running on port 3003.`)
+        setErrorMessage(`Unable to connect to video server at ${socketUrl}. Please ensure backend is running.`)
       })
 
       socket.on('connect', () => {
@@ -295,6 +321,7 @@ export default function MadmeetPage() {
         let pc: RTCPeerConnection
         if (!peer) {
           pc = createPeerConnection(data.senderSocketId, data.senderName)
+          peer = peerConnectionsRef.current.get(data.senderSocketId)
         } else {
           pc = peer.pc
         }
@@ -302,6 +329,14 @@ export default function MadmeetPage() {
         await pc.setRemoteDescription(new RTCSessionDescription(data.offer))
         const answer = await pc.createAnswer()
         await pc.setLocalDescription(answer)
+
+        // Flush any pending candidates
+        if (peer && peer.pendingCandidates && peer.pendingCandidates.length > 0) {
+          for (const cand of peer.pendingCandidates) {
+            await pc.addIceCandidate(new RTCIceCandidate(cand)).catch((err) => console.warn('[Madmeet] Candidate flush error:', err))
+          }
+          peer.pendingCandidates = []
+        }
 
         socket.emit('signal-answer', {
           targetSocketId: data.senderSocketId,
@@ -315,6 +350,13 @@ export default function MadmeetPage() {
         const peer = peerConnectionsRef.current.get(data.senderSocketId)
         if (peer) {
           await peer.pc.setRemoteDescription(new RTCSessionDescription(data.answer))
+          // Flush any pending candidates
+          if (peer.pendingCandidates && peer.pendingCandidates.length > 0) {
+            for (const cand of peer.pendingCandidates) {
+              await peer.pc.addIceCandidate(new RTCIceCandidate(cand)).catch((err) => console.warn('[Madmeet] Candidate flush error:', err))
+            }
+            peer.pendingCandidates = []
+          }
         }
       })
 
@@ -323,7 +365,12 @@ export default function MadmeetPage() {
         const peer = peerConnectionsRef.current.get(data.senderSocketId)
         if (peer && data.candidate) {
           try {
-            await peer.pc.addIceCandidate(new RTCIceCandidate(data.candidate))
+            if (peer.pc.remoteDescription && peer.pc.remoteDescription.type) {
+              await peer.pc.addIceCandidate(new RTCIceCandidate(data.candidate))
+            } else {
+              if (!peer.pendingCandidates) peer.pendingCandidates = []
+              peer.pendingCandidates.push(data.candidate)
+            }
           } catch (err) {
             console.warn('[Madmeet] Error adding ICE candidate:', err)
           }
