@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import MarkdownRenderer from '@/components/editor/MarkdownRenderer'
 
 interface SampleTestCase {
   input: string
@@ -201,9 +202,9 @@ export default function TestCasesPanel({
                     {sampleTestCases[selectedCaseIndex].explanation && (
                       <div>
                         <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Explanation:</p>
-                        <p className="p-2.5 bg-slate-950/60 rounded-lg text-slate-300 font-sans text-xs border border-slate-850">
-                          {sampleTestCases[selectedCaseIndex].explanation}
-                        </p>
+                        <div className="p-2.5 bg-slate-950/60 rounded-lg text-slate-300 font-sans text-xs border border-slate-850">
+                          <MarkdownRenderer content={sampleTestCases[selectedCaseIndex].explanation} />
+                        </div>
                       </div>
                     )}
                   </div>

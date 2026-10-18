@@ -28,6 +28,8 @@ export interface ParsedQuestionRow {
   marks?: number;
   programmingLanguage?: string;
   companiesAppeared?: string;
+  targetCompanies?: string;
+  targetRoles?: string;
   recentYear?: number;
   bestPracticeFor?: string;
 
@@ -98,6 +100,8 @@ export interface ValidatedQuestion {
   topicNames: string;
   difficulty: Difficulty;
   companiesAppeared?: string;
+  targetCompanies?: string;
+  targetRoles?: string;
   programmingLanguage?: string;
   recentYearAppearing?: number;
   bestPracticeFor?: string;

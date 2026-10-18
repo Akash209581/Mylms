@@ -34,6 +34,11 @@ export class ExamStudentController {
     return this.service.getAttempt(req.user, attemptId);
   }
 
+  @Get('attempts/:attemptId/heartbeat')
+  getHeartbeat(@Request() req, @Param('attemptId', ParseIntPipe) attemptId: number) {
+    return this.service.getHeartbeat(req.user, attemptId);
+  }
+
   @Post('attempts/:attemptId/unlock-hint')
   unlockHint(
     @Request() req,
@@ -74,8 +79,9 @@ export class ExamStudentController {
   recordTabSwitch(
     @Request() req,
     @Param('attemptId', ParseIntPipe) attemptId: number,
+    @Body() body?: { questionId?: number },
   ) {
-    return this.service.recordTabSwitch(req.user, attemptId);
+    return this.service.recordTabSwitch(req.user, attemptId, body?.questionId);
   }
 
   @Post('attempts/:attemptId/submit')

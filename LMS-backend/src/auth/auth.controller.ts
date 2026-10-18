@@ -15,6 +15,7 @@ import { JwtAuthGuard } from '../common/jwt.guard';
 import { RolesGuard } from '../common/roles.guard';
 import { Roles } from '../common/roles.decorator';
 import { UserRole } from '../entities/user.entity';
+import { effectiveRole } from '../common/role-priority.util';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { College } from '../entities/college.entity';
@@ -81,23 +82,26 @@ export class AuthController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.INSTRUCTOR)
   async createUser(@Body() dto: CreateUserDto, @Request() req) {
-    // Role-based validation
-    if (req.user.role === UserRole.ADMIN) {
-      // ADMIN can only create INSTRUCTOR or STUDENT
-      if (dto.role !== 'INSTRUCTOR' && dto.role !== 'STUDENT') {
+    // Checking dto.role alone left the `roles` array unvalidated, so a caller
+    // could pass an allowed singular role and smuggle a broader one in the array.
+    const requested = Array.isArray(dto.roles) && dto.roles.length ? dto.roles : [dto.role];
+    const creatorRole = effectiveRole(req.user);
+
+    if (creatorRole === UserRole.ADMIN) {
+      const allowed = ['INSTRUCTOR', 'STUDENT'];
+      if (!requested.every((r) => allowed.includes(String(r)))) {
         throw new ForbiddenException('ADMIN can only create INSTRUCTOR or STUDENT accounts');
       }
     }
-    
-    if (req.user.role === UserRole.INSTRUCTOR) {
-      // INSTRUCTOR can only create STUDENT
-      if (dto.role !== 'STUDENT') {
+
+    if (creatorRole === UserRole.INSTRUCTOR) {
+      if (!requested.every((r) => String(r) === 'STUDENT')) {
         throw new ForbiddenException('INSTRUCTOR can only create STUDENT accounts');
       }
     }
 
     // Pass the creator's info to the service for automatic college inheritance
-    return this.authService.createUser(dto, req.user.sub, req.user.collegeId, req.user.role, req.user.collegeName);
+    return this.authService.createUser(dto, req.user.sub, req.user.collegeId, creatorRole, req.user.collegeName);
   }
 
   // Dedicated endpoint for SUPERADMIN to create users with college selection

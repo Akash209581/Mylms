@@ -67,4 +67,14 @@ export class CollegeFilterService {
       throw new ForbiddenException(`You do not have permission to ${action} resources from this college`);
     }
   }
+
+  assertCollegeAccess(
+    userRole: UserRole,
+    userCollegeId: number | undefined,
+    targetCollegeId: number,
+    action: string = 'access',
+  ): void {
+    this.validateCollegeAccess(userRole, userCollegeId, targetCollegeId, action);
+  }
 }
+

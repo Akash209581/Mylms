@@ -1,4 +1,4 @@
-import { ConflictException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { ExamStudentService } from './exam-student.service';
 import { AttemptStatus } from '../entities/exam-attempt.entity';
 import { ExamStatus } from '../entities/exam.entity';
@@ -152,8 +152,140 @@ describe('ExamStudentService timer and submit', () => {
       attempt: { tabSwitchCount: 2 },
     });
     const result = await service.recordTabSwitch(user, 10);
-    expect(attemptRepo.update).toHaveBeenCalledWith(10, { tabSwitchCount: 3 });
+    expect(attemptRepo.update).toHaveBeenCalledWith(10, expect.objectContaining({ tabSwitchCount: 3 }));
     expect(queueService.waitForAttemptJobs).toHaveBeenCalled();
     expect(result).toMatchObject({ count: 3, autoSubmit: true, submitted: true });
+  });
+
+  it('appends to the forensic tab-switch log without dropping earlier entries', async () => {
+    const earlier = { timestamp: '2026-01-01T00:00:00.000Z', elapsedSeconds: 5, questionId: 99 };
+    const { service, attemptRepo } = makeService({
+      attempt: { tabSwitchCount: 1, tabSwitchLog: [earlier], startTime: new Date(Date.now() - 30_000) },
+    });
+
+    await service.recordTabSwitch(user, 10, 42);
+
+    const [, payload] = attemptRepo.update.mock.calls[0];
+    expect(payload.tabSwitchLog).toHaveLength(2);
+    expect(payload.tabSwitchLog[0]).toEqual(earlier);
+    expect(payload.tabSwitchLog[1]).toMatchObject({ questionId: 42 });
+    expect(payload.tabSwitchLog[1].elapsedSeconds).toBeGreaterThanOrEqual(29);
+  });
+
+  it('does not count tab switches when monitoring is disabled for the exam', async () => {
+    const { service, attemptRepo } = makeService({
+      exam: { tabSwitchMonitoring: false },
+      attempt: { tabSwitchCount: 2 },
+    });
+
+    const result = await service.recordTabSwitch(user, 10);
+
+    expect(result).toEqual({ count: 2, autoSubmit: false });
+    expect(attemptRepo.update).not.toHaveBeenCalled();
+  });
+
+  it('respects a custom maxTabSwitches threshold instead of the default 3', async () => {
+    const { service } = makeService({
+      exam: { maxTabSwitches: 5 },
+      attempt: { tabSwitchCount: 2 },
+    });
+
+    const result = await service.recordTabSwitch(user, 10);
+
+    expect(result).toMatchObject({ count: 3, autoSubmit: false, submitted: false });
+  });
+
+  describe('Lightweight Heartbeat & Resumption', () => {
+    it('returns only the lightweight timing and status fields', async () => {
+      const deadline = new Date(Date.now() + 1800_000);
+      const { service } = makeService({
+        attempt: {
+          deadlineAt: deadline,
+          tabSwitchCount: 1,
+          status: AttemptStatus.IN_PROGRESS,
+        },
+      });
+
+      const hb = await service.getHeartbeat(user, 10);
+
+      expect(hb).toEqual({
+        deadlineAt: deadline,
+        serverTime: expect.any(String),
+        remainingSeconds: expect.any(Number),
+        status: AttemptStatus.IN_PROGRESS,
+        tabSwitchCount: 1,
+      });
+      expect(hb.remainingSeconds).toBeGreaterThan(1700);
+      // Ensure questions, options, code, and submissions are NOT present in heartbeat
+      expect((hb as any).questions).toBeUndefined();
+      expect((hb as any).mcqAnswers).toBeUndefined();
+      expect((hb as any).latestCoding).toBeUndefined();
+    });
+
+    it('enforces attempt ownership and rejects unauthorized heartbeat requests', async () => {
+      const { service } = makeService();
+      const impostor = { sub: 999, role: UserRole.STUDENT, collegeId: 1 };
+
+      await expect(service.getHeartbeat(impostor, 10))
+        .rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('auto-submits when heartbeat detects expired deadline', async () => {
+      const expiredDeadline = new Date(Date.now() - 5000);
+      const { service, queueService } = makeService({
+        attempt: {
+          deadlineAt: expiredDeadline,
+          status: AttemptStatus.IN_PROGRESS,
+        },
+      });
+
+      const hb = await service.getHeartbeat(user, 10);
+
+      expect(hb.status).toBe(AttemptStatus.SUBMITTED);
+      expect(queueService.waitForAttemptJobs).toHaveBeenCalled();
+    });
+
+    it('full attempt payload is still provided by getAttempt for resumption', async () => {
+      const { service } = makeService({
+        attempt: {
+          mcqAnswers: { '101': 'A' },
+          markedReview: [101],
+        },
+      });
+
+      const full = await service.getAttempt(user, 10);
+
+      expect(full).toHaveProperty('attemptId', 10);
+      expect(full).toHaveProperty('questions');
+      expect(full).toHaveProperty('mcqAnswers', { '101': 'A' });
+      expect(full).toHaveProperty('markedReview', [101]);
+      expect(full).toHaveProperty('latestCoding');
+    });
+
+    it('persists answers, markedReview, and proctoring telemetry', async () => {
+      const { service, attemptRepo } = makeService();
+
+      const result = await service.saveAnswers(user, 10, {
+        answers: { '1': 'B' },
+        markedReview: [1],
+        faceCoveragePercent: 95,
+        faceViolationsCount: 1,
+        inactivityDurationSeconds: 12,
+        tabSwitchCount: 1,
+      });
+
+      expect(result).toMatchObject({ saved: true });
+      expect(attemptRepo.update).toHaveBeenCalledWith(
+        10,
+        expect.objectContaining({
+          mcqAnswers: { '1': 'B' },
+          markedReview: [1],
+          faceCoveragePercent: 95,
+          faceViolationsCount: 1,
+          inactivityDurationSeconds: 12,
+          tabSwitchCount: 1,
+        }),
+      );
+    });
   });
 });

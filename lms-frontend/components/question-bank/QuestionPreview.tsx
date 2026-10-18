@@ -1,5 +1,5 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import MarkdownRenderer from '@/components/editor/MarkdownRenderer'
 import { normalizeMcqLetter } from '@/lib/mcq-answer'
 
@@ -44,6 +44,11 @@ function renderOptionContent(opt: string) {
 export default function QuestionPreview({ form, onClose }: QuestionPreviewProps) {
     const [previewTab, setPreviewTab] = useState<'explanation' | 'problem' | 'testcases' | 'predefined' | 'hints'>('problem')
     const [previewLang, setPreviewLang] = useState<string>('')
+    const [previewJc, setPreviewJc] = useState<string[]>(form.jumbledStatements || [])
+
+    useEffect(() => {
+        setPreviewJc(form.jumbledStatements || [])
+    }, [form.jumbledStatements])
     const renderContent = () => {
         switch (form.type) {
             case 'MCQ':
@@ -195,15 +200,87 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                             </div>
                         )}
 
-                        <div className="bg-slate-50 p-8 rounded-2xl border border-gray-200 font-mono shadow-inner">
-                            <h4 className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-6">Correct Arrangement</h4>
-                            <div className="space-y-3">
-                                {(form.jumbledStatements || []).map((s: string, i: number) => (
-                                    <div key={i} className="flex gap-4 items-start group">
-                                        <div className="mt-1 w-6 h-6 rounded-lg bg-primary-100 text-primary-600 flex items-center justify-center text-[10px] font-bold shrink-0">{i + 1}</div>
-                                        <span className="text-slate-700 text-sm whitespace-pre-wrap pt-1">{s}</span>
+                        <div className="bg-slate-50 p-6 rounded-2xl border border-gray-200 font-mono shadow-inner">
+                            <div className="flex items-center justify-between mb-4">
+                                <h4 className="text-slate-500 text-xs font-bold uppercase tracking-widest flex items-center gap-1.5">
+                                    <span>🔀</span> Interactive Statement Sequence
+                                </h4>
+                                <span className="text-[10px] text-indigo-600 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full font-bold">
+                                    ⠿ Drag or use ▲/▼ to test arrangement
+                                </span>
+                            </div>
+                            <div className="space-y-2">
+                                {previewJc.map((s: string, i: number) => (
+                                    <div
+                                        key={i}
+                                        draggable
+                                        onDragStart={(e) => {
+                                            e.dataTransfer.setData('text/plain', String(i));
+                                            e.currentTarget.classList.add('opacity-40');
+                                        }}
+                                        onDragEnd={(e) => {
+                                            e.currentTarget.classList.remove('opacity-40');
+                                        }}
+                                        onDragOver={(e) => e.preventDefault()}
+                                        onDrop={(e) => {
+                                            e.preventDefault();
+                                            const fromIdx = parseInt(e.dataTransfer.getData('text/plain'), 10);
+                                            if (isNaN(fromIdx) || fromIdx === i) return;
+                                            const items = [...previewJc];
+                                            const [moved] = items.splice(fromIdx, 1);
+                                            items.splice(i, 0, moved);
+                                            setPreviewJc(items);
+                                        }}
+                                        className="flex gap-2 items-center p-3 rounded-xl bg-white border border-slate-200 hover:border-indigo-400 hover:shadow-sm transition-all cursor-move group"
+                                    >
+                                        <div className="flex items-center gap-1 text-slate-400 group-hover:text-indigo-600 select-none shrink-0">
+                                            <span className="text-sm font-bold cursor-grab active:cursor-grabbing">⋮⋮</span>
+                                            <div className="w-5 h-5 rounded-md bg-indigo-50 text-indigo-700 flex items-center justify-center text-[10px] font-bold">
+                                                {i + 1}
+                                            </div>
+                                        </div>
+                                        <span className="text-slate-800 text-sm font-mono flex-1 whitespace-pre-wrap">{s}</span>
+                                        <div className="flex items-center gap-1 shrink-0">
+                                            <button
+                                                type="button"
+                                                disabled={i === 0}
+                                                onClick={() => {
+                                                    if (i === 0) return;
+                                                    const items = [...previewJc];
+                                                    [items[i - 1], items[i]] = [items[i], items[i - 1]];
+                                                    setPreviewJc(items);
+                                                }}
+                                                className="w-6 h-6 flex items-center justify-center rounded text-slate-400 hover:text-slate-800 hover:bg-slate-100 disabled:opacity-20 transition-all text-xs"
+                                                title="Move Up"
+                                            >
+                                                ▲
+                                            </button>
+                                            <button
+                                                type="button"
+                                                disabled={i === previewJc.length - 1}
+                                                onClick={() => {
+                                                    if (i >= previewJc.length - 1) return;
+                                                    const items = [...previewJc];
+                                                    [items[i + 1], items[i]] = [items[i], items[i + 1]];
+                                                    setPreviewJc(items);
+                                                }}
+                                                className="w-6 h-6 flex items-center justify-center rounded text-slate-400 hover:text-slate-800 hover:bg-slate-100 disabled:opacity-20 transition-all text-xs"
+                                                title="Move Down"
+                                            >
+                                                ▼
+                                            </button>
+                                        </div>
                                     </div>
                                 ))}
+                            </div>
+                            <div className="mt-3 flex justify-end">
+                                <button
+                                    type="button"
+                                    onClick={() => setPreviewJc(form.jumbledStatements || [])}
+                                    className="text-[11px] font-semibold text-slate-500 hover:text-indigo-600 transition-colors"
+                                >
+                                    ↺ Reset to Default Order
+                                </button>
                             </div>
                         </div>
 
@@ -608,12 +685,37 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                         </h1>
 
                         {/* Extra metadata grid */}
-                        {((form.targetCompanies || form.companiesAppeared || form.companies) ||
+                        {((form.targetRoles || form.roles) ||
+                          (form.targetCompanies || form.companiesAppeared || form.companies) ||
                           (form.recentYearAppearing || form.recentYear) ||
                           form.bestPracticeFor ||
                           (form.type === 'PQ' && form.allowedLanguages && form.allowedLanguages.length > 0) ||
                           (form.type !== 'PQ' && form.programmingLanguage && form.programmingLanguage.trim() !== '' && form.programmingLanguage !== 'Any')) && (
                             <div className="flex flex-col gap-3 mt-4 pt-4 border-t border-gray-100 text-xs">
+                                {/* Target Roles */}
+                                {(form.targetRoles || form.roles) && (() => {
+                                    const rolesList = (typeof (form.targetRoles || form.roles) === 'string'
+                                        ? (form.targetRoles || form.roles).split(',')
+                                        : Array.isArray(form.targetRoles || form.roles)
+                                        ? (form.targetRoles || form.roles)
+                                        : [form.targetRoles || form.roles])
+                                        .map((r: any) => String(r).trim())
+                                        .filter(Boolean)
+                                    if (rolesList.length === 0) return null
+                                    return (
+                                        <div className="p-3 bg-purple-50/60 rounded-xl border border-purple-100">
+                                            <p className="text-[10px] text-purple-700 font-bold uppercase mb-1.5">🎯 Target Roles ({rolesList.length})</p>
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {rolesList.map((r: string, idx: number) => (
+                                                    <span key={idx} className="px-2.5 py-1 rounded-lg bg-purple-100/80 text-purple-800 border border-purple-200 text-xs font-semibold">
+                                                        🎯 {r}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )
+                                })()}
+
                                 {/* Target Companies */}
                                 {form.targetCompanies && (() => {
                                     const compList = (typeof form.targetCompanies === 'string' ? form.targetCompanies.split(',') : Array.isArray(form.targetCompanies) ? form.targetCompanies : [form.targetCompanies])
@@ -657,9 +759,17 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                                     {(form.recentYearAppearing || form.recentYear) && (
                                         <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
-                                            <p className="text-[10px] text-slate-400 font-bold uppercase">Recent Year</p>
+                                            <p className="text-[10px] text-slate-400 font-bold uppercase">Recent Appearing</p>
                                             <p className="font-semibold text-slate-800 mt-0.5">
-                                                📅 {form.recentYearAppearing || form.recentYear}
+                                                📅 {form.recentMonthAppearing ? `${form.recentMonthAppearing} ` : ''}{form.recentYearAppearing || form.recentYear}
+                                            </p>
+                                        </div>
+                                    )}
+                                    {typeof form.likesCount === 'number' && (
+                                        <div className="p-2.5 bg-rose-50/70 rounded-xl border border-rose-100">
+                                            <p className="text-[10px] text-rose-500 font-bold uppercase">Candidate Likes</p>
+                                            <p className="font-semibold text-rose-700 mt-0.5 flex items-center gap-1">
+                                                <span>👍</span> {form.likesCount} {form.likesCount === 1 ? 'Like' : 'Likes'}
                                             </p>
                                         </div>
                                     )}

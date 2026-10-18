@@ -12,6 +12,7 @@ import * as crypto from 'crypto';
 import { User, UserRole } from '../entities/user.entity';
 import { SignupDto, LoginDto, CreateUserDto, SuperAdminCreateUserDto } from './auth.dto';
 import { College } from '../entities/college.entity';
+import { primaryRole as resolvePrimaryRole } from '../common/role-priority.util';
 
 @Injectable()
 export class AuthService {
@@ -169,7 +170,9 @@ export class AuthService {
     if (userRoles.includes(UserRole.STUDENT) && userRoles.length > 1) {
       throw new BadRequestException('STUDENT role cannot be combined with staff roles');
     }
-    const primaryRole = userRoles[0];
+    // Priority, not array order — listing QUESTION_CREATOR first used to hand the
+    // new account global cross-college scope via CollegeFilterService.
+    const primaryRole = resolvePrimaryRole(userRoles);
 
     // Determine college ID based on creator role
     let collegeId: number | undefined;

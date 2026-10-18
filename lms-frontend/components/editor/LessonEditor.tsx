@@ -3,6 +3,8 @@
 
 import { ChangeEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { sanitizeHtml } from '@/lib/sanitize'
+import { API_URL } from '@/lib/api'
+import { apiFetch } from '@/lib/apiFetch'
 import './LessonEditor.css'
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
@@ -115,15 +117,24 @@ function esc(s: string): string {
 
 /** Core markdown → HTML transforms (operates on already-escaped text) */
 function applyInlineMd(s: string): string {
-  s = s.replace(/==(.*?)==/g, '<mark class="nb-highlight">$1</mark>')
+  const inlineCodes: string[] = []
+  s = s.replace(/`([^`]+?)`/g, (_match, codeText) => {
+    const placeholder = `__INLINE_CODE_${inlineCodes.length}__`
+    inlineCodes.push(codeText)
+    return placeholder
+  })
+  s = s.replace(/\^\^([^\^]+?)\^\^/g, '<mark class="nb-highlight">$1</mark>')
   s = s.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
   s = s.replace(/\*(.*?)\*/g, '<em>$1</em>')
   s = s.replace(/~~(.*?)~~/g, '<del>$1</del>')
-  s = s.replace(/`([^`]+?)`/g, '<code class="nb-inline-code">$1</code>')
   s = s.replace(/!\[(.*?)\]\((.*?)\)/g,
     (_, alt, src) => `<img src="${normalizeSrc(src)}" alt="${esc(alt)}" class="nb-preview-img" />`)
   s = s.replace(/\[(.*?)\]\((.*?)\)/g,
     '<a href="$2" target="_blank" rel="noopener noreferrer" class="nb-link">$1</a>')
+  s = s.replace(/__INLINE_CODE_(\d+)__/g, (_m, idx) => {
+    const code = inlineCodes[Number(idx)] || ''
+    return `<code class="nb-inline-code">${code}</code>`
+  })
   return s
 }
 
@@ -698,16 +709,41 @@ function ImageDialog({ onInsert, onClose }: ImageDialogProps) {
     onClose()
   }
 
-  const handleFile = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleFile = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = evt => {
-      onInsert(`![${file.name}](${evt.target?.result as string})`)
-      onClose()
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await apiFetch(`${API_URL}/question-bank/upload-image`, {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      })
+      if (res.ok) {
+        const data = await res.json()
+        if (data.url) {
+          onInsert(`![${alt || 'image'}](${data.url})`)
+          onClose()
+          return
+        }
+      }
+      const reader = new FileReader()
+      reader.onload = evt => {
+        onInsert(`![${alt || 'image'}](${evt.target?.result as string})`)
+        onClose()
+      }
+      reader.readAsDataURL(file)
+    } catch {
+      const reader = new FileReader()
+      reader.onload = evt => {
+        onInsert(`![${alt || 'image'}](${evt.target?.result as string})`)
+        onClose()
+      }
+      reader.readAsDataURL(file)
+    } finally {
+      if (fileRef.current) fileRef.current.value = ''
     }
-    reader.readAsDataURL(file)
-    if (fileRef.current) fileRef.current.value = ''
   }
 
   return (
@@ -1152,7 +1188,7 @@ export default function LessonEditor({
     if (fmt === 'bold') { wrapSelection(activeId, '**', '**', 'bold text'); return }
     if (fmt === 'italic') { wrapSelection(activeId, '*', '*', 'italic text'); return }
     if (fmt === 'inlinecode') { wrapSelection(activeId, '`', '`', 'code'); return }
-    if (fmt === 'highlight') { wrapSelection(activeId, '==', '==', 'highlighted text'); return }
+    if (fmt === 'highlight') { wrapSelection(activeId, '^^', '^^', 'highlighted text'); return }
     if (fmt === 'link') { wrapSelection(activeId, '[', '](https://)', 'link text'); return }
     if (fmt === 'image') { setImgTarget(activeId); return }
     if (fmt === 'ul') { insertAtCursor(activeId, '- Item 1\n- Item 2\n- Item 3'); return }

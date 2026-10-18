@@ -1,8 +1,8 @@
 import { ConfigService } from '@nestjs/config';
-import { JwtStrategy } from './jwt.strategy';
+import { JwtStrategy, clearAuthCache } from './jwt.strategy';
 import { CourseContentService, coursePreview } from './course-content.service';
 import { privateResponse } from './response-privacy.interceptor';
-import { protectMutationOrigin, trustedOrigins } from './request-origin';
+import { isOriginTrusted, protectMutationOrigin, trustedOrigins } from './request-origin';
 import { UserRole } from '../entities/user.entity';
 import { Course, CourseStatus } from '../entities/course.entity';
 import { AuthService } from '../auth/auth.service';
@@ -16,6 +16,12 @@ describe('Current account authorization', () => {
       { findOne: jest.fn().mockResolvedValue(current) } as any,
       { findOne: jest.fn().mockResolvedValue(college) } as any);
   }
+
+  // The principal cache is module scoped, so it outlives each strategy instance.
+  // Without this the first test's entry for sub:2 satisfies every later one and
+  // the denial cases below silently assert nothing.
+  beforeEach(() => clearAuthCache());
+
   it('uses the current role and college instead of stale administrator claims', async () => {
     expect(await strategy().validate({ sub: 2, role: 'SUPERADMIN', collegeId: 99 }))
       .toMatchObject({ sub: 2, role: 'STUDENT', collegeId: 7 });
@@ -31,6 +37,38 @@ describe('Current account authorization', () => {
     const service = new AuthService({ findOne: jest.fn().mockResolvedValue({ ...user, isActive: false, passwordHash: 'hash' }) } as any, {} as any, { sign } as any);
     await expect(service.login({ email: 'student@example.com', password: 'test' })).rejects.toThrow('Invalid credentials');
     expect(sign).not.toHaveBeenCalled();
+  });
+
+  it('serves a cached principal without re-reading the database', async () => {
+    const users = { findOne: jest.fn().mockResolvedValue(user) };
+    const colleges = { findOne: jest.fn().mockResolvedValue({ id: 7, name: 'College', active: true }) };
+    const strat = new JwtStrategy(
+      new ConfigService({ JWT_SECRET: 'test-secret-only' }), users as any, colleges as any);
+
+    await strat.validate({ sub: 2 });
+    await strat.validate({ sub: 2 });
+
+    expect(users.findOne).toHaveBeenCalledTimes(1);
+  });
+
+  it('stops honouring a revoked account once the cache is cleared', async () => {
+    const current = { ...user };
+    const users = { findOne: jest.fn().mockImplementation(async () => current) };
+    const colleges = { findOne: jest.fn().mockResolvedValue({ id: 7, name: 'College', active: true }) };
+    const strat = new JwtStrategy(
+      new ConfigService({ JWT_SECRET: 'test-secret-only' }), users as any, colleges as any);
+
+    await expect(strat.validate({ sub: 2 })).resolves.toMatchObject({ sub: 2 });
+
+    // Suspension is a mutating request, which clears the cache in main.ts.
+    current.isActive = false;
+    clearAuthCache();
+
+    await expect(strat.validate({ sub: 2 })).rejects.toThrow('Account is unavailable');
+  });
+
+  it.each([0, -1, 1.5, '2', null, undefined])('rejects a malformed subject claim: %p', async sub => {
+    await expect(strategy().validate({ sub })).rejects.toThrow();
   });
 });
 
@@ -102,5 +140,31 @@ describe('Browser mutation protection', () => {
     protectMutationOrigin(origins)({ method, cookies: cookie ? { access_token: 'token' } : {}, get: (key: string) => key === 'origin' ? origin : undefined } as any, response as any, next);
     expect(next).toHaveBeenCalledTimes(permitted ? 1 : 0);
     if (!permitted) expect(response.status).toHaveBeenCalledWith(403);
+  });
+
+  // Regression: a `.onrender.com` suffix rule once made every attacker-controlled
+  // Render deployment a trusted first-party origin.
+  it.each([
+    'https://attacker.onrender.com',
+    'https://lms-0-id5t.onrender.com.evil.com',
+    'https://evil-lms-0-id5t.onrender.com',
+  ])('does not trust look-alike host %s', host => {
+    expect(isOriginTrusted(host, origins)).toBe(false);
+  });
+
+  it('still trusts the configured deployment origin exactly', () => {
+    expect(isOriginTrusted('https://lms-0-id5t.onrender.com', trustedOrigins({ NODE_ENV: 'production' }))).toBe(true);
+  });
+
+  it('rejects a cookie mutation whose Referer is an untrusted origin', () => {
+    const next = jest.fn();
+    const response = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+    protectMutationOrigin(origins)({
+      method: 'POST',
+      cookies: { access_token: 'token' },
+      get: (key: string) => (key === 'referer' ? 'https://attacker.onrender.com/pay' : undefined),
+    } as any, response as any, next);
+    expect(next).not.toHaveBeenCalled();
+    expect(response.status).toHaveBeenCalledWith(403);
   });
 });

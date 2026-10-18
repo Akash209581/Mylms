@@ -1,3 +1,4 @@
+import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import { DockerSandboxService } from './docker-sandbox.service';
@@ -10,20 +11,36 @@ import {
 import { CompilerQueueService } from './compiler-queue.service';
 
 /**
- * Live Docker integration tests. These compile and run real student code.
- * Skip the suite if Docker Desktop is not running on this machine.
+ * Jest fixes skip/run at collection time, so the daemon probe has to be
+ * synchronous here — an async beforeAll would report 15 hard failures on a
+ * machine that simply has Docker Desktop stopped.
  */
-describe('Docker sandbox live integration', () => {
+function dockerReachable(): boolean {
+  try {
+    execSync('docker info --format "{{.ServerVersion}}"', { stdio: 'pipe', timeout: 12000 });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const dockerOk = dockerReachable();
+const describeDocker = dockerOk ? describe : describe.skip;
+
+if (!dockerOk) {
+  console.warn(
+    'SKIP live Docker integration tests: docker daemon unreachable. ' +
+      'Start Docker Desktop and build the runner images to exercise the sandbox.',
+  );
+}
+
+/**
+ * Live Docker integration tests. These compile and run real student code.
+ * Skipped automatically when Docker Desktop is not running on this machine.
+ */
+describeDocker('Docker sandbox live integration', () => {
   const sandbox = new DockerSandboxService();
   const grading = new GradingService();
-  let dockerOk = false;
-
-  beforeAll(async () => {
-    dockerOk = await sandbox.isDockerAvailable();
-    if (!dockerOk) {
-      console.warn('SKIP live Docker tests: docker info failed');
-    }
-  }, 15000);
 
   afterEach(() => {
     // leftover containers from killed timeouts

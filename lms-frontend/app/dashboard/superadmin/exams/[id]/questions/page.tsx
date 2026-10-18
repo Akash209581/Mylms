@@ -36,9 +36,15 @@ export default function ExamQuestionsPage() {
 
   // Question bank state
   const [bankQuestions, setBankQuestions] = useState<any[]>([])
-  const [bankType, setBankType] = useState<string>('ALL')
+  const [bankType, setBankType] = useState<string>('')
   const [bankSearch, setBankSearch] = useState('')
   const [bankDifficulty, setBankDifficulty] = useState('')
+  const [bankDomain, setBankDomain] = useState<string>('')
+  const [domains, setDomains] = useState<any[]>([])
+  const [bankPage, setBankPage] = useState<number>(1)
+  const [bankPageSize, setBankPageSize] = useState<number>(10)
+  const [bankTotal, setBankTotal] = useState<number>(0)
+  const [bankTotalPages, setBankTotalPages] = useState<number>(1)
   const [bankLoading, setBankLoading] = useState(false)
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [adding, setAdding] = useState(false)
@@ -116,10 +122,24 @@ export default function ExamQuestionsPage() {
   }, [examId])
 
   useEffect(() => {
+    api.get('/domains').then(r => {
+      if (Array.isArray(r.data)) setDomains(r.data)
+    }).catch(() => {})
+  }, [])
+
+  const hasSelectedFilters = !!bankType || !!bankDifficulty || !!bankDomain || !!bankSearch.trim()
+
+  useEffect(() => {
     if (tab !== 'bank') return
+    if (!hasSelectedFilters) {
+      setBankQuestions([])
+      setBankTotal(0)
+      setBankTotalPages(1)
+      return
+    }
     const t = setTimeout(() => { fetchBankQuestions() }, 300)
     return () => clearTimeout(t)
-  }, [tab, bankType, bankSearch, bankDifficulty])
+  }, [tab, bankType, bankSearch, bankDifficulty, bankDomain, bankPage, bankPageSize])
 
   const fetchExam = async (silent = false) => {
     if (!silent) setLoading(true)
@@ -135,18 +155,39 @@ export default function ExamQuestionsPage() {
   }
 
   const fetchBankQuestions = async () => {
+    if (!hasSelectedFilters) {
+      setBankQuestions([])
+      setBankTotal(0)
+      setBankTotalPages(1)
+      return
+    }
     setBankLoading(true)
+    setError('')
     try {
       const r = await api.get('/question-bank', {
         params: {
           type: bankType === 'ALL' || !bankType ? undefined : bankType,
           difficulty: bankDifficulty || undefined,
+          domain: bankDomain || undefined,
           search: bankSearch.trim() || undefined,
           qStatus: 'APPROVED',
-          limit: 100,
+          page: bankPage,
+          limit: bankPageSize,
         },
       })
-      setBankQuestions(r.data || [])
+      if (r.data && Array.isArray(r.data.items)) {
+        setBankQuestions(r.data.items)
+        setBankTotal(r.data.total || 0)
+        setBankTotalPages(r.data.totalPages || 1)
+      } else if (Array.isArray(r.data)) {
+        setBankQuestions(r.data)
+        setBankTotal(r.data.length)
+        setBankTotalPages(Math.ceil(r.data.length / bankPageSize) || 1)
+      } else {
+        setBankQuestions([])
+        setBankTotal(0)
+        setBankTotalPages(1)
+      }
     } catch (e: any) {
       setError(e.response?.data?.message || 'Failed to load question bank')
       setBankQuestions([])
@@ -479,32 +520,48 @@ export default function ExamQuestionsPage() {
             <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3 mb-6">
               {/* Type Filter */}
               <select
-                className="input-field w-full lg:w-56 font-medium text-xs"
+                className="input-field w-full lg:w-48 font-medium text-xs"
                 value={bankType}
-                onChange={e => setBankType(e.target.value)}
+                onChange={e => { setBankType(e.target.value); setBankPage(1) }}
               >
-                {QUESTION_TYPES.map(qt => (
+                <option value="">Select Question Type</option>
+                {QUESTION_TYPES.filter(qt => qt.value !== 'ALL').map(qt => (
                   <option key={qt.value} value={qt.value}>{qt.label}</option>
                 ))}
               </select>
 
-              <input
-                className="input-field flex-1 text-xs"
-                placeholder="Search by question text, topic, company..."
-                value={bankSearch}
-                onChange={e => setBankSearch(e.target.value)}
-              />
-
+              {/* Difficulty Filter */}
               <select
-                className="input-field w-full sm:w-40 text-xs"
+                className="input-field w-full sm:w-36 text-xs"
                 value={bankDifficulty}
-                onChange={e => setBankDifficulty(e.target.value)}
+                onChange={e => { setBankDifficulty(e.target.value); setBankPage(1) }}
               >
-                <option value="">All Difficulties</option>
+                <option value="">Select Difficulty</option>
                 {['VERY_EASY', 'EASY', 'MEDIUM', 'HARD', 'VERY_HARD'].map(d => (
-                  <option key={d} value={d}>{d}</option>
+                  <option key={d} value={d}>{d.replace('_', ' ')}</option>
                 ))}
               </select>
+
+              {/* Domain Filter */}
+              <select
+                className="input-field w-full sm:w-44 text-xs"
+                value={bankDomain}
+                onChange={e => { setBankDomain(e.target.value); setBankPage(1) }}
+              >
+                <option value="">Select Domain</option>
+                <option value="Programming Domain">Programming Domain</option>
+                {domains.filter(d => d.name !== 'Programming Domain').map(d => (
+                  <option key={d.id} value={d.name}>{d.name}</option>
+                ))}
+              </select>
+
+              {/* Search Bar */}
+              <input
+                className="input-field flex-1 text-xs"
+                placeholder="Search by text, topic, company..."
+                value={bankSearch}
+                onChange={e => { setBankSearch(e.target.value); setBankPage(1) }}
+              />
 
               {/* Default Marks / Neg Marks Selector */}
               <div className="flex items-center gap-2 bg-[var(--bg-raised)] p-2 rounded-xl border border-[var(--border)] shrink-0">
@@ -788,9 +845,58 @@ export default function ExamQuestionsPage() {
                     </div>
                   )
                 })}
-                {bankQuestions.length === 0 && (
-                  <p className="text-center py-8 role-text-muted">No questions found in the bank matching your criteria.</p>
+                {hasSelectedFilters && bankQuestions.length === 0 && (
+                  <div className="text-center py-12 px-4 rounded-xl border border-dashed border-[var(--border)] bg-[var(--bg-surface)]/30">
+                    <p className="role-text-muted text-sm">No questions found matching your filter criteria.</p>
+                  </div>
                 )}
+                {!hasSelectedFilters && (
+                  <div className="text-center py-16 px-4 rounded-2xl border border-dashed border-[var(--border)] bg-[var(--bg-surface)]/40 my-2">
+                    <div className="text-4xl mb-3">🔍</div>
+                    <h3 className="text-sm font-bold text-[var(--text-primary)] mb-1">Select Filters to Browse Questions</h3>
+                    <p className="text-xs text-[var(--text-muted)] max-w-md mx-auto">
+                      Choose a <strong>Question Type</strong>, <strong>Difficulty</strong>, or <strong>Domain</strong> above to search the Question Bank on demand with pagination.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {hasSelectedFilters && bankQuestions.length > 0 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4 pt-4 border-t border-[var(--border)] text-xs">
+                <div className="text-[var(--text-muted)]">
+                  Showing <span className="font-bold text-[var(--text-primary)]">{bankQuestions.length}</span> of <span className="font-bold text-[var(--text-primary)]">{bankTotal}</span> questions found
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={bankPage <= 1 || bankLoading}
+                    onClick={() => setBankPage(p => Math.max(1, p - 1))}
+                    className="px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] text-[var(--text-primary)] disabled:opacity-30 disabled:pointer-events-none hover:bg-[var(--bg-raised)] transition-all font-semibold"
+                  >
+                    ◀ Prev
+                  </button>
+                  <span className="px-2 font-mono font-bold text-[var(--text-primary)]">
+                    Page {bankPage} of {bankTotalPages}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={bankPage >= bankTotalPages || bankLoading}
+                    onClick={() => setBankPage(p => Math.min(bankTotalPages, p + 1))}
+                    className="px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] text-[var(--text-primary)] disabled:opacity-30 disabled:pointer-events-none hover:bg-[var(--bg-raised)] transition-all font-semibold"
+                  >
+                    Next ▶
+                  </button>
+                  <select
+                    value={bankPageSize}
+                    onChange={e => { setBankPageSize(Number(e.target.value)); setBankPage(1) }}
+                    className="input-field text-xs py-1 px-2"
+                  >
+                    <option value={10}>10 / page</option>
+                    <option value={20}>20 / page</option>
+                    <option value={50}>50 / page</option>
+                  </select>
+                </div>
               </div>
             )}
           </div>

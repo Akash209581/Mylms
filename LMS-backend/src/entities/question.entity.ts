@@ -60,11 +60,18 @@ export class Question {
   @Column({ name: 'target_companies', nullable: true })
   targetCompanies: string; // TCS, Infosys, Wipro, Accenture, Amazon...
 
+  @Column({ name: 'target_roles', nullable: true })
+  targetRoles: string; // Software Engineer, Frontend Developer, Backend Developer...
+
+
   @Column({ nullable: true })
   programmingLanguage: string; // Python, C, C++, Java
 
   @Column({ nullable: true })
   recentYearAppearing: number;
+
+  @Column({ name: 'recent_month_appearing', nullable: true })
+  recentMonthAppearing: string;
 
   @Column({ nullable: true })
   bestPracticeFor: string;
@@ -137,6 +144,9 @@ export class Question {
     default: QuestionStatus.APPROVED,
   })
   status: QuestionStatus;
+
+  @Column({ name: 'likes_count', type: 'int', default: 0 })
+  likesCount: number;
 
   @Column({ name: 'created_by', nullable: true })
   createdBy?: number;

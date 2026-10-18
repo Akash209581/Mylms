@@ -118,6 +118,25 @@ export class User {
   @Column({ name: 'twitter_url', nullable: true })
   twitterUrl?: string;
 
+  // Competitive Programming Accounts
+  @Column({ name: 'leetcode_username', length: 100, nullable: true })
+  leetcodeUsername?: string;
+
+  @Column({ name: 'codeforces_username', length: 100, nullable: true })
+  codeforcesUsername?: string;
+
+  @Column({ name: 'codechef_username', length: 100, nullable: true })
+  codechefUsername?: string;
+
+  @Column({ name: 'hackerrank_username', length: 100, nullable: true })
+  hackerrankUsername?: string;
+
+  @Column({ name: 'hackerearth_username', length: 100, nullable: true })
+  hackerearthUsername?: string;
+
+  @Column({ name: 'coding_profiles_data', type: 'jsonb', nullable: true })
+  codingProfilesData?: Record<string, any>;
+
   @Column({ default: 0 })
   points: number;
 

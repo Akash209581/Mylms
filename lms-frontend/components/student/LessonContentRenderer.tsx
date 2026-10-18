@@ -86,15 +86,24 @@ function esc(s: string): string {
 
 function applyInlineMd(s: string): string {
   if (!s) return ''
-  s = s.replace(/==(.*?)==/g, '<mark class="nb-highlight">$1</mark>')
+  const inlineCodes: string[] = []
+  s = s.replace(/`([^`]+?)`/g, (_match, codeText) => {
+    const placeholder = `__INLINE_CODE_${inlineCodes.length}__`
+    inlineCodes.push(codeText)
+    return placeholder
+  })
+  s = s.replace(/\^\^([^\^]+?)\^\^/g, '<mark class="nb-highlight">$1</mark>')
   s = s.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
   s = s.replace(/\*(.*?)\*/g, '<em>$1</em>')
   s = s.replace(/~~(.*?)~~/g, '<del>$1</del>')
-  s = s.replace(/`([^`]+?)`/g, '<code class="nb-inline-code">$1</code>')
   s = s.replace(/!\[(.*?)\]\((.*?)\)/g,
     (_, alt, src) => `<img src="${normalizeSrc(src)}" alt="${esc(alt)}" class="nb-preview-img" />`)
   s = s.replace(/\[(.*?)\]\((.*?)\)/g,
     '<a href="$2" target="_blank" rel="noopener noreferrer" class="nb-link">$1</a>')
+  s = s.replace(/__INLINE_CODE_(\d+)__/g, (_m, idx) => {
+    const code = inlineCodes[Number(idx)] || ''
+    return `<code class="nb-inline-code">${code}</code>`
+  })
   return s
 }
 

@@ -50,4 +50,29 @@ export class UpdateStudentProfileDto {
   @IsString()
   @IsUrl({}, { message: 'Twitter URL must be a valid URL' })
   twitterUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  leetcodeUsername?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  codeforcesUsername?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  codechefUsername?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  hackerrankUsername?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  hackerearthUsername?: string;
 }

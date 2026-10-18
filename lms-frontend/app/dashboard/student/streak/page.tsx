@@ -10,6 +10,7 @@ import StudentReferenceShell from '@/components/layout/StudentReferenceShell'
 import { EmptyState, Loading, PageHeader } from '@/components/ui'
 import { api } from '@/lib/api'
 import { CheckCircle2, Flame, MoonStar, Send, XCircle } from 'lucide-react'
+import MarkdownRenderer from '@/components/editor/MarkdownRenderer'
 
 export default function DailyChallengePage() {
     const router = useRouter()
@@ -142,7 +143,7 @@ export default function DailyChallengePage() {
                     <div className="flex-1">
                         <p className="font-semibold text-base">{result.success ? 'Correct answer' : 'Not quite'}</p>
                         <p className="mt-1">{result.message}</p>
-                        {result.explanation && <p className="mt-2 text-sm opacity-80">{result.explanation}</p>}
+                        {result.explanation && <div className="mt-2 text-sm opacity-90"><MarkdownRenderer content={result.explanation} /></div>}
                         <Link href="/dashboard/student" className="ui-btn ui-btn-secondary ui-btn-sm mt-4">Back to overview</Link>
                     </div>
                 </div>

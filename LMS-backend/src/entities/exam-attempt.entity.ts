@@ -61,6 +61,14 @@ export class ExamAttempt {
   @Column({ name: 'unlocked_hints', type: 'jsonb', default: {} })
   unlockedHints: Record<string, number[]>;
 
+  /** Shuffled order of question IDs for this attempt */
+  @Column({ name: 'question_order', type: 'jsonb', nullable: true })
+  questionOrder?: number[];
+
+  /** Shuffled options array per question ID: { questionId: [opt0, opt1, ...] } */
+  @Column({ name: 'option_mappings', type: 'jsonb', nullable: true })
+  optionMappings?: Record<string, string[]>;
+
   /** Cumulative time in seconds reduced from exam timer due to hint reveals */
   @Column({ name: 'time_deducted_seconds', type: 'int', default: 0 })
   timeDeductedSeconds: number;

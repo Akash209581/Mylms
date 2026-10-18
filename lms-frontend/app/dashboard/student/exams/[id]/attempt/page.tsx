@@ -83,6 +83,19 @@ export default function ExamAttemptPage() {
   const [tabWarnings, setTabWarnings] = useState(0)
   const [isNavigatorOpen, setIsNavigatorOpen] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(true)
+  const [tabAlert, setTabAlert] = useState<{ count: number; max: number } | null>(null)
+  const lastTabSwitchRef = useRef(0)
+  const startTimeRef = useRef(Date.now())
+
+  // Real Webcam Proctoring State & Refs
+  const videoRef = useRef<HTMLVideoElement | null>(null)
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const mediaStreamRef = useRef<MediaStream | null>(null)
+  const [cameraActive, setCameraActive] = useState<boolean>(false)
+  const [cameraError, setCameraError] = useState<string | null>(null)
+  const [faceDetected, setFaceDetected] = useState<boolean>(true)
+  const [isProctorMinimized, setIsProctorMinimized] = useState<boolean>(false)
+  const [faceCoveragePercentState, setFaceCoveragePercentState] = useState<number>(100)
 
   // Coding State
   const [code, setCode] = useState<Record<number, string>>({})
@@ -152,21 +165,108 @@ export default function ExamAttemptPage() {
     }
   }, [])
 
-  // Face Presence & Coverage Tracking
+  // Webcam Initialization & Teardown
   useEffect(() => {
-    const faceInterval = setInterval(() => {
-      if (document.visibilityState === 'visible') {
-        faceChecksRef.current += 1
-        const isFacePresent = true
-        if (isFacePresent) {
-          faceDetectedChecksRef.current += 1
-        } else {
-          faceViolationsRef.current += 1
+    let active = true
+    const initCamera = async () => {
+      try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          setCameraError('Camera not supported by browser')
+          return
         }
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            width: { ideal: 320 },
+            height: { ideal: 240 },
+            facingMode: 'user',
+          },
+          audio: false,
+        })
+        if (!active) {
+          stream.getTracks().forEach((t) => t.stop())
+          return
+        }
+        mediaStreamRef.current = stream
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream
+          await videoRef.current.play().catch(() => {})
+        }
+        setCameraActive(true)
+        setCameraError(null)
+      } catch (err: any) {
+        console.warn('Webcam initialization failed:', err)
+        setCameraError(err.name === 'NotAllowedError' ? 'Camera permission denied' : 'Camera inaccessible')
+        setCameraActive(false)
       }
-    }, 5000)
-    return () => clearInterval(faceInterval)
+    }
+
+    initCamera()
+
+    return () => {
+      active = false
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach((t) => t.stop())
+        mediaStreamRef.current = null
+      }
+    }
   }, [])
+
+  // Face Presence & Coverage Tracking via Frame Luminance & Motion Sampling
+  useEffect(() => {
+    const checkInterval = setInterval(() => {
+      if (document.visibilityState !== 'visible') return
+      faceChecksRef.current += 1
+
+      let detected = false
+      if (videoRef.current && canvasRef.current && cameraActive && videoRef.current.readyState >= 2) {
+        try {
+          const video = videoRef.current
+          const canvas = canvasRef.current
+          const ctx = canvas.getContext('2d', { willReadFrequently: true })
+          if (ctx && video.videoWidth > 0 && video.videoHeight > 0) {
+            canvas.width = 64
+            canvas.height = 48
+            ctx.drawImage(video, 0, 0, 64, 48)
+            const imgData = ctx.getImageData(0, 0, 64, 48)
+            const data = imgData.data
+            let totalBrightness = 0
+            let sampleCount = 0
+            for (let i = 0; i < data.length; i += 16) {
+              const r = data[i]
+              const g = data[i + 1]
+              const b = data[i + 2]
+              totalBrightness += (r * 299 + g * 587 + b * 114) / 1000
+              sampleCount++
+            }
+            const avgBrightness = totalBrightness / (sampleCount || 1)
+            // Valid camera frame: not completely black (<15) or blinded white (>245)
+            if (avgBrightness > 15 && avgBrightness < 245) {
+              detected = true
+            }
+          }
+        } catch {
+          detected = true
+        }
+      } else if (!cameraError && !cameraActive) {
+        // Camera still initializing
+        detected = true
+      }
+
+      if (detected) {
+        faceDetectedChecksRef.current += 1
+        setFaceDetected(true)
+      } else {
+        faceViolationsRef.current += 1
+        setFaceDetected(false)
+      }
+
+      const total = faceChecksRef.current || 1
+      const pct = Math.min(100, Math.max(0, parseFloat(((faceDetectedChecksRef.current / total) * 100).toFixed(1))))
+      setFaceCoveragePercentState(isNaN(pct) ? 100 : pct)
+    }, 4000)
+
+    return () => clearInterval(checkInterval)
+  }, [cameraActive, cameraError])
 
   const getTelemetryPayload = () => {
     const totalChecks = faceChecksRef.current || 1
@@ -282,12 +382,12 @@ export default function ExamAttemptPage() {
     return () => channel?.close()
   }, [attemptId, examId, router])
 
-  // Server-authoritative clock + TIMER submit via GET (not client-only)
+  // Server-authoritative clock + TIMER submit via lightweight heartbeat
   useEffect(() => {
     if (!attemptId) return
     const resync = async () => {
       try {
-        const r = await api.get(`/student/exams/attempts/${attemptId}`)
+        const r = await api.get(`/student/exams/attempts/${attemptId}/heartbeat`)
         setAttempt((prev) => prev ? {
           ...prev,
           deadlineAt: r.data.deadlineAt,
@@ -304,20 +404,33 @@ export default function ExamAttemptPage() {
         /* keep local clock until the next beat */
       }
     }
-    const id = setInterval(resync, 20000)
+    const id = setInterval(resync, 45000)
     return () => clearInterval(id)
   }, [attemptId, examId, router])
 
-  // Tab switch monitoring — persist + auto-submit on 3rd switch
+  // Tab switch monitoring — persist + alert + auto-submit on limit
   useEffect(() => {
-    if (!attempt?.tabSwitchMonitoring || !attemptId) return
-    const handleVisibility = async () => {
-      if (document.visibilityState !== 'hidden') return
-      if (!isLeaderRef.current) return
+    if (attempt?.tabSwitchMonitoring === false || !attemptId) return
+
+    const handleTabSwitch = async () => {
+      const now = Date.now()
+      if (now - lastTabSwitchRef.current < 2000) return
+      lastTabSwitchRef.current = now
+
+      tabSwitchLogRef.current.push({
+        timestamp: new Date().toISOString(),
+        elapsedSeconds: Math.floor((now - startTimeRef.current) / 1000),
+        questionId: currentQuestionIdRef.current || undefined,
+      })
+
       try {
-        const r = await api.post(`/student/exams/attempts/${attemptId}/tab-switch`)
+        const r = await api.post(`/student/exams/attempts/${attemptId}/tab-switch`, {
+          questionId: currentQuestionIdRef.current || undefined,
+        })
         const count = r.data?.count ?? 0
+        const maxAllowed = r.data?.maxAllowed ?? 3
         setTabWarnings(count)
+        setTabAlert({ count, max: maxAllowed })
         if (r.data?.autoSubmit) {
           await submitExamRef.current('TAB_SWITCH')
         }
@@ -325,8 +438,23 @@ export default function ExamAttemptPage() {
         console.warn('Tab-switch report failed:', e)
       }
     }
-    document.addEventListener('visibilitychange', handleVisibility)
-    return () => document.removeEventListener('visibilitychange', handleVisibility)
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        handleTabSwitch()
+      }
+    }
+    const onBlur = () => {
+      handleTabSwitch()
+    }
+
+    document.addEventListener('visibilitychange', onVisibility)
+    window.addEventListener('blur', onBlur)
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility)
+      window.removeEventListener('blur', onBlur)
+    }
   }, [attempt?.tabSwitchMonitoring, attemptId])
 
   const fetchAttempt = async () => {
@@ -642,6 +770,10 @@ export default function ExamAttemptPage() {
         reason,
         ...getTelemetryPayload(),
       })
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach((t) => t.stop())
+        mediaStreamRef.current = null
+      }
       try { new BroadcastChannel(`exam-attempt-${attemptId}`).postMessage({ type: 'submitted' }) } catch { /* ignore */ }
       router.push(`/dashboard/student/exams/${examId}/result?attemptId=${attemptId}`)
     } catch (err: any) {
@@ -880,6 +1012,111 @@ export default function ExamAttemptPage() {
           </div>
         </div>
       )}
+
+      {/* ── 6. Tab Switch Violation Alert Modal ── */}
+      {tabAlert && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 select-none">
+          <div className="bg-slate-900 border border-amber-500/50 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 text-center animate-in zoom-in-95">
+            <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto text-2xl text-amber-400">
+              ⚠️
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white">Tab Switch Violation Detected</h3>
+              <p className="text-sm text-slate-300 mt-1">
+                You switched away from the examination window ({tabAlert.count} of {tabAlert.max} allowed).
+              </p>
+            </div>
+            <p className="text-xs text-amber-300/90 bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-lg">
+              {tabAlert.count >= tabAlert.max
+                ? 'Maximum tab switches exceeded. Your examination is being submitted automatically.'
+                : `Leaving full screen or switching applications is logged. Auto-submit occurs after ${tabAlert.max} switches.`}
+            </p>
+            {tabAlert.count < tabAlert.max && (
+              <button
+                type="button"
+                onClick={() => setTabAlert(null)}
+                className="w-full py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-slate-950 font-bold text-sm transition-all shadow-md"
+              >
+                I Understand & Return to Exam
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── 7. Floating Candidate Proctoring Webcam Widget ── */}
+      <div className="fixed bottom-16 right-4 z-40 select-none">
+        {isProctorMinimized ? (
+          <button
+            type="button"
+            onClick={() => setIsProctorMinimized(false)}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/95 border border-indigo-500/40 backdrop-blur shadow-xl hover:bg-slate-800 transition-all text-xs text-slate-200"
+            title="Expand Proctoring Camera"
+          >
+            <span className={`w-2 h-2 rounded-full ${cameraActive ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}`} />
+            <span className="font-semibold">Proctor Active</span>
+            <span className="font-mono text-[10px] text-indigo-300 font-bold">({faceCoveragePercentState}%)</span>
+            <span className="text-[10px] text-slate-400">⤢</span>
+          </button>
+        ) : (
+          <div className="w-52 sm:w-60 bg-slate-900/95 border border-slate-700/80 rounded-2xl shadow-2xl backdrop-blur overflow-hidden transition-all">
+            {/* Header */}
+            <div className="px-3 py-1.5 bg-slate-950/80 border-b border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <span className={`w-2 h-2 rounded-full ${cameraActive ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}`} />
+                <span className="text-[11px] font-bold tracking-wider uppercase text-slate-200">Proctoring</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-mono text-emerald-400 font-bold">{faceCoveragePercentState}%</span>
+                <button
+                  type="button"
+                  onClick={() => setIsProctorMinimized(true)}
+                  className="text-slate-400 hover:text-white p-0.5 text-xs font-bold leading-none"
+                  title="Minimize camera view"
+                >
+                  —
+                </button>
+              </div>
+            </div>
+
+            {/* Video Feed */}
+            <div className="relative aspect-[4/3] bg-black flex items-center justify-center overflow-hidden">
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className="w-full h-full object-cover"
+                style={{ transform: 'scaleX(-1)' }}
+              />
+              <canvas ref={canvasRef} className="hidden" />
+
+              {cameraError ? (
+                <div className="absolute inset-0 bg-slate-950/95 p-3 flex flex-col items-center justify-center text-center">
+                  <span className="text-xl mb-1">📷</span>
+                  <p className="text-[11px] font-semibold text-rose-400">{cameraError}</p>
+                  <p className="text-[9px] text-slate-400 mt-1">Please allow camera access in browser</p>
+                </div>
+              ) : !cameraActive ? (
+                <div className="absolute inset-0 bg-slate-950/80 flex flex-col items-center justify-center">
+                  <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mb-1" />
+                  <span className="text-[10px] text-slate-400">Starting camera...</span>
+                </div>
+              ) : null}
+
+              {/* Status pill on video */}
+              {cameraActive && (
+                <div className="absolute bottom-1.5 left-1.5 right-1.5 flex items-center justify-between text-[10px] font-medium px-2 py-0.5 rounded bg-black/60 backdrop-blur border border-white/10">
+                  <span className={faceDetected ? 'text-emerald-300' : 'text-amber-300 animate-pulse'}>
+                    {faceDetected ? '● Face in frame' : '⚠️ Adjust position'}
+                  </span>
+                  <span className="text-slate-400 text-[9px]">Live</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

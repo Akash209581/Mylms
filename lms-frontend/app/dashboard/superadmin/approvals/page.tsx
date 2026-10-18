@@ -266,7 +266,7 @@ export default function ApprovalsPage() {
         if (!matchStatus || !matchType || !matchDiff || !matchDomain || !matchCreator) return false
 
         if (!searchQuery.trim()) return true
-        const text = `${q.questionNumber || ''} ${q.questionText || ''} ${q.topicNames || ''} ${q.domain || ''} ${q.targetCompanies || q.companiesAppeared || ''} ${q.creator?.name || ''} ${q.creator?.email || ''}`.toLowerCase()
+        const text = `${q.questionNumber || ''} ${q.questionText || ''} ${q.topicNames || ''} ${q.domain || ''} ${q.targetCompanies || ''} ${q.targetRoles || ''} ${q.companiesAppeared || ''} ${q.creator?.name || ''} ${q.creator?.email || ''}`.toLowerCase()
         return text.includes(searchQuery.toLowerCase().trim())
     })
 
@@ -640,16 +640,17 @@ export default function ApprovalsPage() {
                                             <th className="pb-3 pr-4">Status</th>
                                             <th className="pb-3 pr-4">Type</th>
                                             <th className="pb-3 pr-4">Question Details</th>
-                                            <th className="pb-3 pr-4">Companies</th>
+                                            <th className="pb-3 pr-4">Companies / Roles</th>
                                             <th className="pb-3 pr-4">Creator / Author</th>
                                             <th className="pb-3 text-right">Moderation Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100 dark:divide-white/5">
                                         {filteredQuestions.map((q) => {
+                                            const targetRoles = q.targetRoles || ''
                                             const targetComps = q.targetCompanies || ''
                                             const appearedComps = q.companiesAppeared || ''
-                                            const hasComps = !!(targetComps || appearedComps)
+                                            const hasComps = !!(targetRoles || targetComps || appearedComps)
                                             const status = q.status || 'PENDING_APPROVAL'
                                             return (
                                                 <tr key={q.id} className="hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors">
@@ -691,6 +692,15 @@ export default function ApprovalsPage() {
                                                     <td className="py-4 pr-4 min-w-[180px] max-w-xs">
                                                         {hasComps ? (
                                                             <div className="flex flex-col gap-1.5">
+                                                                {targetRoles && (
+                                                                    <div className="flex flex-wrap items-center gap-1">
+                                                                        {targetRoles.split(',').slice(0, 2).map((r: string, idx: number) => (
+                                                                            <span key={idx} className="px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 text-[10px] font-medium truncate" title={`Target Role: ${r.trim()}`}>
+                                                                                🎯 {r.trim()}
+                                                                            </span>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
                                                                 {targetComps && (
                                                                     <div className="flex flex-wrap items-center gap-1">
                                                                         {targetComps.split(',').slice(0, 2).map((c: string, idx: number) => (

@@ -66,12 +66,31 @@ async function bootstrap() {
   }
   console.log(`📁 Serving uploads from: ${uploadsDir}`);
 
+  // Uploaded files are attacker-influenced content served from the API origin,
+  // where the auth cookie lives. nosniff stops MIME confusion, the sandbox CSP
+  // stops scripts inside an SVG/XML that a viewer navigates to directly, and
+  // markup types are forced to download since nothing here needs them inline.
+  const INLINE_UNSAFE = /\.(html?|xhtml|xml|svgz?)$/i;
+  const STATIC_IMAGE_EXTS = /\.(png|jpe?g|gif|webp|svg|ico)$/i;
   app.use(
     '/uploads',
     express.static(uploadsDir, {
-      setHeaders: (res) => {
-        res.setHeader('Access-Control-Allow-Origin', '*');
+      maxAge: '7d',
+      setHeaders: (res, filePath) => {
+        const origin = res.req?.headers?.origin as string | undefined;
+        if (origin && isOriginTrusted(origin, allowedOrigins)) {
+          res.setHeader('Access-Control-Allow-Origin', origin);
+          res.setHeader('Vary', 'Origin');
+        }
         res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
+        if (INLINE_UNSAFE.test(filePath)) {
+          res.setHeader('Content-Disposition', 'attachment');
+        }
+        if (STATIC_IMAGE_EXTS.test(filePath)) {
+          res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+        }
       },
     }),
   );

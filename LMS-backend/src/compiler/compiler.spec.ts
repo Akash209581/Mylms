@@ -7,6 +7,8 @@ import {
 } from './compiler.constants';
 import { CompilerQueueService } from './compiler-queue.service';
 
+const itRedis = process.env.RUN_REDIS_TESTS ? it : it.skip;
+
 describe('Secure Code Execution Module Tests', () => {
   let gradingService: GradingService;
 
@@ -65,13 +67,60 @@ describe('Secure Code Execution Module Tests', () => {
   describe('2. Docker Sandbox Security Limits', () => {
     it('should enforce strict security resource bounds', () => {
       expect(SANDBOX_LIMITS.NETWORK).toBe('none');
-      expect(SANDBOX_LIMITS.MEMORY).toBe('256m');
+      expect(SANDBOX_LIMITS.MEMORY).toBe('512m');
       expect(SANDBOX_LIMITS.CPUS).toBe('1.0');
-      expect(SANDBOX_LIMITS.PIDS_LIMIT).toBe(64);
+      expect(SANDBOX_LIMITS.PIDS_LIMIT).toBe(128);
       expect(SANDBOX_LIMITS.USER).toBe('1000:1000');
       expect(SANDBOX_LIMITS.CAP_DROP).toBe('ALL');
       expect(SANDBOX_LIMITS.TIME_LIMIT_MS).toBe(5000);
       expect(SANDBOX_LIMITS.MAX_OUTPUT_BYTES).toBe(64 * 1024);
+    });
+
+    // Equal MEMORY and MEMORY_SWAP is what actually disables swap; if swap were
+    // left higher, a job could spill past its memory cap onto disk.
+    it('pins swap to the memory cap so the sandbox cannot swap out', () => {
+      expect(SANDBOX_LIMITS.MEMORY_SWAP).toBe(SANDBOX_LIMITS.MEMORY);
+    });
+
+    it('never runs the sandbox as root', () => {
+      const [uid, gid] = SANDBOX_LIMITS.USER.split(':').map(Number);
+      expect(uid).toBeGreaterThan(0);
+      expect(gid).toBeGreaterThan(0);
+    });
+
+    it('bounds compilation separately from and no tighter than execution', () => {
+      expect(SANDBOX_LIMITS.COMPILE_TIME_LIMIT_MS).toBeGreaterThanOrEqual(SANDBOX_LIMITS.TIME_LIMIT_MS);
+    });
+  });
+
+  describe('2b. Runner images match the images the build actually produces', () => {
+    // package.json's `docker:runners` script builds lms-*-runner tags. When these
+    // drifted to `*-compiler` names, resolveImage fell through to its legacy
+    // fallbacks on every single job.
+    it.each([
+      ['c', 'lms-c-runner'],
+      ['cpp', 'lms-cpp-runner'],
+      ['java', 'lms-java-runner'],
+      ['python', 'lms-python-runner'],
+      ['javascript', 'lms-node-runner'],
+    ])('%s resolves to %s', (lang, image) => {
+      expect(resolveLanguageConfig(lang)?.image).toBe(image);
+    });
+
+    it('gives C and C++ separate images', () => {
+      expect(resolveLanguageConfig('c')?.image).not.toBe(resolveLanguageConfig('cpp')?.image);
+    });
+
+    it('rejects an unknown language instead of defaulting to a runner', () => {
+      expect(resolveLanguageConfig('ruby')).toBeNull();
+      expect(resolveLanguageConfig('')).toBeNull();
+      expect(resolveLanguageConfig(undefined as any)).toBeNull();
+    });
+
+    it('accepts documented aliases case-insensitively', () => {
+      expect(resolveLanguageConfig('C++')?.languageKey).toBe('cpp');
+      expect(resolveLanguageConfig(' PY ')?.languageKey).toBe('python');
+      expect(resolveLanguageConfig('node')?.languageKey).toBe('javascript');
     });
   });
 
@@ -275,7 +324,10 @@ describe('Secure Code Execution Module Tests', () => {
       await queueService.onModuleDestroy();
     });
 
-    it('should process BullMQ jobs strictly sequentially in FIFO order (concurrency: 1)', async () => {
+    // Needs a live Redis on 127.0.0.1:6379. The sequential-fallback test above
+    // already covers the FIFO invariant without infrastructure, so this opts in
+    // explicitly rather than failing on machines with no Redis.
+    itRedis('should process BullMQ jobs strictly sequentially in FIFO order (concurrency: 1)', async () => {
       const { Queue, Worker } = require('bullmq');
       const testQueueName = `test-fifo-${Date.now()}`;
       const connection = { host: '127.0.0.1', port: 6379 };

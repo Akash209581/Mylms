@@ -16,7 +16,7 @@ import { ExamRunnerService } from './exam-runner.service';
 import { ExamService } from './exam.service';
 import { CompilerQueueService } from '../compiler/compiler-queue.service';
 import { CodeJobPayload } from '../compiler/compiler.constants';
-import { isMcqCorrect, normalizeMcqLetter } from '../common/mcq-answer.util';
+import { isMcqCorrect, normalizeMcqLetter, optionTextForLetter } from '../common/mcq-answer.util';
 
 interface RequestUser { sub: number; role: UserRole; collegeId?: number; }
 
@@ -35,8 +35,170 @@ function publicTestCases(allCases: any[]): any[] {
   return allCases.slice(0, limit);
 }
 
+function shuffleList<T>(arr: T[]): T[] {
+  const result = [...arr];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
+function isOptionCorrectForAttempt(
+  given: string | null | undefined,
+  correctAnswer: string | null | undefined,
+  originalOptions?: string[] | null,
+  attemptOptions?: string[] | null,
+): boolean {
+  if (!given) return false;
+  if (!attemptOptions || !originalOptions) {
+    return isMcqCorrect(given, correctAnswer, originalOptions);
+  }
+  const origLetter = normalizeMcqLetter(correctAnswer, originalOptions);
+  const correctText = optionTextForLetter(origLetter, originalOptions) || correctAnswer;
+  const studentLetter = normalizeMcqLetter(given, attemptOptions);
+  const chosenText = optionTextForLetter(studentLetter, attemptOptions) || given;
+  return String(chosenText).trim().toLowerCase() === String(correctText).trim().toLowerCase();
+}
+
+interface NonCodingEvaluation {
+  isCorrect: boolean;
+  score: number;
+  details?: any;
+}
+
+function evaluateSectionAQuestion(
+  q: Question,
+  given: string | null | undefined,
+  attemptOpts: string[] | undefined,
+  marks: number,
+  negativeMarks: number,
+  negativeMarkingEnabled: boolean,
+): NonCodingEvaluation {
+  if (!given || !String(given).trim()) {
+    return { isCorrect: false, score: 0 };
+  }
+
+  // 1. JUMBLED CODE (JC)
+  if (q.type === QuestionType.JC) {
+    let studentOrder: string[] = [];
+    try {
+      const parsed = JSON.parse(given);
+      if (Array.isArray(parsed)) studentOrder = parsed;
+    } catch {
+      studentOrder = String(given).split('\n');
+    }
+    studentOrder = studentOrder.map(s => String(s).trim()).filter(Boolean);
+
+    // Reference order is q.jumbledStatements (saved in correct order in question bank) or q.correctCode
+    let correctOrder: string[] = [];
+    if (Array.isArray(q.jumbledStatements) && q.jumbledStatements.length > 0) {
+      correctOrder = q.jumbledStatements.map(s => String(s).trim()).filter(Boolean);
+    } else if (q.correctCode) {
+      correctOrder = q.correctCode.split('\n').map(s => String(s).trim()).filter(Boolean);
+    }
+
+    if (!correctOrder.length || !studentOrder.length) {
+      return { isCorrect: false, score: 0 };
+    }
+
+    let matchedLines = 0;
+    const totalLines = correctOrder.length;
+    for (let i = 0; i < totalLines; i++) {
+      if (studentOrder[i] && studentOrder[i] === correctOrder[i]) {
+        matchedLines++;
+      }
+    }
+
+    const isAllCorrect = matchedLines === totalLines && studentOrder.length === totalLines;
+    if (isAllCorrect) {
+      return { isCorrect: true, score: Number(marks) };
+    }
+
+    if (matchedLines > 0 && totalLines > 0) {
+      const partialRatio = matchedLines / totalLines;
+      return {
+        isCorrect: false,
+        score: Math.round(Number(marks) * partialRatio * 100) / 100,
+        details: { matchedLines, totalLines },
+      };
+    }
+
+    return {
+      isCorrect: false,
+      score: negativeMarkingEnabled ? -Number(negativeMarks || 0) : 0,
+    };
+  }
+
+  // 2. MATCHING QUESTION (MQ)
+  if (q.type === QuestionType.MQ) {
+    let studentPairs: Record<string, string> = {};
+    try {
+      const parsed = JSON.parse(given);
+      if (typeof parsed === 'object' && parsed !== null) {
+        if (Array.isArray(parsed)) {
+          parsed.forEach((p: any) => {
+            if (p && p.left) studentPairs[String(p.left).trim()] = String(p.right || '').trim();
+          });
+        } else {
+          Object.entries(parsed).forEach(([k, v]) => {
+            studentPairs[String(k).trim()] = String(v || '').trim();
+          });
+        }
+      }
+    } catch {
+      studentPairs = {};
+    }
+
+    const referencePairs = q.matchingPairs || [];
+    if (!referencePairs.length) {
+      return { isCorrect: false, score: 0 };
+    }
+
+    let correctMatches = 0;
+    const totalPairs = referencePairs.length;
+    referencePairs.forEach(p => {
+      const leftKey = String(p.left).trim();
+      const expectedRight = String(p.right).trim();
+      const chosenRight = studentPairs[leftKey];
+      if (chosenRight && chosenRight.toLowerCase() === expectedRight.toLowerCase()) {
+        correctMatches++;
+      }
+    });
+
+    const isAllCorrect = correctMatches === totalPairs;
+    if (isAllCorrect) {
+      return { isCorrect: true, score: Number(marks) };
+    }
+
+    if (correctMatches > 0) {
+      const partialRatio = correctMatches / totalPairs;
+      return {
+        isCorrect: false,
+        score: Math.round(Number(marks) * partialRatio * 100) / 100,
+        details: { correctMatches, totalPairs },
+      };
+    }
+
+    return {
+      isCorrect: false,
+      score: negativeMarkingEnabled ? -Number(negativeMarks || 0) : 0,
+    };
+  }
+
+  // 3. Standard MCQ / OP / Default
+  const isCorrect = isOptionCorrectForAttempt(given, q.correctAnswer, q.options, attemptOpts);
+  if (isCorrect) {
+    return { isCorrect: true, score: Number(marks) };
+  }
+  return {
+    isCorrect: false,
+    score: negativeMarkingEnabled ? -Number(negativeMarks || 0) : 0,
+  };
+}
+
 // Columns returned to student — NO correct answers, NO hidden test cases, secret hints revealed only if unlocked
-function sanitizeQuestion(eq: ExamQuestion, unlockedIndices: number[] = []) {
+function sanitizeQuestion(eq: ExamQuestion, unlockedIndices: number[] = [], customOptions?: string[]) {
   const q = eq.question;
   const qText = q.questionText || q.problemStatement || '';
   const pStmt = q.problemStatement || q.questionText || '';
@@ -45,7 +207,7 @@ function sanitizeQuestion(eq: ExamQuestion, unlockedIndices: number[] = []) {
     ? q.hints.map((hText, idx) => {
         const isUnlocked = unlockedIndices.includes(idx);
         const penaltyType = eq.hintPenaltyType || 'MARKS';
-        const defaultVal = penaltyType === 'TIME' ? 120 : 1;
+        const defaultVal = penaltyType === 'TIME' ? 2 : 1;
         const penaltyValue = Array.isArray(eq.hintPenalties) && eq.hintPenalties[idx] !== undefined
           ? Number(eq.hintPenalties[idx])
           : defaultVal;
@@ -70,20 +232,37 @@ function sanitizeQuestion(eq: ExamQuestion, unlockedIndices: number[] = []) {
     sortOrder: eq.sortOrder,
     domain: q.domain,
     topicNames: q.topicNames,
+    programmingLanguage: q.programmingLanguage,
+    likesCount: q.likesCount || 0,
+    codeSnippet: q.codeSnippet,
     hints,
     hintPenaltyType: eq.hintPenaltyType || 'MARKS',
   };
   if (q.type === QuestionType.MCQ || q.type === QuestionType.OP) {
-    return { ...base, options: q.options, problemStatement: pStmt, codeSnippet: q.codeSnippet };
+    return { ...base, options: customOptions || q.options, problemStatement: pStmt };
   }
   if (q.type === QuestionType.FIB) {
     return { ...base, problemStatement: pStmt, blanks: q.blanks };
   }
   if (q.type === QuestionType.MQ) {
-    return { ...base, problemStatement: pStmt, matchingPairs: q.matchingPairs, extraRightMatches: q.extraRightMatches };
+    const leftItems = (q.matchingPairs || []).map(p => p.left);
+    const rightItems = [
+      ...(q.matchingPairs || []).map(p => p.right),
+      ...(q.extraRightMatches || []),
+    ].filter(Boolean);
+    const shuffledRights = customOptions || shuffleList([...rightItems]);
+    return {
+      ...base,
+      problemStatement: pStmt,
+      leftItems,
+      rightItems: shuffledRights,
+      extraRightMatches: q.extraRightMatches,
+    };
   }
   if (q.type === QuestionType.JC) {
-    return { ...base, problemStatement: pStmt, jumbledStatements: q.jumbledStatements };
+    const stmts = q.jumbledStatements || (q.correctCode ? q.correctCode.split('\n') : []);
+    const shuffledStmts = customOptions || shuffleList([...stmts]);
+    return { ...base, problemStatement: pStmt, jumbledStatements: shuffledStmts };
   }
   const samples = publicTestCases(q.testCases || []).slice(0, 2).map(tc => ({
     input: tc.input, output: tc.output, explanation: tc.explanation,
@@ -95,7 +274,6 @@ function sanitizeQuestion(eq: ExamQuestion, unlockedIndices: number[] = []) {
     outputFormat: q.outputFormat,
     constraints: q.constraints,
     allowedLanguages: q.allowedLanguages,
-    codeSnippet: q.codeSnippet,
     sampleTestCases: samples,
   };
 }
@@ -214,11 +392,41 @@ export class ExamStudentService {
       throw new ConflictException('Attempt limit reached');
 
     const deadline = this.computeDeadline(exam);
+
+    const examQuestions = await this.eqRepo.find({ where: { examId }, order: { section: 'ASC', sortOrder: 'ASC' } });
+    let qOrder: number[] | undefined = undefined;
+    if (exam.randomizeQuestions) {
+      const secA = shuffleList(examQuestions.filter(e => e.section === 'A').map(e => e.questionId));
+      const secB = shuffleList(examQuestions.filter(e => e.section === 'B').map(e => e.questionId));
+      const other = shuffleList(examQuestions.filter(e => e.section !== 'A' && e.section !== 'B').map(e => e.questionId));
+      qOrder = [...secA, ...secB, ...other];
+    }
+
+    const optMappings: Record<string, string[]> = {};
+    for (const eq of examQuestions) {
+      const q = eq.question || await this.questionRepo.findOneBy({ id: eq.questionId });
+      if (!q) continue;
+      const qIdKey = String(q.id);
+      if (q.type === QuestionType.MCQ && exam.randomizeOptions && Array.isArray(q.options) && q.options.length > 1) {
+        optMappings[qIdKey] = shuffleList(q.options);
+      } else if (q.type === QuestionType.JC && Array.isArray(q.jumbledStatements) && q.jumbledStatements.length > 1) {
+        optMappings[qIdKey] = shuffleList(q.jumbledStatements);
+      } else if (q.type === QuestionType.MQ && Array.isArray(q.matchingPairs) && q.matchingPairs.length > 1) {
+        const rights = [
+          ...q.matchingPairs.map(p => p.right),
+          ...(q.extraRightMatches || []),
+        ].filter(Boolean);
+        optMappings[qIdKey] = shuffleList(rights);
+      }
+    }
+
     const attempt = this.attemptRepo.create({
       examId, studentId: user.sub,
       attemptNumber: attempts.length + 1,
       status: AttemptStatus.IN_PROGRESS,
       deadlineAt: deadline,
+      questionOrder: qOrder,
+      optionMappings: Object.keys(optMappings).length > 0 ? optMappings : undefined,
     });
     await this.attemptRepo.save(attempt);
     return this.buildAttemptResponse(user, attempt);
@@ -234,6 +442,24 @@ export class ExamStudentService {
       attempt.status = AttemptStatus.SUBMITTED;
     }
     return this.buildAttemptResponse(user, attempt);
+  }
+
+  // ─── Lightweight Heartbeat ───────────────────────────────────────────────
+
+  async getHeartbeat(user: RequestUser, attemptId: number) {
+    const attempt = await this.getStudentAttempt(user, attemptId);
+    // Auto-submit if deadline passed
+    if (attempt.status === AttemptStatus.IN_PROGRESS && new Date() >= new Date(attempt.deadlineAt)) {
+      await this.submitAttempt(user, attemptId, { reason: 'TIMER' });
+      attempt.status = AttemptStatus.SUBMITTED;
+    }
+    return {
+      deadlineAt: attempt.deadlineAt,
+      serverTime: new Date().toISOString(),
+      remainingSeconds: this.remainingSeconds(attempt),
+      status: attempt.status,
+      tabSwitchCount: attempt.tabSwitchCount || 0,
+    };
   }
 
   // ─── Save MCQ Answers ─────────────────────────────────────────────────────
@@ -330,7 +556,7 @@ export class ExamStudentService {
     const attempt = await this.getStudentAttempt(user, attemptId);
     this.assertInProgress(attempt);
     const exam = await this.examRepo.findOneBy({ id: attempt.examId });
-    if (!exam?.tabSwitchMonitoring) {
+    if (exam && exam.tabSwitchMonitoring === false) {
       return { count: attempt.tabSwitchCount || 0, autoSubmit: false };
     }
     const count = (attempt.tabSwitchCount || 0) + 1;
@@ -454,19 +680,23 @@ export class ExamStudentService {
     }
     const questions = await this.eqRepo.find({ where: { examId: attempt.examId }, order: { section: 'ASC', sortOrder: 'ASC' } });
 
-    // Score MCQs (accept stored letter A–D or option text)
+    // Score Section A (MCQs, Matching, Jumbled Code)
     let mcqScore = 0;
     for (const eq of questions.filter(q => q.section === 'A')) {
       const q = eq.question || await this.questionRepo.findOneBy({ id: eq.questionId });
       if (!q) continue;
       const given = attempt.mcqAnswers?.[String(eq.questionId)];
       if (!given) continue;
-      let qEarned = 0;
-      if (isMcqCorrect(given, q.correctAnswer, q.options)) {
-        qEarned = Number(eq.marks);
-      } else if (exam.negativeMarking) {
-        qEarned = -Number(eq.negativeMarks || exam.negativeMarksValue || 0);
-      }
+      const attemptOpts = attempt.optionMappings?.[String(eq.questionId)] || q.options;
+      const evaluation = evaluateSectionAQuestion(
+        q,
+        given,
+        attemptOpts,
+        Number(eq.marks),
+        Number(eq.negativeMarks || exam.negativeMarksValue || 0),
+        Boolean(exam.negativeMarking),
+      );
+      let qEarned = evaluation.score;
       if (qEarned > 0 && eq.hintPenaltyType === 'MARKS' && attempt.unlockedHints?.[String(eq.questionId)]) {
         const hintsUnlocked = attempt.unlockedHints[String(eq.questionId)] || [];
         const hintDeduction = hintsUnlocked.reduce((sum, hIdx) => {
@@ -477,7 +707,7 @@ export class ExamStudentService {
       }
       mcqScore += qEarned;
     }
-    mcqScore = Math.max(0, mcqScore);
+    mcqScore = Math.max(0, Math.round(mcqScore * 100) / 100);
 
     // Coding score = sum of final submissions minus MARKS hint penalties
     const codingSubs = await this.subRepo.find({ where: { attemptId, isFinal: true } });
@@ -550,24 +780,57 @@ export class ExamStudentService {
       .map(eq => {
         const q = eq.question;
         const given = attempt.mcqAnswers?.[String(eq.questionId)];
-        const correct = isMcqCorrect(given, q.correctAnswer, q.options);
-        const correctLetter = normalizeMcqLetter(q.correctAnswer, q.options);
+        const attemptOpts = attempt.optionMappings?.[String(eq.questionId)] || q.options;
+        const evaluated = evaluateSectionAQuestion(
+          q,
+          given,
+          attemptOpts,
+          Number(eq.marks),
+          Number(eq.negativeMarks || exam.negativeMarksValue || 0),
+          Boolean(exam.negativeMarking),
+        );
         const unlockedHints = attempt.unlockedHints?.[String(eq.questionId)] || [];
         const hintDeduction = eq.hintPenaltyType === 'MARKS' && unlockedHints.length > 0
           ? unlockedHints.reduce((sum, hIdx) => sum + (Array.isArray(eq.hintPenalties) && eq.hintPenalties[hIdx] !== undefined ? Number(eq.hintPenalties[hIdx]) : 1), 0)
           : 0;
+
+        let formattedCorrectAnswer: string | null | undefined = undefined;
+        if (exam.showCorrectAnswers) {
+          if (q.type === QuestionType.JC) {
+            formattedCorrectAnswer = q.correctCode || (q.jumbledStatements || []).join('\n');
+          } else if (q.type === QuestionType.MQ) {
+            formattedCorrectAnswer = (q.matchingPairs || []).map((p, idx) => `${idx + 1}. ${p.left} ➔ ${p.right}`).join('\n');
+          } else {
+            const origLetter = normalizeMcqLetter(q.correctAnswer, q.options);
+            const correctText = optionTextForLetter(origLetter, q.options) || q.correctAnswer;
+            formattedCorrectAnswer = normalizeMcqLetter(correctText, attemptOpts) || undefined;
+          }
+        }
+
+        const earnedScore = evaluated.score > 0
+          ? Math.max(0, Math.round((evaluated.score - hintDeduction) * 100) / 100)
+          : evaluated.score;
+
         return {
           questionId: eq.questionId,
+          type: q.type,
           questionText: q.questionText,
           problemStatement: q.problemStatement,
-          options: q.options,
+          codeSnippet: q.codeSnippet,
+          programmingLanguage: q.programmingLanguage,
+          options: attemptOpts,
+          matchingPairs: q.matchingPairs,
+          jumbledStatements: q.jumbledStatements,
           yourAnswer: given || null,
-          correctAnswer: exam.showCorrectAnswers ? correctLetter : undefined,
+          correctAnswer: formattedCorrectAnswer,
           explanation: exam.showExplanations ? q.explanation : undefined,
-          marks: eq.marks, negativeMarks: eq.negativeMarks,
+          marks: eq.marks,
+          negativeMarks: eq.negativeMarks,
           hintsUnlocked: unlockedHints.length,
           hintDeduction,
-          correct, earned: correct ? Math.max(0, Number(eq.marks) - hintDeduction) : (given ? -eq.negativeMarks : 0),
+          correct: evaluated.isCorrect,
+          earned: earnedScore,
+          evaluationDetails: evaluated.details,
         };
       });
 
@@ -681,7 +944,59 @@ export class ExamStudentService {
       }
     }
 
-    const questions = eqs.map(eq => sanitizeQuestion(eq, attempt.unlockedHints?.[String(eq.questionId)] || []));
+    // Lazy initialize randomizations if attempt was started without them
+    let needAttemptSave = false;
+    if (exam.randomizeQuestions && (!attempt.questionOrder || !attempt.questionOrder.length)) {
+      const secA = shuffleList(eqs.filter(e => e.section === 'A').map(e => e.questionId));
+      const secB = shuffleList(eqs.filter(e => e.section === 'B').map(e => e.questionId));
+      const other = shuffleList(eqs.filter(e => e.section !== 'A' && e.section !== 'B').map(e => e.questionId));
+      attempt.questionOrder = [...secA, ...secB, ...other];
+      needAttemptSave = true;
+    }
+
+    if (!attempt.optionMappings) attempt.optionMappings = {};
+    for (const eq of eqs) {
+      const q = eq.question;
+      if (!q) continue;
+      const qKey = String(eq.questionId);
+      if (q.type === QuestionType.MCQ && exam.randomizeOptions && Array.isArray(q.options) && q.options.length > 1 && !attempt.optionMappings[qKey]) {
+        attempt.optionMappings[qKey] = shuffleList(q.options);
+        needAttemptSave = true;
+      } else if (q.type === QuestionType.JC && Array.isArray(q.jumbledStatements) && q.jumbledStatements.length > 1 && !attempt.optionMappings[qKey]) {
+        attempt.optionMappings[qKey] = shuffleList(q.jumbledStatements);
+        needAttemptSave = true;
+      } else if (q.type === QuestionType.MQ && Array.isArray(q.matchingPairs) && q.matchingPairs.length > 1 && !attempt.optionMappings[qKey]) {
+        const rights = [
+          ...q.matchingPairs.map(p => p.right),
+          ...(q.extraRightMatches || []),
+        ].filter(Boolean);
+        attempt.optionMappings[qKey] = shuffleList(rights);
+        needAttemptSave = true;
+      }
+    }
+
+    if (needAttemptSave) {
+      await this.attemptRepo.update(attempt.id, {
+        questionOrder: attempt.questionOrder,
+        optionMappings: attempt.optionMappings,
+      });
+    }
+
+    let orderedEqs = eqs;
+    if (attempt.questionOrder && attempt.questionOrder.length > 0) {
+      const orderMap = new Map<number, number>();
+      attempt.questionOrder.forEach((qId, idx) => orderMap.set(qId, idx));
+      orderedEqs = [...eqs].sort((a, b) => {
+        const orderA = orderMap.has(a.questionId) ? orderMap.get(a.questionId)! : a.sortOrder;
+        const orderB = orderMap.has(b.questionId) ? orderMap.get(b.questionId)! : b.sortOrder;
+        return orderA - orderB;
+      });
+    }
+
+    const questions = orderedEqs.map(eq => {
+      const customOpts = attempt.optionMappings?.[String(eq.questionId)];
+      return sanitizeQuestion(eq, attempt.unlockedHints?.[String(eq.questionId)] || [], customOpts);
+    });
 
     // Get saved coding submissions for this attempt
     const codingSubs = await this.subRepo.find({ where: { attemptId: attempt.id }, order: { submittedAt: 'DESC' } });

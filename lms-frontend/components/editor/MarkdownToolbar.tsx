@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import MathInkModal from './MathInkModal'
+import { API_URL } from '@/lib/api'
+import { apiFetch } from '@/lib/apiFetch'
 
 interface MarkdownToolbarProps {
   textareaRef: React.RefObject<HTMLTextAreaElement>
@@ -8,6 +10,7 @@ interface MarkdownToolbarProps {
 
 export default function MarkdownToolbar({ textareaRef, onChange }: MarkdownToolbarProps) {
   const fileInputRef = React.useRef<HTMLInputElement>(null)
+  const [uploadingImage, setUploadingImage] = useState(false)
   
   const insertText = (before: string, after: string = '', placeholder: string = '') => {
     const el = textareaRef.current
@@ -28,20 +31,45 @@ export default function MarkdownToolbar({ textareaRef, onChange }: MarkdownToolb
     }, 0)
   }
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
-    const reader = new FileReader()
-    reader.onload = (evt) => {
-      const base64 = evt.target?.result as string
-      // Insert at current cursor position
-      insertText(`![${file.name}](${base64})`, '', '')
+    setUploadingImage(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await apiFetch(`${API_URL}/question-bank/upload-image`, {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      })
+      if (res.ok) {
+        const data = await res.json()
+        if (data.url) {
+          insertText(`![image](${data.url})`, '', '')
+          return
+        }
+      }
+      // Fallback only if server upload failed
+      const reader = new FileReader()
+      reader.onload = (evt) => {
+        const base64 = evt.target?.result as string
+        insertText(`![image](${base64})`, '', '')
+      }
+      reader.readAsDataURL(file)
+    } catch (err) {
+      console.error('Image upload failed, falling back to local data url', err)
+      const reader = new FileReader()
+      reader.onload = (evt) => {
+        const base64 = evt.target?.result as string
+        insertText(`![image](${base64})`, '', '')
+      }
+      reader.readAsDataURL(file)
+    } finally {
+      setUploadingImage(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
     }
-    reader.readAsDataURL(file)
-    
-    // Reset input
-    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   const insertBlock = (prefix: string, placeholder: string) => {
@@ -95,7 +123,7 @@ export default function MarkdownToolbar({ textareaRef, onChange }: MarkdownToolb
       <button type="button" onClick={() => insertText('**', '**', 'Bold')} className="tb-btn font-bold" title="Bold">B</button>
       <button type="button" onClick={() => insertText('*', '*', 'Italic')} className="tb-btn italic" title="Italic">I</button>
       <button type="button" onClick={() => insertText('~~', '~~', 'Strikethrough')} className="tb-btn line-through" title="Strikethrough">S</button>
-      <button type="button" onClick={() => insertText('==', '==', 'Highlight')} className="tb-btn bg-yellow-500/20" title="Highlight">H</button>
+      <button type="button" onClick={() => insertText('^^', '^^', 'Highlight')} className="tb-btn bg-yellow-500/20" title="Highlight (^^text^^)">H</button>
       
       <div className="w-px h-6 bg-[var(--border)] mx-1 self-center" />
  
@@ -115,7 +143,9 @@ export default function MarkdownToolbar({ textareaRef, onChange }: MarkdownToolb
  
       {/* Media */}
       <button type="button" onClick={() => insertText('[', '](https://)', 'Link Text')} className="tb-btn text-[14px]" title="Add Link">🔗</button>
-      <button type="button" onClick={() => fileInputRef.current?.click()} className="tb-btn text-[14px] bg-indigo-50 text-indigo-600 border-indigo-200" title="Upload Image">🖼️</button>
+      <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploadingImage} className="tb-btn text-[14px] bg-indigo-50 text-indigo-600 border-indigo-200 disabled:opacity-50" title="Upload Image">
+        {uploadingImage ? '⏳' : '🖼️'}
+      </button>
       <button type="button" onClick={insertTooltip} className="tb-btn text-[14px] bg-cyan-50 text-cyan-700 border-cyan-200" title="Insert Hover Tooltip">ⓘ</button>
  
       <div className="w-px h-6 bg-[var(--border)] mx-1 self-center" />

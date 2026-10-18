@@ -130,6 +130,20 @@ export class FileParserService {
         'companiesappeared',
         'companies_appeared',
       ]),
+      targetCompanies: this.getValue(row, [
+        'targetcompanies',
+        'target_companies',
+        'targetcompany',
+        'target_company',
+      ]),
+      targetRoles: this.getValue(row, [
+        'targetroles',
+        'target_roles',
+        'targetrole',
+        'target_role',
+        'roles',
+        'role',
+      ]),
       programmingLanguage: this.getValue(row, [
         'programminglanguage',
         'programming_language',

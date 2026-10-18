@@ -18,6 +18,14 @@ export default function MarkdownRenderer({ content, className = '' }: MarkdownRe
   const inlineHTML = (text: string): string => {
     let s = esc(text)
 
+    // Protect inline code blocks `...` first so they are not affected by formatting
+    const inlineCodes: string[] = []
+    s = s.replace(/`([^`]+?)`/g, (_match, codeText) => {
+      const placeholder = `__INLINE_CODE_${inlineCodes.length}__`
+      inlineCodes.push(codeText)
+      return placeholder
+    })
+
     // Hover tooltip syntax: [[term|hover text]]
     s = s.replace(/\[\[([^\]|]+?)\|([^\]]+?)\]\]/g, (_match, term, tip) => {
       const tooltip = esc(String(tip).trim())
@@ -34,7 +42,9 @@ export default function MarkdownRenderer({ content, className = '' }: MarkdownRe
       }
     })
 
-    s = s.replace(/==(.*?)==/g, '<mark class="bg-yellow-200 text-black px-1 rounded">$1</mark>')
+    // Highlight text with ^^text^^ (or explicit <mark> tags), avoiding programming operators like ==
+    s = s.replace(/\^\^([^\^]+?)\^\^/g, '<mark class="bg-yellow-200 text-black px-1 rounded">$1</mark>')
+    s = s.replace(/&lt;mark&gt;(.*?)&lt;\/mark&gt;/gi, '<mark class="bg-yellow-200 text-black px-1 rounded">$1</mark>')
     s = s.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
     s = s.replace(/\*(.*?)\*/g, '<em>$1</em>')
     s = s.replace(/!\[([^\]]*?)\]\(\s*([^\)]+?)\s*\)/g, (_match, alt, src) => {
@@ -49,7 +59,33 @@ export default function MarkdownRenderer({ content, className = '' }: MarkdownRe
       const fullSrc = cleanSrc.startsWith('/uploads/') ? `${API_URL}${cleanSrc}` : cleanSrc
       return `<img src="${fullSrc}" alt="${alt}" referrerPolicy="no-referrer" class="max-w-full h-auto rounded-lg my-2 shadow-sm" />`
     })
-    s = s.replace(/\[([^\]]+?)\]\(([^)\s]+?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-primary-600 hover:text-primary-700 font-medium underline decoration-primary-500/30 underline-offset-4">$1</a>')
+    s = s.replace(/\[([^\]]+?)\]\(([^)\s]+?)\)/g, (_match, text, href) => {
+      let displayText = text
+      const cleanHref = href.trim()
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3003'
+      const targetUrl = cleanHref.startsWith('/uploads/') ? `${API_URL}${cleanHref}` : cleanHref
+
+      // If the link text is just a raw uploaded path or URL, display a clean short link
+      if (text.includes('/uploads/') || (text.startsWith('http') && text.includes('/uploads/'))) {
+        displayText = '🖼️ View Uploaded Image ↗'
+      }
+      return `<a href="${targetUrl}" target="_blank" rel="noopener noreferrer" class="text-primary-600 hover:text-primary-700 font-medium underline decoration-primary-500/30 underline-offset-4">${displayText}</a>`
+    })
+
+    // Auto-link standalone uploaded image paths (e.g. /uploads/questions/... or http.../uploads/...) that are not inside quotes or tags
+    s = s.replace(/(^|[\s(])((?:https?:\/\/[^\s<)]+)?\/uploads\/[^\s<)]+\.(?:png|jpe?g|gif|webp|svg|bmp))(?=[\s)]|$)/gi, (_match, prefix, path) => {
+      const cleanPath = path.trim()
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3003'
+      const targetUrl = cleanPath.startsWith('/uploads/') ? `${API_URL}${cleanPath}` : cleanPath
+      return `${prefix}<a href="${targetUrl}" target="_blank" rel="noopener noreferrer" class="text-primary-600 hover:text-primary-700 font-medium underline inline-flex items-center gap-1">🖼️ View Uploaded Image ↗</a>`
+    })
+
+    // Restore protected inline code
+    s = s.replace(/__INLINE_CODE_(\d+)__/g, (_m, idx) => {
+      const code = inlineCodes[Number(idx)] || ''
+      return `<code class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-800 font-mono text-xs dark:bg-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700">${code}</code>`
+    })
+
     return s
   }
 
@@ -111,28 +147,44 @@ export default function MarkdownRenderer({ content, className = '' }: MarkdownRe
           i++
         }
         
-        const highlight = (line: string): string => {
-          let s = esc(line)
-          // Comments
-          s = s.replace(/(\/\/.*$)/g, '<span class="tok-comment">$1</span>')
-          s = s.replace(/(\/\*[\s\S]*?\*\/)/g, '<span class="tok-comment">$1</span>')
-          // Strings
-          s = s.replace(/("[^"]*"|'[^']*'|`[^`]*`)/g, '<span class="tok-string">$1</span>')
-          // Keywords 1
-          s = s.replace(/\b(const|let|var|function|return|if|else|for|while|class|import|export|from|default|async|await|try|catch|throw|new|this|typeof|instanceof|void|null|undefined|true|false)\b/g,
-            '<span class="tok-kw text-[#c678dd]">$1</span>')
-          // Keywords 2 (Types/Keywords)
-          s = s.replace(/\b(int|str|bool|float|double|type|interface|enum|extends|implements|public|private|static|protected|any|unknown|never|readonly|keyof|typeof)\b/g,
-            '<span class="tok-kw text-[#61afef]">$1</span>')
-          // Numbers
-          s = s.replace(/\b(\d+\.?\d*)\b/g, '<span class="tok-num text-[#d19a66]">$1</span>')
-          // Functions
-          s = s.replace(/(\w+)(?=\()/g, '<span class="tok-fn text-[#e5c07b]">$1</span>')
-          // Built-ins or Object keys could be added too
-          return s
-        }
+        // Single-pass tokenizer so strings and generated HTML are never re-scanned or broken
+        const highlightCodeBlock = (blockText: string): string => {
+          const tokenRegex = /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`)|(\b(?:const|let|var|function|return|if|else|for|while|class|import|export|from|default|async|await|try|catch|throw|new|this|typeof|instanceof|void|null|undefined|true|false)\b)|(\b(?:int|str|bool|float|double|type|interface|enum|extends|implements|public|private|static|protected|any|unknown|never|readonly|keyof|String|Integer|Boolean|char|Long)\b)|(\b\d+(?:\.\d+)?\b)|(\b[a-zA-Z_$][a-zA-Z0-9_$]*(?=\s*\())/g;
 
-        const highlightedCode = code.map(l => highlight(l)).join('\n')
+          let lastIndex = 0;
+          let match: RegExpExecArray | null;
+          const parts: string[] = [];
+
+          while ((match = tokenRegex.exec(blockText)) !== null) {
+            if (match.index > lastIndex) {
+              parts.push(esc(blockText.slice(lastIndex, match.index)));
+            }
+            lastIndex = tokenRegex.lastIndex;
+
+            const [raw, comment, str, kw1, kw2, num, fn] = match;
+            if (comment) {
+              parts.push(`<span class="tok-comment text-[#5c6370] italic">${esc(comment)}</span>`);
+            } else if (str) {
+              parts.push(`<span class="tok-string text-[#98c379]">${esc(str)}</span>`);
+            } else if (kw1) {
+              parts.push(`<span class="tok-kw text-[#c678dd]">${esc(kw1)}</span>`);
+            } else if (kw2) {
+              parts.push(`<span class="tok-kw text-[#61afef]">${esc(kw2)}</span>`);
+            } else if (num) {
+              parts.push(`<span class="tok-num text-[#d19a66]">${esc(num)}</span>`);
+            } else if (fn) {
+              parts.push(`<span class="tok-fn text-[#e5c07b]">${esc(fn)}</span>`);
+            } else {
+              parts.push(esc(raw));
+            }
+          }
+          if (lastIndex < blockText.length) {
+            parts.push(esc(blockText.slice(lastIndex)));
+          }
+          return parts.join('');
+        };
+
+        const highlightedCode = highlightCodeBlock(code.join('\n'))
 
         out.push(`<pre class="bg-[#282c34] text-[#abb2bf] p-6 rounded-2xl font-mono text-[13px] my-6 overflow-x-auto border border-black/20 shadow-2xl leading-relaxed antialiased"><code>${highlightedCode}</code></pre>`)
         i++

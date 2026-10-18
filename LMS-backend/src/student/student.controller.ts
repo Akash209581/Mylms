@@ -69,6 +69,16 @@ export class StudentController {
     return this.studentService.updateProfile(req.user.sub, updateData);
   }
 
+  @Post('profile/sync-coding-profiles')
+  async syncCodingProfiles(@Request() req: any) {
+    return this.studentService.syncCodingProfiles(req.user.sub);
+  }
+
+  @Get('profile/coding-profiles')
+  async getCodingProfiles(@Request() req: any) {
+    return this.studentService.getCodingProfiles(req.user.sub);
+  }
+
   @Post('lessons/:id/complete')
   async completeLesson(
     @Request() req: any,

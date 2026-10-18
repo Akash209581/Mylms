@@ -1,13 +1,14 @@
 import type { Request, Response, NextFunction } from 'express';
 
+/**
+ * Exact-match only. A `.onrender.com` suffix rule used to live here, but Render
+ * hands out subdomains to anyone, so it let any attacker-controlled deployment
+ * pass as a first-party origin — defeating both CORS and the mutation guard
+ * below. Deployment origins belong in trustedOrigins() instead.
+ */
 export function isOriginTrusted(origin: string | undefined, origins: Set<string>): boolean {
   if (!origin) return false;
-  if (origins.has(origin)) return true;
-  try {
-    const host = new URL(origin).hostname;
-    if (host.endsWith('.onrender.com')) return true;
-  } catch {}
-  return false;
+  return origins.has(origin);
 }
 
 export function trustedOrigins(env: NodeJS.ProcessEnv = process.env): Set<string> {

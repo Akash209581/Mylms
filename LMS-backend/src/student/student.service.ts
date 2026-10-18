@@ -1,4 +1,4 @@
-import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { Injectable, ForbiddenException, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { User, UserRole } from '../entities/user.entity';
@@ -16,7 +16,7 @@ import { College } from '../entities/college.entity';
 import { CourseContentService } from '../common/course-content.service';
 
 @Injectable()
-export class StudentService {
+export class StudentService implements OnModuleInit {
   constructor(
     @InjectRepository(User)
     private userRepository: Repository<User>,
@@ -177,6 +177,36 @@ export class StudentService {
     return completed.map((p) => p.lessonId);
   }
 
+  async onModuleInit() {
+    try {
+      await this.userRepository.query(`
+        DO $$ 
+        BEGIN 
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='leetcode_username') THEN
+            ALTER TABLE users ADD COLUMN leetcode_username VARCHAR(100);
+          END IF;
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='codeforces_username') THEN
+            ALTER TABLE users ADD COLUMN codeforces_username VARCHAR(100);
+          END IF;
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='codechef_username') THEN
+            ALTER TABLE users ADD COLUMN codechef_username VARCHAR(100);
+          END IF;
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='hackerrank_username') THEN
+            ALTER TABLE users ADD COLUMN hackerrank_username VARCHAR(100);
+          END IF;
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='hackerearth_username') THEN
+            ALTER TABLE users ADD COLUMN hackerearth_username VARCHAR(100);
+          END IF;
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='coding_profiles_data') THEN
+            ALTER TABLE users ADD COLUMN coding_profiles_data JSONB;
+          END IF;
+        END $$;
+      `);
+    } catch (e) {
+      console.warn('StudentService onModuleInit migration skipped or failed:', e);
+    }
+  }
+
   async getBadges(userId: number) {
     return this.userBadgeRepository.find({
       where: { userId },
@@ -186,7 +216,228 @@ export class StudentService {
 
   async updateProfile(userId: number, updateData: UpdateStudentProfileDto) {
     await this.userRepository.update(userId, updateData);
-    return this.userRepository.findOne({ where: { id: userId } });
+    const updated = await this.userRepository.findOne({ where: { id: userId } });
+    if (
+      updateData.leetcodeUsername !== undefined ||
+      updateData.codeforcesUsername !== undefined ||
+      updateData.codechefUsername !== undefined ||
+      updateData.hackerrankUsername !== undefined ||
+      updateData.hackerearthUsername !== undefined
+    ) {
+      this.syncCodingProfiles(userId).catch(e => console.warn('Background syncCodingProfiles failed:', e));
+    }
+    return updated;
+  }
+
+  async getCodingProfiles(userId: number) {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+    return {
+      handles: {
+        leetcode: user.leetcodeUsername || null,
+        codeforces: user.codeforcesUsername || null,
+        codechef: user.codechefUsername || null,
+        hackerrank: user.hackerrankUsername || null,
+        hackerearth: user.hackerearthUsername || null,
+      },
+      profiles: user.codingProfilesData || {},
+    };
+  }
+
+  async syncCodingProfiles(userId: number) {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+
+    const cleanHandle = (raw?: string) => {
+      if (!raw) return '';
+      return raw.trim()
+        .replace(/^https?:\/\/[^\/]+\/(?:u\/|users\/|profile\/|@)?/i, '')
+        .replace(/\/+$/, '')
+        .trim();
+    };
+
+    const results: Record<string, any> = { ...(user.codingProfilesData || {}) };
+    const tasks: Promise<void>[] = [];
+
+    // 1. LeetCode
+    const lcHandle = cleanHandle(user.leetcodeUsername);
+    if (lcHandle) {
+      tasks.push((async () => {
+        try {
+          const res = await fetch(`https://leetcode-stats-api.herokuapp.com/${lcHandle}`, {
+            signal: AbortSignal.timeout(4500),
+            headers: { 'User-Agent': 'Mozilla/5.0' },
+          });
+          if (res.ok) {
+            const data: any = await res.json();
+            if (data && data.status === 'success') {
+              results.leetcode = {
+                handle: lcHandle,
+                platform: 'leetcode',
+                profileUrl: `https://leetcode.com/u/${lcHandle}`,
+                totalSolved: data.totalSolved ?? 0,
+                easySolved: data.easySolved ?? 0,
+                mediumSolved: data.mediumSolved ?? 0,
+                hardSolved: data.hardSolved ?? 0,
+                ranking: data.ranking ?? null,
+                acceptanceRate: data.acceptanceRate ?? null,
+                status: 'OK',
+                lastSyncedAt: new Date().toISOString(),
+              };
+              return;
+            }
+          }
+        } catch {}
+        results.leetcode = {
+          handle: lcHandle,
+          platform: 'leetcode',
+          profileUrl: `https://leetcode.com/u/${lcHandle}`,
+          status: 'LINKED',
+          lastSyncedAt: new Date().toISOString(),
+        };
+      })());
+    }
+
+    // 2. Codeforces
+    const cfHandle = cleanHandle(user.codeforcesUsername);
+    if (cfHandle) {
+      tasks.push((async () => {
+        try {
+          const res = await fetch(`https://codeforces.com/api/user.info?handles=${cfHandle}`, {
+            signal: AbortSignal.timeout(4500),
+          });
+          if (res.ok) {
+            const data: any = await res.json();
+            if (data && data.status === 'OK' && Array.isArray(data.result) && data.result[0]) {
+              const r = data.result[0];
+              results.codeforces = {
+                handle: cfHandle,
+                platform: 'codeforces',
+                profileUrl: `https://codeforces.com/profile/${cfHandle}`,
+                rating: r.rating ?? null,
+                maxRating: r.maxRating ?? null,
+                rank: r.rank ?? 'Unrated',
+                maxRank: r.maxRank ?? 'Unrated',
+                avatar: r.avatar ?? r.titlePhoto ?? null,
+                status: 'OK',
+                lastSyncedAt: new Date().toISOString(),
+              };
+              return;
+            }
+          }
+        } catch {}
+        results.codeforces = {
+          handle: cfHandle,
+          platform: 'codeforces',
+          profileUrl: `https://codeforces.com/profile/${cfHandle}`,
+          status: 'LINKED',
+          lastSyncedAt: new Date().toISOString(),
+        };
+      })());
+    }
+
+    // 3. CodeChef
+    const ccHandle = cleanHandle(user.codechefUsername);
+    if (ccHandle) {
+      tasks.push((async () => {
+        try {
+          const res = await fetch(`https://codechef-api.vercel.app/handle/${ccHandle}`, {
+            signal: AbortSignal.timeout(4500),
+          });
+          if (res.ok) {
+            const data: any = await res.json();
+            if (data && (data.currentRating || data.stars)) {
+              results.codechef = {
+                handle: ccHandle,
+                platform: 'codechef',
+                profileUrl: `https://www.codechef.com/users/${ccHandle}`,
+                rating: data.currentRating ?? null,
+                highestRating: data.highestRating ?? null,
+                stars: data.stars ?? null,
+                globalRank: data.globalRank ?? null,
+                countryRank: data.countryRank ?? null,
+                status: 'OK',
+                lastSyncedAt: new Date().toISOString(),
+              };
+              return;
+            }
+          }
+        } catch {}
+        results.codechef = {
+          handle: ccHandle,
+          platform: 'codechef',
+          profileUrl: `https://www.codechef.com/users/${ccHandle}`,
+          status: 'LINKED',
+          lastSyncedAt: new Date().toISOString(),
+        };
+      })());
+    }
+
+    // 4. HackerRank
+    const hrHandle = cleanHandle(user.hackerrankUsername);
+    if (hrHandle) {
+      tasks.push((async () => {
+        try {
+          const res = await fetch(`https://www.hackerrank.com/rest/hackers/${hrHandle}/badges`, {
+            signal: AbortSignal.timeout(4500),
+            headers: { 'User-Agent': 'Mozilla/5.0' },
+          });
+          if (res.ok) {
+            const data: any = await res.json();
+            if (data && Array.isArray(data.models)) {
+              const badges = data.models.map((m: any) => ({
+                badgeName: m.badge_name,
+                stars: m.stars,
+                currentPoints: m.current_points,
+              }));
+              results.hackerrank = {
+                handle: hrHandle,
+                platform: 'hackerrank',
+                profileUrl: `https://www.hackerrank.com/profile/${hrHandle}`,
+                badges,
+                badgeCount: badges.length,
+                status: 'OK',
+                lastSyncedAt: new Date().toISOString(),
+              };
+              return;
+            }
+          }
+        } catch {}
+        results.hackerrank = {
+          handle: hrHandle,
+          platform: 'hackerrank',
+          profileUrl: `https://www.hackerrank.com/profile/${hrHandle}`,
+          status: 'LINKED',
+          lastSyncedAt: new Date().toISOString(),
+        };
+      })());
+    }
+
+    // 5. HackerEarth
+    const heHandle = cleanHandle(user.hackerearthUsername);
+    if (heHandle) {
+      results.hackerearth = {
+        handle: heHandle,
+        platform: 'hackerearth',
+        profileUrl: `https://www.hackerearth.com/@${heHandle}`,
+        status: 'LINKED',
+        lastSyncedAt: new Date().toISOString(),
+      };
+    }
+
+    await Promise.allSettled(tasks);
+
+    await this.userRepository.update(userId, { codingProfilesData: results });
+    return {
+      handles: {
+        leetcode: user.leetcodeUsername || null,
+        codeforces: user.codeforcesUsername || null,
+        codechef: user.codechefUsername || null,
+        hackerrank: user.hackerrankUsername || null,
+        hackerearth: user.hackerearthUsername || null,
+      },
+      profiles: results,
+    };
   }
 
   async completeLesson(userId: number, lessonId: number) {

@@ -755,7 +755,9 @@ export class SuperadminController {
     const user = await this.userRepo.findOne({ where: { id } });
     if (!user) throw new NotFoundException('User not found');
     const oldRole = user.role;
-    await this.userRepo.update(id, { role: dto.role });
+    // RolesGuard authorizes off the `roles` array, so writing only the singular
+    // column made a demotion cosmetic — the user kept passing every @Roles gate.
+    await this.userRepo.update(id, { role: dto.role, roles: [dto.role] });
 
     // Log audit trail
     const audit = this.auditRepo.create({

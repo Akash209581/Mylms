@@ -1,13 +1,20 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { BookOpen, CalendarDays, CheckCircle2, Circle, Clock3, Flame, Github, Globe, GraduationCap, Landmark, Linkedin, Loader2, Mail, MapPin, Pencil, Phone, Save, X } from 'lucide-react'
+import {
+  BookOpen, CalendarDays, CheckCircle2, Circle, Clock3, Code2, ExternalLink, Flame, Github, Globe, GraduationCap, Landmark,
+  Linkedin, Loader2, Mail, MapPin, Pencil, Phone, RefreshCw, Save, Trophy, X, Zap
+} from 'lucide-react'
 import StudentReferenceShell from '@/components/layout/StudentReferenceShell'
 import { api } from '@/lib/api'
 import { toast } from '@/lib/toast'
 import { Loading, PageHeader, Stat, initials } from '@/components/ui'
 
-const EDITABLE = ['name', 'mobileNumber', 'state', 'country', 'bio', 'githubUrl', 'linkedInUrl', 'portfolioUrl'] as const
+const EDITABLE = [
+  'name', 'mobileNumber', 'state', 'country', 'bio',
+  'githubUrl', 'linkedInUrl', 'portfolioUrl',
+  'leetcodeUsername', 'codeforcesUsername', 'codechefUsername', 'hackerrankUsername', 'hackerearthUsername'
+] as const
 type Editable = typeof EDITABLE[number]
 const URL_FIELDS: Editable[] = ['githubUrl', 'linkedInUrl', 'portfolioUrl']
 
@@ -18,8 +25,27 @@ export default function StudentProfilePage() {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [syncingCP, setSyncingCP] = useState(false)
 
   const fillForm = (profile: any) => setForm(Object.fromEntries(EDITABLE.map(k => [k, profile?.[k] || ''])) as any)
+
+  const syncCodingProfiles = async () => {
+    setSyncingCP(true)
+    try {
+      const res = await api.post('/student/profile/sync-coding-profiles')
+      if (res.data?.profiles) {
+        setUser((prev: any) => ({
+          ...prev,
+          codingProfilesData: res.data.profiles,
+        }))
+        toast.success('Coding profiles refreshed from portals!')
+      }
+    } catch {
+      toast.error('Could not sync coding profiles right now.')
+    } finally {
+      setSyncingCP(false)
+    }
+  }
 
   useEffect(() => {
     Promise.all([
@@ -48,6 +74,13 @@ export default function StudentProfilePage() {
       localStorage.setItem('user', JSON.stringify(merged))
       setEditing(false)
       toast.success('Profile updated')
+      // Auto-refresh coding profiles in background
+      if (
+        payload.leetcodeUsername || payload.codeforcesUsername ||
+        payload.codechefUsername || payload.hackerrankUsername || payload.hackerearthUsername
+      ) {
+        syncCodingProfiles()
+      }
     } catch (error: any) {
       const message = error?.response?.data?.message
       toast.error(Array.isArray(message) ? message.join('. ') : message || 'Your profile could not be saved.')
@@ -125,6 +158,18 @@ export default function StudentProfilePage() {
                     {field('linkedInUrl', 'LinkedIn URL', { type: 'url', placeholder: 'https://linkedin.com/in/username' })}
                     {field('portfolioUrl', 'Portfolio URL', { type: 'url', placeholder: 'https://' })}
                   </div>
+                  <div className="pt-3 border-t border-[var(--border)]">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--accent-text)] mb-3 flex items-center gap-1.5">
+                      <Code2 className="w-4 h-4" /> Competitive Programming Accounts
+                    </h3>
+                    <div className="ui-form-grid">
+                      {field('leetcodeUsername', 'LeetCode Username / URL', { placeholder: 'e.g. nealcodes or https://leetcode.com/u/...' })}
+                      {field('codeforcesUsername', 'Codeforces Handle / URL', { placeholder: 'e.g. tourist or https://codeforces.com/profile/...' })}
+                      {field('codechefUsername', 'CodeChef Username / URL', { placeholder: 'e.g. genady or https://codechef.com/users/...' })}
+                      {field('hackerrankUsername', 'HackerRank Username / URL', { placeholder: 'e.g. hacker_123 or https://hackerrank.com/profile/...' })}
+                      {field('hackerearthUsername', 'HackerEarth Username / URL', { placeholder: 'e.g. coder_dev or https://hackerearth.com/@...' })}
+                    </div>
+                  </div>
                   <div className="flex justify-end gap-2 pt-2 border-t border-[var(--border)]">
                     <button type="button" className="ui-btn ui-btn-secondary" onClick={() => { fillForm(user); setEditing(false) }}>Cancel</button>
                     <button className="ui-btn ui-btn-primary" disabled={saving}>{saving ? <><Loader2 className="animate-spin" aria-hidden="true" /> Saving…</> : <><Save aria-hidden="true" /> Save changes</>}</button>
@@ -150,6 +195,261 @@ export default function StudentProfilePage() {
                       {([['githubUrl', 'GitHub', Github], ['linkedInUrl', 'LinkedIn', Linkedin], ['portfolioUrl', 'Portfolio', Globe]] as const).map(([key, label, Icon]) => user?.[key]
                         ? <a key={key} href={user[key]} target="_blank" rel="noopener noreferrer" className="ui-btn ui-btn-secondary ui-btn-sm justify-start"><Icon aria-hidden="true" /> {label}</a>
                         : <button key={key} onClick={() => setEditing(true)} className="ui-btn ui-btn-ghost ui-btn-sm justify-start"><Icon aria-hidden="true" /> Add {label}</button>)}
+                    </div>
+                  </section>
+
+                  {/* Competitive Programming Portals Card */}
+                  <section className="ui-card ui-card-pad md:col-span-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                      <div>
+                        <h2 className="ui-section-title flex items-center gap-2" style={{ fontSize: 18 }}>
+                          <Trophy className="w-5 h-5 text-amber-500" /> Competitive Programming Profiles
+                        </h2>
+                        <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                          Synced real-time rating and solved problem statistics from competitive programming platforms.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={syncCodingProfiles}
+                        disabled={syncingCP}
+                        className="ui-btn ui-btn-secondary ui-btn-sm flex items-center gap-1.5 self-start sm:self-auto"
+                        title="Fetch latest stats from portals"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 ${syncingCP ? 'animate-spin text-indigo-500' : ''}`} />
+                        <span>{syncingCP ? 'Syncing Stats…' : 'Sync Profiles'}</span>
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                      {/* LeetCode Card */}
+                      <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="font-bold text-xs flex items-center gap-1.5 text-amber-500">
+                              <span>🟡</span> LeetCode
+                            </span>
+                            {user?.codingProfilesData?.leetcode?.ranking && (
+                              <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                                Rank #{user.codingProfilesData.leetcode.ranking.toLocaleString()}
+                              </span>
+                            )}
+                          </div>
+                          {user?.leetcodeUsername ? (
+                            <div className="space-y-1.5">
+                              <div className="text-xl font-bold font-display text-[var(--text-primary)]">
+                                {user.codingProfilesData?.leetcode?.totalSolved != null
+                                  ? `${user.codingProfilesData.leetcode.totalSolved} Solved`
+                                  : `@${user.leetcodeUsername.replace(/.*\/+/g, '')}`}
+                              </div>
+                              {user?.codingProfilesData?.leetcode?.easySolved != null && (
+                                <div className="flex items-center gap-2 text-[11px] font-mono">
+                                  <span className="text-emerald-500">E: {user.codingProfilesData.leetcode.easySolved}</span>
+                                  <span className="text-amber-500">M: {user.codingProfilesData.leetcode.mediumSolved}</span>
+                                  <span className="text-rose-500">H: {user.codingProfilesData.leetcode.hardSolved}</span>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-[var(--text-muted)] italic">No account linked</p>
+                          )}
+                        </div>
+                        <div className="mt-3 pt-2.5 border-t border-slate-200/80 dark:border-white/10 flex items-center justify-between">
+                          {user?.leetcodeUsername ? (
+                            <a
+                              href={user.codingProfilesData?.leetcode?.profileUrl || (user.leetcodeUsername.startsWith('http') ? user.leetcodeUsername : `https://leetcode.com/u/${user.leetcodeUsername}`)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+                            >
+                              <span>View Profile</span> <ExternalLink className="w-3 h-3" />
+                            </a>
+                          ) : (
+                            <button onClick={() => setEditing(true)} className="text-xs text-[var(--accent-text)] hover:underline">
+                              + Link LeetCode
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Codeforces Card */}
+                      <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="font-bold text-xs flex items-center gap-1.5 text-blue-500">
+                              <span>🔵</span> Codeforces
+                            </span>
+                            {user?.codingProfilesData?.codeforces?.rank && (
+                              <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-500 border border-blue-500/20 capitalize">
+                                {user.codingProfilesData.codeforces.rank}
+                              </span>
+                            )}
+                          </div>
+                          {user?.codeforcesUsername ? (
+                            <div className="space-y-1.5">
+                              <div className="text-xl font-bold font-display text-[var(--text-primary)]">
+                                {user.codingProfilesData?.codeforces?.rating != null
+                                  ? `Rating: ${user.codingProfilesData.codeforces.rating}`
+                                  : `@${user.codeforcesUsername.replace(/.*\/+/g, '')}`}
+                              </div>
+                              {user?.codingProfilesData?.codeforces?.maxRating != null && (
+                                <p className="text-[11px] text-[var(--text-muted)] font-mono">
+                                  Max: {user.codingProfilesData.codeforces.maxRating} ({user.codingProfilesData.codeforces.maxRank})
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-[var(--text-muted)] italic">No account linked</p>
+                          )}
+                        </div>
+                        <div className="mt-3 pt-2.5 border-t border-slate-200/80 dark:border-white/10 flex items-center justify-between">
+                          {user?.codeforcesUsername ? (
+                            <a
+                              href={user.codingProfilesData?.codeforces?.profileUrl || (user.codeforcesUsername.startsWith('http') ? user.codeforcesUsername : `https://codeforces.com/profile/${user.codeforcesUsername}`)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+                            >
+                              <span>View Profile</span> <ExternalLink className="w-3 h-3" />
+                            </a>
+                          ) : (
+                            <button onClick={() => setEditing(true)} className="text-xs text-[var(--accent-text)] hover:underline">
+                              + Link Codeforces
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* CodeChef Card */}
+                      <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="font-bold text-xs flex items-center gap-1.5 text-amber-700 dark:text-amber-400">
+                              <span>🟤</span> CodeChef
+                            </span>
+                            {user?.codingProfilesData?.codechef?.stars && (
+                              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-amber-700/10 text-amber-700 dark:text-amber-400 border border-amber-700/20">
+                                {user.codingProfilesData.codechef.stars}★
+                              </span>
+                            )}
+                          </div>
+                          {user?.codechefUsername ? (
+                            <div className="space-y-1.5">
+                              <div className="text-xl font-bold font-display text-[var(--text-primary)]">
+                                {user.codingProfilesData?.codechef?.rating != null
+                                  ? `Rating: ${user.codingProfilesData.codechef.rating}`
+                                  : `@${user.codechefUsername.replace(/.*\/+/g, '')}`}
+                              </div>
+                              {user?.codingProfilesData?.codechef?.globalRank != null && (
+                                <p className="text-[11px] text-[var(--text-muted)] font-mono">
+                                  Global: #{user.codingProfilesData.codechef.globalRank.toLocaleString()}
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-[var(--text-muted)] italic">No account linked</p>
+                          )}
+                        </div>
+                        <div className="mt-3 pt-2.5 border-t border-slate-200/80 dark:border-white/10 flex items-center justify-between">
+                          {user?.codechefUsername ? (
+                            <a
+                              href={user.codingProfilesData?.codechef?.profileUrl || (user.codechefUsername.startsWith('http') ? user.codechefUsername : `https://www.codechef.com/users/${user.codechefUsername}`)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+                            >
+                              <span>View Profile</span> <ExternalLink className="w-3 h-3" />
+                            </a>
+                          ) : (
+                            <button onClick={() => setEditing(true)} className="text-xs text-[var(--accent-text)] hover:underline">
+                              + Link CodeChef
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* HackerRank Card */}
+                      <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="font-bold text-xs flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                              <span>🟢</span> HackerRank
+                            </span>
+                            {user?.codingProfilesData?.hackerrank?.badgeCount != null && (
+                              <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                                {user.codingProfilesData.hackerrank.badgeCount} Badges
+                              </span>
+                            )}
+                          </div>
+                          {user?.hackerrankUsername ? (
+                            <div className="space-y-1.5">
+                              <div className="text-base font-bold font-display text-[var(--text-primary)] truncate">
+                                @{user.hackerrankUsername.replace(/.*\/+/g, '')}
+                              </div>
+                              <p className="text-[11px] text-[var(--text-muted)]">
+                                Verified Problem Solver
+                              </p>
+                            </div>
+                          ) : (
+                            <p className="text-xs text-[var(--text-muted)] italic">No account linked</p>
+                          )}
+                        </div>
+                        <div className="mt-3 pt-2.5 border-t border-slate-200/80 dark:border-white/10 flex items-center justify-between">
+                          {user?.hackerrankUsername ? (
+                            <a
+                              href={user.codingProfilesData?.hackerrank?.profileUrl || (user.hackerrankUsername.startsWith('http') ? user.hackerrankUsername : `https://www.hackerrank.com/profile/${user.hackerrankUsername}`)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+                            >
+                              <span>View Profile</span> <ExternalLink className="w-3 h-3" />
+                            </a>
+                          ) : (
+                            <button onClick={() => setEditing(true)} className="text-xs text-[var(--accent-text)] hover:underline">
+                              + Link HackerRank
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* HackerEarth Card */}
+                      <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="font-bold text-xs flex items-center gap-1.5 text-blue-600 dark:text-blue-400">
+                              <span>🟣</span> HackerEarth
+                            </span>
+                          </div>
+                          {user?.hackerearthUsername ? (
+                            <div className="space-y-1.5">
+                              <div className="text-base font-bold font-display text-[var(--text-primary)] truncate">
+                                @{user.hackerearthUsername.replace(/.*\/+/g, '')}
+                              </div>
+                              <p className="text-[11px] text-[var(--text-muted)]">
+                                Competitive Programmer
+                              </p>
+                            </div>
+                          ) : (
+                            <p className="text-xs text-[var(--text-muted)] italic">No account linked</p>
+                          )}
+                        </div>
+                        <div className="mt-3 pt-2.5 border-t border-slate-200/80 dark:border-white/10 flex items-center justify-between">
+                          {user?.hackerearthUsername ? (
+                            <a
+                              href={user.codingProfilesData?.hackerearth?.profileUrl || (user.hackerearthUsername.startsWith('http') ? user.hackerearthUsername : `https://www.hackerearth.com/@${user.hackerearthUsername}`)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+                            >
+                              <span>View Profile</span> <ExternalLink className="w-3 h-3" />
+                            </a>
+                          ) : (
+                            <button onClick={() => setEditing(true)} className="text-xs text-[var(--accent-text)] hover:underline">
+                              + Link HackerEarth
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </section>
                 </div>

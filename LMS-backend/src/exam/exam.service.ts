@@ -112,10 +112,24 @@ export class ExamService implements OnModuleInit, OnModuleDestroy {
 
   private async assertOwns(user: RequestUser, exam: Exam) {
     if (user.role === UserRole.SUPERADMIN) return;
-    if (exam.collegeId && exam.collegeId !== user.collegeId)
+    // Only SUPERADMIN-created exams have a null collegeId (see create()). Treating
+    // null as "no college to check" previously let any college admin edit or
+    // delete a platform-wide exam.
+    if (!exam.collegeId || exam.collegeId !== user.collegeId)
       throw new ForbiddenException('This exam belongs to a different college');
     if (user.role === UserRole.INSTRUCTOR && exam.createdById !== user.sub)
       throw new ForbiddenException('You did not create this exam');
+  }
+
+  /**
+   * Same gate the admin exam routes use, exposed for the analytics controller —
+   * those handlers report per-student names, emails and proctoring logs.
+   */
+  async assertCanReadExam(user: RequestUser, examId: number): Promise<Exam> {
+    this.assertAdmin(user);
+    const exam = await this.getExamOrFail(examId);
+    await this.assertOwns(user, exam);
+    return exam;
   }
 
   private async getExamOrFail(id: number): Promise<Exam> {
@@ -350,6 +364,14 @@ export class ExamService implements OnModuleInit, OnModuleDestroy {
     const students = await this.userRepo.findBy({ id: In(dto.studentIds), role: UserRole.STUDENT });
     if (students.length !== dto.studentIds.length)
       throw new BadRequestException('One or more student IDs are invalid');
+
+    // Without this, an admin could assign arbitrary ids and then read back names
+    // and emails for every student on the platform via listAssigned().
+    if (user.role !== UserRole.SUPERADMIN) {
+      const foreign = students.filter(s => s.collegeId !== exam.collegeId);
+      if (foreign.length)
+        throw new ForbiddenException(`${foreign.length} student(s) belong to a different college`);
+    }
 
     const rows = students.map(s => this.assignRepo.create({ examId: id, studentId: s.id }));
     await this.assignRepo

@@ -186,9 +186,17 @@ export default function OptionField({ index, value, onChange, disabled }: Option
                 e.target.style.display = 'none'
               }}
             />
-            <span className="text-xs text-slate-600 dark:text-slate-400 truncate max-w-[200px]">
-              {imgUrl.startsWith('data:') ? 'Image uploaded' : imgUrl}
-            </span>
+            <a
+              href={imgUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 hover:underline flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 transition-all max-w-[220px]"
+              title="Click to open uploaded image in new tab"
+            >
+              <span>🖼️</span>
+              <span className="truncate">View Uploaded Image</span>
+              <span className="text-[10px] text-slate-400 shrink-0">↗</span>
+            </a>
           </div>
           <button
             type="button"

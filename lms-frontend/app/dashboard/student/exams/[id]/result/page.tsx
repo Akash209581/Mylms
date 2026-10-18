@@ -161,31 +161,160 @@ export default function ExamResultPage() {
                   </div>
                   {showTitle && <p className="text-sm font-semibold role-text-primary mb-2">{title}</p>}
                   {statement && <div className="mb-4"><MarkdownRenderer content={statement} className="text-sm role-text-primary" /></div>}
-                  <div className="grid sm:grid-cols-2 gap-2">
-                    {LETTERS.map((opt, idx) => {
-                      const isCorrect = correctLetter === opt
-                      const isYours = yourLetter === opt
-                      const cls = isCorrect
-                        ? 'border-[var(--success)] bg-[var(--success-soft)] text-[var(--success)]'
-                        : isYours
-                          ? 'border-[var(--error)] bg-[var(--error-soft)] text-[var(--error)]'
-                          : 'border-[var(--border)] role-text-secondary'
-                      return (
-                        <div key={opt} className={`flex items-start gap-2 p-3 rounded-lg border text-sm ${cls}`}>
-                          <span className="font-semibold shrink-0">{opt}.</span>
-                          <span className="flex-1">{q.options?.[idx]}</span>
-                          {isCorrect && <Check className="w-4 h-4 shrink-0" aria-label="Correct answer" />}
-                          {isYours && !isCorrect && <X className="w-4 h-4 shrink-0" aria-label="Your answer" />}
+                  {/* 1. Jumbled Code (JC) Review */}
+                  {q.type === 'JC' ? (
+                    <div className="space-y-3">
+                      <div className="p-3.5 bg-slate-950/60 rounded-xl border border-slate-800 space-y-2">
+                        <span className="text-xs font-mono font-bold text-slate-300 block">Your Arranged Statements:</span>
+                        {(() => {
+                          let studentLines: string[] = []
+                          try {
+                            const parsed = JSON.parse(q.yourAnswer)
+                            if (Array.isArray(parsed)) studentLines = parsed
+                          } catch {
+                            studentLines = q.yourAnswer ? String(q.yourAnswer).split('\n') : []
+                          }
+                          const correctLines = q.correctAnswer ? String(q.correctAnswer).split('\n') : []
+
+                          if (!studentLines.length) {
+                            return <p className="text-xs text-slate-500 italic">No statements arranged (Skipped)</p>
+                          }
+
+                          return (
+                            <div className="space-y-1.5 font-mono text-xs">
+                              {studentLines.map((line, lIdx) => {
+                                const isLineCorrect = correctLines[lIdx] && line.trim() === correctLines[lIdx].trim()
+                                return (
+                                  <div
+                                    key={lIdx}
+                                    className={`p-2 rounded-lg border flex items-center justify-between gap-2 ${
+                                      isLineCorrect
+                                        ? 'border-emerald-500/40 bg-emerald-950/20 text-emerald-300'
+                                        : 'border-rose-500/40 bg-rose-950/20 text-rose-300'
+                                    }`}
+                                  >
+                                    <span className="shrink-0 text-slate-500">{lIdx + 1}.</span>
+                                    <span className="flex-1 whitespace-pre-wrap">{line}</span>
+                                    <span className="text-xs shrink-0">{isLineCorrect ? '✓' : '✗'}</span>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          )
+                        })()}
+                      </div>
+                      {q.correctAnswer && !q.correct && (
+                        <div className="p-3.5 bg-emerald-950/20 border border-emerald-500/30 rounded-xl">
+                          <span className="text-xs font-mono font-bold text-emerald-400 block mb-1.5">Correct Code Sequence:</span>
+                          <pre className="text-xs font-mono text-emerald-200 whitespace-pre-wrap leading-relaxed">
+                            {q.correctAnswer}
+                          </pre>
                         </div>
-                      )
-                    })}
-                  </div>
-                  <p className="text-xs role-text-muted mt-3">
-                    Your answer: <strong className="role-text-primary">{yourLetter || 'Skipped'}</strong>
-                    {correctLetter && <> · Correct: <strong className="text-[var(--success)]">{correctLetter}{correctText ? ` — ${correctText}` : ''}</strong></>}
-                  </p>
+                      )}
+                    </div>
+                  ) : q.type === 'MQ' ? (
+                    /* 2. Matching Question (MQ) Review */
+                    <div className="space-y-2.5">
+                      {(() => {
+                        let studentMap: Record<string, string> = {}
+                        try {
+                          const parsed = JSON.parse(q.yourAnswer)
+                          if (typeof parsed === 'object' && parsed !== null) {
+                            if (Array.isArray(parsed)) {
+                              parsed.forEach((p: any) => { if (p?.left) studentMap[p.left.trim()] = String(p.right || '').trim() })
+                            } else {
+                              studentMap = parsed
+                            }
+                          }
+                        } catch {
+                          studentMap = {}
+                        }
+
+                        const pairs: Array<{ left: string; right: string }> = q.matchingPairs || []
+
+                        if (!pairs.length) {
+                          return <p className="text-xs text-slate-500 italic">No matching pairs available</p>
+                        }
+
+                        return (
+                          <div className="grid gap-2">
+                            {pairs.map((p, pIdx) => {
+                              const chosen = studentMap[p.left.trim()]
+                              const isPairCorrect = chosen && chosen.trim().toLowerCase() === p.right.trim().toLowerCase()
+
+                              return (
+                                <div
+                                  key={pIdx}
+                                  className={`p-3 rounded-xl border text-xs sm:text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2 ${
+                                    isPairCorrect
+                                      ? 'bg-emerald-950/15 border-emerald-500/30 text-slate-200'
+                                      : chosen
+                                        ? 'bg-rose-950/15 border-rose-500/30 text-slate-200'
+                                        : 'bg-slate-950/40 border-slate-800 text-slate-400'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2 font-medium">
+                                    <span className="w-5 h-5 rounded bg-slate-800 text-slate-400 text-xs flex items-center justify-center font-mono">
+                                      {pIdx + 1}
+                                    </span>
+                                    <span>{p.left}</span>
+                                  </div>
+
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-slate-500 text-xs">➔</span>
+                                    <span className={`font-semibold ${isPairCorrect ? 'text-emerald-400' : chosen ? 'text-rose-400' : 'text-slate-500'}`}>
+                                      {chosen || 'Unmatched'}
+                                    </span>
+                                    {!isPairCorrect && (
+                                      <span className="text-xs text-emerald-400 font-mono">
+                                        (Expected: {p.right})
+                                      </span>
+                                    )}
+                                    <span className="text-xs">{isPairCorrect ? '✓' : '✗'}</span>
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )
+                      })()}
+                    </div>
+                  ) : (
+                    /* 3. Standard MCQ Review */
+                    <>
+                      <div className="grid sm:grid-cols-2 gap-2">
+                        {LETTERS.map((opt, idx) => {
+                          const isCorrect = correctLetter === opt
+                          const isYours = yourLetter === opt
+                          const cls = isCorrect
+                            ? 'border-[var(--success)] bg-[var(--success-soft)] text-[var(--success)]'
+                            : isYours
+                              ? 'border-[var(--error)] bg-[var(--error-soft)] text-[var(--error)]'
+                              : 'border-[var(--border)] role-text-secondary'
+                          return (
+                            <div key={opt} className={`flex items-start gap-2 p-3 rounded-lg border text-sm ${cls}`}>
+                              <span className="font-semibold shrink-0">{opt}.</span>
+                              <span className="flex-1">{q.options?.[idx]}</span>
+                              {isCorrect && <Check className="w-4 h-4 shrink-0" aria-label="Correct answer" />}
+                              {isYours && !isCorrect && <X className="w-4 h-4 shrink-0" aria-label="Your answer" />}
+                            </div>
+                          )
+                        })}
+                      </div>
+                      <p className="text-xs role-text-muted mt-3">
+                        Your answer: <strong className="role-text-primary">{yourLetter || 'Skipped'}</strong>
+                        {correctLetter && <> · Correct: <strong className="text-[var(--success)]">{correctLetter}{correctText ? ` — ${correctText}` : ''}</strong></>}
+                      </p>
+                    </>
+                  )}
                   {q.explanation && (
-                    <div className="ui-alert is-info mt-3"><Lightbulb aria-hidden="true" /><div><strong>Explanation.</strong> {q.explanation}</div></div>
+                    <div className="ui-alert is-info mt-3 flex items-start gap-2.5">
+                      <Lightbulb aria-hidden="true" className="w-4 h-4 shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <strong className="block mb-1 text-xs uppercase tracking-wider text-sky-400">Explanation:</strong>
+                        <MarkdownRenderer content={q.explanation} className="text-sm prose dark:prose-invert max-w-none" />
+                      </div>
+                    </div>
                   )}
                 </article>
               )
@@ -215,6 +344,15 @@ export default function ExamResultPage() {
                     <div className="ui-alert is-warning mt-4">
                       <Lightbulb aria-hidden="true" />
                       <div className="flex-1">{hints} hint{hints > 1 ? 's' : ''} unlocked{q.hintDeduction > 0 && <> · <strong>−{q.hintDeduction} marks</strong> penalty</>}</div>
+                    </div>
+                  )}
+                  {q.explanation && (
+                    <div className="ui-alert is-info mt-3 flex items-start gap-2.5">
+                      <Lightbulb aria-hidden="true" className="w-4 h-4 shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <strong className="block mb-1 text-xs uppercase tracking-wider text-sky-400">Explanation:</strong>
+                        <MarkdownRenderer content={q.explanation} className="text-sm prose dark:prose-invert max-w-none" />
+                      </div>
                     </div>
                   )}
                 </article>

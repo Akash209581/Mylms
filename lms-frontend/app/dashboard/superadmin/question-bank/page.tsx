@@ -84,6 +84,7 @@ export default function QuestionBankPage() {
         const matchSearch = !search || qText.includes(search.toLowerCase()) ||
             (q.topicNames && q.topicNames.toLowerCase().includes(search.toLowerCase())) ||
             (q.targetCompanies && q.targetCompanies.toLowerCase().includes(search.toLowerCase())) ||
+            (q.targetRoles && q.targetRoles.toLowerCase().includes(search.toLowerCase())) ||
             (q.companiesAppeared && q.companiesAppeared.toLowerCase().includes(search.toLowerCase()))
         return matchStatus && matchType && matchDiff && matchDomain && matchSearch && (q.questionText || q.problemStatement) && q.type
     })
@@ -216,7 +217,7 @@ export default function QuestionBankPage() {
                             <table className="role-data-table w-full">
                                 <thead>
                                     <tr className="border-b" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
-                                        {['#', 'Q. Number', 'Domain', 'Type', 'Topic', 'Companies', 'Difficulty', 'Status', 'Question Title', 'Actions'].map(h => (
+                                        {['#', 'Q. Number', 'Domain', 'Type', 'Topic', 'Companies / Roles', 'Difficulty', 'Status', 'Question Title', 'Likes', 'Actions'].map(h => (
                                             <th key={h} className="text-left text-xs font-semibold role-text-muted pb-3 pr-4">{h}</th>
                                         ))}
                                     </tr>
@@ -225,6 +226,7 @@ export default function QuestionBankPage() {
                                     {filtered.map((q: any, i: number) => {
                                         const qType = QUESTION_TYPES.find(t => t.key === q.type)
                                         const targetComps = q.targetCompanies || ''
+                                        const targetRoles = q.targetRoles || ''
                                         const appearedComps = q.companiesAppeared || ''
                                         const status = q.status || 'APPROVED'
                                         return (
@@ -248,9 +250,18 @@ export default function QuestionBankPage() {
                                                     </span>
                                                 </td>
                                                 <td className="py-4 pr-4 role-text-secondary text-sm">{q.topicNames}</td>
-                                                <td className="py-4 pr-4 max-w-[180px]">
-                                                    {(targetComps || appearedComps) ? (
+                                                <td className="py-4 pr-4 max-w-[200px]">
+                                                    {(targetRoles || targetComps || appearedComps) ? (
                                                         <div className="flex flex-col gap-1">
+                                                            {targetRoles && (
+                                                                <div className="flex flex-wrap gap-1">
+                                                                    {targetRoles.split(',').slice(0, 2).map((r: string) => (
+                                                                        <span key={r} className="px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-400 border border-purple-500/20 text-[10px] font-medium truncate" title={`Role: ${r.trim()}`}>
+                                                                            🎯 {r.trim()}
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+                                                            )}
                                                             {targetComps && (
                                                                 <div className="flex flex-wrap gap-1">
                                                                     {targetComps.split(',').slice(0, 2).map((c: string) => (
@@ -298,6 +309,32 @@ export default function QuestionBankPage() {
                                                             <span>{q.rejectionReason}</span>
                                                         </div>
                                                     )}
+                                                </td>
+                                                <td className="py-4 pr-4">
+                                                    <button
+                                                        type="button"
+                                                        onClick={async (e) => {
+                                                            e.stopPropagation();
+                                                            try {
+                                                                const res = await apiFetch(`${API_URL}/question-bank/${q.id}/like`, {
+                                                                    method: 'POST',
+                                                                    headers: { 'Content-Type': 'application/json' },
+                                                                    credentials: 'include',
+                                                                });
+                                                                if (res.ok) {
+                                                                    const data = await res.json();
+                                                                    setQuestions(prev => prev.map(item => item.id === q.id ? { ...item, likesCount: data.likesCount } : item));
+                                                                }
+                                                            } catch (err) {
+                                                                console.warn('Like failed:', err);
+                                                            }
+                                                        }}
+                                                        className="px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 transition-all flex items-center gap-1.5"
+                                                        title="Click to like this question"
+                                                    >
+                                                        <span>👍</span>
+                                                        <span>{q.likesCount || 0}</span>
+                                                    </button>
                                                 </td>
                                                 <td className="py-4">
                                                     <div className="flex gap-2">

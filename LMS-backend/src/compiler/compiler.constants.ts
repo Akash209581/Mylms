@@ -27,7 +27,7 @@ export const LANGUAGE_CONFIGS: Record<string, LanguageRunnerConfig> = {
   c: {
     languageKey: 'c',
     aliases: ['c'],
-    image: 'c-compiler',
+    image: 'lms-c-runner',
     sourceFile: 'main.c',
     compileCmd: 'gcc -O2 main.c -o main',
     runCmd: './main',
@@ -35,7 +35,7 @@ export const LANGUAGE_CONFIGS: Record<string, LanguageRunnerConfig> = {
   cpp: {
     languageKey: 'cpp',
     aliases: ['cpp', 'c++', 'cxx'],
-    image: 'c-compiler',
+    image: 'lms-cpp-runner',
     sourceFile: 'main.cpp',
     compileCmd: 'g++ -O2 main.cpp -o main',
     runCmd: './main',
@@ -43,7 +43,7 @@ export const LANGUAGE_CONFIGS: Record<string, LanguageRunnerConfig> = {
   java: {
     languageKey: 'java',
     aliases: ['java'],
-    image: 'java-compiler',
+    image: 'lms-java-runner',
     sourceFile: 'Main.java',
     compileCmd: 'javac -J-Xmx256m Main.java',
     runCmd: 'java -Xmx256m -Xss512k -XX:+UseSerialGC Main',
@@ -51,14 +51,14 @@ export const LANGUAGE_CONFIGS: Record<string, LanguageRunnerConfig> = {
   python: {
     languageKey: 'python',
     aliases: ['python', 'python3', 'py'],
-    image: 'python-compiler',
+    image: 'lms-python-runner',
     sourceFile: 'main.py',
     runCmd: 'python3 main.py',
   },
   javascript: {
     languageKey: 'javascript',
     aliases: ['javascript', 'js', 'node'],
-    image: 'javascript-compiler',
+    image: 'lms-node-runner',
     sourceFile: 'main.js',
     runCmd: 'node main.js',
   },

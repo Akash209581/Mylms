@@ -34,6 +34,7 @@ interface Question {
   allowedLanguages?: string[]
   codeSnippet?: string
   sampleTestCases?: SampleTestCase[]
+  likesCount?: number
   hints?: {
     totalHints: number
     hintsEnabled: boolean
@@ -95,6 +96,38 @@ export default function CodingWorkspace({
   onToggleReview,
   onUnlockHint,
 }: CodingWorkspaceProps) {
+  const [isLiked, setIsLiked] = useState<boolean>(false)
+  const [likeCount, setLikeCount] = useState<number>(question.likesCount || 0)
+
+  useEffect(() => {
+    try {
+      const likedList = JSON.parse(localStorage.getItem('liked_questions') || '[]')
+      setIsLiked(likedList.includes(question.id))
+    } catch {}
+    setLikeCount(question.likesCount || 0)
+  }, [question.id, question.likesCount])
+
+  const toggleLike = async () => {
+    const nextLiked = !isLiked
+    setIsLiked(nextLiked)
+    setLikeCount(prev => Math.max(0, prev + (nextLiked ? 1 : -1)))
+    try {
+      const likedList = JSON.parse(localStorage.getItem('liked_questions') || '[]')
+      const updated = nextLiked
+        ? Array.from(new Set([...likedList, question.id]))
+        : likedList.filter((id: number) => id !== question.id)
+      localStorage.setItem('liked_questions', JSON.stringify(updated))
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3003'
+      await fetch(`${apiUrl}/question-bank/${question.id}/like`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ liked: nextLiked }),
+        credentials: 'include',
+      })
+    } catch (err) {
+      console.warn('Failed to update like status:', err)
+    }
+  }
   const [activeLeftTab, setActiveLeftTab] = useState<'problem' | 'constraints' | 'hints'>('problem')
   const [consoleHeight, setConsoleHeight] = useState(260)
   const [leftWidth, setLeftWidth] = useState(480)
@@ -215,6 +248,21 @@ export default function CodingWorkspace({
 
           <div className="flex items-center gap-2">
             <button
+              type="button"
+              onClick={toggleLike}
+              className={`text-xs px-2.5 py-1 rounded-md border font-semibold transition-all flex items-center gap-1 ${
+                isLiked
+                  ? 'bg-rose-500/20 border-rose-500/50 text-rose-300 shadow-sm'
+                  : 'bg-slate-800/80 border-slate-700 text-slate-400 hover:text-rose-300 hover:border-rose-400/50'
+              }`}
+              title="Like this problem if you find it interesting"
+            >
+              <span>{isLiked ? '❤️' : '🤍'}</span>
+              <span className="hidden sm:inline">{isLiked ? 'Liked' : 'Like'}</span>
+              {likeCount > 0 && <span className="font-mono text-[10px] opacity-80 font-bold">({likeCount})</span>}
+            </button>
+
+            <button
               onClick={onToggleReview}
               className={`text-xs px-2.5 py-1 rounded-md border font-semibold transition-all flex items-center gap-1 ${
                 isMarkedForReview
@@ -319,7 +367,7 @@ export default function CodingWorkspace({
                   {tc.explanation && (
                     <div>
                       <span className="text-slate-500 block mb-0.5 font-sans">Explanation:</span>
-                      <p className="text-slate-300 font-sans text-xs">{tc.explanation}</p>
+                      <MarkdownRenderer content={tc.explanation} className="text-slate-300 font-sans text-xs" />
                     </div>
                   )}
                 </div>

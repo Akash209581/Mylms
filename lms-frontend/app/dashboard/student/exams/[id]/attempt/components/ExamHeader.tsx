@@ -123,9 +123,9 @@ export default function ExamHeader({
       <div className="flex items-center gap-2.5 shrink-0">
         {tabWarnings > 0 && (
           <div
-            className={`hidden sm:flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border ${
+            className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border ${
               tabWarnings >= 3
-                ? 'text-rose-300 bg-rose-500/15 border-rose-500/30'
+                ? 'text-rose-300 bg-rose-500/15 border-rose-500/30 animate-pulse'
                 : 'text-amber-300 bg-amber-500/15 border-amber-500/30'
             }`}
             title={tabWarnings >= 3

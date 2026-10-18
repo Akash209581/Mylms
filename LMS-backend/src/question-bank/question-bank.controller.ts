@@ -54,9 +54,12 @@ export class CreateQuestionDto {
   @IsString() @IsOptional() topicNames?: string;
   @IsEnum(Difficulty) @IsOptional() difficulty?: Difficulty;
   @IsString() @IsOptional() targetCompanies?: string;
+  @IsString() @IsOptional() targetRoles?: string;
   @IsString() @IsOptional() companiesAppeared?: string;
   @IsString() @IsOptional() programmingLanguage?: string;
   @IsNumber() @IsOptional() recentYearAppearing?: number;
+  @IsString() @IsOptional() recentMonthAppearing?: string;
+  @IsNumber() @IsOptional() likesCount?: number;
   @IsString() @IsOptional() bestPracticeFor?: string;
   @IsString() questionText: string;
   @IsArray() @IsOptional() options?: string[];
@@ -117,6 +120,21 @@ export class QuestionBankController implements OnModuleInit {
           END IF;
           IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='questions' AND column_name='companies_appeared') THEN
             ALTER TABLE questions ALTER COLUMN companies_appeared DROP NOT NULL;
+          END IF;
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='questions' AND column_name='target_roles') THEN
+            ALTER TABLE questions ADD COLUMN target_roles VARCHAR(500);
+          END IF;
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='questions' AND column_name='recent_month_appearing') THEN
+            ALTER TABLE questions ADD COLUMN recent_month_appearing VARCHAR(50);
+          END IF;
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='questions' AND column_name='likes_count') THEN
+            ALTER TABLE questions ADD COLUMN likes_count INT DEFAULT 0;
+          END IF;
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='exam_attempts' AND column_name='question_order') THEN
+            ALTER TABLE exam_attempts ADD COLUMN question_order JSONB;
+          END IF;
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='exam_attempts' AND column_name='option_mappings') THEN
+            ALTER TABLE exam_attempts ADD COLUMN option_mappings JSONB;
           END IF;
         END $$;
       `);
@@ -201,11 +219,32 @@ export class QuestionBankController implements OnModuleInit {
     return qb.orderBy('q.createdAt', 'DESC').getMany();
   }
 
+  /**
+   * RolesGuard authorizes off the `roles` array, so branching on the singular
+   * `role` here would skip the college scoping for any multi-role account.
+   * Highest privilege wins, matching the superadmin controller's primaryRole().
+   */
+  private effectiveRole(req: any): UserRole {
+    const roles: string[] = req?.user?.roles || (req?.user?.role ? [req.user.role] : []);
+    const priority = [
+      UserRole.SUPERADMIN,
+      UserRole.ADMIN,
+      UserRole.INSTRUCTOR,
+      UserRole.QUESTION_CREATOR,
+      UserRole.CONTENT_CREATOR,
+      UserRole.STUDENT,
+    ];
+    return priority.find((r) => roles.includes(r)) ?? req?.user?.role;
+  }
+
   @Put(':id/approve')
   @Roles(UserRole.SUPERADMIN, UserRole.ADMIN)
   async approveQuestion(@Param('id', ParseIntPipe) id: number, @Request() req: any) {
     const question = await this.questionRepo.findOne({ where: { id } });
     if (!question) throw new NotFoundException('Question not found');
+    this.CollegeFilterService.assertCollegeAccess(
+      this.effectiveRole(req), req.user?.collegeId, question.collegeId, 'approve',
+    );
     let questionNumber = question.questionNumber;
     if (!questionNumber) {
       questionNumber = await this.generateQuestionNumber(question.type);
@@ -228,6 +267,9 @@ export class QuestionBankController implements OnModuleInit {
   ) {
     const question = await this.questionRepo.findOne({ where: { id } });
     if (!question) throw new NotFoundException('Question not found');
+    this.CollegeFilterService.assertCollegeAccess(
+      this.effectiveRole(req), req.user?.collegeId, question.collegeId, 'reject',
+    );
     await this.questionRepo.update(id, {
       status: QuestionStatus.REJECTED,
       approvedBy: req.user.sub,
@@ -244,8 +286,10 @@ export class QuestionBankController implements OnModuleInit {
     @Query('domain') domain?: string,
     @Query('status') status?: string,
     @Query('targetCompanies') targetCompanies?: string,
+    @Query('targetRoles') targetRoles?: string,
     @Query('search') search?: string,
     @Query('limit') limit?: string,
+    @Query('page') page?: string,
     @Request() req?: any,
   ) {
     const userRole = req?.user?.role;
@@ -294,17 +338,41 @@ export class QuestionBankController implements OnModuleInit {
     if (targetCompanies) {
       qb.andWhere('q.targetCompanies ILIKE :tc', { tc: `%${targetCompanies}%` });
     }
+    if (targetRoles) {
+      qb.andWhere('q.targetRoles ILIKE :tr', { tr: `%${targetRoles}%` });
+    }
     if (topic)
       qb.andWhere('q.topicNames ILIKE :topic', { topic: `%${topic}%` });
     if (search?.trim()) {
       qb.andWhere(
-        '(q.questionText ILIKE :search OR q.problemStatement ILIKE :search OR q.topicNames ILIKE :search)',
+        '(q.questionText ILIKE :search OR q.problemStatement ILIKE :search OR q.topicNames ILIKE :search OR q.targetRoles ILIKE :search OR q.targetCompanies ILIKE :search)',
         { search: `%${search.trim()}%` },
       );
     }
     const take = limit ? Math.min(Math.max(parseInt(limit, 10) || 50, 1), 200) : undefined;
+    if (page) {
+      const pageNum = Math.max(1, parseInt(page, 10) || 1);
+      const pageSize = take || 10;
+      qb.take(pageSize).skip((pageNum - 1) * pageSize);
+      const [items, total] = await qb.orderBy('q.createdAt', 'DESC').getManyAndCount();
+      return { items, total, page: pageNum, pageSize, totalPages: Math.ceil(total / pageSize) };
+    }
     if (take) qb.take(take);
     return qb.orderBy('q.createdAt', 'DESC').getMany();
+  }
+
+  @Post(':id/like')
+  async toggleLike(
+    @Param('id', ParseIntPipe) id: number,
+    @Body('liked') liked?: boolean,
+  ) {
+    const question = await this.questionRepo.findOne({ where: { id } });
+    if (!question) throw new NotFoundException('Question not found');
+    const increment = liked === false ? -1 : 1;
+    const currentLikes = typeof question.likesCount === 'number' ? question.likesCount : 0;
+    const newLikes = Math.max(0, currentLikes + increment);
+    await this.questionRepo.update(id, { likesCount: newLikes });
+    return { success: true, likesCount: newLikes };
   }
 
   @Get('stats')
@@ -382,9 +450,9 @@ export class QuestionBankController implements OnModuleInit {
     if (!fs.existsSync(questionUploadsDir)) {
       fs.mkdirSync(questionUploadsDir, { recursive: true });
     }
-    const ext = path.extname(file.originalname) || '.png';
-    const shortId = Math.random().toString(36).substring(2, 8);
-    const safeName = `q_${Date.now()}_${shortId}${ext}`;
+    const ext = (path.extname(file.originalname) || '.png').toLowerCase();
+    const shortId = Math.random().toString(36).substring(2, 9);
+    const safeName = `img_${shortId}${ext}`;
     const filePath = path.join(questionUploadsDir, safeName);
     fs.writeFileSync(filePath, file.buffer);
     const fileUrl = `/uploads/questions/${safeName}`;
@@ -554,6 +622,7 @@ export class QuestionBankController implements OnModuleInit {
         ...dto,
         allowedLanguages: allowedLanguages as any,
         targetCompanies: dto.targetCompanies ?? undefined,
+        targetRoles: dto.targetRoles ?? undefined,
         companiesAppeared: dto.companiesAppeared ?? undefined,
         questionNumber: questionNumber as any,
         collegeId: collegeId || undefined,
@@ -593,16 +662,7 @@ export class QuestionBankController implements OnModuleInit {
         return { message: 'Question not found' };
       }
 
-      const userRoles: string[] = req?.user?.roles || (req?.user?.role ? [req.user.role] : []);
-      const userRole = userRoles.includes(UserRole.SUPERADMIN)
-        ? UserRole.SUPERADMIN
-        : userRoles.includes(UserRole.ADMIN)
-          ? UserRole.ADMIN
-          : userRoles.includes(UserRole.INSTRUCTOR)
-            ? UserRole.INSTRUCTOR
-            : userRoles.includes(UserRole.QUESTION_CREATOR)
-              ? UserRole.QUESTION_CREATOR
-              : req?.user?.role;
+      const userRole = this.effectiveRole(req);
       const userCollegeId = req?.user?.collegeId;
       const userId = req?.user?.sub;
       const targetCollegeId = question.collegeId;
@@ -656,8 +716,8 @@ export class QuestionBankController implements OnModuleInit {
       // Sanitize payload to only valid Question entity columns to prevent TypeORM EntityPropertyNotFoundError
       const allowedQuestionKeys = [
         'questionNumber', 'type', 'topicNames', 'difficulty', 'domain',
-        'companiesAppeared', 'targetCompanies', 'programmingLanguage',
-        'recentYearAppearing', 'bestPracticeFor', 'questionText', 'options',
+        'companiesAppeared', 'targetCompanies', 'targetRoles', 'programmingLanguage',
+        'recentYearAppearing', 'recentMonthAppearing', 'likesCount', 'bestPracticeFor', 'questionText', 'options',
         'correctAnswer', 'blanks', 'matchingPairs', 'extraRightMatches',
         'jumbledStatements', 'problemStatement', 'inputFormat', 'outputFormat',
         'constraints', 'allowedLanguages', 'testCases', 'codeSnippet',

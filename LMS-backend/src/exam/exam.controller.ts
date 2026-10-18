@@ -214,40 +214,51 @@ export class ExamController {
 
   // ─── Analytics ────────────────────────────────────────────────────────────
 
+  // Every handler below reports student names, emails, registration numbers and
+  // proctoring logs, so each one re-checks exam ownership before reading.
+
   @Get(':id/analytics')
-  analyticsOverview(@Param('id', ParseIntPipe) id: number) {
+  async analyticsOverview(@Request() req, @Param('id', ParseIntPipe) id: number) {
+    await this.service.assertCanReadExam(req.user, id);
     return this.analytics.overview(id);
   }
 
   @Get(':id/analytics/distribution')
-  distribution(@Param('id', ParseIntPipe) id: number) {
+  async distribution(@Request() req, @Param('id', ParseIntPipe) id: number) {
+    await this.service.assertCanReadExam(req.user, id);
     return this.analytics.scoreDistribution(id);
   }
 
   @Get(':id/analytics/students')
-  studentPerf(
+  async studentPerf(
+    @Request() req,
     @Param('id', ParseIntPipe) id: number,
     @Query('page') page = '1',
     @Query('limit') limit = '50',
   ) {
+    await this.service.assertCanReadExam(req.user, id);
     return this.analytics.studentPerformance(id, parseInt(page), parseInt(limit));
   }
 
   @Get(':id/analytics/students/:studentId')
-  studentDetail(
+  async studentDetail(
+    @Request() req,
     @Param('id', ParseIntPipe) id: number,
     @Param('studentId', ParseIntPipe) studentId: number,
   ) {
+    await this.service.assertCanReadExam(req.user, id);
     return this.analytics.studentDetail(id, studentId);
   }
 
   @Get(':id/analytics/questions')
-  questionAnalytics(@Param('id', ParseIntPipe) id: number) {
+  async questionAnalytics(@Request() req, @Param('id', ParseIntPipe) id: number) {
+    await this.service.assertCanReadExam(req.user, id);
     return this.analytics.questionAnalytics(id);
   }
 
   @Get(':id/rankings')
-  rankings(@Param('id', ParseIntPipe) id: number) {
+  async rankings(@Request() req, @Param('id', ParseIntPipe) id: number) {
+    await this.service.assertCanReadExam(req.user, id);
     return this.analytics.rankings(id);
   }
 }

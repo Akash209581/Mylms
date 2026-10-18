@@ -8,6 +8,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
 import QuestionPreview from '@/components/question-bank/QuestionPreview'
+import BulkTestCasesModal from '@/components/question-bank/BulkTestCasesModal'
 import MarkdownToolbar from '@/components/editor/MarkdownToolbar'
 import OptionField from '@/components/question-bank/OptionField'
 import { normalizeMcqLetter } from '@/lib/mcq-answer'
@@ -16,8 +17,14 @@ import { ADMIN_STARTERS } from '@/lib/starter-code'
 import { toast } from '@/lib/toast'
 
 const COMPANIES = ['Accenture', 'CapGemini', 'Infosys', 'TCS', 'Wipro', 'Amazon', 'Google', 'Microsoft', 'Adobe', 'Flipkart', 'Other']
+const TARGET_ROLES = [
+    'Software Engineer', 'Frontend Developer', 'Backend Developer', 'Full Stack Developer',
+    'Data Analyst', 'Data Engineer', 'QA / Automation Engineer', 'DevOps Engineer',
+    'Cloud Engineer', 'Mobile Developer', 'Systems Engineer', 'AI/ML Engineer'
+]
 const LANGUAGES = ['Python', 'Java', 'C', 'C++', 'JavaScript', 'Any']
 const DIFFICULTIES = ['VERY_EASY', 'EASY', 'MEDIUM', 'HARD', 'VERY_HARD']
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
 const QUESTION_TYPES = [
     { key: 'MCQ', label: 'MCQ', icon: '🔘', desc: 'Multiple Choice — 4 options, 1 correct' },
@@ -35,8 +42,8 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
     const returnTo = searchParams?.get('returnTo')
     const [step, setStep] = useState(2)
     const [form, setForm] = useState<any>({
-        type: '', topicNames: [], difficulty: 'MEDIUM', companiesAppeared: '',
-        programmingLanguage: '', recentYearAppearing: new Date().getFullYear(),
+        type: '', topicNames: [], difficulty: 'MEDIUM', companiesAppeared: '', targetCompanies: '', targetRoles: '',
+        programmingLanguage: '', recentYearAppearing: new Date().getFullYear(), recentMonthAppearing: '',
         bestPracticeFor: '', questionText: '',
         options: ['', '', '', ''], correctAnswer: '',
         blanks: [''],
@@ -63,6 +70,7 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [showPreview, setShowPreview] = useState(false)
+    const [showBulkTestCases, setShowBulkTestCases] = useState(false)
     const [error, setError] = useState('')
     const [pqTab, setPqTab] = useState<'explanation' | 'problem' | 'testcases' | 'predefined' | 'hints'>('explanation')
     const [predefinedCodes, setPredefinedCodes] = useState<Record<string, string>>({ ...ADMIN_STARTERS })
@@ -404,6 +412,43 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
                             </div>
                             <div className="col-span-1 sm:col-span-2">
                                 <label className="text-gray-400 text-sm mb-2 block font-medium">
+                                    🎯 Target Roles <span className="text-xs text-purple-400 font-normal">(Optional — select quick pills or type custom comma-separated roles)</span>
+                                </label>
+                                <div className="flex flex-wrap gap-1.5 mb-2.5">
+                                    {TARGET_ROLES.map(r => {
+                                        const currentList = (form.targetRoles || '').split(',').map((x: string) => x.trim()).filter(Boolean)
+                                        const isSelected = currentList.includes(r)
+                                        return (
+                                            <button
+                                                key={r}
+                                                type="button"
+                                                onClick={() => {
+                                                    const updated = isSelected
+                                                        ? currentList.filter((x: string) => x !== r)
+                                                        : [...currentList, r]
+                                                    set('targetRoles', updated.join(', '))
+                                                }}
+                                                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                                                    isSelected
+                                                        ? 'bg-purple-600 text-white shadow-sm shadow-purple-600/30'
+                                                        : 'bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10'
+                                                }`}
+                                            >
+                                                {isSelected ? '✓ ' : '+ '}{r}
+                                            </button>
+                                        )
+                                    })}
+                                </div>
+                                <input 
+                                    value={form.targetRoles || ''} 
+                                    onChange={e => set('targetRoles', e.target.value)}
+                                    placeholder="e.g. Software Engineer, Frontend Developer, Backend Developer, QA Engineer..." 
+                                    className="input-field" 
+                                />
+                            </div>
+
+                            <div className="col-span-1 sm:col-span-2">
+                                <label className="text-gray-400 text-sm mb-2 block font-medium">
                                     🏢 Target Companies <span className="text-xs text-primary-400 font-normal">(Optional — select quick pills or type custom comma-separated)</span>
                                 </label>
                                 <div className="flex flex-wrap gap-1.5 mb-2.5">
@@ -486,6 +531,13 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
                                 <label className="text-gray-400 text-sm mb-2 block">Recent Year of Appearing</label>
                                 <input type="number" value={form.recentYearAppearing} onChange={e => set('recentYearAppearing', +e.target.value)}
                                     className="input-field" min="2015" max="2030" />
+                            </div>
+                            <div>
+                                <label className="text-gray-400 text-sm mb-2 block">Recent Month (Optional)</label>
+                                <select value={form.recentMonthAppearing || ''} onChange={e => set('recentMonthAppearing', e.target.value)} className="input-field">
+                                    <option value="">Select Month (Optional)</option>
+                                    {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
+                                </select>
                             </div>
                             <div>
                                 <label className="text-gray-400 text-sm mb-2 block">Best Practice For</label>
@@ -720,22 +772,104 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
                             </div>
 
                             <div className="pt-6 border-t border-white/5">
-                                <h3 className="role-text-primary font-semibold mb-4">🔀 Jumbled Statements (One per line)</h3>
-                                {form.jumbledStatements.map((s: string, i: number) => (
-                                    <div key={i} className="flex gap-3 mb-3 items-center">
-                                        <span className="text-gray-400 text-sm w-6">{i + 1}.</span>
-                                        <input value={s} onChange={e => { const js = [...form.jumbledStatements]; js[i] = e.target.value; set('jumbledStatements', js) }}
-                                            placeholder={`Code line ${i + 1}`} className="input-field flex-1 font-mono text-sm" />
-                                        {form.jumbledStatements.length > 1 && (
-                                            <button onClick={() => set('jumbledStatements', form.jumbledStatements.filter((_: any, idx: number) => idx !== i))}
-                                                className="text-red-400 hover:text-red-500 transition-colors p-1" title="Delete Statement">
-                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                                            </button>
-                                        )}
-                                    </div>
-                                ))}
-                                <button onClick={() => set('jumbledStatements', [...form.jumbledStatements, ''])}
-                                    className="btn-secondary px-4 py-2 text-sm mt-2">+ Add Statement</button>
+                                <div className="flex items-center justify-between mb-2">
+                                    <h3 className="role-text-primary font-semibold">🔀 Jumbled Statements (One per line)</h3>
+                                    <span className="text-xs text-indigo-400 font-mono bg-indigo-500/10 px-2.5 py-0.5 rounded-full border border-indigo-500/20">
+                                        ⠿ Draggable to rearrange
+                                    </span>
+                                </div>
+                                <p className="text-gray-400 text-xs mb-4 text-primary-400/80">Enter statements in the CORRECT order — drag statements by the grip handle (⋮⋮) or use the arrows (▲/▼) to reorder for the correct answer sequence.</p>
+                                <div className="space-y-2.5">
+                                    {form.jumbledStatements.map((s: string, i: number) => (
+                                        <div
+                                            key={i}
+                                            draggable
+                                            onDragStart={(e) => {
+                                                e.dataTransfer.setData('text/plain', String(i));
+                                                e.currentTarget.classList.add('opacity-40');
+                                            }}
+                                            onDragEnd={(e) => {
+                                                e.currentTarget.classList.remove('opacity-40');
+                                            }}
+                                            onDragOver={(e) => e.preventDefault()}
+                                            onDrop={(e) => {
+                                                e.preventDefault();
+                                                const fromIdx = parseInt(e.dataTransfer.getData('text/plain'), 10);
+                                                if (isNaN(fromIdx) || fromIdx === i) return;
+                                                const items = [...form.jumbledStatements];
+                                                const [moved] = items.splice(fromIdx, 1);
+                                                items.splice(i, 0, moved);
+                                                set('jumbledStatements', items);
+                                                if (!form.correctCode || form.correctCode.trim() === form.jumbledStatements.join('\n').trim()) {
+                                                    set('correctCode', items.join('\n'));
+                                                }
+                                            }}
+                                            className="flex gap-2 items-center p-2.5 rounded-xl bg-slate-900/40 border border-slate-700/60 hover:border-indigo-500/50 transition-all cursor-move group"
+                                        >
+                                            <div className="flex items-center gap-1.5 text-slate-500 group-hover:text-indigo-400 select-none shrink-0" title="Drag to reorder">
+                                                <span className="text-base leading-none cursor-grab active:cursor-grabbing font-bold">⋮⋮</span>
+                                                <span className="text-xs font-mono font-bold w-5 text-slate-400">{i + 1}.</span>
+                                            </div>
+                                            <input
+                                                value={s}
+                                                onChange={e => {
+                                                    const js = [...form.jumbledStatements];
+                                                    js[i] = e.target.value;
+                                                    set('jumbledStatements', js);
+                                                }}
+                                                placeholder={`Code statement ${i + 1}`}
+                                                className="input-field flex-1 font-mono text-sm py-1.5"
+                                            />
+                                            <div className="flex items-center gap-1 shrink-0">
+                                                <button
+                                                    type="button"
+                                                    disabled={i === 0}
+                                                    onClick={() => {
+                                                        if (i === 0) return;
+                                                        const items = [...form.jumbledStatements];
+                                                        [items[i - 1], items[i]] = [items[i], items[i - 1]];
+                                                        set('jumbledStatements', items);
+                                                    }}
+                                                    className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-20 disabled:pointer-events-none transition-all"
+                                                    title="Move Up"
+                                                >
+                                                    ▲
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    disabled={i === form.jumbledStatements.length - 1}
+                                                    onClick={() => {
+                                                        if (i >= form.jumbledStatements.length - 1) return;
+                                                        const items = [...form.jumbledStatements];
+                                                        [items[i + 1], items[i]] = [items[i], items[i + 1]];
+                                                        set('jumbledStatements', items);
+                                                    }}
+                                                    className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-20 disabled:pointer-events-none transition-all"
+                                                    title="Move Down"
+                                                >
+                                                    ▼
+                                                </button>
+                                                {form.jumbledStatements.length > 1 && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => set('jumbledStatements', form.jumbledStatements.filter((_: any, idx: number) => idx !== i))}
+                                                        className="w-7 h-7 flex items-center justify-center rounded-lg text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all"
+                                                        title="Delete Statement"
+                                                    >
+                                                        ✕
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => set('jumbledStatements', [...form.jumbledStatements, ''])}
+                                    className="btn-secondary px-4 py-2 text-sm mt-4 flex items-center gap-1.5"
+                                >
+                                    <span>+</span> Add Statement
+                                </button>
                             </div>
 
                             <div className="pt-6 border-t border-white/5">
@@ -913,8 +1047,22 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
                                     <div>
                                         <label className="text-gray-400 text-sm mb-3 block">Test Cases</label>
                                         {form.testCases.map((tc: any, i: number) => (
-                                            <div key={i} className="p-4 rounded-xl mb-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                                                <p className="text-gray-400 text-xs mb-2">Test Case {i + 1}</p>
+                                            <div key={i} className="p-4 rounded-xl mb-3 relative group" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                                                <div className="flex justify-between items-center mb-2">
+                                                    <p className="text-gray-400 text-xs font-bold uppercase tracking-wider">Test Case {i + 1}</p>
+                                                    {form.testCases.length > 1 && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                const tcs = form.testCases.filter((_: any, idx: number) => idx !== i)
+                                                                set('testCases', tcs)
+                                                            }}
+                                                            className="text-xs text-rose-400 hover:text-rose-300 px-2 py-0.5 rounded hover:bg-rose-500/10 transition-colors"
+                                                        >
+                                                            ✕ Remove
+                                                        </button>
+                                                    )}
+                                                </div>
                                                 <div className="grid grid-cols-2 gap-3">
                                                     <textarea value={tc.input}
                                                         onChange={e => { const tcs = [...form.testCases]; tcs[i].input = e.target.value; set('testCases', tcs) }}
@@ -962,8 +1110,17 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
                                                 </div>
                                             </div>
                                         ))}
-                                        <button type="button" onClick={() => set('testCases', [...form.testCases, { input: '', output: '', explanation: '', isHidden: false }])}
-                                            className="btn-secondary px-4 py-2 text-sm">+ Add Test Case</button>
+                                        <div className="flex flex-wrap items-center gap-3">
+                                            <button type="button" onClick={() => set('testCases', [...form.testCases, { input: '', output: '', explanation: '', isHidden: false }])}
+                                                className="btn-secondary px-4 py-2 text-sm">+ Add Test Case</button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowBulkTestCases(true)}
+                                                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition-all shadow-md flex items-center gap-2"
+                                            >
+                                                <span>⚡ Bulk Add Test Cases</span>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             )}
@@ -1194,6 +1351,21 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
             {showPreview && (
                 <QuestionPreview form={form} onClose={() => setShowPreview(false)} />
             )}
+
+            <BulkTestCasesModal
+                isOpen={showBulkTestCases}
+                onClose={() => setShowBulkTestCases(false)}
+                existingCount={form.testCases?.length || 0}
+                onApply={(newCases, mode) => {
+                    if (mode === 'replace') {
+                        set('testCases', newCases)
+                    } else {
+                        const existing = (form.testCases || []).filter((tc: any) => tc.input || tc.output)
+                        set('testCases', [...existing, ...newCases])
+                    }
+                    toast.success(`Successfully added ${newCases.length} test case(s)`)
+                }}
+            />
 
             {/* Add Domain Modal */}
             {showAddDomain && (
