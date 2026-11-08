@@ -254,10 +254,12 @@ export default function EditQuestionPage({ params }: { params: { id: string } })
                 delete (submitData as any).constraints;
                 delete (submitData as any).allowedLanguages;
             }
+            if (submitData.type !== 'MCQ' && submitData.type !== 'OP' && submitData.type !== 'PQ') {
+                delete (submitData as any).codeSnippet;
+            }
             if (submitData.type !== 'MCQ' && submitData.type !== 'OP') {
                 delete (submitData as any).options;
                 delete (submitData as any).correctAnswer;
-                delete (submitData as any).codeSnippet;
                 delete (submitData as any).expectedOutput;
             }
 

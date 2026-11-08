@@ -16,6 +16,10 @@ interface Question {
   programmingLanguage?: string
   jumbledStatements?: string[]
   likesCount?: number
+  matchingPairs?: Array<{ left?: string; right?: string }>
+  leftItems?: string[]
+  rightItems?: string[]
+  extraRightMatches?: string[]
 }
 
 interface McqWorkspaceProps {
@@ -540,7 +544,7 @@ export default function McqWorkspace({
                             </span>
                             <div className="flex-1 min-w-0">
                               <p className="whitespace-pre-wrap">{right}</p>
-                              {isAssigned && (
+                              {isAssigned && assignedLeft && (
                                 <p className="text-[10px] text-indigo-400 mt-1 font-mono font-semibold">
                                   ✓ Linked to Item #{leftItems.indexOf(assignedLeft) + 1}
                                 </p>

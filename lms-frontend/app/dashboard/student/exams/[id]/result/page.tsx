@@ -8,7 +8,7 @@ import MarkdownRenderer from '@/components/editor/MarkdownRenderer'
 import { normalizeMcqLetter, optionTextForLetter } from '@/lib/mcq-answer'
 import Link from 'next/link'
 import { EmptyState, Loading } from '@/components/ui'
-import { ArrowLeft, BarChart3, Check, CheckCircle2, Code2, Lightbulb, ListChecks, PieChart, X } from 'lucide-react'
+import { ArrowLeft, BarChart3, Check, CheckCircle2, ChevronDown, Code2, Lightbulb, ListChecks, PieChart, X } from 'lucide-react'
 
 export default function ExamResultPage() {
   const router = useRouter()
@@ -20,6 +20,11 @@ export default function ExamResultPage() {
   const [result, setResult] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'summary' | 'mcq' | 'coding'>('summary')
+  const [expandedExplanations, setExpandedExplanations] = useState<Record<string, boolean>>({})
+
+  const toggleExplanation = (key: string) => {
+    setExpandedExplanations(prev => ({ ...prev, [key]: !prev[key] }))
+  }
 
   useEffect(() => {
     if (!attemptId) { router.push('/dashboard/student/exams'); return }
@@ -308,12 +313,25 @@ export default function ExamResultPage() {
                     </>
                   )}
                   {q.explanation && (
-                    <div className="ui-alert is-info mt-3 flex items-start gap-2.5">
-                      <Lightbulb aria-hidden="true" className="w-4 h-4 shrink-0 mt-0.5" />
-                      <div className="flex-1 min-w-0">
-                        <strong className="block mb-1 text-xs uppercase tracking-wider text-sky-400">Explanation:</strong>
-                        <MarkdownRenderer content={q.explanation} className="text-sm prose dark:prose-invert max-w-none" />
-                      </div>
+                    <div className="mt-3">
+                      <button
+                        type="button"
+                        onClick={() => toggleExplanation(`mcq-${q.questionId || i}`)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-sky-500/10 text-sky-400 hover:bg-sky-500/20 border border-sky-500/30 transition-all cursor-pointer"
+                      >
+                        <Lightbulb className="w-3.5 h-3.5" />
+                        <span>{expandedExplanations[`mcq-${q.questionId || i}`] ? 'Hide Explanation' : 'View Explanation'}</span>
+                        <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${expandedExplanations[`mcq-${q.questionId || i}`] ? 'rotate-180' : ''}`} />
+                      </button>
+                      {expandedExplanations[`mcq-${q.questionId || i}`] && (
+                        <div className="ui-alert is-info mt-2 flex items-start gap-2.5 animate-in fade-in duration-200">
+                          <Lightbulb aria-hidden="true" className="w-4 h-4 shrink-0 mt-0.5" />
+                          <div className="flex-1 min-w-0">
+                            <strong className="block mb-1 text-xs uppercase tracking-wider text-sky-400">Explanation:</strong>
+                            <MarkdownRenderer content={q.explanation} className="text-sm prose dark:prose-invert max-w-none" />
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </article>
@@ -347,12 +365,25 @@ export default function ExamResultPage() {
                     </div>
                   )}
                   {q.explanation && (
-                    <div className="ui-alert is-info mt-3 flex items-start gap-2.5">
-                      <Lightbulb aria-hidden="true" className="w-4 h-4 shrink-0 mt-0.5" />
-                      <div className="flex-1 min-w-0">
-                        <strong className="block mb-1 text-xs uppercase tracking-wider text-sky-400">Explanation:</strong>
-                        <MarkdownRenderer content={q.explanation} className="text-sm prose dark:prose-invert max-w-none" />
-                      </div>
+                    <div className="mt-3">
+                      <button
+                        type="button"
+                        onClick={() => toggleExplanation(`coding-${q.questionId || i}`)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-sky-500/10 text-sky-400 hover:bg-sky-500/20 border border-sky-500/30 transition-all cursor-pointer"
+                      >
+                        <Lightbulb className="w-3.5 h-3.5" />
+                        <span>{expandedExplanations[`coding-${q.questionId || i}`] ? 'Hide Explanation' : 'View Explanation'}</span>
+                        <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${expandedExplanations[`coding-${q.questionId || i}`] ? 'rotate-180' : ''}`} />
+                      </button>
+                      {expandedExplanations[`coding-${q.questionId || i}`] && (
+                        <div className="ui-alert is-info mt-2 flex items-start gap-2.5 animate-in fade-in duration-200">
+                          <Lightbulb aria-hidden="true" className="w-4 h-4 shrink-0 mt-0.5" />
+                          <div className="flex-1 min-w-0">
+                            <strong className="block mb-1 text-xs uppercase tracking-wider text-sky-400">Explanation:</strong>
+                            <MarkdownRenderer content={q.explanation} className="text-sm prose dark:prose-invert max-w-none" />
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </article>

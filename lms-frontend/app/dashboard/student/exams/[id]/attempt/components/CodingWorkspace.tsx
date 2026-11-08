@@ -128,7 +128,7 @@ export default function CodingWorkspace({
       console.warn('Failed to update like status:', err)
     }
   }
-  const [activeLeftTab, setActiveLeftTab] = useState<'problem' | 'constraints' | 'hints'>('problem')
+  const [activeLeftTab, setActiveLeftTab] = useState<'problem' | 'hints'>('problem')
   const [consoleHeight, setConsoleHeight] = useState(260)
   const [leftWidth, setLeftWidth] = useState(480)
   const [isFullscreen, setIsFullscreen] = useState(false)
@@ -217,18 +217,6 @@ export default function CodingWorkspace({
             >
               Problem Statement
             </button>
-            {question.constraints && (
-              <button
-                onClick={() => setActiveLeftTab('constraints')}
-                className={`px-3 py-1 rounded-md text-xs font-semibold transition-all ${
-                  activeLeftTab === 'constraints'
-                    ? 'bg-slate-800 text-slate-100 border border-slate-700'
-                    : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
-                }`}
-              >
-                Constraints
-              </button>
-            )}
             {question.hints && question.hints.hintsEnabled && question.hints.totalHints > 0 && (
               <button
                 onClick={() => setActiveLeftTab('hints')}
@@ -375,17 +363,26 @@ export default function CodingWorkspace({
             </div>
           )}
 
-          {/* Constraints */}
-          {question.constraints && activeLeftTab !== 'hints' && (
-            <div className="space-y-2 pt-4 border-t border-[var(--border)]">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                Constraints
-              </h3>
-              <div className="p-3 bg-[var(--bg-raised)] rounded-xl border border-[var(--border)] text-xs font-mono text-[var(--text-secondary)] whitespace-pre-wrap">
-                {question.constraints}
+          {/* Constraints (only shown separately if not already included in complete question statement) */}
+          {(() => {
+            if (!question.constraints?.trim() || activeLeftTab === 'hints') return null
+            const pStmt = (question.problemStatement || '').toLowerCase()
+            const qText = (question.questionText || '').toLowerCase()
+            const cText = question.constraints.trim().toLowerCase()
+            const alreadyIncluded = pStmt.includes('constraint') || qText.includes('constraint') || pStmt.includes(cText) || qText.includes(cText)
+            if (alreadyIncluded) return null
+
+            return (
+              <div className="space-y-2 pt-4 border-t border-[var(--border)]">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                  Constraints
+                </h3>
+                <div className="p-3 bg-[var(--bg-raised)] rounded-xl border border-[var(--border)] text-xs font-mono text-[var(--text-secondary)] whitespace-pre-wrap">
+                  {question.constraints}
+                </div>
               </div>
-            </div>
-          )}
+            )
+          })()}
 
           {/* Sequential Hints Panel */}
           {activeLeftTab === 'hints' && question.hints && (

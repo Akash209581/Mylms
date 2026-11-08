@@ -41,6 +41,30 @@ function renderOptionContent(opt: string) {
     return <span className="font-medium text-sm sm:text-base leading-relaxed break-words">{trimmed}</span>;
 }
 
+function QuestionExplanationToggle({ explanation }: { explanation: string }) {
+    const [open, setOpen] = useState(false)
+    if (!explanation) return null
+    return (
+        <div className="mt-4">
+            <button
+                type="button"
+                onClick={() => setOpen(!open)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition-all cursor-pointer shadow-xs"
+            >
+                <span>💡</span>
+                <span>{open ? 'Hide Explanation' : 'View Explanation'}</span>
+                <span className={`text-[10px] transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>▼</span>
+            </button>
+            {open && (
+                <div className="mt-2.5 bg-emerald-50/50 p-5 rounded-2xl border border-emerald-100 animate-in fade-in duration-200">
+                    <h4 className="text-emerald-700 text-[10px] font-bold uppercase mb-2 tracking-wider">Explanation</h4>
+                    <MarkdownRenderer content={explanation} className="text-slate-600 text-sm leading-relaxed" />
+                </div>
+            )}
+        </div>
+    )
+}
+
 export default function QuestionPreview({ form, onClose }: QuestionPreviewProps) {
     const [previewTab, setPreviewTab] = useState<'explanation' | 'problem' | 'testcases' | 'predefined' | 'hints'>('problem')
     const [previewLang, setPreviewLang] = useState<string>('')
@@ -84,12 +108,7 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                                 )
                             })}
                         </div>
-                        {form.explanation && (
-                            <div className="bg-emerald-50/50 p-6 rounded-2xl border border-emerald-100">
-                                <h4 className="text-emerald-700 text-[10px] font-bold uppercase mb-2 tracking-wider">Explanation</h4>
-                                <MarkdownRenderer content={form.explanation} className="text-slate-600 text-sm" />
-                            </div>
-                        )}
+                        <QuestionExplanationToggle explanation={form.explanation} />
                     </div>
                 )
 
@@ -128,12 +147,7 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                             </div>
                         </div>
 
-                        {form.explanation && (
-                            <div className="bg-emerald-50/50 p-6 rounded-2xl border border-emerald-100">
-                                <h4 className="text-emerald-700 text-[10px] font-bold uppercase mb-2 tracking-wider">Explanation</h4>
-                                <MarkdownRenderer content={form.explanation} className="text-slate-600 text-sm" />
-                            </div>
-                        )}
+                        <QuestionExplanationToggle explanation={form.explanation} />
                     </div>
                 )
 
@@ -181,12 +195,7 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                             </div>
                         </div>
 
-                        {form.explanation && (
-                            <div className="bg-emerald-50/50 p-6 rounded-2xl border border-emerald-100">
-                                <h4 className="text-emerald-700 text-[10px] font-bold uppercase mb-2 tracking-wider">Explanation</h4>
-                                <MarkdownRenderer content={form.explanation} className="text-slate-600 text-sm" />
-                            </div>
-                        )}
+                        <QuestionExplanationToggle explanation={form.explanation} />
                     </div>
                 )
 
@@ -291,12 +300,7 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                             </div>
                         )}
 
-                        {form.explanation && (
-                            <div className="bg-emerald-50/50 p-6 rounded-2xl border border-emerald-100">
-                                <h4 className="text-emerald-700 text-[10px] font-bold uppercase mb-2 tracking-wider">Explanation</h4>
-                                <MarkdownRenderer content={form.explanation} className="text-slate-600 text-sm" />
-                            </div>
-                        )}
+                        <QuestionExplanationToggle explanation={form.explanation} />
                     </div>
                 )
 
@@ -601,12 +605,7 @@ export default function QuestionPreview({ form, onClose }: QuestionPreviewProps)
                             <p className="text-slate-900 font-mono">{form.expectedOutput}</p>
                         </div>
 
-                        {form.explanation && (
-                            <div className="bg-emerald-50/50 p-6 rounded-2xl border border-emerald-100">
-                                <h4 className="text-emerald-700 text-[10px] font-bold uppercase mb-2 tracking-wider">Explanation</h4>
-                                <MarkdownRenderer content={form.explanation} className="text-slate-600 text-sm" />
-                            </div>
-                        )}
+                        <QuestionExplanationToggle explanation={form.explanation} />
 
                     </div>
 

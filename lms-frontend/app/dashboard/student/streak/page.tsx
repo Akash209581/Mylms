@@ -9,7 +9,7 @@ import Link from 'next/link'
 import StudentReferenceShell from '@/components/layout/StudentReferenceShell'
 import { EmptyState, Loading, PageHeader } from '@/components/ui'
 import { api } from '@/lib/api'
-import { CheckCircle2, Flame, MoonStar, Send, XCircle } from 'lucide-react'
+import { CheckCircle2, ChevronDown, Flame, Lightbulb, MoonStar, Send, XCircle } from 'lucide-react'
 import MarkdownRenderer from '@/components/editor/MarkdownRenderer'
 
 export default function DailyChallengePage() {
@@ -19,6 +19,7 @@ export default function DailyChallengePage() {
     const [answer, setAnswer] = useState('')
     const [submitted, setSubmitted] = useState(false)
     const [result, setResult] = useState<any>(null)
+    const [showExplanation, setShowExplanation] = useState(false)
     const [selectedLang, setSelectedLang] = useState<string>('')
     const [streakDays, setStreakDays] = useState<number | null>(null)
 
@@ -143,7 +144,25 @@ export default function DailyChallengePage() {
                     <div className="flex-1">
                         <p className="font-semibold text-base">{result.success ? 'Correct answer' : 'Not quite'}</p>
                         <p className="mt-1">{result.message}</p>
-                        {result.explanation && <div className="mt-2 text-sm opacity-90"><MarkdownRenderer content={result.explanation} /></div>}
+                        {result.explanation && (
+                            <div className="mt-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowExplanation(!showExplanation)}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-sky-500/15 text-sky-300 hover:bg-sky-500/25 border border-sky-500/30 transition-all cursor-pointer"
+                                >
+                                    <Lightbulb className="w-3.5 h-3.5" />
+                                    <span>{showExplanation ? 'Hide Explanation' : 'View Explanation'}</span>
+                                    <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showExplanation ? 'rotate-180' : ''}`} />
+                                </button>
+                                {showExplanation && (
+                                    <div className="mt-2 text-sm opacity-90 p-3 rounded-lg bg-sky-500/10 border border-sky-500/20 animate-in fade-in duration-200">
+                                        <strong className="block mb-1 text-xs uppercase tracking-wider text-sky-300">Explanation:</strong>
+                                        <MarkdownRenderer content={result.explanation} />
+                                    </div>
+                                )}
+                            </div>
+                        )}
                         <Link href="/dashboard/student" className="ui-btn ui-btn-secondary ui-btn-sm mt-4">Back to overview</Link>
                     </div>
                 </div>

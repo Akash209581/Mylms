@@ -233,65 +233,133 @@ export default function QuestionBankPage() {
                                             <tr key={q.id} className="border-b hover:bg-[var(--bg-surface)]/5 transition-colors"
                                                 style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
                                                 <td className="py-4 pr-4 text-[var(--text-secondary)] text-sm">{i + 1}</td>
-                                                <td className="py-4 pr-4">
+                                                <td className="py-4 pr-4" title={q.questionNumber ? `Question Number: ${q.questionNumber}` : 'Unassigned Question Number'}>
                                                     {q.questionNumber ? (
                                                         <span className="text-xs font-mono font-semibold role-text-accent">{q.questionNumber}</span>
                                                     ) : (
                                                         <span className="text-[10px] font-semibold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20 whitespace-nowrap">⏳ Unassigned</span>
                                                     )}
                                                 </td>
-                                                <td className="py-4 pr-4">
+                                                <td className="py-4 pr-4" title={`Domain: ${q.domain || 'Programming Domain'}`}>
                                                     <span className="text-xs font-semibold role-text-secondary">{q.domain || 'Programming Domain'}</span>
                                                 </td>
-                                                <td className="py-4 pr-4">
+                                                <td className="py-4 pr-4" title={`Type: ${qType?.label || q.type}`}>
                                                     <span className="px-2 py-1 rounded-lg text-xs font-semibold"
                                                         style={{ background: `${qType?.color}25`, color: qType?.color }}>
                                                         {qType?.icon} {q.type}
                                                     </span>
                                                 </td>
-                                                <td className="py-4 pr-4 role-text-secondary text-sm">{q.topicNames}</td>
-                                                <td className="py-4 pr-4 max-w-[200px]">
-                                                    {(targetRoles || targetComps || appearedComps) ? (
-                                                        <div className="flex flex-col gap-1">
-                                                            {targetRoles && (
-                                                                <div className="flex flex-wrap gap-1">
-                                                                    {targetRoles.split(',').slice(0, 2).map((r: string) => (
-                                                                        <span key={r} className="px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-400 border border-purple-500/20 text-[10px] font-medium truncate" title={`Role: ${r.trim()}`}>
-                                                                            🎯 {r.trim()}
-                                                                        </span>
-                                                                    ))}
+                                                <td className="py-4 pr-4 role-text-secondary text-sm" title={`Topic: ${q.topicNames}`}>
+                                                    <span className="truncate block max-w-[150px]" title={q.topicNames}>{q.topicNames}</span>
+                                                </td>
+                                                <td className="py-4 pr-4 min-w-[190px] max-w-[260px] relative group/comps"
+                                                    title={`Companies/Roles: ${[
+                                                        targetComps ? `Target: ${targetComps}` : '',
+                                                        appearedComps ? `Appeared: ${appearedComps}` : '',
+                                                        targetRoles ? `Roles: ${targetRoles}` : ''
+                                                    ].filter(Boolean).join(' | ')}`}
+                                                >
+                                                    {(targetRoles || targetComps || appearedComps) ? (() => {
+                                                        const targetCompsList = targetComps ? targetComps.split(',').map((c: string) => c.trim()).filter(Boolean) : []
+                                                        const appearedCompsList = appearedComps ? appearedComps.split(',').map((c: string) => c.trim()).filter(Boolean) : []
+                                                        const targetRolesList = targetRoles ? targetRoles.split(',').map((r: string) => r.trim()).filter(Boolean) : []
+
+                                                        const allCompsCount = targetCompsList.length + appearedCompsList.length
+                                                        const visibleTarget = targetCompsList.slice(0, 2)
+                                                        const remainingTarget = targetCompsList.length - visibleTarget.length
+                                                        const visibleAppeared = appearedCompsList.slice(0, 1)
+                                                        const remainingAppeared = appearedCompsList.length - visibleAppeared.length
+                                                        const totalRemaining = remainingTarget + remainingAppeared
+                                                        const isNearTop = i < 2
+
+                                                        return (
+                                                            <div className="relative">
+                                                                <div className="flex flex-col gap-1.5">
+                                                                    {targetRolesList.length > 0 && (
+                                                                        <div className="flex flex-wrap items-center gap-1">
+                                                                            {targetRolesList.slice(0, 1).map((r: string) => (
+                                                                                <span key={r} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-purple-500/15 text-purple-300 border border-purple-500/30 text-xs font-semibold shadow-xs" title={`Role: ${r}`}>
+                                                                                    🎯 {r}
+                                                                                </span>
+                                                                            ))}
+                                                                            {targetRolesList.length > 1 && (
+                                                                                <span className="inline-flex items-center px-1.5 py-1 rounded-md bg-slate-800 text-purple-300 border border-purple-500/30 text-[11px] font-bold shadow-xs" title={`+${targetRolesList.length - 1} more roles`}>
+                                                                                    +{targetRolesList.length - 1}
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                    )}
+                                                                    <div className="flex flex-wrap items-center gap-1.5">
+                                                                        {visibleTarget.map((c: string) => (
+                                                                            <span key={c} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-blue-500/15 text-blue-300 border border-blue-500/30 text-xs font-semibold shadow-xs" title={`Target Company: ${c}`}>
+                                                                                🏢 {c}
+                                                                            </span>
+                                                                        ))}
+                                                                        {visibleAppeared.map((c: string) => (
+                                                                            <span key={c} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-xs font-semibold shadow-xs" title={`Appeared Company: ${c}`}>
+                                                                                🏛️ {c}
+                                                                            </span>
+                                                                        ))}
+                                                                        {totalRemaining > 0 && (
+                                                                            <span className="inline-flex items-center px-2 py-1 rounded-md bg-slate-800 text-slate-200 border border-slate-700 text-xs font-bold shadow-xs hover:bg-slate-700 transition-colors cursor-pointer" title={`Hover to see all ${allCompsCount} companies`}>
+                                                                                +{totalRemaining} more
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
                                                                 </div>
-                                                            )}
-                                                            {targetComps && (
-                                                                <div className="flex flex-wrap gap-1">
-                                                                    {targetComps.split(',').slice(0, 2).map((c: string) => (
-                                                                        <span key={c} className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[10px] font-medium truncate" title={`Target: ${c.trim()}`}>
-                                                                            🏢 {c.trim()}
-                                                                        </span>
-                                                                    ))}
+
+                                                                {/* Hovered Popup Tooltip showing full company tags */}
+                                                                <div className={`absolute left-0 ${isNearTop ? 'top-full mt-2' : 'bottom-full mb-2'} z-50 hidden group-hover/comps:flex flex-col gap-2 p-3 bg-slate-900/95 border border-slate-700 rounded-xl shadow-2xl backdrop-blur-md min-w-[220px] max-w-sm pointer-events-none transition-all`}>
+                                                                    {targetCompsList.length > 0 && (
+                                                                        <div>
+                                                                            <p className="text-[10px] font-bold uppercase tracking-wider text-blue-400 mb-1.5">Target Companies ({targetCompsList.length})</p>
+                                                                            <div className="flex flex-wrap gap-1">
+                                                                                {targetCompsList.map((c: string, idx: number) => (
+                                                                                    <span key={idx} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-500/20 text-blue-200 border border-blue-500/40 text-xs font-medium">
+                                                                                        🏢 {c}
+                                                                                    </span>
+                                                                                ))}
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                    {appearedCompsList.length > 0 && (
+                                                                        <div>
+                                                                            <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 mb-1.5">Appeared In ({appearedCompsList.length})</p>
+                                                                            <div className="flex flex-wrap gap-1">
+                                                                                {appearedCompsList.map((c: string, idx: number) => (
+                                                                                    <span key={idx} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-200 border border-emerald-500/40 text-xs font-medium">
+                                                                                        🏛️ {c}
+                                                                                    </span>
+                                                                                ))}
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                    {targetRolesList.length > 0 && (
+                                                                        <div>
+                                                                            <p className="text-[10px] font-bold uppercase tracking-wider text-purple-400 mb-1.5">Target Roles ({targetRolesList.length})</p>
+                                                                            <div className="flex flex-wrap gap-1">
+                                                                                {targetRolesList.map((r: string, idx: number) => (
+                                                                                    <span key={idx} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-200 border border-purple-500/40 text-xs font-medium">
+                                                                                        🎯 {r}
+                                                                                    </span>
+                                                                                ))}
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
                                                                 </div>
-                                                            )}
-                                                            {appearedComps && (
-                                                                <div className="flex flex-wrap gap-1">
-                                                                    {appearedComps.split(',').slice(0, 2).map((c: string) => (
-                                                                        <span key={c} className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-medium truncate" title={`Appeared: ${c.trim()}`}>
-                                                                            🏛️ {c.trim()}
-                                                                        </span>
-                                                                    ))}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    ) : (
+                                                            </div>
+                                                        )
+                                                    })() : (
                                                         <span className="text-xs text-slate-500">—</span>
                                                     )}
                                                 </td>
-                                                <td className="py-4 pr-4">
+                                                <td className="py-4 pr-4" title={`Difficulty: ${q.difficulty?.replace('_', ' ')}`}>
                                                     <span className="px-2 py-1 rounded-lg text-xs font-semibold"
                                                         style={{ background: `${diffColors[q.difficulty] || '#6366f1'}20`, color: diffColors[q.difficulty] || '#6366f1' }}>
                                                         {q.difficulty?.replace('_', ' ')}
                                                     </span>
                                                 </td>
-                                                <td className="py-4 pr-4">
+                                                <td className="py-4 pr-4" title={`Status: ${status}`}>
                                                     <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold inline-flex items-center gap-1 ${
                                                         status === 'APPROVED' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' :
                                                         status === 'PENDING_APPROVAL' ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30 animate-pulse' :
@@ -301,8 +369,8 @@ export default function QuestionBankPage() {
                                                         {status === 'PENDING_APPROVAL' ? '⏳ PENDING' : status === 'APPROVED' ? '✅ APPROVED' : status === 'DRAFT' ? '📝 DRAFT' : '❌ REJECTED'}
                                                     </span>
                                                 </td>
-                                                <td className="py-4 pr-4 role-text-secondary text-sm max-w-sm">
-                                                    <p className="font-medium line-clamp-2">{q.questionText || q.problemStatement}</p>
+                                                <td className="py-4 pr-4 role-text-secondary text-sm max-w-sm" title={q.questionText || q.problemStatement}>
+                                                    <p className="font-medium line-clamp-2" title={q.questionText || q.problemStatement}>{q.questionText || q.problemStatement}</p>
                                                     {status === 'REJECTED' && q.rejectionReason && (
                                                         <div className="mt-1.5 p-2 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs">
                                                             <strong className="text-rose-400">⚠️ Super Admin Feedback: </strong>

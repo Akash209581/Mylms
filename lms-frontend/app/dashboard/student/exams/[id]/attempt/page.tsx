@@ -84,6 +84,8 @@ export default function ExamAttemptPage() {
   const [isNavigatorOpen, setIsNavigatorOpen] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(true)
   const [tabAlert, setTabAlert] = useState<{ count: number; max: number } | null>(null)
+  const [navAlert, setNavAlert] = useState<boolean>(false)
+  const isSubmittedOrRedirectingRef = useRef<boolean>(false)
   const lastTabSwitchRef = useRef(0)
   const startTimeRef = useRef(Date.now())
 
@@ -350,6 +352,55 @@ export default function ExamAttemptPage() {
     }
   }, [])
 
+  // Prevent going back or accidental exit while writing test/exam
+  useEffect(() => {
+    if (!attempt || attempt.status !== 'IN_PROGRESS') return
+
+    // Seed history state so that any back navigation triggers popstate
+    try {
+      window.history.pushState({ inExam: true }, '', window.location.href)
+    } catch {
+      /* ignore */
+    }
+
+    const handlePopState = (e: PopStateEvent) => {
+      if (isSubmittedOrRedirectingRef.current) return
+      // Prevent going back to previous page by immediately re-pushing current exam state
+      try {
+        window.history.pushState({ inExam: true }, '', window.location.href)
+      } catch {
+        /* ignore */
+      }
+      setNavAlert(true)
+    }
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isSubmittedOrRedirectingRef.current) return
+      e.preventDefault()
+      e.returnValue = ''
+    }
+
+    const handleNavKeyDown = (e: KeyboardEvent) => {
+      if (isSubmittedOrRedirectingRef.current) return
+      // Intercept browser back shortcut Alt + Left Arrow or dedicated Back key
+      if ((e.altKey && e.key === 'ArrowLeft') || e.key === 'BrowserBack') {
+        e.preventDefault()
+        e.stopPropagation()
+        setNavAlert(true)
+      }
+    }
+
+    window.addEventListener('popstate', handlePopState)
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    window.addEventListener('keydown', handleNavKeyDown, true)
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState)
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      window.removeEventListener('keydown', handleNavKeyDown, true)
+    }
+  }, [attempt?.status])
+
   useEffect(() => {
     if (!attemptId) {
       router.push(`/dashboard/student/exams/${examId}`)
@@ -372,6 +423,7 @@ export default function ExamAttemptPage() {
           }
         }
         if (ev.data?.type === 'submitted' && !submittingRef.current) {
+          isSubmittedOrRedirectingRef.current = true
           router.push(`/dashboard/student/exams/${examId}/result?attemptId=${attemptId}`)
         }
       }
@@ -398,6 +450,7 @@ export default function ExamAttemptPage() {
         } : prev)
         if (typeof r.data.tabSwitchCount === 'number') setTabWarnings(r.data.tabSwitchCount)
         if (r.data.status && r.data.status !== 'IN_PROGRESS') {
+          isSubmittedOrRedirectingRef.current = true
           router.push(`/dashboard/student/exams/${examId}/result?attemptId=${attemptId}`)
         }
       } catch {
@@ -775,6 +828,7 @@ export default function ExamAttemptPage() {
         mediaStreamRef.current = null
       }
       try { new BroadcastChannel(`exam-attempt-${attemptId}`).postMessage({ type: 'submitted' }) } catch { /* ignore */ }
+      isSubmittedOrRedirectingRef.current = true
       router.push(`/dashboard/student/exams/${examId}/result?attemptId=${attemptId}`)
     } catch (err: any) {
       const message = err?.response?.data?.message || 'Failed to submit exam'
@@ -1040,6 +1094,33 @@ export default function ExamAttemptPage() {
                 I Understand & Return to Exam
               </button>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── 6.5. Navigation Guard Alert Modal ── */}
+      {navAlert && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 select-none">
+          <div className="bg-slate-900 border border-rose-500/50 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 text-center animate-in zoom-in-95">
+            <div className="w-14 h-14 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center mx-auto text-2xl text-rose-400">
+              🚫
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white">Going Back Is Disabled</h3>
+              <p className="text-sm text-slate-300 mt-1">
+                Navigating back or leaving this page is not allowed during the examination.
+              </p>
+            </div>
+            <p className="text-xs text-rose-300/90 bg-rose-500/10 border border-rose-500/20 p-2.5 rounded-lg">
+              All question answers and code are continuously auto-saved. Please use the question navigator or the "Submit Test" button when you are finished.
+            </p>
+            <button
+              type="button"
+              onClick={() => setNavAlert(false)}
+              className="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-bold text-sm transition-all shadow-md"
+            >
+              Return to Exam
+            </button>
           </div>
         </div>
       )}
