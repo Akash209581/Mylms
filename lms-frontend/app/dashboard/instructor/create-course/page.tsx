@@ -32,7 +32,7 @@ interface FormErrors {
 
 const categories = [
     'Programming', 'Web Development', 'Mobile Development',
-    'Data Science', 'Machine Learning', 'Artificial Intelligence',
+    'Data Science', 'Artificial Intelligence - Machine Learning, Deep Learning', 'Agentic AI',
     'Cybersecurity', 'Cloud Computing', 'DevOps', 'Database',
     'UI/UX Design', 'Digital Marketing', 'Business', 'Other'
 ]

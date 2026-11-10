@@ -71,8 +71,14 @@ const PRESET_BANNERS = [
     {
         id: 'ai-ml',
         name: 'AI & ML',
-        category: 'Data Science',
+        category: 'Artificial Intelligence - Machine Learning, Deep Learning',
         url: 'https://images.unsplash.com/photo-1677442136019-21780efad99a?auto=format&fit=crop&w=800&q=80',
+    },
+    {
+        id: 'agentic-ai',
+        name: 'Agentic AI',
+        category: 'Agentic AI',
+        url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80',
     },
     {
         id: 'cybersecurity',
@@ -864,6 +870,8 @@ export default function GlobalCreateCoursePage() {
                                                 <option value="Programming">Programming</option>
                                                 <option value="Web Development">Web Development</option>
                                                 <option value="Data Science">Data Science</option>
+                                                <option value="Artificial Intelligence - Machine Learning, Deep Learning">Artificial Intelligence - Machine Learning, Deep Learning</option>
+                                                <option value="Agentic AI">Agentic AI</option>
                                                 <option value="Cybersecurity">Cybersecurity</option>
                                                 <option value="Management">Management</option>
                                             </select>
@@ -1258,6 +1266,10 @@ export default function GlobalCreateCoursePage() {
                                             <option value="Programming">Programming</option>
                                             <option value="Web Development">Web Development</option>
                                             <option value="Data Science">Data Science</option>
+                                            <option value="Artificial Intelligence - Machine Learning, Deep Learning">Artificial Intelligence - Machine Learning, Deep Learning</option>
+                                            <option value="Agentic AI">Agentic AI</option>
+                                            <option value="Cybersecurity">Cybersecurity</option>
+                                            <option value="Management">Management</option>
                                         </select>
                                     </div>
 

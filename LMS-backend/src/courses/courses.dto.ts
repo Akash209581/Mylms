@@ -17,7 +17,7 @@ export class CreateCourseDto {
   title: string;
 
   @IsString()
-  @MinLength(20, { message: 'Description must be at least 20 characters long' })
+  @MinLength(10, { message: 'Description must be at least 10 characters long' })
   description: string;
 
   @IsOptional()
@@ -78,7 +78,7 @@ export class UpdateCourseDto {
 
   @IsOptional()
   @IsString()
-  @MinLength(20, { message: 'Description must be at least 20 characters long' })
+  @MinLength(10, { message: 'Description must be at least 10 characters long' })
   description?: string;
 
   @IsOptional()
