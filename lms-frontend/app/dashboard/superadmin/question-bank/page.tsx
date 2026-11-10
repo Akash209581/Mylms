@@ -9,6 +9,7 @@ import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
 import QuestionPreview from '@/components/question-bank/QuestionPreview'
 import { getRoleBasePath, hasRole } from '@/lib/roleUtils'
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react'
 
 const QUESTION_TYPES = [
     { key: 'MCQ', label: 'MCQ', icon: '🔘', desc: 'Multiple Choice', color: '#6366f1' },
@@ -33,6 +34,12 @@ export default function QuestionBankPage() {
     const [search, setSearch] = useState('')
     const [selectedQuestion, setSelectedQuestion] = useState<any>(null)
     const [showPreview, setShowPreview] = useState(false)
+    const [page, setPage] = useState(1)
+    const [pageSize, setPageSize] = useState(20)
+
+    useEffect(() => {
+        setPage(1)
+    }, [filterStatus, filterType, filterDiff, filterDomain, search])
 
     useEffect(() => {
         const stored = localStorage.getItem('user')
@@ -88,6 +95,11 @@ export default function QuestionBankPage() {
             (q.companiesAppeared && q.companiesAppeared.toLowerCase().includes(search.toLowerCase()))
         return matchStatus && matchType && matchDiff && matchDomain && matchSearch && (q.questionText || q.problemStatement) && q.type
     })
+
+    const totalItems = filtered.length
+    const totalPages = Math.max(1, Math.ceil(totalItems / pageSize))
+    const currentPage = Math.min(page, totalPages)
+    const paginatedQuestions = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize)
 
     return (
         <div className="min-h-screen bg-mesh">
@@ -213,7 +225,8 @@ export default function QuestionBankPage() {
                             <p className="role-text-muted">No questions yet. Click "Add Question" to create your first one.</p>
                         </div>
                     ) : (
-                        <div className="overflow-x-auto">
+                        <>
+                            <div className="overflow-x-auto">
                             <table className="role-data-table w-full">
                                 <thead>
                                     <tr className="border-b" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
@@ -223,16 +236,17 @@ export default function QuestionBankPage() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {filtered.map((q: any, i: number) => {
+                                    {paginatedQuestions.map((q: any, i: number) => {
                                         const qType = QUESTION_TYPES.find(t => t.key === q.type)
                                         const targetComps = q.targetCompanies || ''
                                         const targetRoles = q.targetRoles || ''
                                         const appearedComps = q.companiesAppeared || ''
                                         const status = q.status || 'APPROVED'
+                                        const rowNumber = (currentPage - 1) * pageSize + i + 1
                                         return (
                                             <tr key={q.id} className="border-b hover:bg-[var(--bg-surface)]/5 transition-colors"
                                                 style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
-                                                <td className="py-4 pr-4 text-[var(--text-secondary)] text-sm">{i + 1}</td>
+                                                <td className="py-4 pr-4 text-[var(--text-secondary)] text-sm">{rowNumber}</td>
                                                 <td className="py-4 pr-4" title={q.questionNumber ? `Question Number: ${q.questionNumber}` : 'Unassigned Question Number'}>
                                                     {q.questionNumber ? (
                                                         <span className="text-xs font-mono font-semibold role-text-accent">{q.questionNumber}</span>
@@ -450,6 +464,119 @@ export default function QuestionBankPage() {
                                 </tbody>
                             </table>
                         </div>
+
+                        {/* Pagination Toolbar */}
+                        {filtered.length > 0 && (
+                            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 mt-4 border-t" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+                                <div className="flex items-center gap-3 text-xs role-text-secondary">
+                                    <span>
+                                        Showing <strong className="role-text-primary font-bold">{(currentPage - 1) * pageSize + 1}</strong> to{' '}
+                                        <strong className="role-text-primary font-bold">{Math.min(currentPage * pageSize, totalItems)}</strong> of{' '}
+                                        <strong className="role-text-primary font-bold">{totalItems}</strong> questions
+                                    </span>
+                                    <div className="flex items-center gap-1.5 ml-2">
+                                        <span>Per page:</span>
+                                        <select
+                                            value={pageSize}
+                                            onChange={(e) => {
+                                                setPageSize(Number(e.target.value))
+                                                setPage(1)
+                                            }}
+                                            className="px-2 py-1 rounded-md text-xs font-semibold bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                                        >
+                                            <option value={10}>10</option>
+                                            <option value={20}>20</option>
+                                            <option value={50}>50</option>
+                                            <option value={100}>100</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-1.5">
+                                    <button
+                                        type="button"
+                                        onClick={() => setPage(1)}
+                                        disabled={currentPage <= 1}
+                                        className="p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                        title="First Page"
+                                    >
+                                        <ChevronsLeft size={16} />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                                        disabled={currentPage <= 1}
+                                        className="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1 text-xs font-medium"
+                                        title="Previous Page"
+                                    >
+                                        <ChevronLeft size={16} />
+                                        <span>Prev</span>
+                                    </button>
+
+                                    {/* Page number buttons */}
+                                    <div className="flex items-center gap-1 px-1">
+                                        {Array.from({ length: totalPages }, (_, idx) => idx + 1)
+                                            .filter(pNum => {
+                                                if (totalPages <= 7) return true
+                                                if (pNum === 1 || pNum === totalPages) return true
+                                                return Math.abs(pNum - currentPage) <= 1
+                                            })
+                                            .reduce<(number | string)[]>((acc, pNum, idx, arr) => {
+                                                if (idx > 0 && pNum - (arr[idx - 1] as number) > 1) {
+                                                    acc.push('...')
+                                                }
+                                                acc.push(pNum)
+                                                return acc
+                                            }, [])
+                                            .map((item, idx) => {
+                                                if (item === '...') {
+                                                    return (
+                                                        <span key={`ellipsis-${idx}`} className="px-2 text-xs role-text-muted">
+                                                            ...
+                                                        </span>
+                                                    )
+                                                }
+                                                const isCurrent = item === currentPage
+                                                return (
+                                                    <button
+                                                        key={`page-${item}`}
+                                                        type="button"
+                                                        onClick={() => setPage(Number(item))}
+                                                        className={`min-w-[32px] h-8 px-2 rounded-lg text-xs font-bold transition-all ${
+                                                            isCurrent
+                                                                ? 'bg-indigo-600 text-white shadow-sm'
+                                                                : 'border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                                                        }`}
+                                                    >
+                                                        {item}
+                                                    </button>
+                                                )
+                                            })}
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                        disabled={currentPage >= totalPages}
+                                        className="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1 text-xs font-medium"
+                                        title="Next Page"
+                                    >
+                                        <span>Next</span>
+                                        <ChevronRight size={16} />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setPage(totalPages)}
+                                        disabled={currentPage >= totalPages}
+                                        className="p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                        title="Last Page"
+                                    >
+                                        <ChevronsRight size={16} />
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                        </>
                     )}
                 </div>
             </main>

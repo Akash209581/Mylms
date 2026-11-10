@@ -709,26 +709,41 @@ export class CoursesController {
         });
         const savedDbChapter = await this.chapterRepo.save(dbChapter);
 
-        // Create PDF Lesson inside Chapter
-        const pdfUrl = chItem.pdfUrl || chItem.fileUrl || chItem.uploadedUrl || '';
-        const fileName = chItem.fileName || `${chTitle}.pdf`;
-        const fileSize = chItem.fileSize || 0;
+        // Parse Topics / Lessons inside Chapter (Support multiple topics per chapter)
+        const topicsData = Array.isArray(chItem.topics) && chItem.topics.length > 0
+          ? chItem.topics
+          : [{
+              title: chTitle,
+              number: 1,
+              pdfUrl: chItem.pdfUrl || chItem.fileUrl || chItem.uploadedUrl || '',
+              fileName: chItem.fileName || `${chTitle}.pdf`,
+              fileSize: chItem.fileSize || 0,
+            }];
 
-        const dbLesson = this.lessonRepo.create({
-          title: chTitle,
-          type: 'pdf',
-          published: true,
-          order: 1,
-          chapterId: savedDbChapter.id,
-          contentUrl: pdfUrl,
-          content: {
-            isPdf: true,
-            pdfUrl,
-            fileName,
-            fileSize,
-          },
-        });
-        await this.lessonRepo.save(dbLesson);
+        for (let tIdx = 0; tIdx < topicsData.length; tIdx++) {
+          const tItem = topicsData[tIdx];
+          const tNum = tItem.number || tItem.order || tIdx + 1;
+          const tTitle = tItem.title || tItem.name || `Topic ${tNum}`;
+          const pdfUrl = tItem.pdfUrl || tItem.fileUrl || tItem.uploadedUrl || '';
+          const fileName = tItem.fileName || `${tTitle}.pdf`;
+          const fileSize = tItem.fileSize || 0;
+
+          const dbLesson = this.lessonRepo.create({
+            title: tTitle,
+            type: 'pdf',
+            published: true,
+            order: tNum,
+            chapterId: savedDbChapter.id,
+            contentUrl: pdfUrl,
+            content: {
+              isPdf: true,
+              pdfUrl,
+              fileName,
+              fileSize,
+            },
+          });
+          await this.lessonRepo.save(dbLesson);
+        }
       }
     }
 

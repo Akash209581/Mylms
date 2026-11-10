@@ -17,7 +17,7 @@ interface College {
     name: string
 }
 
-interface CourseChapterInput {
+interface CourseTopicInput {
     id: string
     number: number
     name: string
@@ -27,6 +27,13 @@ interface CourseChapterInput {
     fileSize?: number
     uploadProgress?: number
     isUploading?: boolean
+}
+
+interface CourseChapterInput {
+    id: string
+    number: number
+    name: string
+    topics: CourseTopicInput[]
 }
 
 interface CourseModuleInput {
@@ -91,7 +98,7 @@ export default function GlobalCreateCoursePage() {
         targetCollegeMode: 'all',
     })
 
-    // Course Structure: Modules -> Chapters -> PDF
+    // Course Structure: Modules -> Chapters -> Topics (Multi-PDF)
     const [modules, setModules] = useState<CourseModuleInput[]>([
         {
             id: 'mod-1',
@@ -102,7 +109,14 @@ export default function GlobalCreateCoursePage() {
                     id: 'ch-1-1',
                     number: 1,
                     name: 'Chapter 1: Introduction & Basics',
-                    file: null,
+                    topics: [
+                        {
+                            id: 'top-1-1-1',
+                            number: 1,
+                            name: 'Topic 1: Overview & Concepts',
+                            file: null,
+                        }
+                    ]
                 }
             ]
         }
@@ -199,7 +213,7 @@ export default function GlobalCreateCoursePage() {
         }
     }
 
-    // Helper functions for Course Structure: Course -> Module -> Chapter -> PDF
+    // Helper functions for Course Structure: Course -> Module -> Chapter -> Topic (with PDF)
     const addModule = () => {
         const nextNum = modules.length + 1
         const newMod: CourseModuleInput = {
@@ -211,7 +225,14 @@ export default function GlobalCreateCoursePage() {
                     id: `ch-${Date.now()}-1`,
                     number: 1,
                     name: 'Chapter 1: Overview & Concepts',
-                    file: null,
+                    topics: [
+                        {
+                            id: `top-${Date.now()}-1-1`,
+                            number: 1,
+                            name: 'Topic 1: Overview & Concepts',
+                            file: null,
+                        }
+                    ]
                 }
             ]
         }
@@ -238,7 +259,14 @@ export default function GlobalCreateCoursePage() {
                     id: `ch-${Date.now()}-${nextChNum}`,
                     number: nextChNum,
                     name: `Chapter ${nextChNum}: Section Topic`,
-                    file: null,
+                    topics: [
+                        {
+                            id: `top-${Date.now()}-${nextChNum}-1`,
+                            number: 1,
+                            name: 'Topic 1: Lesson Topic',
+                            file: null,
+                        }
+                    ]
                 }
                 return { ...mod, chapters: [...mod.chapters, newCh] }
             }
@@ -270,15 +298,81 @@ export default function GlobalCreateCoursePage() {
         }))
     }
 
-    // Direct single PDF upload per chapter with real-time progress bar
-    const uploadSingleChapterPdf = async (modId: string, chId: string, file: File) => {
+    const addTopic = (modId: string, chId: string) => {
+        setModules(prev => prev.map(mod => {
+            if (mod.id === modId) {
+                return {
+                    ...mod,
+                    chapters: mod.chapters.map(ch => {
+                        if (ch.id === chId) {
+                            const nextTopNum = ch.topics.length + 1
+                            const newTop: CourseTopicInput = {
+                                id: `top-${Date.now()}-${nextTopNum}`,
+                                number: nextTopNum,
+                                name: `Topic ${nextTopNum}: Lesson Topic`,
+                                file: null,
+                            }
+                            return { ...ch, topics: [...ch.topics, newTop] }
+                        }
+                        return ch
+                    })
+                }
+            }
+            return mod
+        }))
+    }
+
+    const removeTopic = (modId: string, chId: string, topId: string) => {
+        setModules(prev => prev.map(mod => {
+            if (mod.id === modId) {
+                return {
+                    ...mod,
+                    chapters: mod.chapters.map(ch => {
+                        if (ch.id === chId) {
+                            if (ch.topics.length <= 1) {
+                                setError('A chapter must have at least one topic.')
+                                return ch
+                            }
+                            const filtered = ch.topics.filter(t => t.id !== topId).map((t, idx) => ({ ...t, number: idx + 1 }))
+                            return { ...ch, topics: filtered }
+                        }
+                        return ch
+                    })
+                }
+            }
+            return mod
+        }))
+    }
+
+    const updateTopic = (modId: string, chId: string, topId: string, fields: Partial<CourseTopicInput>) => {
+        setModules(prev => prev.map(mod => {
+            if (mod.id === modId) {
+                return {
+                    ...mod,
+                    chapters: mod.chapters.map(ch => {
+                        if (ch.id === chId) {
+                            return {
+                                ...ch,
+                                topics: ch.topics.map(t => t.id === topId ? { ...t, ...fields } : t)
+                            }
+                        }
+                        return ch
+                    })
+                }
+            }
+            return mod
+        }))
+    }
+
+    // Direct single PDF upload per topic with real-time progress bar
+    const uploadSingleTopicPdf = async (modId: string, chId: string, topId: string, file: File) => {
         if (!file) return
         if (file.size > 50 * 1024 * 1024) {
             setError(`Selected PDF (${(file.size / (1024 * 1024)).toFixed(2)} MB) exceeds 50MB limit.`)
             return
         }
 
-        updateChapter(modId, chId, { file, isUploading: true, uploadProgress: 10 })
+        updateTopic(modId, chId, topId, { file, isUploading: true, uploadProgress: 10 })
 
         try {
             const formData = new FormData()
@@ -289,13 +383,13 @@ export default function GlobalCreateCoursePage() {
                 onUploadProgress: (progressEvent) => {
                     if (progressEvent.total) {
                         const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total)
-                        updateChapter(modId, chId, { uploadProgress: percent })
+                        updateTopic(modId, chId, topId, { uploadProgress: percent })
                     }
                 }
             })
 
             if (uploadRes.data?.url) {
-                updateChapter(modId, chId, {
+                updateTopic(modId, chId, topId, {
                     uploadedUrl: uploadRes.data.url,
                     fileName: uploadRes.data.fileName || file.name,
                     fileSize: uploadRes.data.fileSize || file.size,
@@ -304,9 +398,9 @@ export default function GlobalCreateCoursePage() {
                 })
             }
         } catch (err: any) {
-            console.error('Chapter PDF upload error:', err)
-            setError(err.response?.data?.message || `Failed to upload PDF for chapter`)
-            updateChapter(modId, chId, { isUploading: false, uploadProgress: 0 })
+            console.error('Topic PDF upload error:', err)
+            setError(err.response?.data?.message || `Failed to upload PDF for topic`)
+            updateTopic(modId, chId, topId, { isUploading: false, uploadProgress: 0 })
         }
     }
 
@@ -321,8 +415,8 @@ export default function GlobalCreateCoursePage() {
             return
         }
 
-        // Validate modules and chapters
-        let totalChaptersCount = 0
+        // Validate modules, chapters, and topics
+        let totalTopicsCount = 0
         for (let i = 0; i < modules.length; i++) {
             const mod = modules[i]
             if (!mod.name.trim()) {
@@ -330,15 +424,26 @@ export default function GlobalCreateCoursePage() {
                 return
             }
             for (let j = 0; j < mod.chapters.length; j++) {
-                totalChaptersCount++
                 const ch = mod.chapters[j]
                 if (!ch.name.trim()) {
                     setError(`Module ${mod.number} -> Chapter ${ch.number} title cannot be empty.`)
                     return
                 }
-                if (!ch.file && !ch.uploadedUrl) {
-                    setError(`Please upload a PDF file for Module ${mod.number} -> Chapter ${ch.number} ("${ch.name}").`)
+                if (!ch.topics || ch.topics.length === 0) {
+                    setError(`Module ${mod.number} -> Chapter ${ch.number} must contain at least one topic.`)
                     return
+                }
+                for (let k = 0; k < ch.topics.length; k++) {
+                    totalTopicsCount++
+                    const top = ch.topics[k]
+                    if (!top.name.trim()) {
+                        setError(`Module ${mod.number} -> Chapter ${ch.number} -> Topic ${top.number} title cannot be empty.`)
+                        return
+                    }
+                    if (!top.file && !top.uploadedUrl) {
+                        setError(`Please upload a PDF file for Module ${mod.number} -> Chapter ${ch.number} -> Topic ${top.number} ("${top.name}").`)
+                        return
+                    }
                 }
             }
         }
@@ -346,11 +451,11 @@ export default function GlobalCreateCoursePage() {
         setSaving(true)
         setError('')
         setOverallProgress(5)
-        setUploadStatusText('Preparing chapters and PDF files...')
+        setUploadStatusText('Preparing topics and PDF files...')
 
         try {
             const preparedModules = []
-            let processedChapters = 0
+            let processedTopics = 0
 
             for (let mIdx = 0; mIdx < modules.length; mIdx++) {
                 const mod = modules[mIdx]
@@ -358,44 +463,58 @@ export default function GlobalCreateCoursePage() {
 
                 for (let cIdx = 0; cIdx < mod.chapters.length; cIdx++) {
                     const ch = mod.chapters[cIdx]
-                    let pdfUrl = ch.uploadedUrl || ''
-                    let fileName = ch.fileName || ch.file?.name || ''
-                    let fileSize = ch.fileSize || ch.file?.size || 0
+                    const preparedTopics = []
 
-                    if (ch.file && !ch.uploadedUrl) {
-                        setUploadStatusText(`Uploading PDF for Module ${mod.number} -> Chapter ${ch.number}...`)
-                        const formData = new FormData()
-                        formData.append('file', ch.file)
+                    for (let tIdx = 0; tIdx < ch.topics.length; tIdx++) {
+                        const top = ch.topics[tIdx]
+                        let pdfUrl = top.uploadedUrl || ''
+                        let fileName = top.fileName || top.file?.name || ''
+                        let fileSize = top.fileSize || top.file?.size || 0
 
-                        const uploadRes = await api.post('/courses/upload-pdf-file', formData, {
-                            headers: { 'Content-Type': 'multipart/form-data' },
-                            onUploadProgress: (progressEvent) => {
-                                if (progressEvent.total) {
-                                    const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total)
-                                    updateChapter(mod.id, ch.id, { uploadProgress: percent, isUploading: true })
+                        if (top.file && !top.uploadedUrl) {
+                            setUploadStatusText(`Uploading PDF for Module ${mod.number} -> Ch ${ch.number} -> Topic ${top.number}...`)
+                            const formData = new FormData()
+                            formData.append('file', top.file)
+
+                            const uploadRes = await api.post('/courses/upload-pdf-file', formData, {
+                                headers: { 'Content-Type': 'multipart/form-data' },
+                                onUploadProgress: (progressEvent) => {
+                                    if (progressEvent.total) {
+                                        const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+                                        updateTopic(mod.id, ch.id, top.id, { uploadProgress: percent, isUploading: true })
+                                    }
                                 }
+                            })
+
+                            if (uploadRes.status === 200 || uploadRes.status === 201) {
+                                pdfUrl = uploadRes.data.url
+                                fileName = uploadRes.data.fileName
+                                fileSize = uploadRes.data.fileSize
+                                updateTopic(mod.id, ch.id, top.id, { uploadedUrl: pdfUrl, fileName, fileSize, isUploading: false, uploadProgress: 100 })
+                            } else {
+                                throw new Error(`Failed to upload PDF for Topic ${top.number}`)
                             }
-                        })
-
-                        if (uploadRes.status === 200 || uploadRes.status === 201) {
-                            pdfUrl = uploadRes.data.url
-                            fileName = uploadRes.data.fileName
-                            fileSize = uploadRes.data.fileSize
-                            updateChapter(mod.id, ch.id, { uploadedUrl: pdfUrl, fileName, fileSize, isUploading: false, uploadProgress: 100 })
-                        } else {
-                            throw new Error(`Failed to upload PDF for Chapter ${ch.number}`)
                         }
-                    }
 
-                    processedChapters++
-                    setOverallProgress(Math.round((processedChapters / totalChaptersCount) * 80) + 10)
+                        processedTopics++
+                        setOverallProgress(Math.round((processedTopics / totalTopicsCount) * 80) + 10)
+
+                        preparedTopics.push({
+                            number: top.number,
+                            title: top.name,
+                            pdfUrl,
+                            fileName,
+                            fileSize,
+                        })
+                    }
 
                     preparedChapters.push({
                         number: ch.number,
                         title: ch.name,
-                        pdfUrl,
-                        fileName,
-                        fileSize,
+                        topics: preparedTopics,
+                        pdfUrl: preparedTopics[0]?.pdfUrl || '',
+                        fileName: preparedTopics[0]?.fileName || '',
+                        fileSize: preparedTopics[0]?.fileSize || 0,
                     })
                 }
 
@@ -861,16 +980,17 @@ export default function GlobalCreateCoursePage() {
                                                 </div>
 
                                                 {/* Chapters Inside Module */}
-                                                <div className="pl-2 sm:pl-4 space-y-4 border-l-2 border-indigo-500/20">
+                                                <div className="pl-2 sm:pl-4 space-y-5 border-l-2 border-indigo-500/20">
                                                     <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
                                                         Chapters inside Module {mod.number} ({mod.chapters.length})
                                                     </p>
 
                                                     {mod.chapters.map((ch) => (
-                                                        <div key={ch.id} className="bg-slate-950/70 p-5 rounded-xl border border-slate-800 space-y-4">
-                                                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                                                        <div key={ch.id} className="bg-slate-950/80 p-5 rounded-xl border border-slate-800 space-y-4">
+                                                            {/* Chapter Header */}
+                                                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-slate-900/60 p-3 rounded-lg border border-slate-800/80">
                                                                 <div className="flex items-center gap-2 flex-1 w-full sm:w-auto">
-                                                                    <span className="px-2.5 py-1 rounded bg-blue-500/20 text-blue-400 font-bold text-xs">
+                                                                    <span className="px-2.5 py-1 rounded bg-blue-500/20 text-blue-400 font-bold text-xs whitespace-nowrap">
                                                                         Ch {mod.number}.{ch.number}
                                                                     </span>
                                                                     <input
@@ -881,76 +1001,133 @@ export default function GlobalCreateCoursePage() {
                                                                         className="input-field text-sm font-semibold bg-slate-900/90 text-white py-1.5 flex-1"
                                                                     />
                                                                 </div>
-                                                                {mod.chapters.length > 1 && (
+                                                                <div className="flex items-center gap-2 self-end sm:self-auto">
                                                                     <button
                                                                         type="button"
-                                                                        onClick={() => removeChapter(mod.id, ch.id)}
-                                                                        className="text-xs text-red-400 hover:text-red-300 font-semibold flex items-center gap-1 self-end sm:self-auto"
+                                                                        onClick={() => addTopic(mod.id, ch.id)}
+                                                                        className="px-2.5 py-1 bg-emerald-600/30 hover:bg-emerald-600 border border-emerald-500/40 text-emerald-300 hover:text-white text-xs font-bold rounded-lg transition-all flex items-center gap-1 shadow"
                                                                     >
-                                                                        <Trash2 size={13} />
-                                                                        <span>Remove Chapter</span>
+                                                                        <Plus size={13} />
+                                                                        <span>Add Topic</span>
                                                                     </button>
-                                                                )}
+                                                                    {mod.chapters.length > 1 && (
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => removeChapter(mod.id, ch.id)}
+                                                                            className="text-xs text-red-400 hover:text-red-300 font-semibold flex items-center gap-1"
+                                                                        >
+                                                                            <Trash2 size={13} />
+                                                                            <span>Remove Chapter</span>
+                                                                        </button>
+                                                                    )}
+                                                                </div>
                                                             </div>
 
-                                                            {/* Chapter PDF Upload Dropzone with Live Progress */}
-                                                            <div className="border-2 border-dashed border-indigo-500/30 bg-indigo-950/20 rounded-xl p-4 transition-all hover:border-indigo-500/60">
-                                                                <input
-                                                                    type="file"
-                                                                    id={`file-${mod.id}-${ch.id}`}
-                                                                    accept=".pdf"
-                                                                    onChange={e => {
-                                                                        const selected = e.target.files?.[0] || null
-                                                                        if (selected) {
-                                                                            uploadSingleChapterPdf(mod.id, ch.id, selected)
-                                                                        }
-                                                                    }}
-                                                                    className="hidden"
-                                                                />
-                                                                <label htmlFor={`file-${mod.id}-${ch.id}`} className="cursor-pointer flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                                                                    <div className="flex items-center gap-3 flex-1">
-                                                                        <div className="w-10 h-10 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xl font-black shrink-0">
-                                                                            📄
-                                                                        </div>
-                                                                        <div className="flex-1 min-w-0">
-                                                                            {ch.isUploading ? (
-                                                                                <div className="space-y-1.5 w-full max-w-md">
-                                                                                    <div className="flex justify-between text-xs font-bold text-indigo-300">
-                                                                                        <span>Uploading PDF...</span>
-                                                                                        <span>{ch.uploadProgress || 0}%</span>
-                                                                                    </div>
-                                                                                    <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
-                                                                                        <div
-                                                                                            className="bg-[#1f3a5f] h-full transition-all duration-200"
-                                                                                            style={{ width: `${ch.uploadProgress || 0}%` }}
-                                                                                        />
-                                                                                    </div>
-                                                                                </div>
-                                                                            ) : ch.uploadedUrl ? (
-                                                                                <div>
-                                                                                    <p className="text-emerald-400 font-bold text-sm flex items-center gap-1.5">
-                                                                                        <CheckCircle2 size={16} />
-                                                                                        <span>PDF Uploaded & Ready</span>
-                                                                                    </p>
-                                                                                    <p className="text-gray-400 text-xs truncate max-w-sm">{ch.fileName} ({((ch.fileSize || 0) / (1024 * 1024)).toFixed(2)} MB)</p>
-                                                                                </div>
-                                                                            ) : ch.file ? (
-                                                                                <div>
-                                                                                    <p className="text-indigo-300 font-bold text-sm line-clamp-1">{ch.file.name}</p>
-                                                                                    <p className="text-gray-400 text-xs mt-0.5">{(ch.file.size / (1024 * 1024)).toFixed(2)} MB • Ready to upload</p>
-                                                                                </div>
-                                                                            ) : (
-                                                                                <div>
-                                                                                    <p className="text-white font-semibold text-sm">Click to upload PDF for this chapter</p>
-                                                                                    <p className="text-gray-400 text-xs">PDF format up to 50MB</p>
-                                                                                </div>
+                                                            {/* Topics Inside Chapter */}
+                                                            <div className="pl-2 sm:pl-3 space-y-3 border-l-2 border-emerald-500/30">
+                                                                <div className="flex items-center justify-between">
+                                                                    <p className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">
+                                                                        Topics / Lessons ({ch.topics.length})
+                                                                    </p>
+                                                                </div>
+
+                                                                {ch.topics.map((top) => (
+                                                                    <div key={top.id} className="bg-slate-900/90 p-4 rounded-xl border border-slate-700/80 space-y-3">
+                                                                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                                                                            <div className="flex items-center gap-2 flex-1 w-full sm:w-auto">
+                                                                                <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold text-xs whitespace-nowrap">
+                                                                                    Topic {mod.number}.{ch.number}.{top.number}
+                                                                                </span>
+                                                                                <input
+                                                                                    type="text"
+                                                                                    value={top.name}
+                                                                                    onChange={e => updateTopic(mod.id, ch.id, top.id, { name: e.target.value })}
+                                                                                    placeholder={`Topic ${top.number}: Lesson Topic Title`}
+                                                                                    className="input-field text-xs font-semibold bg-slate-950 text-white py-1 flex-1"
+                                                                                />
+                                                                            </div>
+                                                                            {ch.topics.length > 1 && (
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => removeTopic(mod.id, ch.id, top.id)}
+                                                                                    className="text-xs text-red-400 hover:text-red-300 font-medium flex items-center gap-1 self-end sm:self-auto"
+                                                                                >
+                                                                                    <Trash2 size={12} />
+                                                                                    <span>Remove Topic</span>
+                                                                                </button>
                                                                             )}
                                                                         </div>
+
+                                                                        {/* Topic PDF Upload Dropzone with Live Progress */}
+                                                                        <div className="border-2 border-dashed border-indigo-500/30 bg-indigo-950/20 rounded-xl p-3.5 transition-all hover:border-indigo-500/60">
+                                                                            <input
+                                                                                type="file"
+                                                                                id={`file-${mod.id}-${ch.id}-${top.id}`}
+                                                                                accept=".pdf"
+                                                                                onChange={e => {
+                                                                                    const selected = e.target.files?.[0] || null
+                                                                                    if (selected) {
+                                                                                        uploadSingleTopicPdf(mod.id, ch.id, top.id, selected)
+                                                                                    }
+                                                                                }}
+                                                                                className="hidden"
+                                                                            />
+                                                                            <label htmlFor={`file-${mod.id}-${ch.id}-${top.id}`} className="cursor-pointer flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                                                                                <div className="flex items-center gap-3 flex-1">
+                                                                                    <div className="w-9 h-9 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-lg font-black shrink-0">
+                                                                                        📄
+                                                                                    </div>
+                                                                                    <div className="flex-1 min-w-0">
+                                                                                        {top.isUploading ? (
+                                                                                            <div className="space-y-1.5 w-full max-w-md">
+                                                                                                <div className="flex justify-between text-xs font-bold text-indigo-300">
+                                                                                                    <span>Uploading Topic PDF...</span>
+                                                                                                    <span>{top.uploadProgress || 0}%</span>
+                                                                                                </div>
+                                                                                                <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                                                                                                    <div
+                                                                                                        className="bg-[#1f3a5f] h-full transition-all duration-200"
+                                                                                                        style={{ width: `${top.uploadProgress || 0}%` }}
+                                                                                                    />
+                                                                                                </div>
+                                                                                            </div>
+                                                                                        ) : top.uploadedUrl ? (
+                                                                                            <div>
+                                                                                                <p className="text-emerald-400 font-bold text-xs flex items-center gap-1.5">
+                                                                                                    <CheckCircle2 size={14} />
+                                                                                                    <span>PDF Uploaded & Ready</span>
+                                                                                                </p>
+                                                                                                <p className="text-gray-400 text-[11px] truncate max-w-sm">{top.fileName} ({((top.fileSize || 0) / (1024 * 1024)).toFixed(2)} MB)</p>
+                                                                                            </div>
+                                                                                        ) : top.file ? (
+                                                                                            <div>
+                                                                                                <p className="text-indigo-300 font-bold text-xs line-clamp-1">{top.file.name}</p>
+                                                                                                <p className="text-gray-400 text-[11px] mt-0.5">{(top.file.size / (1024 * 1024)).toFixed(2)} MB • Ready to upload</p>
+                                                                                            </div>
+                                                                                        ) : (
+                                                                                            <div>
+                                                                                                <p className="text-white font-semibold text-xs">Click to upload PDF for this topic</p>
+                                                                                                <p className="text-gray-400 text-[11px]">PDF format up to 50MB</p>
+                                                                                            </div>
+                                                                                        )}
+                                                                                    </div>
+                                                                                </div>
+                                                                                <span className="px-3 py-1 bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 hover:bg-indigo-600 hover:text-white rounded-lg text-xs font-bold transition-all shrink-0">
+                                                                                    {top.uploadedUrl || top.file ? 'Change PDF' : 'Choose PDF'}
+                                                                                </span>
+                                                                            </label>
+                                                                        </div>
                                                                     </div>
-                                                                    <span className="px-3.5 py-1.5 bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 hover:bg-indigo-600 hover:text-white rounded-lg text-xs font-bold transition-all shrink-0">
-                                                                        {ch.uploadedUrl || ch.file ? 'Change PDF' : 'Choose PDF'}
-                                                                    </span>
-                                                                </label>
+                                                                ))}
+
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => addTopic(mod.id, ch.id)}
+                                                                    className="w-full py-2 border border-dashed border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+                                                                >
+                                                                    <Plus size={13} />
+                                                                    <span>Add Topic to Chapter {mod.number}.{ch.number}</span>
+                                                                </button>
                                                             </div>
                                                         </div>
                                                     ))}
@@ -998,7 +1175,7 @@ export default function GlobalCreateCoursePage() {
 
                                     <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                                         <p className="text-xs text-gray-400 font-medium">
-                                            {modules.length} Modules • {modules.reduce((acc, m) => acc + m.chapters.length, 0)} Chapters total
+                                            {modules.length} Modules • {modules.reduce((acc, m) => acc + m.chapters.length, 0)} Chapters • {modules.reduce((acc, m) => acc + m.chapters.reduce((cAcc, c) => cAcc + (c.topics?.length || 0), 0), 0)} Topics total
                                         </p>
                                         <button
                                             type="button"
