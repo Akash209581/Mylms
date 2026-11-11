@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 import { api } from '@/lib/api'
 import { CP_STARTERS } from '@/lib/starter-code'
+const CodeVisualizer = dynamic(() => import('@/components/student/CodeVisualizer'))
 
 import CodeMirror from '@uiw/react-codemirror'
 import { sublime } from '@uiw/codemirror-theme-sublime'
@@ -261,7 +262,7 @@ console.log(out.join(' '));
 ]
 
 function tabClass(active: boolean) {
-  return `px-3 py-2 text-xs font-semibold border-b-2 ${
+  return `shrink-0 whitespace-nowrap px-3 py-2 text-xs font-semibold border-b-2 ${
     active
       ? 'border-[var(--accent)] text-[var(--accent-text)]'
       : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]'
@@ -286,7 +287,7 @@ export default function StudentIdePage() {
   const [code, setCode] = useState(CP_STARTERS.python)
   const [stdin, setStdin] = useState('')
   const [hydrated, setHydrated] = useState(false)
-  const [activeTab, setActiveTab] = useState<'output' | 'input' | 'challenges' | 'reference'>('output')
+  const [activeTab, setActiveTab] = useState<'output' | 'input' | 'challenges' | 'reference' | 'visualize'>('output')
   const [fontSize, setFontSize] = useState(14)
   const [isRunning, setIsRunning] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
@@ -658,7 +659,8 @@ export default function StudentIdePage() {
 
         <aside className="w-full h-[38%] lg:h-auto lg:w-[400px] xl:w-[440px] shrink-0 min-h-0 flex flex-col bg-[var(--bg-surface)]">
           <div className="shrink-0 flex items-center justify-between px-2 border-b border-[var(--border)]">
-            <div className="flex">
+            <div className="flex min-w-0 overflow-x-auto">
+              <button type="button" onClick={() => setActiveTab('visualize')} className={tabClass(activeTab === 'visualize')}>Visualize</button>
               <button type="button" onClick={() => setActiveTab('output')} className={tabClass(activeTab === 'output')}>
                 <span className="inline-flex items-center gap-1"><Terminal className="w-3.5 h-3.5" /> Output</span>
               </button>
@@ -680,6 +682,7 @@ export default function StudentIdePage() {
           </div>
 
           <div className="flex-1 min-h-0 overflow-y-auto p-3">
+            {activeTab === 'visualize' && <CodeVisualizer code={code} language={selectedLangKey} stdin={stdin} />}
             {activeTab === 'output' && (
               <div className="h-full flex flex-col gap-2">
                 {outputResult && (

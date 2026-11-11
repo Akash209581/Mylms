@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like, ILike } from 'typeorm';
+import { Repository } from 'typeorm';
 import { ForumPost, ForumCategory } from '../entities/forum-post.entity';
 import { ForumReply } from '../entities/forum-reply.entity';
 
@@ -15,24 +15,26 @@ export class ForumService {
 
   async getCategories() {
     const categories = Object.values(ForumCategory);
-    const result = await Promise.all(
-      categories.map(async (cat) => {
-        const postsCount = await this.postRepo.count({ where: { category: cat } });
-        const lastPost = await this.postRepo.findOne({
-          where: { category: cat },
-          order: { updatedAt: 'DESC' },
-        });
-        return {
-          name: cat,
-          postsCount,
-          lastActivity: lastPost?.updatedAt || null,
-        };
-      }),
-    );
-    return result;
+    const rows = await this.postRepo.createQueryBuilder('post')
+      .select('post.category', 'category')
+      .addSelect('COUNT(*)', 'postsCount')
+      .addSelect('MAX(post.updatedAt)', 'lastActivity')
+      .groupBy('post.category')
+      .getRawMany();
+    const byCategory = new Map(rows.map(row => [row.category, row]));
+    return categories.map(name => ({
+      name,
+      postsCount: Number(byCategory.get(name)?.postsCount || 0),
+      lastActivity: byCategory.get(name)?.lastActivity || null,
+    }));
   }
 
   async getPosts(category?: string, search?: string, page = 1, limit = 20) {
+    if (!Number.isSafeInteger(page) || page < 1 ||
+        !Number.isSafeInteger(limit) || limit < 1 || limit > 100 ||
+        !Number.isSafeInteger((page - 1) * limit)) {
+      throw new BadRequestException('Invalid pagination');
+    }
     const skip = (page - 1) * limit;
     const query = this.postRepo.createQueryBuilder('post')
       .leftJoinAndSelect('post.author', 'author')

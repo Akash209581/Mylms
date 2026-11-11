@@ -1317,7 +1317,7 @@ export default function ExamQuestionsPage() {
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-semibold text-gray-400 font-mono">
-                      // {preCodeLanguage} Pre-defined Starter Code
+                      {'// '}{preCodeLanguage} Pre-defined Starter Code
                     </span>
                     <span className="text-[11px] text-gray-500">
                       Students will see this when selecting {preCodeLanguage}

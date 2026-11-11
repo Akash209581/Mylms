@@ -2,8 +2,11 @@
 
 import { useEffect, useState, useMemo, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
+import dynamic from 'next/dynamic'
 import { api, API_URL } from '@/lib/api'
-import LessonContentRenderer from '@/components/student/LessonContentRenderer'
+const LessonContentRenderer = dynamic(() => import('@/components/student/LessonContentRenderer'), {
+    loading: () => <p role="status" className="p-6 text-slate-300">Loading lesson content…</p>,
+})
 import PdfSlideViewer from '@/components/student/PdfSlideViewer'
 import LessonNotes from '@/components/student/LessonNotes'
 import LessonBookmarks from '@/components/student/LessonBookmarks'
@@ -351,7 +354,7 @@ export default function LearningPathPage() {
                                 </div>
 
                                 {/* PDF Presentation Viewer or Rich Content Renderer */}
-                                {currentLesson.content?.type === 'quiz-builder' ? <LessonAssessment lessonId={currentLesson.id} /> : <LessonMediaPosition key={currentLesson.id} lessonId={currentLesson.id}>{(position, recordPosition) => activePdfUrl ? (
+                                {currentLesson.content?.type === 'quiz-builder' ? <LessonAssessment key={currentLesson.id} lessonId={currentLesson.id} /> : <LessonMediaPosition key={currentLesson.id} lessonId={currentLesson.id}>{(position, recordPosition) => activePdfUrl ? (
                                     <div className="w-full">
                                         <PdfSlideViewer
                                             pdfUrl={activePdfUrl}

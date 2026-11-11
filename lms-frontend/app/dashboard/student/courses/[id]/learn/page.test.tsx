@@ -2,6 +2,7 @@ import '@testing-library/jest-dom'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import LearningPathPage from './page'
 import { api } from '@/lib/api'
+import { useState } from 'react'
 
 jest.mock('next/navigation', () => ({ useRouter: () => ({ push: jest.fn(), back: jest.fn() }), useParams: () => ({ id: '1' }) }))
 jest.mock('@/lib/api', () => ({ API_URL: 'http://localhost:3003', api: { get: jest.fn(), post: jest.fn(), patch: jest.fn() } }))
@@ -10,9 +11,22 @@ jest.mock('@/components/student/LessonBookmarks', () => ({ __esModule: true, def
 jest.mock('@/components/student/LessonMediaPosition', () => ({ __esModule: true, default: ({ children }: any) => children({ pdfPage: 1, videoSeconds: 0 }, jest.fn()) }))
 jest.mock('@/components/student/LessonContentRenderer', () => ({ __esModule: true, default: ({ content }: any) => <div data-testid="lesson-content">{typeof content === 'string' ? content : JSON.stringify(content)}</div> }))
 jest.mock('@/components/student/PdfSlideViewer', () => ({ __esModule: true, default: () => <div>PDF viewer</div> }))
+jest.mock('@/components/student/LessonAssessment', () => ({ __esModule: true, default: function Assessment({ lessonId }: { lessonId: number }) {
+  const [openedLesson] = useState(lessonId)
+  return <div data-testid="assessment">Attempt for lesson {openedLesson}</div>
+} }))
 
 const lesson = (id: number, title: string) => ({ id, title, chapterId: 2, content: `Content for ${title}`, published: true, type: 'text' })
 const path = (lessons = [lesson(10, 'Introduction'), lesson(11, 'Practice')], completedLessonIds: number[] = []) => ({ course: { id: 1, title: 'Web development' }, isEnrolled: true, completedLessonIds, modules: [{ id: 1, title: 'Foundations', chapters: [{ id: 2, title: 'Getting started', lessons }] }] })
+
+test('switching assessment lessons resets the previous attempt state', async () => {
+  const quizzes = [lesson(10, 'Quiz one'), lesson(11, 'Quiz two')].map(item => ({ ...item, content: { type: 'quiz-builder' } }))
+  ;(api.get as jest.Mock).mockResolvedValue({ data: path(quizzes as any) })
+  render(<LearningPathPage />)
+  expect(await screen.findByTestId('assessment')).toHaveTextContent('Attempt for lesson 10')
+  fireEvent.click(screen.getByRole('button', { name: /Quiz two text/ }))
+  expect(screen.getByTestId('assessment')).toHaveTextContent('Attempt for lesson 11')
+})
 
 beforeEach(() => { jest.clearAllMocks(); window.history.replaceState({}, '', '/'); (api.post as jest.Mock).mockResolvedValue({ data: { success: true } }); (api.patch as jest.Mock).mockResolvedValue({ data: {} }) })
 

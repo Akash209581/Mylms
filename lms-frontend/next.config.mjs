@@ -19,12 +19,6 @@ const nextConfig = {
     images: {
         unoptimized: true,
     },
-    eslint: {
-        ignoreDuringBuilds: true,
-    },
-    typescript: {
-        ignoreBuildErrors: true,
-    },
     // DOMPurify uses jsdom only on the server; native canvas must never enter
     // the browser bundle or be parsed by webpack as JavaScript.
     webpack(config, { isServer }) {

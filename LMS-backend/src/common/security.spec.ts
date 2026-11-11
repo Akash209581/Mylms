@@ -7,6 +7,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { User } from '../entities/user.entity';
 import { College } from '../entities/college.entity';
 import { JwtService } from '@nestjs/jwt';
+import { createHash } from 'crypto';
 
 describe('Security Controls', () => {
   describe('Profile Mass-Assignment Prevention', () => {
@@ -100,6 +101,7 @@ describe('Security Controls', () => {
 
   describe('AuthService Security Checks', () => {
     let service: AuthService;
+    afterEach(() => jest.restoreAllMocks());
 
     beforeEach(async () => {
       const mockRepo = {
@@ -125,6 +127,10 @@ describe('Security Controls', () => {
 
     it('should detect and throw BadRequestException for pwned/breached passwords', async () => {
       const breachedPassword = 'Password123!';
+      const suffix = createHash('sha1').update(breachedPassword).digest('hex').toUpperCase().slice(5);
+      jest.spyOn(global, 'fetch').mockResolvedValue({
+        ok: true, text: async () => `${suffix}:100\r\nOTHER:2`,
+      } as Response);
       await expect(service['checkPasswordBreached'](breachedPassword)).rejects.toThrow(
         BadRequestException,
       );
@@ -132,6 +138,9 @@ describe('Security Controls', () => {
 
     it('should allow strong unbreached password', async () => {
       const safePassword = 'K39&2pLm$9xZ!qW5_vN8';
+      jest.spyOn(global, 'fetch').mockResolvedValue({
+        ok: true, text: async () => 'OTHER:2',
+      } as Response);
       await expect(service['checkPasswordBreached'](safePassword)).resolves.not.toThrow();
     }, 15000);
   });

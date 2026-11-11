@@ -343,7 +343,9 @@ export class AuthService {
     const suffix = sha1Hash.substring(5);
 
     try {
-      const response = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`);
+      const response = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`, {
+        signal: AbortSignal.timeout(5000),
+      });
       if (!response.ok) {
         console.error(`PwnedPasswords API returned status ${response.status}`);
         return;
