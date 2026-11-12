@@ -138,6 +138,7 @@ export default function GlobalCreateCoursePage() {
         price: 0,
         objectives: '',
         prerequisites: '',
+        targetAudience: '',
         published: true
     })
 
@@ -1254,6 +1255,17 @@ export default function GlobalCreateCoursePage() {
                                     />
                                 </div>
 
+                                {([
+                                    ['objectives', 'Learning objectives', 'What students will learn'],
+                                    ['prerequisites', 'Prerequisites', 'Knowledge or tools students need'],
+                                    ['targetAudience', 'Who this course is for', 'Who will benefit from the course'],
+                                ] as const).map(([field, label, hint]) => (
+                                    <div key={field}>
+                                        <label htmlFor={`course-${field}`} className="text-gray-400 text-sm mb-2 block font-semibold">{label}</label>
+                                        <textarea id={`course-${field}`} value={form[field]} onChange={e => setForm(p => ({ ...p, [field]: e.target.value }))} rows={4} placeholder={`${hint}. Enter one item per line.`} className="input-field" />
+                                        <p className="mt-1 text-xs text-gray-400">Enter one item per line. Students will see a separate bullet for each item.</p>
+                                    </div>
+                                ))}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
                                         <label className="text-gray-400 text-sm mb-2 block">Category</label>

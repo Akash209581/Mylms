@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import Sidebar from '@/components/layout/Sidebar'
 import Navbar from '@/components/layout/Navbar'
 import { api } from '@/lib/api'
+import CourseInfoList from '@/components/course/CourseInfoList'
 
 interface Resource {
     id: number
@@ -329,7 +330,7 @@ export default function InstructorCoursePreviewPage() {
                                 <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
                                     <span>🎯</span> Learning Objectives
                                 </h3>
-                                <p className="text-gray-300 whitespace-pre-line">{course.objectives}</p>
+                                <div className="text-gray-300"><CourseInfoList content={course.objectives} /></div>
                             </div>
                         )}
 
@@ -339,7 +340,7 @@ export default function InstructorCoursePreviewPage() {
                                 <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
                                     <span>📋</span> Prerequisites
                                 </h3>
-                                <p className="text-gray-300 whitespace-pre-line">{course.prerequisites}</p>
+                                <div className="text-gray-300"><CourseInfoList content={course.prerequisites} /></div>
                             </div>
                         )}
 
@@ -349,7 +350,7 @@ export default function InstructorCoursePreviewPage() {
                                 <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
                                     <span>👥</span> Target Audience
                                 </h3>
-                                <p className="text-gray-300 whitespace-pre-line">{course.targetAudience}</p>
+                                <div className="text-gray-300"><CourseInfoList content={course.targetAudience} /></div>
                             </div>
                         )}
                     </div>

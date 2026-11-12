@@ -13,6 +13,7 @@ import { api } from '@/lib/api'
 import { getAuthHeaders } from '@/lib/authHeaders'
 import { ArrowLeft, ArrowRight, BookOpen, CheckCircle2, ChevronDown, Clock3, FileText, Layers, ListTree, Loader2, PlayCircle, SearchX, Target, UserRound, Users } from 'lucide-react'
 import MarkdownRenderer from '@/components/editor/MarkdownRenderer'
+import CourseInfoList from '@/components/course/CourseInfoList'
 
 interface Resource {
     id: number
@@ -247,7 +248,7 @@ export default function StudentCourseDetailsPage() {
         { key: 'objectives', title: 'What you will learn', icon: Target, body: course.objectives },
         { key: 'prerequisites', title: 'Prerequisites', icon: ListTree, body: course.prerequisites },
         { key: 'audience', title: 'Who this course is for', icon: Users, body: course.targetAudience },
-    ].filter(section => section.body)
+    ].filter(section => section.body?.trim())
 
     return shell(
         <>
@@ -370,7 +371,7 @@ export default function StudentCourseDetailsPage() {
                         {aboutSections.map(({ key, title, icon: Icon, body }) => (
                             <section key={key} className="ui-card ui-card-pad">
                                 <h3 className="flex items-center gap-2 font-display text-lg font-semibold role-text-primary mb-3"><Icon className="w-5 h-5 text-[var(--gold)]" aria-hidden="true" /> {title}</h3>
-                                <div className="role-text-secondary text-sm leading-7"><MarkdownRenderer content={body as string} /></div>
+                                <div className="role-text-secondary text-sm leading-7"><CourseInfoList content={body as string} /></div>
                             </section>
                         ))}
                         {course.instructor?.name && (
